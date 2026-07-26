@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "generic-delivery-01",
+      "name": "Generic Delivery Status Keywords",
+      "priority": 31,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow))[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-delivery-02",
+      "name": "Generic Shipment Tracking Number",
+      "priority": 30,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "tracking_id": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

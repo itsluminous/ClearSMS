@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "generic-scam-01",
+      "name": "Shortened URL With Prize Bait",
+      "priority": 600,
+      "match": {
+        "body_pattern": "(?i)(?=[\\s\\S]*(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at))(?=[\\s\\S]*(?:prize|lottery|lucky\\s+draw|jackpot|winner|you\\s+have\\s+won|claim\\s+(?:your|now)|congratulations))[\\s\\S]*"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "scam"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-scam-02",
+      "name": "KYC Expiry Phishing",
+      "priority": 600,
+      "match": {
+        "body_pattern": "(?i)(?=[\\s\\S]*KYC)(?=[\\s\\S]*(?:expir|suspend|block|deactivat|update\\s+(?:immediately|today|now)))(?=[\\s\\S]*(?:http|www\\.|(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at)))[\\s\\S]*"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "scam"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-scam-03",
+      "name": "Lottery / Prize Winner Bait",
+      "priority": 600,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:you\\s+have\\s+won|won\\s+(?:a|an)\\s+(?:lottery|prize|iphone|car)|lucky\\s+draw\\s+winner|claim\\s+your\\s+(?:prize|reward|gift))[\\s\\S]*"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "scam"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

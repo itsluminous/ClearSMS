@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "swiggy-delivery-01",
+      "name": "Swiggy Order Delivery Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i).*SWIGGY.*",
+        "body_pattern": "(?i)[\\s\\S]*(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Swiggy"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "swiggy-promo-01",
+      "name": "Swiggy Promotional Offer",
+      "priority": 150,
+      "match": {
+        "sender_pattern": "(?i).*SWIGGY.*",
+        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

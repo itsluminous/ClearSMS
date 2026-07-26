@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "bob-debit-01",
+      "name": "Bank of Baroda Debit",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+\\.{0,3}[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "Bank of Baroda"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "bob-credit-01",
+      "name": "Bank of Baroda Credit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+\\.{0,3}[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Bank of Baroda"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "bob-balance-01",
+      "name": "Bank of Baroda Balance Alert",
+      "priority": 280,
+      "match": {
+        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "account_last4": "$1",
+          "balance": "$2",
+          "bank": "Bank of Baroda"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "bob-card-bill-01",
+      "name": "Bank of Baroda Credit Card Bill Reminder",
+      "priority": 260,
+      "match": {
+        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "total_due": "$2",
+          "min_due": "$3",
+          "due_date": "$4",
+          "bank": "Bank of Baroda"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "bob-emi-01",
+      "name": "Bank of Baroda EMI Reminder",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
+        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1",
+          "due_date": "$2",
+          "bank": "Bank of Baroda"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "amazon-delivery-01",
+      "name": "Amazon Order Delivery Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i).*(?:AMAZON|AMZN).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-promo-01",
+      "name": "Amazon Promotional Offer",
+      "priority": 150,
+      "match": {
+        "sender_pattern": "(?i).*(?:AMAZON|AMZN).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

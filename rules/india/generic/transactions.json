@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "generic-debit-01",
+      "name": "Generic Debit With Account",
+      "priority": 41,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:debited|spent|paid|withdrawn|deducted)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-debit-02",
+      "name": "Generic Debit Amount Only",
+      "priority": 40,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:debited|withdrawn|deducted)\\s+(?:by|for|with)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-credit-01",
+      "name": "Generic Credit With Account",
+      "priority": 39,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|received|deposited)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-credit-02",
+      "name": "Generic Credit Amount Only",
+      "priority": 38,
+      "match": {
+        "body_pattern": "(?i)[\\s\\S]*(?:credited|deposited)\\s+(?:with|by)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

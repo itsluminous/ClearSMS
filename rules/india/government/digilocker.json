@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "digilocker-document-01",
+      "name": "DigiLocker DigiLocker Document Issued",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i).*(?:DGLOCK|DIGLKR).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:issued|added|pushed|available)\\s+(?:in|to)\\s+(?:your\\s+)?DigiLocker[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "digilocker-signin-01",
+      "name": "DigiLocker DigiLocker Account Activity",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i).*(?:DGLOCK|DIGLKR).*",
+        "body_pattern": "(?i)[\\s\\S]*DigiLocker[\\s\\S]{0,60}?(?:sign[\\s-]?in|login|account\\s+(?:created|accessed))[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

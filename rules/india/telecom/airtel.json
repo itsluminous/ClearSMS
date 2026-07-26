@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "airtel-recharge-01",
+      "name": "Airtel Recharge Confirmation",
+      "priority": 240,
+      "match": {
+        "sender_pattern": "(?i).*AIRTEL.*",
+        "body_pattern": "(?i)[\\s\\S]*recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful[\\s\\S]*",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-data-balance-01",
+      "name": "Airtel Data Balance Alert",
+      "priority": 230,
+      "match": {
+        "sender_pattern": "(?i).*AIRTEL.*",
+        "body_pattern": "(?i)[\\s\\S]*data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "data_remaining": "$1",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-promo-01",
+      "name": "Airtel Promotional Offer",
+      "priority": 150,
+      "match": {
+        "sender_pattern": "(?i).*AIRTEL.*",
+        "body_pattern": "(?i)[\\s\\S]*(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)[\\s\\S]*"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

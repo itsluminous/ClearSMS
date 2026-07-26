@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "uidai-aadhaar-update-01",
+      "name": "UIDAI Aadhaar Update Notification",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i).*(?:UIDAI|ADHAAR).*",
+        "body_pattern": "(?i)[\\s\\S]*aadha?ar[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "uidai-aadhaar-auth-01",
+      "name": "UIDAI Aadhaar Authentication Alert",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i).*(?:UIDAI|ADHAAR).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:aadha?ar|UIDAI)[\\s\\S]{0,60}?(?:authenticat|e-?KYC)[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

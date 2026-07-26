@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "bluedart-tracking-01",
+      "name": "Blue Dart Shipment Tracking",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i).*(?:BLDART|BLUDRT|BLUEDART).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "tracking_id": "$1",
+          "courier": "Blue Dart"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "bluedart-delivery-01",
+      "name": "Blue Dart Delivery Status Update",
+      "priority": 215,
+      "match": {
+        "sender_pattern": "(?i).*(?:BLDART|BLUDRT|BLUEDART).*",
+        "body_pattern": "(?i)[\\s\\S]*(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))[\\s\\S]*"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "courier": "Blue Dart"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}
