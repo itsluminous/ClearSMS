@@ -1,0 +1,58 @@
+name: Rule contribution
+description: Submit a new categorization rule or report a miscategorized message.
+title: "[Rule]: "
+labels: ["rules", "community"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing a rule! Please **redact all personal data** in sample
+        messages (amounts, names, account digits, phone numbers).
+  - type: input
+    id: sender
+    attributes:
+      label: Sender ID
+      description: The (normalized) sender the rule targets, e.g. `HDFCBK` or a pattern like `.*HDFC.*`.
+      placeholder: HDFCBK
+    validations:
+      required: true
+  - type: textarea
+    id: samples
+    attributes:
+      label: Redacted sample message(s)
+      description: 2–3 example messages the rule should match, with personal data replaced by placeholders.
+      placeholder: "Rs.XXXX.XX debited from a/c **1234 on 01-01-26 to VPA merchant@upi."
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Target category
+      options:
+        - important
+        - promotional
+        - personal
+        - otp
+        - unknown
+    validations:
+      required: true
+  - type: input
+    id: subcategory
+    attributes:
+      label: Sub-category (optional)
+      placeholder: transaction / bill / delivery / offer / scam / recharge / ...
+  - type: textarea
+    id: rule-json
+    attributes:
+      label: Proposed rule JSON (optional)
+      description: If you already wrote the rule (see CONTRIBUTING.md for the schema), paste it here.
+      render: json
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I redacted all personal data from the samples above.
+          required: true
+        - label: I checked existing rules under `rules/` for duplicates.
+          required: true

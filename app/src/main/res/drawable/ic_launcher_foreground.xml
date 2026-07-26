@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original chat-bubble mark for Clear SMS. Content sits inside the adaptive
+     icon safe zone (center 66dp of the 108dp canvas). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Rounded speech bubble with a small tail -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,36 h36 a10,10 0 0 1 10,10 v18 a10,10 0 0 1 -10,10 H52 l-11,10 a1.5,1.5 0 0 1 -2.5,-1.1 V74 a10,10 0 0 1 -12,-9.8 V46 a10,10 0 0 1 9.5,-10 z" />
+    <!-- Three "typing" dots, punched in the seed teal -->
+    <path
+        android:fillColor="#FF006A60"
+        android:pathData="M45,55 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0" />
+    <path
+        android:fillColor="#FF006A60"
+        android:pathData="M55,55 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0" />
+    <path
+        android:fillColor="#FF006A60"
+        android:pathData="M65,55 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0" />
+</vector>

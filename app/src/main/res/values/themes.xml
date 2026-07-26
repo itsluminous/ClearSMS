@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- XML theme provided by the androidx.compose.material3 artifact; the real
+         theming (dynamic color / seed palette) happens in Compose (ui/theme). -->
+    <style name="Theme.ClearSms" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>
