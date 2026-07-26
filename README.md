@@ -1,6 +1,6 @@
 # Clear SMS
 
-[![Android CI](https://github.com/OWNER/ClearSMS/actions/workflows/android.yml/badge.svg)](https://github.com/OWNER/ClearSMS/actions/workflows/android.yml)
+[![Android CI](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml/badge.svg)](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml)
 
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
 organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
@@ -35,7 +35,7 @@ handles OTPs intelligently — all completely offline, on your device.
 Requirements: JDK 17+ and the Android SDK (compileSdk 35).
 
 ```bash
-git clone https://github.com/OWNER/ClearSMS.git
+git clone https://github.com/itsluminous/ClearSMS.git
 cd ClearSMS
 # point to your SDK if ANDROID_HOME is not set:
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
