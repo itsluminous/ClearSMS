@@ -1,23 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Original chat-bubble mark for Clear SMS. Content sits inside the adaptive
-     icon safe zone (center 66dp of the 108dp canvas). -->
+<!-- Original "clean SMS" mark for Clear SMS: an outlined message bubble with a
+     soft tonal glow inside and three staggered, tidy message lines (the short
+     accent line hints at categorization). All artwork stays inside the
+     adaptive-icon safe zone: on the 108x108 canvas only the inner 66dp circle
+     (radius 33 from center 54,54) is guaranteed visible after masking; the
+     farthest point here (the bubble tail tip, incl. stroke) sits ~32.2 from
+     center. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Rounded speech bubble with a small tail -->
+    <!-- Soft "blurred" tonal fill inside the bubble: a low-alpha white linear
+         gradient (glow from the top-left), since vectors cannot blur. -->
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M36,36 h36 a10,10 0 0 1 10,10 v18 a10,10 0 0 1 -10,10 H52 l-11,10 a1.5,1.5 0 0 1 -2.5,-1.1 V74 a10,10 0 0 1 -12,-9.8 V46 a10,10 0 0 1 9.5,-10 z" />
-    <!-- Three "typing" dots, punched in the seed teal -->
+        android:pathData="M43,36 h22 a9,9 0 0 1 9,9 v12 a9,9 0 0 1 -9,9 H47 l-9.3,8.2 q-2.3,2 -3.7,-0.8 V45 a9,9 0 0 1 9,-9 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="40"
+                android:startY="38"
+                android:endX="66"
+                android:endY="66">
+                <item android:offset="0" android:color="#59FFFFFF" />
+                <item android:offset="0.55" android:color="#24FFFFFF" />
+                <item android:offset="1" android:color="#0AFFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Bubble outline (stroke 7 on the 108 canvas ≈ 3.1dp at 48dp). -->
     <path
-        android:fillColor="#FF006A60"
-        android:pathData="M45,55 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0" />
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M43,36 h22 a9,9 0 0 1 9,9 v12 a9,9 0 0 1 -9,9 H47 l-9.3,8.2 q-2.3,2 -3.7,-0.8 V45 a9,9 0 0 1 9,-9 z" />
+    <!-- Three staggered "sorted message" lines: long, medium, short. -->
     <path
-        android:fillColor="#FF006A60"
-        android:pathData="M55,55 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0" />
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M42,44 h24" />
     <path
-        android:fillColor="#FF006A60"
-        android:pathData="M65,55 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0" />
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M42,52 h17" />
+    <!-- Shortest line in a light tint of the indigo seed (accent = categorized). -->
+    <path
+        android:strokeColor="#FFC5CAE9"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M42,60 h10" />
 </vector>

@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Legacy (pre-API 26) launcher icon: teal seed disc carrying the outlined
-     bubble mark. Uses a flat low-alpha fill instead of a gradient because
-     VectorDrawable gradients require API 24 and minSdk is 23. -->
+<!-- Monochrome launcher layer for Android 13+ themed icons: the same outlined
+     bubble and three staggered lines as the foreground, in a single solid
+     color with no gradients (the system applies its own tint). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FF006A60"
-        android:pathData="M54,54 m-50,0 a50,50 0 1 1 100,0 a50,50 0 1 1 -100,0" />
-    <path
-        android:fillColor="#2EFFFFFF"
-        android:pathData="M43,36 h22 a9,9 0 0 1 9,9 v12 a9,9 0 0 1 -9,9 H47 l-9.3,8.2 q-2.3,2 -3.7,-0.8 V45 a9,9 0 0 1 9,-9 z" />
     <path
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="7"
@@ -30,7 +24,7 @@
         android:strokeLineCap="round"
         android:pathData="M42,52 h17" />
     <path
-        android:strokeColor="#FFC5CAE9"
+        android:strokeColor="#FFFFFFFF"
         android:strokeWidth="5"
         android:strokeLineCap="round"
         android:pathData="M42,60 h10" />
