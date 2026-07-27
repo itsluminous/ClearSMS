@@ -53,13 +53,14 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            // Minification is intentionally disabled for the first release:
-            // an SMS app relies heavily on reflection-adjacent frameworks (Room, Hilt,
-            // kotlinx.serialization) and shipping an unobfuscated, auditable APK aligns
-            // with the project's transparency/privacy principles. R8 can be enabled
-            // later with carefully curated keep rules.
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 code shrinking + resource shrinking keep the APK small.
+            // Obfuscation is disabled in proguard-rules.pro (-dontobfuscate):
+            // the app is open source, so auditability is preserved while dead
+            // code and unused resources are still removed. Room, Hilt and
+            // kotlinx.serialization are covered by their bundled consumer
+            // rules plus the curated app rules in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -119,6 +120,12 @@ android {
         getByName("main") {
             kotlin.srcDir("src/main/kotlin")
         }
+        getByName("debug") {
+            // Robolectric unit tests read the DEBUG merged assets; exposing the
+            // committed Room schema JSONs here lets MigrationTestHelper load
+            // them. Debug-only: release APKs never include them.
+            assets.srcDir("$projectDir/schemas")
+        }
         getByName("test") {
             kotlin.srcDir("src/test/kotlin")
         }
@@ -130,6 +137,15 @@ android {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
+
+// Size note: assets/sender_ids.db (44 MB raw) is deflate-compressed by AAPT2
+// inside the APK (~16.5 MB stored) — .db is not on the default noCompress
+// list, so no androidResources tuning is required. The remaining size lever
+// (a more compact on-disk sender directory format) lives in the data layer.
+//
+// TODO(supply-chain): add Gradle dependency verification
+// (gradle/verification-metadata.xml) and/or version-catalog lockfiles so CI
+// can detect tampered dependencies. Tracked as a follow-up; see README.
 
 dependencies {
     // Core AndroidX + lifecycle
@@ -176,7 +192,11 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
 
-    // Images + permissions
+    // Images + permissions. Coil renders contact photos from content:// URIs
+    // (ui/components/SenderAvatar.kt) — it never performs network I/O in this
+    // app: no http(s) URLs are ever loaded, so the transitively-included
+    // OkHttp engine is dormant. Revisit with a ContentResolver+BitmapFactory
+    // loader if the dependency footprint becomes a concern.
     implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
 
@@ -193,4 +213,9 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core.ktx)
     testImplementation(libs.turbine)
+    // Migration tests validate committed schemas; worker tests need a test WorkManager.
+    testImplementation(libs.room.testing)
+    testImplementation(libs.androidx.work.testing)
+    // Schema-shape tests reflect over serializable models with kotlin.reflect.
+    testImplementation(kotlin("reflect"))
 }

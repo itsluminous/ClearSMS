@@ -51,7 +51,14 @@ Run checks the same way CI does:
 Release builds are split per ABI: `./gradlew assembleRelease` produces four
 per-architecture APKs (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) plus a
 universal APK under `app/build/outputs/apk/release/`. Without signing
-environment variables (see below) these are unsigned.
+environment variables (see below) these are unsigned. Release APKs are
+shrunk with R8 and resource shrinking but **not obfuscated**
+(`-dontobfuscate` in `app/proguard-rules.pro`), keeping the shipped APK
+auditable.
+
+> Follow-up: Gradle dependency verification / lockfiles are not yet
+> configured; CI validates the Gradle wrapper checksum but does not yet pin
+> dependency hashes.
 
 ## Release signing (CI)
 
