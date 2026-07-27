@@ -120,7 +120,12 @@ python3 scripts/audit_rule_coverage.py corpus.jsonl --min-coverage 80
 ```
 
 It prints total coverage, per-rule hit counts, and the unmatched messages
-grouped by sender and body shape (ranked by frequency). Output is redacted by
+grouped by sender and body shape (ranked by frequency). It also breaks every
+`generic-*` rule hit down by sender (ranked, with a redacted example each) —
+generic rules are meant to be a rarely-used safety net, so this breakdown is
+the work list for authoring sender-specific rules that displace them. Use
+`--generic-top N` to control how many senders are listed per generic rule,
+or `--no-generic-breakdown` to skip the section. Output is redacted by
 default — digits are masked — but the corpus itself is private data: keep it
 outside the repository and never paste raw messages into rules or issues.
 Rules must contain only generic patterns and public brand/sender names.

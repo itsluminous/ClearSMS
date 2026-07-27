@@ -22,6 +22,13 @@ Messages matched by neither stage are grouped by normalized sender and by
 body "shape" (digits masked, whitespace collapsed) so the highest-value
 missing rules are easy to spot.
 
+The report also breaks down every ``generic-*`` rule hit by normalized
+sender (ranked by count, with a redacted example each). Generic rules are
+meant to be a safety net, so this breakdown is the work list for authoring
+sender-specific rules that displace them. Disable it with
+``--no-generic-breakdown``; tune the number of senders shown per rule with
+``--generic-top``.
+
 Input is either a JSONL file (one ``{"sender": ..., "body": ...}`` object
 per line) or ``--from-device``, which pulls the corpus from a connected
 Android device via ``adb shell content query --uri content://sms``.
@@ -249,6 +256,11 @@ def main():
                     help="path to sender_ids.db")
     ap.add_argument("--top", type=int, default=40,
                     help="number of unmatched groups to print (default 40)")
+    ap.add_argument("--generic-top", type=int, default=15,
+                    help="senders to list per generic-* rule (default 15)")
+    ap.add_argument("--no-generic-breakdown", dest="generic_breakdown",
+                    action="store_false",
+                    help="skip the per-sender breakdown of generic-* rule hits")
     ap.add_argument("--min-coverage", type=float, default=0.0,
                     help="exit non-zero if coverage %% falls below this")
     ap.add_argument("--no-redact", dest="redact", action="store_false",
@@ -271,12 +283,15 @@ def main():
     directory = SenderDirectory(args.sender_db)
 
     rule_hits = collections.Counter()
+    generic_hits = collections.defaultdict(list)
     senderid_only = 0
     unmatched = []
     for msg in messages:
         rid = matcher.match(msg["sender"], msg["body"])
         if rid:
             rule_hits[rid] += 1
+            if rid.startswith("generic-"):
+                generic_hits[rid].append(msg)
         elif directory.lookup(msg["sender"]):
             senderid_only += 1
         else:
@@ -296,6 +311,26 @@ def main():
     print("\nper-rule hit counts:")
     for rid, count in rule_hits.most_common():
         print(f"  {count:6d}  {rid}")
+
+    if args.generic_breakdown and generic_hits:
+        total_generic = sum(len(v) for v in generic_hits.values())
+        print(f"\ngeneric-* rule breakdown ({total_generic} hits — "
+              "each sender below is a candidate for a specific rule):")
+        for rid in sorted(generic_hits, key=lambda r: -len(generic_hits[r])):
+            msgs = generic_hits[rid]
+            senders = collections.defaultdict(list)
+            for msg in msgs:
+                senders[normalized_sender(msg["sender"])].append(msg)
+            print(f"\n  {rid} ({len(msgs)} hits, {len(senders)} senders):")
+            ranked = sorted(senders.items(), key=lambda kv: -len(kv[1]))
+            for sender, hits in ranked[: args.generic_top]:
+                example = hits[0]["body"]
+                if args.redact:
+                    example = redact(example)
+                print(f"    {len(hits):6d}  {sender}\n            e.g. {example}")
+            if len(ranked) > args.generic_top:
+                rest = sum(len(v) for _, v in ranked[args.generic_top:])
+                print(f"    {rest:6d}  … {len(ranked) - args.generic_top} more senders")
 
     def show(title, key_fn):
         groups = collections.defaultdict(list)
