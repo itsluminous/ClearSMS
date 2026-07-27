@@ -109,6 +109,7 @@ private class SettingsRowEntry(
 fun SettingsScreen(
     onBack: () -> Unit,
     onManageRules: () -> Unit,
+    onArchived: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLicenses: () -> Unit,
     onPermissions: () -> Unit,
@@ -189,6 +190,7 @@ fun SettingsScreen(
             onBackupNow = { backupLauncher.launch("clearsms-backup.json") },
             onRestore = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             onManageRules = onManageRules,
+            onArchived = onArchived,
             onPermissions = onPermissions,
             onPrivacyPolicy = onPrivacyPolicy,
             onLicenses = onLicenses,
@@ -479,10 +481,12 @@ private fun settingsRowEntries(
     onBackupNow: () -> Unit,
     onRestore: () -> Unit,
     onManageRules: () -> Unit,
+    onArchived: () -> Unit,
     onPermissions: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLicenses: () -> Unit,
 ): List<SettingsRowEntry> {
+    val sectionMessages = stringResource(R.string.settings_section_messages)
     val sectionBlocking = stringResource(R.string.settings_section_blocking)
     val sectionBackup = stringResource(R.string.settings_section_backup)
     val sectionAppearance = stringResource(R.string.settings_section_appearance)
@@ -523,6 +527,12 @@ private fun settingsRowEntries(
     val clearOtpSummary = stringResource(R.string.settings_clear_otp_summary)
 
     return listOf(
+        row(
+            section = sectionMessages,
+            title = stringResource(R.string.settings_archived),
+            summary = stringResource(R.string.settings_archived_summary),
+            onClick = onArchived,
+        ),
         row(
             section = sectionBlocking,
             title = stringResource(R.string.settings_block_list),

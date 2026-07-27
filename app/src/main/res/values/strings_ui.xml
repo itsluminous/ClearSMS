@@ -130,6 +130,9 @@
     <string name="search_date_year">Last year</string>
     <string name="search_min_length_hint">Type at least %1$d characters to search</string>
     <string name="archived_title">Archived</string>
+    <string name="settings_section_messages">Messages</string>
+    <string name="settings_archived">Archived messages</string>
+    <string name="settings_archived_summary">View, unarchive or delete archived conversations</string>
     <string name="archived_empty_title">Nothing archived</string>
     <string name="archived_empty_subtitle">Conversations you archive appear here.</string>
     <string name="action_unarchive">Unarchive</string>

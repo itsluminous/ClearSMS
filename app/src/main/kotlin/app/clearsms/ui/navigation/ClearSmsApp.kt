@@ -150,7 +150,6 @@ private fun MainScaffold(
                     onCompose = { navController.navigate(Routes.compose()) },
                     onSearch = { navController.navigate(Routes.SEARCH) },
                     onSettings = { navController.navigate(Routes.SETTINGS) },
-                    onArchived = { navController.navigate(Routes.ARCHIVED) },
                     onCreateRule = { sender, body -> navController.navigate(Routes.ruleWizard(sender, body)) },
                 )
             }
@@ -236,6 +235,7 @@ private fun MainScaffold(
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onManageRules = { navController.navigate(Routes.RULES) },
+                    onArchived = { navController.navigate(Routes.ARCHIVED) },
                     onPrivacyPolicy = { navController.navigate(Routes.PRIVACY_POLICY) },
                     onLicenses = { navController.navigate(Routes.LICENSES) },
                     onPermissions = { navController.navigate(Routes.PERMISSIONS_INFO) },
