@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.TransactionEntity
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.AccountType
+import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +39,8 @@ data class FinanceUiState(
     val creditCards: List<CreditCardItem> = emptyList(),
     val cardsAboveSafeLimit: Int = 0,
     val latestTransactions: List<TransactionEntity> = emptyList(),
+    /** Badge counts per pill: accounts / cards / transactions this month. */
+    val pillCounts: Map<FinanceTab, Int> = emptyMap(),
     val loaded: Boolean = false,
 )
 
@@ -44,8 +49,14 @@ class FinanceViewModel
     @Inject
     constructor(
         private val financeRepository: FinanceRepository,
+        private val settingsRepository: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
+        /** Persisted pill selection — restored across app restarts. */
+        val selectedTab: StateFlow<FinanceTab> =
+            settingsRepository.financeTab
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.ACCOUNTS)
+
         val uiState: StateFlow<FinanceUiState> =
             combine(
                 financeRepository.observeTransactions(),
@@ -72,15 +83,20 @@ class FinanceViewModel
                         }
                 FinanceUiState(
                     monthNet = MonthlyAggregation.net(monthTxs),
-                    monthDebits = monthTxs.filter { it.type == app.clearsms.domain.model.TransactionType.DEBIT }.sumOf { it.amount },
-                    monthCredits = monthTxs.filter { it.type == app.clearsms.domain.model.TransactionType.CREDIT }.sumOf { it.amount },
+                    monthDebits = monthTxs.filter { it.type == TransactionType.DEBIT }.sumOf { it.amount },
+                    monthCredits = monthTxs.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
                     bankAccounts = accounts.filter { it.type != AccountType.CREDIT_CARD },
                     creditCards = cards,
                     cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),
                     latestTransactions = transactions.take(LATEST_TRANSACTIONS),
+                    pillCounts = FinancePills.counts(accounts, transactions, currentMonth, zone),
                     loaded = true,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())
+
+        fun setTab(tab: FinanceTab) {
+            viewModelScope.launch(ioDispatcher) { settingsRepository.setFinanceTab(tab) }
+        }
 
         fun setCardLimit(
             accountId: Long,

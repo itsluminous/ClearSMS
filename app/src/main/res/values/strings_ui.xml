@@ -267,4 +267,13 @@
     <string name="perm_phone_body">Required by Android for default SMS app duties.</string>
     <string name="perm_notifications_body">Show new message and OTP notifications.</string>
     <string name="perm_boot_body">Reschedule background jobs (like OTP auto-delete) after a restart.</string>
+
+    <!-- Finance pills & monthly chart -->
+    <string name="finance_section_empty">Nothing here yet.</string>
+    <string name="chart_legend_debits">Debits</string>
+    <string name="chart_legend_credits">Credits</string>
+    <string name="chart_selection_details">%1$s · %2$s debited · %3$s credited</string>
+    <string name="chart_bar_description">%1$s, debits %2$s, credits %3$s</string>
+    <string name="chart_summary_description">Monthly debit and credit totals, %1$s to %2$s. Tap a bar for details.</string>
+    <string name="chart_empty_description">No monthly activity yet</string>
 </resources>
