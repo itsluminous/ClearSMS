@@ -1,12 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="avatar_sender_logo">%1$s logo</string>
-    <string name="settings_logo_pack">Sender logo pack</string>
-    <string name="settings_logo_pack_empty">Not configured. No brand logos ship with the app.</string>
-    <string name="settings_logo_pack_count">%1$d logo images from your device</string>
-    <string name="settings_logo_pack_note">Clear SMS does not bundle any company logos. You can add your own images, named by brand key or sender ID (for example hdfc.png or HDFCBK.png). They are read only from your device and never leave it.</string>
-    <string name="settings_logo_pack_choose_folder">Choose folder</string>
-    <string name="settings_logo_pack_import_zip">Import zip</string>
-    <string name="settings_logo_pack_remove">Remove logos</string>
-    <string name="settings_logo_pack_imported">Imported %1$d images</string>
 </resources>

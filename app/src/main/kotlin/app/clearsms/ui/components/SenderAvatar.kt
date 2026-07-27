@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +24,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
@@ -38,18 +35,21 @@ private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 33
 
 /**
  * Sender avatar. With [richAvatars] (the "Show logos and contact photos"
- * setting) the fallback chain is: contact photo → user-supplied logo pack
- * image (always overrides bundled artwork) → bundled asset logo → curated
- * brand tile (bundled brand table, matched on [sender] and [name]) →
+ * setting) the fallback chain is: contact photo → bundled asset logo →
+ * curated brand tile (bundled brand table, matched on [sender] and [name]) →
  * category-glyph monogram tile for directory-known senders → plain letter
  * avatar. With the setting off, always the plain letter avatar. Unknown
  * senders always get a letter — never a blank tile.
+ *
+ * Every variant clips to [AvatarDefaults.shape] at [AvatarDefaults.size] —
+ * the diameter and shape are deliberately not parameters, so inbox rows, the
+ * conversation header, search results, finance cards and alert cards all
+ * render identical avatars.
  */
 @Composable
 fun SenderAvatar(
     name: String,
     modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
     richAvatars: Boolean = false,
     photoUri: String? = null,
     isKnownSender: Boolean = false,
@@ -68,56 +68,32 @@ fun SenderAvatar(
         }
     if (richAvatars) {
         LaunchedEffect(Unit) {
-            LogoPack.ensureLoaded(context)
             BundledLogos.ensureLoaded(context)
         }
     }
-    val logoIndex by LogoPack.index.collectAsStateWithLifecycle()
-    val logoUri =
-        if (richAvatars) {
-            remember(logoIndex, brand, sender, name) {
-                resolveLogo(logoIndex, brand?.key, sender ?: name)
-            }
-        } else {
-            null
-        }
     val bundledKeys by BundledLogos.keys.collectAsStateWithLifecycle()
     val bundledKey = brand?.key?.takeIf { richAvatars && it in bundledKeys }
 
-    when (
+    val style =
         avatarStyleFor(
             richAvatars = richAvatars,
             photoUri = photoUri,
             isKnownSender = isKnownSender,
-            hasLogo = logoUri != null,
             hasBundledLogo = bundledKey != null,
             hasBrand = brand != null,
         )
-    ) {
+    when (style) {
         AvatarStyle.PHOTO ->
             SubcomposeAsyncImage(
                 model = photoUri,
                 contentDescription = stringResource(R.string.avatar_contact_photo),
+                // Center-crop: non-square photos fill the circle, never squashed.
                 contentScale = ContentScale.Crop,
-                error = { PlainAvatar(name = name, size = size) },
+                error = { PlainAvatar(name = name) },
                 modifier =
                     modifier
-                        .size(size)
-                        .clip(RoundedCornerShape(12.dp)),
-            )
-        AvatarStyle.LOGO ->
-            SubcomposeAsyncImage(
-                model = logoUri,
-                contentDescription = stringResource(R.string.avatar_sender_logo, name),
-                contentScale = ContentScale.Crop,
-                // A corrupt or unreadable file must fall back, never crash or blank.
-                error = {
-                    SenderBrandMark(name = name, glyph = glyph, size = size, brand = brand)
-                },
-                modifier =
-                    modifier
-                        .size(size)
-                        .clip(CircleShape),
+                        .size(AvatarDefaults.sizeFor(style))
+                        .clip(AvatarDefaults.shapeFor(style)),
             )
         AvatarStyle.BUNDLED -> {
             // Decoded once per key on IO (BundledLogoCache); the brand tile
@@ -132,35 +108,37 @@ fun SenderAvatar(
                 Image(
                     bitmap = logo,
                     contentDescription = stringResource(R.string.avatar_sender_logo, name),
+                    // Fit inside a circular white plate: logos are shown whole
+                    // (never cropped), and clipping to the shared circle means
+                    // transparent-background artwork gets no box edges.
                     contentScale = ContentScale.Fit,
                     modifier =
                         modifier
-                            .size(size)
-                            .clip(CircleShape)
+                            .size(AvatarDefaults.sizeFor(style))
+                            .clip(AvatarDefaults.shapeFor(style))
                             .background(Color.White)
                             .padding(4.dp),
                 )
             } else {
-                SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size, brand = brand)
+                SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand)
             }
         }
         AvatarStyle.BRAND ->
-            SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size, brand = brand)
+            SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand)
         AvatarStyle.BRAND_MARK ->
-            SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size)
-        AvatarStyle.PLAIN -> PlainAvatar(name = name, modifier = modifier, size = size)
+            SenderBrandMark(name = name, glyph = glyph, modifier = modifier)
+        AvatarStyle.PLAIN -> PlainAvatar(name = name, modifier = modifier)
     }
 }
 
 /**
- * Rounded-square (12dp radius) avatar showing the sender's initial on a
- * deterministic tonal color derived from the sender name.
+ * Letter avatar: the sender's initial on a deterministic tonal color derived
+ * from the sender name, clipped to the shared avatar shape.
  */
 @Composable
 private fun PlainAvatar(
     name: String,
     modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
 ) {
     val hue = AVATAR_HUES[abs(name.hashCode()) % AVATAR_HUES.size]
     val tone = Color.hsl(hue, 0.45f, 0.62f)
@@ -169,8 +147,8 @@ private fun PlainAvatar(
     Box(
         modifier =
             modifier
-                .size(size)
-                .clip(RoundedCornerShape(12.dp))
+                .size(AvatarDefaults.sizeFor(AvatarStyle.PLAIN))
+                .clip(AvatarDefaults.shapeFor(AvatarStyle.PLAIN))
                 .background(background),
         contentAlignment = Alignment.Center,
     ) {

@@ -49,29 +49,29 @@ class BrandContrastTest {
 
 class AvatarFallbackTest {
     @Test
-    fun `chain order is photo then logo then brand then category then letter`() {
+    fun `chain order is photo then bundled logo then brand then category then letter`() {
         val all =
             avatarStyleFor(
                 richAvatars = true,
                 photoUri = "content://photo/1",
                 isKnownSender = true,
-                hasLogo = true,
+                hasBundledLogo = true,
                 hasBrand = true,
             )
         assertThat(all).isEqualTo(AvatarStyle.PHOTO)
-        assertThat(avatarStyleFor(true, null, true, hasLogo = true, hasBrand = true))
-            .isEqualTo(AvatarStyle.LOGO)
-        assertThat(avatarStyleFor(true, null, true, hasLogo = false, hasBrand = true))
+        assertThat(avatarStyleFor(true, null, true, hasBundledLogo = true, hasBrand = true))
+            .isEqualTo(AvatarStyle.BUNDLED)
+        assertThat(avatarStyleFor(true, null, true, hasBundledLogo = false, hasBrand = true))
             .isEqualTo(AvatarStyle.BRAND)
-        assertThat(avatarStyleFor(true, null, true, hasLogo = false, hasBrand = false))
+        assertThat(avatarStyleFor(true, null, true, hasBundledLogo = false, hasBrand = false))
             .isEqualTo(AvatarStyle.BRAND_MARK)
-        assertThat(avatarStyleFor(true, null, false, hasLogo = false, hasBrand = false))
+        assertThat(avatarStyleFor(true, null, false, hasBundledLogo = false, hasBrand = false))
             .isEqualTo(AvatarStyle.PLAIN)
     }
 
     @Test
     fun `rich avatars off is always plain`() {
-        assertThat(avatarStyleFor(false, "content://photo/1", true, hasLogo = true, hasBrand = true))
+        assertThat(avatarStyleFor(false, "content://photo/1", true, hasBundledLogo = true, hasBrand = true))
             .isEqualTo(AvatarStyle.PLAIN)
     }
 
@@ -84,7 +84,6 @@ class AvatarFallbackTest {
                 richAvatars = true,
                 photoUri = null,
                 isKnownSender = false,
-                hasLogo = false,
                 hasBrand = brand != null,
             )
         assertThat(style).isEqualTo(AvatarStyle.PLAIN)
@@ -103,11 +102,11 @@ class AvatarFallbackTest {
     }
 }
 
-class LogoPackMatchTest {
+class BundledLogoKeyTest {
     @Test
     fun `filename keys accept image extensions case-insensitively`() {
         assertThat(logoKeyForFileName("hdfc.png")).isEqualTo("hdfc")
-        assertThat(logoKeyForFileName("HDFCBK.PNG")).isEqualTo("hdfcbk")
+        assertThat(logoKeyForFileName("HDFC.PNG")).isEqualTo("hdfc")
         assertThat(logoKeyForFileName("Paytm.WebP")).isEqualTo("paytm")
         assertThat(logoKeyForFileName("icici.jpeg")).isEqualTo("icici")
         assertThat(logoKeyForFileName("axis.jpg")).isEqualTo("axis")
@@ -118,22 +117,7 @@ class LogoPackMatchTest {
         assertThat(logoKeyForFileName("notes.txt")).isNull()
         assertThat(logoKeyForFileName("archive.zip")).isNull()
         assertThat(logoKeyForFileName("README")).isNull()
+        assertThat(logoKeyForFileName("MANIFEST.md")).isNull()
         assertThat(logoKeyForFileName(".png")).isNull()
-    }
-
-    @Test
-    fun `matching prefers brand key then normalized sender id then raw sender`() {
-        val index = mapOf("hdfc" to 1, "hdfcbk" to 2, "vm-hdfcbk" to 3)
-        assertThat(resolveLogo(index, brandKey = "hdfc", sender = "VM-HDFCBK")).isEqualTo(1)
-        assertThat(resolveLogo(index - "hdfc", brandKey = "hdfc", sender = "VM-HDFCBK")).isEqualTo(2)
-        assertThat(resolveLogo(mapOf("vm-hdfcbk" to 3), brandKey = null, sender = "VM-HDFCBK")).isEqualTo(3)
-    }
-
-    @Test
-    fun `matching is case-insensitive and misses cleanly`() {
-        val index = mapOf("hdfcbk" to "uri")
-        assertThat(resolveLogo(index, brandKey = null, sender = "vm-HdFcBk")).isEqualTo("uri")
-        assertThat(resolveLogo(index, brandKey = "sbi", sender = "SBIINB")).isNull()
-        assertThat(resolveLogo(emptyMap<String, String>(), brandKey = "hdfc", sender = "HDFCBK")).isNull()
     }
 }

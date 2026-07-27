@@ -7,9 +7,6 @@ enum class AvatarStyle {
     /** The saved contact's photo thumbnail. */
     PHOTO,
 
-    /** A user-supplied image from the optional local logo pack. */
-    LOGO,
-
     /** A logo image bundled in the APK's assets, keyed by curated brand. */
     BUNDLED,
 
@@ -41,9 +38,8 @@ enum class BrandGlyph {
 
 /**
  * Picks the avatar rendering. With rich avatars ON the fallback chain is:
- * contact photo → user-supplied logo (always overrides bundled artwork) →
- * bundled asset logo → curated brand tile → category glyph tile
- * (directory-known sender) → plain letter avatar. OFF is always plain —
+ * contact photo → bundled asset logo → curated brand tile → category glyph
+ * tile (directory-known sender) → plain letter avatar. OFF is always plain —
  * no photos, no logos, no brand colors. Unknown senders always land on the
  * letter avatar, never a blank tile.
  */
@@ -51,14 +47,12 @@ fun avatarStyleFor(
     richAvatars: Boolean,
     photoUri: String?,
     isKnownSender: Boolean,
-    hasLogo: Boolean = false,
     hasBundledLogo: Boolean = false,
     hasBrand: Boolean = false,
 ): AvatarStyle =
     when {
         !richAvatars -> AvatarStyle.PLAIN
         photoUri != null -> AvatarStyle.PHOTO
-        hasLogo -> AvatarStyle.LOGO
         hasBundledLogo -> AvatarStyle.BUNDLED
         hasBrand -> AvatarStyle.BRAND
         isKnownSender -> AvatarStyle.BRAND_MARK

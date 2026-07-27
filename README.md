@@ -245,7 +245,7 @@ Each entry looks like:
 }
 ```
 
-- `key` — unique lowercase identifier (also the logo-pack filename key).
+- `key` — unique lowercase identifier (also the bundled-logo filename key).
 - `category` — one of `BANK`, `CARD`, `WALLET`, `TELECOM`, `ECOMMERCE`,
   `DELIVERY`, `GOVERNMENT`, `UTILITY`, `INVESTMENT`, `HEALTH`, `TRAVEL`, `OTHER`.
 - `color` — the brand's widely-published primary color as `#RRGGBB`.
@@ -272,23 +272,11 @@ senders in your own inbox. Logos are never fetched at runtime (the app
 requests no network permission); brands without bundled artwork get the
 generated brand tiles described above.
 
-The avatar fallback chain, in order: contact photo → user-supplied logo
-pack (below) → bundled logo → generated brand tile → category glyph →
-letter avatar. All of it is gated behind *Settings → Appearance → Show
-logos and contact photos*.
-
-### Sender logo pack (optional, user-supplied)
-
-To override or extend the bundled artwork, *Settings → Appearance → Sender
-logo pack* lets you point the app at a folder on your device (or import a
-zip) of images you provide yourself. Files are matched by name — brand key
-or sender ID, case-insensitive: `hdfc.png`, `HDFCBK.png`, `paytm.webp`
-(supported: `.png`, `.jpg`, `.jpeg`, `.webp`; files over 2 MB are skipped).
-Images are read strictly from local storage, never downloaded, and never
-leave your device. A user-supplied image always wins over the bundled logo
-for the same brand. `scripts/build_logo_pack.py --out DIR` can still build
-a standalone zip of the same artwork for use on older builds.
-
+The avatar fallback chain, in order: contact photo → bundled logo →
+generated brand tile → category glyph → letter avatar. All of it is gated
+behind *Settings → Appearance → Show logos and contact photos*, and every
+avatar renders as the same circular tile across the inbox, conversations,
+search, Finance and Alerts.
 
 ## License
 

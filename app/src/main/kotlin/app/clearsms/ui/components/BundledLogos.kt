@@ -16,6 +16,22 @@ import java.util.concurrent.ConcurrentHashMap
 /** Asset directory holding the bundled sender logo artwork. */
 internal const val BUNDLED_LOGO_DIR = "logos"
 
+/** Image file extensions accepted as logo artwork. */
+private val LOGO_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
+
+/**
+ * Returns the lookup key for a logo file name — the lowercase base name —
+ * or null when the extension isn't a supported image format. `HDFC.PNG`,
+ * `hdfc.png` and `hdfc.webp` all key to `hdfc`.
+ */
+fun logoKeyForFileName(fileName: String): String? {
+    val dot = fileName.lastIndexOf('.')
+    if (dot <= 0) return null
+    val ext = fileName.substring(dot + 1).lowercase()
+    if (ext !in LOGO_EXTENSIONS) return null
+    return fileName.substring(0, dot).trim().lowercase()
+}
+
 /**
  * Builds the set of bundled-logo keys from an asset directory listing.
  * Only PNG files count (the directory also carries a provenance
