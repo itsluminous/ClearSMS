@@ -9,17 +9,26 @@
     <string name="channel_security_desc">Warnings about likely scam or fraud messages</string>
     <string name="channel_summary">Summaries and reminders</string>
     <string name="channel_summary_desc">Daily digests and bill payment reminders</string>
+    <string name="channel_transactions">Transactions</string>
+    <string name="channel_transactions_desc">Parsed debit, credit and balance updates from bank messages</string>
     <string name="channel_sync">Message import</string>
     <string name="channel_sync_desc">Progress while importing existing messages</string>
 
     <!-- OTP notification -->
     <string name="otp_from">OTP from %1$s</string>
+    <string name="otp_public_title">New OTP from %1$s</string>
     <string name="action_copy">Copy</string>
     <string name="action_share">Share</string>
     <string name="action_delete">Delete</string>
+    <string name="notification_action_mark_read">Mark read</string>
+    <string name="notification_reply_label">Reply</string>
     <string name="otp_clip_label">OTP</string>
     <string name="otp_copied">OTP copied</string>
     <string name="otp_share_title">Share OTP</string>
+
+    <!-- Transaction notifications -->
+    <string name="transaction_balance_update">Balance update</string>
+    <string name="transaction_account_short">A/c %1$s</string>
 
     <!-- Message notifications -->
     <string name="notification_me">Me</string>

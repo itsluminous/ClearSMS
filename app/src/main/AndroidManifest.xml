@@ -118,6 +118,13 @@
             android:name=".notification.OtpActionReceiver"
             android:exported="false" />
 
+        <!-- Mark read / Delete / inline Reply actions on message and
+             transaction notifications. NOT exported: a third-party app must
+             not be able to spoof a delete or mark-read broadcast. -->
+        <receiver
+            android:name=".notification.MessageActionReceiver"
+            android:exported="false" />
+
         <!-- AlarmManager target for bill-due reminders. -->
         <receiver
             android:name=".receiver.ReminderAlarmReceiver"

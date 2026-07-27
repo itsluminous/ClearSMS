@@ -9,6 +9,7 @@ import androidx.core.app.Person
 import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.model.NotificationAction
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,8 +27,18 @@ class MessageNotifier
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        /** Posts / updates the notification for [message]'s thread. */
-        fun notify(message: MessageEntity) {
+        /**
+         * Posts / updates the notification for [message]'s thread.
+         *
+         * [selected] is the user's notification-action choice (defaults to
+         * the settings default for callers without settings access, e.g. the
+         * MMS placeholder path). REPLY is offered only for repliable
+         * addresses — see [NotificationActionPlanner.isRepliableAddress].
+         */
+        fun notify(
+            message: MessageEntity,
+            selected: Set<NotificationAction> = DEFAULT_SELECTED,
+        ) {
             Channels.ensureCreated(context)
             val sender =
                 Person
@@ -39,7 +50,13 @@ class MessageNotifier
                 NotificationCompat
                     .MessagingStyle(Person.Builder().setName(context.getString(R.string.notification_me)).build())
                     .addMessage(message.body, message.timestamp, sender)
-            val notification =
+            val notificationId = threadNotificationId(message.threadId)
+            val planned =
+                NotificationActionPlanner.forMessage(
+                    selected,
+                    repliable = NotificationActionPlanner.isRepliableAddress(message.sender),
+                )
+            val builder =
                 NotificationCompat
                     .Builder(context, Channels.MESSAGES)
                     .setSmallIcon(R.drawable.ic_notification)
@@ -49,8 +66,8 @@ class MessageNotifier
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     .setContentIntent(conversationIntent(message.threadId))
                     .setAutoCancel(true)
-                    .build()
-            post(threadNotificationId(message.threadId), notification)
+            MessageActionFactory.build(context, message, notificationId, planned).forEach(builder::addAction)
+            post(notificationId, builder.build())
         }
 
         /** High-priority warning for a message flagged as a likely scam. */
@@ -120,6 +137,9 @@ class MessageNotifier
 
         companion object {
             const val EXTRA_THREAD_ID = "thread_id"
+
+            /** Mirrors the settings default (MARK_READ + REPLY). */
+            val DEFAULT_SELECTED = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY)
             private const val MESSAGE_NOTIFICATION_ID_BASE = 20_000
             private const val SCAM_NOTIFICATION_ID_BASE = 40_000
             private const val SEND_FAILURE_NOTIFICATION_ID = 50_001
