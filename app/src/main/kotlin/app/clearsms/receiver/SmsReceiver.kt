@@ -1,14 +1,11 @@
 package app.clearsms.receiver
 
 import android.content.BroadcastReceiver
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Telephony
 import android.util.Log
-import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
@@ -17,6 +14,7 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.notification.MessageNotifier
+import app.clearsms.notification.OtpClipboard
 import app.clearsms.notification.OtpNotifier
 import app.clearsms.notification.TransactionNotifier
 import app.clearsms.sms.TelephonyWriter
@@ -76,8 +74,10 @@ class SmsReceiver : BroadcastReceiver() {
             try {
                 processIsolating(
                     mergeParts(parts),
-                    onError = { part, e ->
-                        Log.e(TAG, "Failed to process message from ${part.sender}", e)
+                    onError = { _, e ->
+                        // Convention: never log message content, OTPs or phone
+                        // numbers/sender ids — this line must stay content-free.
+                        Log.e(TAG, "Failed to process an incoming message", e)
                     },
                 ) { merged -> process(context, merged) }
             } finally {
@@ -125,8 +125,7 @@ class SmsReceiver : BroadcastReceiver() {
         // restricted, so auto-copy is honored through the notification's
         // "Copy" action instead (a user-triggered foreground path).
         if (autoCopy && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val clipboard = context.getSystemService(ClipboardManager::class.java)
-            clipboard?.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.otp_clip_label), otp))
+            OtpClipboard.copy(context, otp, applicationScope)
         }
         otpNotifier.notify(entity, otp, settingsRepository.otpDisplaySize.first(), selectedActions)
     }
