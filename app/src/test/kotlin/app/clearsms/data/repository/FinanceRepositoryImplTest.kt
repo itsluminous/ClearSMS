@@ -137,6 +137,11 @@ private class FakeAccountDao : AccountDao {
         bankName: String,
     ): AccountEntity? = null
 
+    override suspend fun findBlankBank(
+        accountNumber: String,
+        type: app.clearsms.domain.model.AccountType,
+    ): AccountEntity? = null
+
     override suspend fun getAll(): List<AccountEntity> = emptyList()
 
     override suspend fun insert(account: AccountEntity): Long = account.id
@@ -170,6 +175,8 @@ private class FakeReminderDao(
     override suspend fun insertAll(reminders: List<ReminderEntity>) = Unit
 
     override suspend fun deleteById(id: Long) = Unit
+
+    override suspend fun deleteByRawSmsId(rawSmsId: Long) = Unit
 
     override suspend fun deleteAll() = Unit
 }

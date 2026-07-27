@@ -24,6 +24,7 @@ import app.clearsms.domain.model.TransactionType
 import app.clearsms.domain.parser.DeliveryParser
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
+import app.clearsms.domain.parser.SenderNameResolver
 import app.clearsms.domain.parser.TransactionParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.builtins.MapSerializer
@@ -223,7 +224,13 @@ class MessageRepositoryImpl(
                     extractedDataJson = encodeExtracted(enriched.extracted),
                 ),
             )
-            persistDerived(message.id, message.timestamp, enriched, skipExisting = true)
+            // Reminders are REFRESHED (deleted + re-derived) so existing rows
+            // pick up parser fixes — amounts, labels, corrected types — and
+            // stale reminders from messages the parser now rejects disappear.
+            // Transactions keep the skip-existing guard: re-inserting them
+            // would double finance totals.
+            reminderDao.deleteByRawSmsId(message.id)
+            persistDerived(message.id, message.timestamp, enriched, skipExistingTransactions = true)
         }
     }
 
@@ -419,13 +426,14 @@ class MessageRepositoryImpl(
         messageId: Long,
         timestampMs: Long,
         enriched: Enriched,
-        skipExisting: Boolean = false,
+        skipExistingTransactions: Boolean = false,
     ) {
         enriched.transaction?.let { tx ->
-            if (!skipExisting || transactionDao.findByRawSmsId(messageId) == null) {
+            if (!skipExistingTransactions || transactionDao.findByRawSmsId(messageId) == null) {
                 val accountNumber = tx.accountLast4 ?: ""
+                val bankName = SenderNameResolver.canonicalize(tx.bankName).orEmpty()
                 if (accountNumber.isNotEmpty()) {
-                    upsertAccount(tx, accountNumber, timestampMs)
+                    upsertAccount(tx, accountNumber, bankName, timestampMs)
                 }
                 transactionDao.insert(
                     TransactionEntity(
@@ -433,7 +441,7 @@ class MessageRepositoryImpl(
                         type = tx.type,
                         merchantName = tx.merchantName,
                         accountNumber = accountNumber,
-                        bankName = tx.bankName.orEmpty(),
+                        bankName = bankName,
                         timestamp = timestampMs,
                         balance = tx.balance,
                         referenceNumber = tx.referenceNumber,
@@ -444,61 +452,76 @@ class MessageRepositoryImpl(
             }
         }
         enriched.reminder?.let { reminder ->
-            if (!skipExisting || reminderDao.findByRawSmsId(messageId) == null) {
-                reminderDao.insert(
-                    ReminderEntity(
-                        type = reminder.type,
-                        dueDate = reminder.dueDate?.toEpochMs(),
-                        totalDue = reminder.totalDue,
-                        minDue = reminder.minDue,
-                        accountLast4 = reminder.accountLast4,
-                        bankName = reminder.bankName,
-                        rawSmsId = messageId,
-                        createdAt = timestampMs,
-                    ),
-                )
-            }
+            reminderDao.insert(
+                ReminderEntity(
+                    type = reminder.type,
+                    dueDate = reminder.dueDate?.toEpochMs(),
+                    totalDue = reminder.totalDue,
+                    minDue = reminder.minDue,
+                    accountLast4 = reminder.accountLast4,
+                    bankName = reminder.bankName,
+                    label = reminder.label,
+                    rawSmsId = messageId,
+                    createdAt = timestampMs,
+                ),
+            )
         }
         enriched.delivery?.let { delivery ->
-            if (!skipExisting || reminderDao.findByRawSmsId(messageId) == null) {
-                // "today"/"tomorrow" resolve against the MESSAGE date, not the
-                // current clock — imports of old messages stay correct.
-                val messageDate =
-                    Instant
-                        .ofEpochMilli(timestampMs)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-                reminderDao.insert(
-                    ReminderEntity(
-                        type = ReminderType.DELIVERY,
-                        dueDate = delivery.expectedDate(messageDate).toEpochMs(),
-                        bankName = delivery.merchant,
-                        label = delivery.reference,
-                        rawSmsId = messageId,
-                        createdAt = timestampMs,
-                    ),
-                )
-            }
+            // "today"/"tomorrow" resolve against the MESSAGE date, not the
+            // current clock — imports of old messages stay correct.
+            val messageDate =
+                Instant
+                    .ofEpochMilli(timestampMs)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+            reminderDao.insert(
+                ReminderEntity(
+                    type = ReminderType.DELIVERY,
+                    dueDate = delivery.expectedDate(messageDate).toEpochMs(),
+                    bankName = delivery.merchant,
+                    label = delivery.reference,
+                    rawSmsId = messageId,
+                    createdAt = timestampMs,
+                ),
+            )
         }
     }
 
     private suspend fun upsertAccount(
         tx: ParsedTransaction,
         accountNumber: String,
+        bankName: String,
         timestampMs: Long,
     ) {
-        val bankName = tx.bankName ?: ""
         val existing = accountDao.find(accountNumber, bankName)
         if (existing == null) {
-            accountDao.insert(
-                AccountEntity(
-                    accountNumber = accountNumber,
-                    bankName = bankName,
-                    type = tx.accountType,
-                    lastKnownBalance = tx.balance,
-                    lastUpdated = timestampMs,
-                ),
-            )
+            // A pre-resolution row of the same account carries a blank bank
+            // name: claim and name it instead of spawning a duplicate card.
+            val blank = if (bankName.isNotEmpty()) accountDao.findBlankBank(accountNumber, tx.accountType) else null
+            if (blank != null) {
+                accountDao.update(
+                    blank.copy(
+                        bankName = bankName,
+                        lastKnownBalance =
+                            if (timestampMs >= blank.lastUpdated) {
+                                tx.balance ?: blank.lastKnownBalance
+                            } else {
+                                blank.lastKnownBalance
+                            },
+                        lastUpdated = maxOf(timestampMs, blank.lastUpdated),
+                    ),
+                )
+            } else {
+                accountDao.insert(
+                    AccountEntity(
+                        accountNumber = accountNumber,
+                        bankName = bankName,
+                        type = tx.accountType,
+                        lastKnownBalance = tx.balance,
+                        lastUpdated = timestampMs,
+                    ),
+                )
+            }
         } else if (timestampMs >= existing.lastUpdated) {
             accountDao.update(
                 existing.copy(

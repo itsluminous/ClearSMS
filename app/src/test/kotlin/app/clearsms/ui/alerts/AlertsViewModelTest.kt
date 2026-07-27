@@ -156,5 +156,7 @@ private class NoopReminderDao : ReminderDao {
 
     override suspend fun deleteById(id: Long) = Unit
 
+    override suspend fun deleteByRawSmsId(rawSmsId: Long) = Unit
+
     override suspend fun deleteAll() = Unit
 }

@@ -54,7 +54,9 @@ class TransactionParserTest {
         assertThat(result.accountLast4).isEqualTo("4321")
         assertThat(result.balance).isEqualTo(45230.50)
         assertThat(result.referenceNumber).isEqualTo("CMS123456789")
-        assertThat(result.bankName).isEqualTo("SBI")
+        // "SBI" resolves to the canonical institution name so it can never
+        // split into a second account card next to "State Bank of India".
+        assertThat(result.bankName).isEqualTo("State Bank of India")
     }
 
     @Test
