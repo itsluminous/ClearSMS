@@ -1,0 +1,179 @@
+package app.clearsms.di
+
+import android.content.Context
+import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.room.Room
+import app.clearsms.data.backup.BackupManager
+import app.clearsms.data.db.AccountDao
+import app.clearsms.data.db.ClearSmsDatabase
+import app.clearsms.data.db.MessageDao
+import app.clearsms.data.db.ReminderDao
+import app.clearsms.data.db.RuleDao
+import app.clearsms.data.db.TransactionDao
+import app.clearsms.data.prefs.SettingsRepository
+import app.clearsms.data.prefs.SettingsRepositoryImpl
+import app.clearsms.data.repository.FinanceRepository
+import app.clearsms.data.repository.FinanceRepositoryImpl
+import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.MessageRepositoryImpl
+import app.clearsms.data.repository.RuleRepository
+import app.clearsms.data.repository.RuleRepositoryImpl
+import app.clearsms.data.rules.BundledRuleLoader
+import app.clearsms.data.rules.RuleEngine
+import app.clearsms.data.rules.RuleExporter
+import app.clearsms.data.rules.RuleImporter
+import app.clearsms.data.senderid.SenderIdStore
+import app.clearsms.domain.categorizer.ContactLookup
+import app.clearsms.domain.categorizer.MessageCategorizer
+import dagger.BindsOptionalOf
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.Json
+import java.util.Optional
+import javax.inject.Qualifier
+import javax.inject.Singleton
+
+/** Qualifier for the IO dispatcher used by data-layer work. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class IoDispatcher
+
+private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+/**
+ * Optional bindings satisfied by other layers.
+ *
+ * [ContactLookup] is implemented by the platform layer (contacts provider);
+ * until that binding exists the categorizer treats every sender as a
+ * non-contact.
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+internal interface DataOptionalBindings {
+    @BindsOptionalOf
+    fun contactLookup(): ContactLookup
+}
+
+/** Hilt wiring for the data and domain layers. */
+@Module
+@InstallIn(SingletonComponent::class)
+object DataModule {
+    @Provides
+    @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    @Provides
+    @Singleton
+    fun provideJson(): Json =
+        Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+            prettyPrint = false
+        }
+
+    @Provides
+    @Singleton
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+    ): ClearSmsDatabase =
+        Room
+            .databaseBuilder(context, ClearSmsDatabase::class.java, ClearSmsDatabase.NAME)
+            .build()
+
+    @Provides
+    fun provideMessageDao(db: ClearSmsDatabase): MessageDao = db.messageDao()
+
+    @Provides
+    fun provideAccountDao(db: ClearSmsDatabase): AccountDao = db.accountDao()
+
+    @Provides
+    fun provideTransactionDao(db: ClearSmsDatabase): TransactionDao = db.transactionDao()
+
+    @Provides
+    fun provideRuleDao(db: ClearSmsDatabase): RuleDao = db.ruleDao()
+
+    @Provides
+    fun provideReminderDao(db: ClearSmsDatabase): ReminderDao = db.reminderDao()
+
+    @Provides
+    @Singleton
+    fun provideSettingsDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = context.settingsDataStore
+
+    @Provides
+    @Singleton
+    fun provideSenderIdStore(
+        @ApplicationContext context: Context,
+    ): SenderIdStore = SenderIdStore(context)
+
+    @Provides
+    @Singleton
+    fun provideRuleEngine(): RuleEngine = RuleEngine(log = { Log.w("RuleEngine", it) })
+
+    @Provides
+    @Singleton
+    fun provideBundledRuleLoader(
+        @ApplicationContext context: Context,
+        ruleDao: RuleDao,
+        json: Json,
+        dataStore: DataStore<Preferences>,
+    ): BundledRuleLoader = BundledRuleLoader(context, ruleDao, json, dataStore)
+
+    @Provides
+    @Singleton
+    fun provideMessageCategorizer(
+        ruleEngine: RuleEngine,
+        senderIdStore: SenderIdStore,
+        contactLookup: Optional<ContactLookup>,
+    ): MessageCategorizer =
+        MessageCategorizer(
+            ruleEngine = ruleEngine,
+            senderIdLookup = senderIdStore,
+            contactLookup = ContactLookup { address -> contactLookup.map { it.isContact(address) }.orElse(false) },
+        )
+
+    @Provides
+    @Singleton
+    fun provideMessageRepository(
+        database: ClearSmsDatabase,
+        categorizer: MessageCategorizer,
+        bundledRuleLoader: BundledRuleLoader,
+        json: Json,
+    ): MessageRepository = MessageRepositoryImpl(database, categorizer, bundledRuleLoader, json)
+
+    @Provides
+    @Singleton
+    fun provideFinanceRepository(
+        transactionDao: TransactionDao,
+        accountDao: AccountDao,
+        reminderDao: ReminderDao,
+    ): FinanceRepository = FinanceRepositoryImpl(transactionDao, accountDao, reminderDao)
+
+    @Provides
+    @Singleton
+    fun provideRuleRepository(
+        ruleDao: RuleDao,
+        bundledRuleLoader: BundledRuleLoader,
+        json: Json,
+    ): RuleRepository = RuleRepositoryImpl(ruleDao, bundledRuleLoader, RuleImporter(json), RuleExporter(json), json)
+
+    @Provides
+    @Singleton
+    fun provideSettingsRepository(dataStore: DataStore<Preferences>): SettingsRepository = SettingsRepositoryImpl(dataStore)
+
+    @Provides
+    @Singleton
+    fun provideBackupManager(
+        database: ClearSmsDatabase,
+        json: Json,
+    ): BackupManager = BackupManager(database, json)
+}
