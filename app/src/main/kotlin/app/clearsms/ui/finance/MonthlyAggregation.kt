@@ -16,8 +16,12 @@ data class MonthlyTotals(
 ) {
     val label: String get() = month.format(MONTH_FORMAT)
 
+    /** "June 2026" — used by the selection details row and bar accessibility labels. */
+    val fullLabel: String get() = month.format(FULL_MONTH_FORMAT)
+
     private companion object {
         val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)
+        val FULL_MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
     }
 }
 
