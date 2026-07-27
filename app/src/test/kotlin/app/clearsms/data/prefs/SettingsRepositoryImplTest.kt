@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import com.google.common.truth.Truth.assertThat
@@ -66,6 +67,26 @@ class SettingsRepositoryImplTest {
             assertThat(repo.showRichAvatars.first()).isFalse()
             repo.setShowRichAvatars(true)
             assertThat(repo.showRichAvatars.first()).isTrue()
+        }
+
+    @Test
+    fun `legacy stored otp display sizes migrate without an unset state`() =
+        runBlocking {
+            val repo = repository()
+            val key = stringPreferencesKey("otp_display_size")
+            // Fresh install: nothing stored → Option 2.
+            assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_2)
+            // A user who had the old "Default" entry lands on Option 2.
+            dataStore.edit { it[key] = "DEFAULT" }
+            assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_2)
+            // Old lettered values land on the equivalent numbered option.
+            dataStore.edit { it[key] = "OPTION_A" }
+            assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_1)
+            dataStore.edit { it[key] = "OPTION_D" }
+            assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_5)
+            // New values round-trip through the setter.
+            repo.setOtpDisplaySize(OtpDisplaySize.OPTION_4)
+            assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_4)
         }
 
     @Test

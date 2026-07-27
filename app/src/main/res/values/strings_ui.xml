@@ -282,11 +282,16 @@
     <string name="otp_delete_24h">After 24 hours</string>
     <string name="otp_delete_3d">After 3 days</string>
     <string name="otp_delete_7d">After 7 days</string>
-    <string name="otp_size_default">Default</string>
-    <string name="otp_size_a">Option A</string>
-    <string name="otp_size_b">Option B</string>
-    <string name="otp_size_c">Option C</string>
-    <string name="otp_size_d">Option D</string>
+    <string name="otp_size_1">Option 1</string>
+    <string name="otp_size_2">Option 2</string>
+    <string name="otp_size_3">Option 3</string>
+    <string name="otp_size_4">Option 4</string>
+    <string name="otp_size_5">Option 5</string>
+    <string name="settings_search">Search settings</string>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_search_close">Close search</string>
+    <string name="settings_search_empty">No settings match \u201C%1$s\u201D</string>
 
     <!-- Privacy policy content -->
     <string name="privacy_ondevice_title">All processing happens on your device</string>

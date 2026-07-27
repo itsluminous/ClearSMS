@@ -156,18 +156,24 @@ class OtpNotifier
                 val spaced = otp.toCharArray().joinToString(" ")
                 val spannable = SpannableString(spaced)
                 spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, spaced.length, Spannable.SPAN_INCLUSIVE_EXCLUSIVE)
-                val scale =
-                    when (displaySize) {
-                        OtpDisplaySize.DEFAULT -> 1.0f
-                        OtpDisplaySize.OPTION_A -> 1.1f
-                        OtpDisplaySize.OPTION_B -> 1.25f
-                        OtpDisplaySize.OPTION_C -> 1.4f
-                        OtpDisplaySize.OPTION_D -> 1.6f
-                    }
+                val scale = scaleFor(displaySize)
                 if (scale != 1.0f) {
                     spannable.setSpan(RelativeSizeSpan(scale), 0, spaced.length, Spannable.SPAN_INCLUSIVE_EXCLUSIVE)
                 }
                 return spannable
             }
+
+            /**
+             * Relative digit scale per option — strictly increasing, with the
+             * default (Option 2) at the platform's native title size.
+             */
+            internal fun scaleFor(displaySize: OtpDisplaySize): Float =
+                when (displaySize) {
+                    OtpDisplaySize.OPTION_1 -> 0.9f
+                    OtpDisplaySize.OPTION_2 -> 1.0f
+                    OtpDisplaySize.OPTION_3 -> 1.25f
+                    OtpDisplaySize.OPTION_4 -> 1.4f
+                    OtpDisplaySize.OPTION_5 -> 1.6f
+                }
         }
     }

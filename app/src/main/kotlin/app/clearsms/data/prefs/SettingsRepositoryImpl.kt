@@ -45,7 +45,9 @@ class SettingsRepositoryImpl(
     }
 
     override val otpDisplaySize: Flow<OtpDisplaySize> =
-        dataStore.data.map { it[KEY_OTP_DISPLAY_SIZE].toEnum(OtpDisplaySize.DEFAULT) }
+        // fromStored migrates legacy values ("DEFAULT", lettered options) in
+        // place; nothing is rewritten until the user picks a new option.
+        dataStore.data.map { OtpDisplaySize.fromStored(it[KEY_OTP_DISPLAY_SIZE]) }
 
     override suspend fun setOtpDisplaySize(value: OtpDisplaySize) {
         dataStore.edit { it[KEY_OTP_DISPLAY_SIZE] = value.name }

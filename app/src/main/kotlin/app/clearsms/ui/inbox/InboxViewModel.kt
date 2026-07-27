@@ -13,6 +13,7 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
@@ -84,6 +85,7 @@ data class InboxUiState(
     val latestOtp: LatestOtp? = null,
     val isRefreshing: Boolean = false,
     val richAvatars: Boolean = true,
+    val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
     val swipeStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeEnd: SwipeAction = SwipeAction.DELETE,
 )
@@ -163,6 +165,7 @@ class InboxViewModel
 
         private data class Chrome(
             val richAvatars: Boolean,
+            val otpDisplaySize: OtpDisplaySize,
             val swipeStart: SwipeAction,
             val swipeEnd: SwipeAction,
         )
@@ -170,9 +173,10 @@ class InboxViewModel
         private val chrome =
             combine(
                 settings.showRichAvatars,
+                settings.otpDisplaySize,
                 settings.swipeActionStart,
                 settings.swipeActionEnd,
-            ) { rich, start, end -> Chrome(rich, start, end) }
+            ) { rich, otpSize, start, end -> Chrome(rich, otpSize, start, end) }
 
         val uiState: StateFlow<InboxUiState> =
             combine(
@@ -188,6 +192,7 @@ class InboxViewModel
                     latestOtp = otp,
                     isRefreshing = isRefreshing,
                     richAvatars = chromeState.richAvatars,
+                    otpDisplaySize = chromeState.otpDisplaySize,
                     swipeStart = chromeState.swipeStart,
                     swipeEnd = chromeState.swipeEnd,
                 )

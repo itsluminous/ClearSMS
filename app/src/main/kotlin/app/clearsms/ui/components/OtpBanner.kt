@@ -24,14 +24,17 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.clearsms.R
+import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.ui.theme.ClearSmsTheme
 
 /**
  * Full-width banner at the top of the inbox for the most recent OTP:
- * large monospaced code, sender attribution and one-tap copy. Tapping the
- * banner body opens the source message; the X dismisses it. Both copying
- * and dismissing mark the OTP handled so it never reappears.
+ * large monospaced code (sized per the OTP display-size setting), sender
+ * attribution and one-tap copy. Tapping the banner body opens the source
+ * message; the X dismisses it. Both copying and dismissing mark the OTP
+ * handled so it never reappears.
  */
 @Composable
 fun OtpBanner(
@@ -41,6 +44,7 @@ fun OtpBanner(
     onDismiss: () -> Unit,
     onOpenMessage: () -> Unit,
     modifier: Modifier = Modifier,
+    displaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
 ) {
     val clipboard = LocalClipboardManager.current
     Card(
@@ -66,6 +70,7 @@ fun OtpBanner(
                 Text(
                     text = code.toCharArray().joinToString(" "),
                     style = MaterialTheme.typography.displaySmall,
+                    fontSize = otpBannerFontSp(displaySize).sp,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
