@@ -47,6 +47,10 @@ jobs:
     name: Build release APKs
     needs: check
     runs-on: ubuntu-latest
+    # Creating a GitHub Release writes to the repository, which the default
+    # GITHUB_TOKEN cannot do (workflow tokens are read-only by default).
+    permissions:
+      contents: write
     env:
       # True only when all four signing secrets are configured. Forks and PRs
       # from forks have no secrets, so their builds fall back to unsigned

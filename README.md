@@ -1,6 +1,8 @@
 # Clear SMS
 
 [![Android CI](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml/badge.svg)](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml)
+[![Latest release](https://img.shields.io/github/v/release/itsluminous/ClearSMS?sort=semver)](https://github.com/itsluminous/ClearSMS/releases/latest)
+[![License](https://img.shields.io/github/license/itsluminous/ClearSMS)](LICENSE)
 
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
 organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
@@ -29,6 +31,20 @@ handles OTPs intelligently — all completely offline, on your device.
 - **Your data stays on your device.** Backups are local files you control.
 - **Transparent categorization.** Every rule is human-readable JSON you can inspect,
   edit, export, and contribute back.
+
+## Download
+
+Signed APKs are attached to every [GitHub release](https://github.com/itsluminous/ClearSMS/releases/latest).
+Pick the build matching your device's CPU, or take the universal APK if unsure:
+
+| APK | Use for |
+| --- | --- |
+| `app-arm64-v8a-release.apk` | Almost all phones from ~2017 onward (64-bit ARM) |
+| `app-armeabi-v7a-release.apk` | Older 32-bit ARM devices |
+| `app-x86_64-release.apk` / `app-x86-release.apk` | Emulators and x86 tablets |
+| `app-universal-release.apk` | Any device (largest file) |
+
+Check your device's ABI with `adb shell getprop ro.product.cpu.abi`.
 
 ## Building
 
