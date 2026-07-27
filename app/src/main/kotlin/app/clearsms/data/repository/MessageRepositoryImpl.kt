@@ -423,6 +423,11 @@ class MessageRepositoryImpl(
         val parsedTx = transactionParser.parse(sender, evalBody)
         val transaction =
             when {
+                // Statement/bill notices ("Statement is sent...", "Total of Rs X
+                // ... is due") describe money OWED — they must never become a
+                // transaction, whether from the parser or from rule extracts.
+                // They stay reminders (see the reminder path below).
+                transactionParser.isStatementNotice(evalBody) -> null
                 parsedTx != null -> mergeTransaction(parsedTx, extracts)
                 result.subCategory == SubCategory.TRANSACTION -> transactionFromExtracts(extracts)
                 else -> null
@@ -459,6 +464,10 @@ class MessageRepositoryImpl(
             tx.merchantName?.let { merged["merchant"] = it }
             tx.balance?.let { merged["balance"] = it.toString() }
             tx.referenceNumber?.let { merged["reference"] = it }
+            // A USD/EUR/... spend keeps its currency on record so the amount
+            // is never silently read as INR (the entity itself has no
+            // currency column yet — this is the audit trail until it does).
+            transactionParser.foreignCurrency(evalBody)?.let { merged["currency"] = it }
         }
         reminder?.let { rem ->
             rem.totalDue?.let { merged["total_due"] = it.toString() }
@@ -488,7 +497,16 @@ class MessageRepositoryImpl(
         enriched.transaction?.let { tx ->
             if (!skipExistingTransactions || transactionDao.findByRawSmsId(messageId) == null) {
                 val accountNumber = tx.accountLast4 ?: ""
-                val bankName = SenderNameResolver.canonicalize(tx.bankName).orEmpty()
+                val canonicalBank = SenderNameResolver.canonicalize(tx.bankName).orEmpty()
+                // Account-creation guardrail: an account/card row may only
+                // carry the name of a plausible financial institution or
+                // wallet. Merchant names, payment channels (CRED) and
+                // ecommerce brands (Flipkart) — including ones a rule extract
+                // re-injected — are stripped to a blank issuer, so the row
+                // stays claimable by the real bank instead of spawning a
+                // bogus "Flipkart bank account".
+                val bankName =
+                    if (SenderNameResolver.isPlausibleIssuer(canonicalBank)) canonicalBank else ""
                 if (accountNumber.isNotEmpty()) {
                     upsertAccount(tx, accountNumber, bankName, timestampMs)
                 }
