@@ -118,7 +118,8 @@ class ReminderTypeClassifier {
         /** Supporting context that alone can never reach the threshold. */
         const val SUPPORT = 1
 
-        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|card\\s+(?:bill|statement|ending)")
+        val CREDIT_CARD_REGEX =
+            Regex("(?i)credit\\s*card|card\\s+(?:bill|statement|ending)|(?:mini\\s+)?statement\\s+for\\s+(?:your\\s+)?card\\b")
 
         /** Statement context corroborating a card mention. */
         val CARD_STATEMENT_SUPPORT_REGEX =

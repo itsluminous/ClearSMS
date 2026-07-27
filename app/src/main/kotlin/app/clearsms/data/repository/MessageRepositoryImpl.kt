@@ -24,6 +24,7 @@ import app.clearsms.domain.model.TransactionType
 import app.clearsms.domain.parser.DeliveryParser
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
+import app.clearsms.domain.parser.ReminderTypeClassifier
 import app.clearsms.domain.parser.SenderNameResolver
 import app.clearsms.domain.parser.TransactionParser
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +48,9 @@ class MessageRepositoryImpl(
     /** Platform hook syncing deletions to the system SMS provider (null in tests). */
     private val systemSmsDeleter: SystemSmsDeleter? = null,
 ) : MessageRepository {
+    /** Types rule-extract reminders from body evidence (see [reminderFromExtracts]). */
+    private val reminderTypeClassifier = ReminderTypeClassifier()
+
     private val messageDao get() = database.messageDao()
     private val accountDao get() = database.accountDao()
     private val transactionDao get() = database.transactionDao()
@@ -385,7 +389,7 @@ class MessageRepositoryImpl(
         val reminder =
             when {
                 parsedReminder != null -> mergeReminder(parsedReminder, extracts)
-                result.subCategory == SubCategory.BILL -> reminderFromExtracts(extracts)
+                result.subCategory == SubCategory.BILL -> reminderFromExtracts(sender, evalBody, extracts)
                 else -> null
                 // A reminder without a due date is not actionable; this also
                 // keeps transaction confirmations (SubCategory.TRANSACTION)
@@ -577,12 +581,19 @@ class MessageRepositoryImpl(
             bankName = extracts["bank"] ?: parsed.bankName,
         )
 
-    private fun reminderFromExtracts(extracts: Map<String, String>): ParsedReminder? {
+    private fun reminderFromExtracts(
+        sender: String,
+        evalBody: String,
+        extracts: Map<String, String>,
+    ): ParsedReminder? {
         // Undated candidates are not actionable reminders — an amount alone
         // (e.g. a reimbursement-claim SMS) must not become an Alerts card.
         val dueDate = extracts["due_date"]?.let { reminderParser.parseDate(it) } ?: return null
         return ParsedReminder(
-            type = ReminderType.OTHER,
+            // A rule only says "this is a bill-like reminder"; the TYPE still
+            // comes from the body's evidence (a card mini-statement matched
+            // by a bill rule is a credit-card bill, not a generic bill).
+            type = reminderTypeClassifier.classify(sender, evalBody) ?: ReminderType.OTHER,
             dueDate = dueDate,
             totalDue = extracts["total_due"]?.toAmount(),
             minDue = extracts["min_due"]?.toAmount() ?: extracts["amount"]?.toAmount(),

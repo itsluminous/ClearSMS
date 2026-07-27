@@ -242,6 +242,17 @@ class ReminderTypingTest {
         assertThat(result!!.type).isEqualTo(ReminderType.SUBSCRIPTION)
     }
 
+    @Test
+    fun `card mini statement without the words credit card is CREDIT_CARD`() {
+        val result =
+            parser.parse(
+                "TM-CITIBA",
+                "Mini Statement for Card ************1234.Total due Rs.4567.89. Minimum due Rs.230.00. Payment due on 15-MAR-26. For more details visit the site.",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.type).isEqualTo(ReminderType.CREDIT_CARD)
+    }
+
     // endregion
 
     // region brand-tier "premium" false positives
