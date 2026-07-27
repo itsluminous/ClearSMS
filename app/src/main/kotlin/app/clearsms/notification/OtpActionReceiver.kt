@@ -2,9 +2,12 @@ package app.clearsms.notification
 
 import android.content.BroadcastReceiver
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.PersistableBundle
 import android.widget.Toast
 import app.clearsms.R
 import app.clearsms.data.repository.MessageRepository
@@ -42,7 +45,16 @@ class OtpActionReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_COPY -> {
                 val clipboard = context.getSystemService(ClipboardManager::class.java)
-                clipboard?.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.otp_clip_label), otp))
+                val clip = ClipData.newPlainText(context.getString(R.string.otp_clip_label), otp)
+                // API 33+: flag the clip as sensitive so the system clipboard
+                // UI masks the OTP and clipboard-history apps can honor it.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    clip.description.extras =
+                        PersistableBundle().apply {
+                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                        }
+                }
+                clipboard?.setPrimaryClip(clip)
                 Toast.makeText(context, R.string.otp_copied, Toast.LENGTH_SHORT).show()
                 otpNotifier.cancel(messageId)
             }
