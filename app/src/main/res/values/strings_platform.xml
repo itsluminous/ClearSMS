@@ -23,7 +23,6 @@
     <string name="notification_action_mark_read">Mark read</string>
     <string name="notification_reply_label">Reply</string>
     <string name="otp_clip_label">OTP</string>
-    <string name="otp_copied">OTP copied</string>
     <string name="otp_share_title">Share OTP</string>
 
     <!-- Transaction notifications -->

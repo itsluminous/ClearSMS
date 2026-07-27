@@ -1,10 +1,19 @@
 package app.clearsms.notification
 
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.widget.RemoteViews
+import androidx.annotation.ColorRes
+import androidx.annotation.LayoutRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
@@ -23,12 +32,23 @@ import kotlin.math.abs
  * Notification for a parsed bank transaction: the essentials up front
  * (signed amount, merchant, account, bank) instead of the raw SMS.
  *
- * Semantics mirror the Finance UI's three-way split — debit (red accent,
- * "− ₹…"), credit (green accent, "+ ₹…") and balance-only update (blue
- * accent, unsigned "₹…"). Notifications cannot color arbitrary text, so the
- * sign prefix carries the direction and [NotificationCompat.Builder.setColor]
- * carries the accent; the full original SMS stays available via
- * [NotificationCompat.BigTextStyle] on expand.
+ * Semantics mirror the Finance UI's three-way split — debit (red, "− ₹…"),
+ * credit (green, "+ ₹…") and balance-only update (blue, unsigned "₹…"),
+ * using the same fixed colors as
+ * [app.clearsms.ui.theme.SemanticAmountColors] via `R.color.amount_*`
+ * (day/night variants), deliberately independent of the Material dynamic
+ * palette.
+ *
+ * The standard notification template cannot color its title —
+ * [NotificationCompat.Builder.setColor] only tints the small icon/accent —
+ * so on API 24+ the amount is rendered through a custom content view
+ * ([NotificationCompat.Builder.setCustomContentView] +
+ * [NotificationCompat.DecoratedCustomViewStyle]) whose amount TextView gets
+ * an explicit color; the expanded custom view carries the full original SMS
+ * body. On API 23 (`minSdk`), where the decorated style does not exist, the
+ * template title is a [SpannableString] with a [ForegroundColorSpan] — the
+ * platform templates on API 21–23 preserve title spans, so the amount stays
+ * colored there too. Either way the text is never shipped uncolored.
  *
  * Tapping deep-links to the conversation at THAT message:
  * `clearsms://conversation/{threadId}?messageId={messageId}` — the query
@@ -58,13 +78,32 @@ class TransactionNotifier
             message: MessageEntity,
             selected: Set<NotificationAction>,
         ): Boolean {
-            val details = decodeDetails(message.extractedDataJson) ?: return false
+            val notification = buildNotification(message, selected) ?: return false
+            try {
+                val manager = NotificationManagerCompat.from(context)
+                manager.notify(notificationId(message.id), notification)
+                manager.notify(GROUP_SUMMARY_ID, groupSummary())
+            } catch (_: SecurityException) {
+                // POST_NOTIFICATIONS not granted; onboarding asks for it.
+            }
+            return true
+        }
+
+        /**
+         * Builds the notification, or null when there is nothing to render.
+         * Separated from [notify] so tests can inspect the result.
+         */
+        internal fun buildNotification(
+            message: MessageEntity,
+            selected: Set<NotificationAction>,
+        ): Notification? {
+            val details = decodeDetails(message.extractedDataJson) ?: return null
             val content =
                 buildContent(
                     details = details,
                     balanceUpdateLabel = context.getString(R.string.transaction_balance_update),
                     accountFormat = context.getString(R.string.transaction_account_short),
-                ) ?: return false
+                ) ?: return null
             Channels.ensureCreated(context)
 
             val notificationId = notificationId(message.id)
@@ -73,33 +112,59 @@ class TransactionNotifier
                     selected,
                     repliable = NotificationActionPlanner.isRepliableAddress(message.sender),
                 )
+            val amountColor = ContextCompat.getColor(context, amountColorRes(content.kind))
             val builder =
                 NotificationCompat
                     .Builder(context, Channels.TRANSACTIONS)
                     .setSmallIcon(R.drawable.ic_notification)
+                    // Title/text stay set for accessibility services and
+                    // surfaces that ignore custom views (e.g. wearables).
                     .setContentTitle(content.title)
                     .setContentText(content.text)
-                    .setColor(content.colorArgb)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
+                    .setColor(amountColor)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     .setGroup(GROUP_KEY)
                     .setContentIntent(contentIntent(message))
                     .setAutoCancel(true)
-            MessageActionFactory.build(context, message, notificationId, planned).forEach(builder::addAction)
-
-            try {
-                val manager = NotificationManagerCompat.from(context)
-                manager.notify(notificationId, builder.build())
-                manager.notify(GROUP_SUMMARY_ID, groupSummary())
-            } catch (_: SecurityException) {
-                // POST_NOTIFICATIONS not granted; onboarding asks for it.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                builder
+                    .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                    .setCustomContentView(contentView(content, R.layout.notification_transaction, amountColor))
+                    .setCustomBigContentView(
+                        contentView(content, R.layout.notification_transaction_big, amountColor)
+                            .apply { setTextViewText(R.id.transaction_body, message.body) },
+                    )
+            } else {
+                // API 23 fallback: color the template title via a span
+                // (preserved by the platform templates on 21–23) and keep
+                // the full SMS on expand through BigTextStyle.
+                val coloredTitle =
+                    SpannableString(content.title).apply {
+                        setSpan(ForegroundColorSpan(amountColor), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
+                builder
+                    .setContentTitle(coloredTitle)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
             }
-            return true
+            MessageActionFactory.build(context, message, notificationId, planned).forEach(builder::addAction)
+            return builder.build()
         }
 
         fun cancel(messageId: Long) {
             NotificationManagerCompat.from(context).cancel(notificationId(messageId))
         }
+
+        /** Inflates one of the custom layouts with the amount (explicitly colored) and detail line. */
+        private fun contentView(
+            content: Content,
+            @LayoutRes layout: Int,
+            amountColor: Int,
+        ): RemoteViews =
+            RemoteViews(context.packageName, layout).apply {
+                setTextViewText(R.id.transaction_amount, content.title)
+                setTextColor(R.id.transaction_amount, amountColor)
+                setTextViewText(R.id.transaction_details, content.text)
+            }
 
         /** Deep link carrying the target message id (query param `messageId` + extra). */
         private fun contentIntent(message: MessageEntity): PendingIntent {
@@ -118,7 +183,7 @@ class TransactionNotifier
             )
         }
 
-        private fun groupSummary(): android.app.Notification =
+        private fun groupSummary(): Notification =
             NotificationCompat
                 .Builder(context, Channels.TRANSACTIONS)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -144,7 +209,6 @@ class TransactionNotifier
             val kind: Kind,
             val title: String,
             val text: String,
-            val colorArgb: Int,
         ) {
             enum class Kind { DEBIT, CREDIT, BALANCE }
         }
@@ -154,14 +218,17 @@ class TransactionNotifier
             private const val GROUP_SUMMARY_ID = 31_000
             private const val GROUP_KEY = "app.clearsms.TRANSACTIONS"
 
-            /** Debit accent — red (the error-role equivalent). */
-            const val COLOR_DEBIT = 0xFFB3261E.toInt()
-
-            /** Credit accent — green (the tertiary-role equivalent). */
-            const val COLOR_CREDIT = 0xFF2E7D32.toInt()
-
-            /** Balance-only accent — blue (the primary-role equivalent). */
-            const val COLOR_BALANCE = 0xFF1565C0.toInt()
+            /**
+             * Fixed day/night color resource for a transaction kind — the
+             * notification twin of [app.clearsms.ui.theme.SemanticAmountColors].
+             */
+            @ColorRes
+            fun amountColorRes(kind: Content.Kind): Int =
+                when (kind) {
+                    Content.Kind.DEBIT -> R.color.amount_debit
+                    Content.Kind.CREDIT -> R.color.amount_credit
+                    Content.Kind.BALANCE -> R.color.amount_balance
+                }
 
             /**
              * Builds notification content from the message's extracted
@@ -206,12 +273,6 @@ class TransactionNotifier
                             balanceUpdateLabel = balanceUpdateLabel,
                             accountFormat = accountFormat,
                         ),
-                    colorArgb =
-                        when (kind) {
-                            Content.Kind.DEBIT -> COLOR_DEBIT
-                            Content.Kind.CREDIT -> COLOR_CREDIT
-                            Content.Kind.BALANCE -> COLOR_BALANCE
-                        },
                 )
             }
 

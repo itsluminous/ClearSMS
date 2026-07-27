@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Collapsed transaction notification content, hosted inside
+    DecoratedCustomViewStyle (system supplies header + action buttons).
+    The amount's color is set at post time (RemoteViews.setTextColor) to one
+    of the fixed @color/amount_* values; the secondary line uses the shade's
+    own secondary text color so it adapts to light/dark automatically.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/transaction_amount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        tools:text="− ₹1,299"
+        tools:textColor="@color/amount_debit" />
+
+    <TextView
+        android:id="@+id/transaction_details"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Line2"
+        tools:text="Swiggy · A/c 2863 · HDFC Bank" />
+</LinearLayout>

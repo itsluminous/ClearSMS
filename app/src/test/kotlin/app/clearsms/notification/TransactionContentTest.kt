@@ -1,5 +1,6 @@
 package app.clearsms.notification
 
+import app.clearsms.R
 import app.clearsms.notification.TransactionNotifier.Content
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -16,7 +17,7 @@ class TransactionContentTest {
         assertThat(content).isNotNull()
         assertThat(content!!.kind).isEqualTo(Content.Kind.DEBIT)
         assertThat(content.title).isEqualTo("− ₹1,299")
-        assertThat(content.colorArgb).isEqualTo(TransactionNotifier.COLOR_DEBIT)
+        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.amount_debit)
     }
 
     @Test
@@ -29,7 +30,7 @@ class TransactionContentTest {
             )
         assertThat(content!!.kind).isEqualTo(Content.Kind.CREDIT)
         assertThat(content.title).isEqualTo("+ ₹5,000")
-        assertThat(content.colorArgb).isEqualTo(TransactionNotifier.COLOR_CREDIT)
+        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.amount_credit)
     }
 
     @Test
@@ -42,7 +43,7 @@ class TransactionContentTest {
             )
         assertThat(content!!.kind).isEqualTo(Content.Kind.BALANCE)
         assertThat(content.title).isEqualTo("₹12,430")
-        assertThat(content.colorArgb).isEqualTo(TransactionNotifier.COLOR_BALANCE)
+        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.amount_balance)
         assertThat(content.text).isEqualTo("Balance update · HDFC Bank")
     }
 
