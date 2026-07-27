@@ -5,6 +5,8 @@ import android.content.Context
 import android.net.Uri
 import android.provider.Telephony
 import android.util.Log
+import app.clearsms.data.repository.SqliteChunker
+import app.clearsms.data.repository.SystemSmsDeleter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,7 +24,7 @@ class TelephonyWriter
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-    ) {
+    ) : SystemSmsDeleter {
         /** Inserts a received message into the inbox. Returns the row uri, or null. */
         fun writeInbox(
             sender: String,
@@ -75,6 +77,37 @@ class TelephonyWriter
                     put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_COMPLETE)
                 },
             )
+        }
+
+        /**
+         * Deletes provider rows by `_id`, in chunks below SQLite's variable
+         * limit. No-ops when Clear SMS is not the default app (only the
+         * default app may delete), and degrades to a logged warning on
+         * [SecurityException] — the local Room deletion has already
+         * succeeded, so the user-visible operation still completes.
+         */
+        override fun deleteBySystemIds(systemIds: List<Long>): Int {
+            if (systemIds.isEmpty()) return 0
+            if (!DefaultSmsAppHelper.isDefaultSmsApp(context)) return 0
+            var deleted = 0
+            for (chunk in SqliteChunker.chunk(systemIds)) {
+                deleted +=
+                    try {
+                        val placeholders = chunk.joinToString(",") { "?" }
+                        context.contentResolver.delete(
+                            Telephony.Sms.CONTENT_URI,
+                            "${Telephony.Sms._ID} IN ($placeholders)",
+                            chunk.map(Long::toString).toTypedArray(),
+                        )
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Not allowed to delete from the system SMS provider", e)
+                        0
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to delete from the system SMS provider", e)
+                        0
+                    }
+            }
+            return deleted
         }
 
         private fun insert(

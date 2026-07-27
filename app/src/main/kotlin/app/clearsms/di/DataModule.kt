@@ -28,6 +28,7 @@ import app.clearsms.data.rules.RuleImporter
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.sms.TelephonyWriter
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.Provides
@@ -148,7 +149,15 @@ object DataModule {
         categorizer: MessageCategorizer,
         bundledRuleLoader: BundledRuleLoader,
         json: Json,
-    ): MessageRepositoryImpl = MessageRepositoryImpl(database, categorizer, bundledRuleLoader, json)
+        telephonyWriter: TelephonyWriter,
+    ): MessageRepositoryImpl =
+        MessageRepositoryImpl(
+            database = database,
+            categorizer = categorizer,
+            bundledRuleLoader = bundledRuleLoader,
+            json = json,
+            systemSmsDeleter = telephonyWriter,
+        )
 
     @Provides
     @Singleton

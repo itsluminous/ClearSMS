@@ -1,5 +1,6 @@
 package app.clearsms.data.repository
 
+import androidx.paging.PagingSource
 import androidx.room.withTransaction
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.CategoryUnreadCount
@@ -38,6 +39,8 @@ class MessageRepositoryImpl(
     private val otpParser: OtpParser = OtpParser(),
     private val transactionParser: TransactionParser = TransactionParser(),
     private val reminderParser: ReminderParser = ReminderParser(),
+    /** Platform hook syncing deletions to the system SMS provider (null in tests). */
+    private val systemSmsDeleter: SystemSmsDeleter? = null,
 ) : MessageRepository {
     private val messageDao get() = database.messageDao()
     private val accountDao get() = database.accountDao()
@@ -52,6 +55,29 @@ class MessageRepositoryImpl(
 
     override fun observeThread(threadId: Long): Flow<List<MessageEntity>> = messageDao.observeThread(threadId)
 
+    override fun pagedInbox(
+        category: Category?,
+        unreadOnly: Boolean,
+    ): PagingSource<Int, MessageEntity> = messageDao.pagingInbox(category, unreadOnly)
+
+    override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = messageDao.pagingThread(threadId)
+
+    override suspend fun firstInThread(threadId: Long): MessageEntity? = messageDao.firstInThread(threadId)
+
+    override suspend fun inboxThreadIds(
+        category: Category?,
+        unreadOnly: Boolean,
+    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly)
+
+    override suspend fun messageIdsInThread(threadId: Long): List<Long> = messageDao.messageIdsInThread(threadId)
+
+    override suspend fun positionInThread(
+        threadId: Long,
+        messageId: Long,
+    ): Int = messageDao.newerCountInThread(threadId, messageId)
+
+    override suspend fun bodiesInOrder(ids: List<Long>): List<String> = SqliteChunker.chunk(ids).flatMap { messageDao.bodiesFor(it) }
+
     override fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>> = messageDao.observeUnreadCounts()
 
     override fun search(query: String): Flow<List<MessageEntity>> = messageDao.search(query)
@@ -61,7 +87,74 @@ class MessageRepositoryImpl(
         read: Boolean,
     ) = messageDao.markRead(messageId, read)
 
-    override suspend fun delete(messageId: Long) = messageDao.deleteById(messageId)
+    override suspend fun delete(messageId: Long) = deleteMessages(listOf(messageId))
+
+    override suspend fun deleteMessages(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        val chunks = SqliteChunker.chunk(ids)
+        // Collect provider ids and delete our rows atomically; the provider
+        // sync happens after commit — losing our copy but keeping the
+        // provider row (crash in between) self-heals via the unique
+        // systemSmsId re-import, the reverse would not.
+        val systemIds =
+            database.withTransaction {
+                val collected = chunks.flatMap { messageDao.systemSmsIdsFor(it) }
+                chunks.forEach { messageDao.deleteByIds(it) }
+                collected
+            }
+        deleteFromProvider(systemIds)
+    }
+
+    override suspend fun deleteThreads(threadIds: List<Long>) {
+        if (threadIds.isEmpty()) return
+        val chunks = SqliteChunker.chunk(threadIds)
+        val systemIds =
+            database.withTransaction {
+                val collected = chunks.flatMap { messageDao.systemSmsIdsForThreads(it) }
+                chunks.forEach { messageDao.deleteByThreadIds(it) }
+                collected
+            }
+        deleteFromProvider(systemIds)
+    }
+
+    /** Forwards provider ids to the platform deleter in bounded chunks. */
+    private fun deleteFromProvider(systemIds: List<Long>) {
+        val deleter = systemSmsDeleter ?: return
+        SqliteChunker.chunk(systemIds).forEach { deleter.deleteBySystemIds(it) }
+    }
+
+    override suspend fun setReadForMessages(
+        ids: List<Long>,
+        read: Boolean,
+    ) {
+        if (ids.isEmpty()) return
+        database.withTransaction {
+            SqliteChunker.chunk(ids).forEach { messageDao.setReadForIds(it, read) }
+        }
+    }
+
+    override suspend fun setReadForThreads(
+        threadIds: List<Long>,
+        read: Boolean,
+    ) {
+        if (threadIds.isEmpty()) return
+        database.withTransaction {
+            SqliteChunker.chunk(threadIds).forEach { messageDao.setReadForThreads(it, read) }
+        }
+    }
+
+    override suspend fun archiveThreads(
+        threadIds: List<Long>,
+        archived: Boolean,
+    ) {
+        if (threadIds.isEmpty()) return
+        database.withTransaction {
+            SqliteChunker.chunk(threadIds).forEach { messageDao.setArchivedForThreads(it, archived) }
+        }
+    }
+
+    override suspend fun unreadCountInThreads(threadIds: List<Long>): Int =
+        SqliteChunker.chunk(threadIds).sumOf { messageDao.unreadCountInThreads(it) }
 
     override suspend fun archive(
         messageId: Long,
