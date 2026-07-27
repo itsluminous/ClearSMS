@@ -18,10 +18,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Required by WorkManager: the expedited InitialSyncWorker runs as a
+         foreground service on API < 31 (see getForegroundInfo). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- Optional: exact alarms for bill payment reminders -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!-- allowBackup is deliberately FALSE: the database holds the user's
+         entire SMS history, so Android auto-backup / device-to-device
+         transfer would be an exfiltration path. Backups are explicit,
+         user-initiated exports only. With backup disabled no
+         dataExtractionRules / fullBackupContent config is needed. -->
     <application
         android:name=".ClearSmsApplication"
         android:allowBackup="false"
@@ -94,7 +101,10 @@
             </intent-filter>
         </service>
 
-        <!-- Re-schedules reminders and periodic work after a device reboot. -->
+        <!-- Re-schedules reminders and periodic work after a device reboot.
+             Exported is required to receive BOOT_COMPLETED; safe because it
+             is a protected broadcast only the system can send, and onReceive
+             ignores every other action. -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">

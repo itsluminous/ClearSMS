@@ -108,10 +108,12 @@ class MessageNotifier
         }
 
         private fun conversationIntent(threadId: Long): PendingIntent {
-            // Explicit class name avoids a compile-time dependency on the UI layer.
+            // Explicit component (class-name string avoids a compile-time UI dependency):
+            // an implicit VIEW intent could be intercepted by another app claiming
+            // the clearsms scheme.
             val intent =
                 Intent(Intent.ACTION_VIEW, "clearsms://conversation/$threadId".toUri())
-                    .setPackage(context.packageName)
+                    .setClassName(context, "app.clearsms.MainActivity")
                     .putExtra(EXTRA_THREAD_ID, threadId)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             return PendingIntent.getActivity(

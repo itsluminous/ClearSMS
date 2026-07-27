@@ -106,7 +106,7 @@ class TransactionNotifier
             val uri = "clearsms://conversation/${message.threadId}?messageId=${message.id}".toUri()
             val intent =
                 Intent(Intent.ACTION_VIEW, uri)
-                    .setPackage(context.packageName)
+                    .setClassName(context, "app.clearsms.MainActivity")
                     .putExtra(MessageNotifier.EXTRA_THREAD_ID, message.threadId)
                     .putExtra(MessageActionReceiver.EXTRA_MESSAGE_ID, message.id)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

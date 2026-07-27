@@ -42,7 +42,7 @@ class ReminderNotifier
                     context,
                     reminderId.toInt(),
                     Intent(Intent.ACTION_VIEW, "clearsms://alerts".toUri())
-                        .setPackage(context.packageName)
+                        .setClassName(context, "app.clearsms.MainActivity")
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
