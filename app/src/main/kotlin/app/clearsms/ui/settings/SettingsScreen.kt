@@ -101,7 +101,6 @@ fun SettingsScreen(
     val backupDone = stringResource(R.string.settings_backup_done)
     val backupFailed = stringResource(R.string.settings_backup_failed)
     val restoreFailed = stringResource(R.string.settings_restore_failed)
-    val sortDone = stringResource(R.string.settings_sort_done)
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val backupLauncher =
@@ -166,7 +165,8 @@ fun SettingsScreen(
                         event.reason
                             ?.let { context.getString(R.string.settings_restore_failed_reason, it) }
                             ?: restoreFailed
-                    SettingsEvent.SortDone -> sortDone
+                    is SettingsEvent.SortDone ->
+                        context.getString(R.string.settings_sort_done_count, event.count)
                 },
             )
         }
@@ -195,7 +195,7 @@ fun SettingsScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState()),
         ) {
-            if (state.busy || state.sorting) {
+            if (state.busy) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
@@ -323,11 +323,38 @@ fun SettingsScreen(
             )
 
             SectionHeader(stringResource(R.string.settings_section_sort))
-            SettingRow(
-                title = stringResource(R.string.settings_sort_again),
-                subtitle = stringResource(R.string.settings_sort_again_summary),
-                onClick = { dialog = SettingsDialog.SORT_CONFIRM },
-            )
+            val sort = state.sortProgress
+            if (sort != null) {
+                // Running: determinate inline progress with "x of y", re-trigger
+                // disabled (row is not clickable), and a cancel affordance.
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_sort_running)) },
+                    supportingContent = {
+                        Column {
+                            LinearProgressIndicator(
+                                progress = { if (sort.total > 0) sort.processed / sort.total.toFloat() else 0f },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_sort_progress, sort.processed, sort.total),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    trailingContent = {
+                        TextButton(onClick = viewModel::cancelSort) {
+                            Text(stringResource(R.string.action_cancel))
+                        }
+                    },
+                )
+            } else {
+                SettingRow(
+                    title = stringResource(R.string.settings_sort_again),
+                    subtitle = stringResource(R.string.settings_sort_again_summary),
+                    onClick = { dialog = SettingsDialog.SORT_CONFIRM },
+                )
+            }
 
             SectionHeader(stringResource(R.string.settings_section_otp))
             ToggleRow(

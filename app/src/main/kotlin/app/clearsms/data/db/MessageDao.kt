@@ -153,6 +153,20 @@ interface MessageDao {
     @Query("SELECT * FROM messages ORDER BY id ASC")
     suspend fun getAll(): List<MessageEntity>
 
+    /** Total row count (denominator for re-categorization progress). */
+    @Query("SELECT COUNT(*) FROM messages")
+    suspend fun count(): Int
+
+    /**
+     * Keyset page for full-table scans (re-categorization): rows after
+     * [afterId] in id order. Stable under in-place updates, unlike OFFSET.
+     */
+    @Query("SELECT * FROM messages WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    suspend fun pageAfter(
+        afterId: Long,
+        limit: Int,
+    ): List<MessageEntity>
+
     @Query("SELECT threadId FROM messages WHERE normalizedSender = :normalizedSender LIMIT 1")
     suspend fun threadIdFor(normalizedSender: String): Long?
 

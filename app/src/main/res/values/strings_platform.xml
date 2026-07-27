@@ -56,4 +56,7 @@
     <!-- Initial sync -->
     <string name="sync_title">Importing your messages</string>
     <string name="sync_progress">%1$d of %2$d messages</string>
+
+    <!-- Manual re-sort -->
+    <string name="resort_title">Sorting your inbox</string>
 </resources>

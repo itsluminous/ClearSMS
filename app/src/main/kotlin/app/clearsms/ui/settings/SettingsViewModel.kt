@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.backup.RestoreResult
 import app.clearsms.data.prefs.SettingsRepository
@@ -20,15 +22,18 @@ import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.work.BackupWorker
+import app.clearsms.work.RecategorizeWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,8 +57,15 @@ data class SettingsUiState(
     val signature: String = "",
     val backupFrequency: BackupFrequency = BackupFrequency.OFF,
     val blockedSenders: List<String> = emptyList(),
-    val sorting: Boolean = false,
+    /** Non-null while a manual re-sort is enqueued/running (drives the inline progress row). */
+    val sortProgress: SortProgress? = null,
     val busy: Boolean = false,
+)
+
+/** Progress of the manual "Sort inbox again" run, mirrored from WorkManager. */
+data class SortProgress(
+    val processed: Int,
+    val total: Int,
 )
 
 /** One-off outcomes surfaced as snackbars. */
@@ -72,7 +84,10 @@ sealed interface SettingsEvent {
         val reason: String? = null,
     ) : SettingsEvent
 
-    data object SortDone : SettingsEvent
+    /** Manual re-sort finished; [count] messages were re-categorized. */
+    data class SortDone(
+        val count: Int,
+    ) : SettingsEvent
 }
 
 @HiltViewModel
@@ -84,13 +99,57 @@ class SettingsViewModel
         private val uiPrefs: UiPrefs,
         private val messageRepository: MessageRepository,
         private val backupManager: BackupManager,
+        private val workManager: WorkManager,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
-        private val sorting = MutableStateFlow(false)
         private val busy = MutableStateFlow(false)
 
         private val events = MutableSharedFlow<SettingsEvent>()
         val eventFlow: SharedFlow<SettingsEvent> = events
+
+        /**
+         * The manual re-sort run, observed straight from WorkManager — the
+         * ViewModel never owns the work, so progress survives navigation and
+         * process death exactly like the initial import.
+         */
+        private val sortWorkInfo: Flow<WorkInfo?> =
+            workManager
+                .getWorkInfosForUniqueWorkFlow(RecategorizeWorker.WORK_NAME)
+                .map { infos -> infos.firstOrNull() }
+
+        private val sortProgress: Flow<SortProgress?> =
+            sortWorkInfo.map { info ->
+                when (info?.state) {
+                    WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED ->
+                        SortProgress(
+                            processed = info.progress.getInt(RecategorizeWorker.PROGRESS_PROCESSED, 0),
+                            total = info.progress.getInt(RecategorizeWorker.PROGRESS_TOTAL, 0),
+                        )
+                    else -> null
+                }
+            }
+
+        init {
+            // Completion snackbar: emitted once when a run observed active in
+            // THIS session finishes successfully (a stale SUCCEEDED record
+            // from a previous session stays silent).
+            viewModelScope.launch {
+                var sawActiveRun = false
+                sortWorkInfo.collect { info ->
+                    when {
+                        info == null -> Unit
+                        !info.state.isFinished -> sawActiveRun = true
+                        info.state == WorkInfo.State.SUCCEEDED && sawActiveRun -> {
+                            sawActiveRun = false
+                            events.emit(
+                                SettingsEvent.SortDone(info.outputData.getInt(RecategorizeWorker.OUTPUT_COUNT, 0)),
+                            )
+                        }
+                        else -> sawActiveRun = false
+                    }
+                }
+            }
+        }
 
         private data class AppearanceState(
             val theme: ThemeMode,
@@ -148,13 +207,13 @@ class SettingsViewModel
                 notifications,
                 otp,
                 other,
-                combine(sorting, busy, ::Pair),
+                combine(sortProgress, busy, ::Pair),
             ) {
                     (appearanceState, gestures),
                     notificationState,
                     (autoCopy, autoDelete, size),
                     (signature, backupFreq, blocked),
-                    (isSorting, isBusy),
+                    (sortState, isBusy),
                 ->
                 SettingsUiState(
                     theme = appearanceState.theme,
@@ -175,7 +234,7 @@ class SettingsViewModel
                     signature = signature,
                     backupFrequency = backupFreq,
                     blockedSenders = blocked.sorted(),
-                    sorting = isSorting,
+                    sortProgress = sortState,
                     busy = isBusy,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
@@ -268,17 +327,18 @@ class SettingsViewModel
             }
         }
 
-        /** Settings → Sort: re-runs categorization over all stored messages. */
+        /**
+         * Settings → Sort: enqueues the re-categorization worker (unique,
+         * KEEP — a tap while one is running is a no-op). Progress flows back
+         * through [sortWorkInfo]; this ViewModel never runs the work itself.
+         */
         fun sortInboxAgain() {
-            launchIo {
-                sorting.value = true
-                try {
-                    messageRepository.recategorizeAll()
-                    events.emit(SettingsEvent.SortDone)
-                } finally {
-                    sorting.value = false
-                }
-            }
+            RecategorizeWorker.enqueue(workManager)
+        }
+
+        /** Cancels a running re-sort; committed pages stay consistent. */
+        fun cancelSort() {
+            RecategorizeWorker.cancel(workManager)
         }
 
         private fun launchIo(block: suspend () -> Unit) {

@@ -47,6 +47,8 @@ class MessageRepositoryImpl(
     private val deliveryParser: DeliveryParser = DeliveryParser(),
     /** Platform hook syncing deletions to the system SMS provider (null in tests). */
     private val systemSmsDeleter: SystemSmsDeleter? = null,
+    /** Page size for [recategorizeAll]; overridable so tests can hit batch boundaries. */
+    private val recategorizePageSize: Int = RECATEGORIZE_PAGE_SIZE,
 ) : MessageRepository {
     /** Types rule-extract reminders from body evidence (see [reminderFromExtracts]). */
     private val reminderTypeClassifier = ReminderTypeClassifier()
@@ -216,26 +218,46 @@ class MessageRepositoryImpl(
         }
     }
 
-    override suspend fun recategorizeAll() {
+    override suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit): Int {
+        // The rules snapshot is decoded ONCE (same optimization as the bulk
+        // import) — re-decoding per message made a full re-sort O(N×R).
         val snapshot = rulesSnapshot()
-        for (message in messageDao.getAll()) {
-            val enriched = classify(snapshot, message.sender, message.body)
-            messageDao.update(
-                message.copy(
-                    category = enriched.result.category,
-                    subCategory = enriched.result.subCategory,
-                    extractedOtp = enriched.otpCode,
-                    extractedDataJson = encodeExtracted(enriched.extracted),
-                ),
-            )
-            // Reminders are REFRESHED (deleted + re-derived) so existing rows
-            // pick up parser fixes — amounts, labels, corrected types — and
-            // stale reminders from messages the parser now rejects disappear.
-            // Transactions keep the skip-existing guard: re-inserting them
-            // would double finance totals.
-            reminderDao.deleteByRawSmsId(message.id)
-            persistDerived(message.id, message.timestamp, enriched, skipExistingTransactions = true)
+        val total = messageDao.count()
+        onProgress(0, total)
+        var processed = 0
+        var afterId = 0L
+        while (true) {
+            val page = messageDao.pageAfter(afterId, recategorizePageSize)
+            if (page.isEmpty()) break
+            // One transaction per page (mirrors persistImportedPage): a page
+            // either fully commits or fully rolls back, so cancelling a
+            // running re-sort never leaves a message updated without its
+            // derived rows refreshed.
+            database.withTransaction {
+                for (message in page) {
+                    val enriched = classify(snapshot, message.sender, message.body)
+                    messageDao.update(
+                        message.copy(
+                            category = enriched.result.category,
+                            subCategory = enriched.result.subCategory,
+                            extractedOtp = enriched.otpCode,
+                            extractedDataJson = encodeExtracted(enriched.extracted),
+                        ),
+                    )
+                    // Reminders are REFRESHED (deleted + re-derived) so existing rows
+                    // pick up parser fixes — amounts, labels, corrected types — and
+                    // stale reminders from messages the parser now rejects disappear.
+                    // Transactions keep the skip-existing guard: re-inserting them
+                    // would double finance totals.
+                    reminderDao.deleteByRawSmsId(message.id)
+                    persistDerived(message.id, message.timestamp, enriched, skipExistingTransactions = true)
+                }
+            }
+            processed += page.size
+            afterId = page.last().id
+            onProgress(processed, total)
         }
+        return processed
     }
 
     override suspend fun setBlocked(
@@ -621,6 +643,13 @@ class MessageRepositoryImpl(
     private fun LocalDate.toEpochMs(): Long = atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     // endregion
+
+    companion object {
+        /** Messages per re-categorization transaction — large enough to amortize
+         * the commit, small enough that progress ticks and cancellation stay
+         * responsive on a 14k-message inbox. */
+        const val RECATEGORIZE_PAGE_SIZE = 200
+    }
 }
 
 /** Immutable decoded rule set, reused for a whole import run. */

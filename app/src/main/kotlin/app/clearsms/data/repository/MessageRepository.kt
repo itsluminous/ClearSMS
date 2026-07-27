@@ -95,8 +95,16 @@ interface MessageRepository {
         timestampMs: Long,
     ): MessageEntity
 
-    /** Re-runs categorization and extraction over every stored message. */
-    suspend fun recategorizeAll()
+    /**
+     * Re-runs categorization and extraction over every stored message in
+     * paged batches (one transaction per page, so cancellation between pages
+     * leaves the database consistent).
+     *
+     * @param onProgress called after each committed page with
+     *   (processed, total); also called once up front with (0, total).
+     * @return the number of messages re-categorized.
+     */
+    suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> }): Int
 
     suspend fun setBlocked(
         sender: String,
