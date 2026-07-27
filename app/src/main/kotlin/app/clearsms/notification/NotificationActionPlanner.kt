@@ -1,6 +1,7 @@
 package app.clearsms.notification
 
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.sms.SenderRepliability
 
 /**
  * Pure logic that turns the user's [NotificationAction] selection into the
@@ -51,16 +52,9 @@ object NotificationActionPlanner {
         ).take(MAX_ACTIONS)
 
     /**
-     * A sender is repliable only when it looks like a real phone number:
-     * an optional `+` followed by 7–15 digits (spaces/dashes ignored).
-     * Alphanumeric sender ids ("VM-HDFCBK") and short codes ("56767") are
-     * one-way routes where a reply is meaningless, so REPLY is suppressed
-     * for them.
+     * A sender is repliable only when it looks like a real dialable phone
+     * number. Delegates to the shared [SenderRepliability] core predicate so
+     * notifications and the conversation composer agree on one rule.
      */
-    fun isRepliableAddress(sender: String): Boolean {
-        val compact = sender.filterNot { it == ' ' || it == '-' || it == '(' || it == ')' }
-        return PHONE_REGEX.matches(compact)
-    }
-
-    private val PHONE_REGEX = Regex("^\\+?\\d{7,15}$")
+    fun isRepliableAddress(sender: String): Boolean = SenderRepliability.isDialableNumber(sender)
 }
