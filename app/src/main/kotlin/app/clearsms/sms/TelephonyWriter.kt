@@ -1,0 +1,108 @@
+package app.clearsms.sms
+
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.provider.Telephony
+import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Writes messages into the system SMS provider (`content://sms`).
+ *
+ * A default SMS app is responsible for persisting incoming and outgoing
+ * messages to the platform provider so other apps (and a future default app)
+ * can see them. All writes are no-ops when Clear SMS is not the default app,
+ * because only the default app may write to the provider.
+ */
+@Singleton
+class TelephonyWriter
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+    ) {
+        /** Inserts a received message into the inbox. Returns the row uri, or null. */
+        fun writeInbox(
+            sender: String,
+            body: String,
+            timestampMs: Long,
+        ): Uri? =
+            insert(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                ContentValues().apply {
+                    put(Telephony.Sms.ADDRESS, sender)
+                    put(Telephony.Sms.BODY, body)
+                    put(Telephony.Sms.DATE, timestampMs)
+                    put(Telephony.Sms.READ, 0)
+                    put(Telephony.Sms.SEEN, 0)
+                },
+            )
+
+        /** Inserts an outgoing message into the sent box. Returns the row uri, or null. */
+        fun writeSent(
+            destination: String,
+            body: String,
+            timestampMs: Long,
+        ): Uri? =
+            insert(
+                Telephony.Sms.Sent.CONTENT_URI,
+                ContentValues().apply {
+                    put(Telephony.Sms.ADDRESS, destination)
+                    put(Telephony.Sms.BODY, body)
+                    put(Telephony.Sms.DATE, timestampMs)
+                    put(Telephony.Sms.READ, 1)
+                    put(Telephony.Sms.SEEN, 1)
+                },
+            )
+
+        /** Marks a previously written outgoing message as failed. */
+        fun markFailed(messageUri: Uri) {
+            update(
+                messageUri,
+                ContentValues().apply {
+                    put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_FAILED)
+                },
+            )
+        }
+
+        /** Records a successful delivery report against an outgoing message. */
+        fun markDelivered(messageUri: Uri) {
+            update(
+                messageUri,
+                ContentValues().apply {
+                    put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_COMPLETE)
+                },
+            )
+        }
+
+        private fun insert(
+            uri: Uri,
+            values: ContentValues,
+        ): Uri? {
+            if (!DefaultSmsAppHelper.isDefaultSmsApp(context)) return null
+            return try {
+                context.contentResolver.insert(uri, values)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to write to the system SMS provider", e)
+                null
+            }
+        }
+
+        private fun update(
+            uri: Uri,
+            values: ContentValues,
+        ) {
+            if (!DefaultSmsAppHelper.isDefaultSmsApp(context)) return
+            try {
+                context.contentResolver.update(uri, values, null, null)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to update the system SMS provider", e)
+            }
+        }
+
+        private companion object {
+            const val TAG = "TelephonyWriter"
+        }
+    }
