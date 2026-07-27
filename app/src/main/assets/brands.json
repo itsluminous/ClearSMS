@@ -559,6 +559,7 @@
       "monogram": "DL",
       "senders": [
         "DIGLKR",
+        "LOCKER",
         "NADEGL"
       ],
       "aliases": [
@@ -674,6 +675,203 @@
       "aliases": [
         "TATA 1MG",
         "1MG"
+      ]
+    },
+    {
+      "key": "meesho",
+      "name": "Meesho",
+      "category": "ECOMMERCE",
+      "color": "#570D48",
+      "monogram": "M",
+      "senders": [
+        "MEESHO",
+        "MESHO",
+        "MEESUP"
+      ],
+      "aliases": [
+        "MEESHO"
+      ]
+    },
+    {
+      "key": "shadowfax",
+      "name": "Shadowfax",
+      "category": "DELIVERY",
+      "color": "#E11B22",
+      "monogram": "SF",
+      "senders": [
+        "SFXDEL",
+        "SFXREV",
+        "SFXDLV"
+      ],
+      "aliases": [
+        "SHADOWFAX"
+      ]
+    },
+    {
+      "key": "xpressbees",
+      "name": "XpressBees",
+      "category": "DELIVERY",
+      "color": "#FFCB05",
+      "monogram": "XB",
+      "senders": [
+        "XPBEES",
+        "XBEES"
+      ],
+      "aliases": [
+        "XPRESSBEES"
+      ]
+    },
+    {
+      "key": "unitysfb",
+      "name": "Unity Small Finance Bank",
+      "category": "BANK",
+      "color": "#A6285F",
+      "monogram": "U",
+      "senders": [
+        "UNTYBA"
+      ],
+      "aliases": [
+        "UNITY SFB",
+        "UNITY BANK"
+      ]
+    },
+    {
+      "key": "hsbc",
+      "name": "HSBC",
+      "category": "BANK",
+      "color": "#DB0011",
+      "monogram": "H",
+      "senders": [
+        "HSBCIN",
+        "HSBCBK"
+      ],
+      "aliases": [
+        "HSBC"
+      ]
+    },
+    {
+      "key": "amex",
+      "name": "American Express",
+      "category": "CARD",
+      "color": "#006FCF",
+      "monogram": "AX",
+      "senders": [
+        "MYAMEX",
+        "AMEXIN"
+      ],
+      "aliases": [
+        "AMEX",
+        "AMERICAN EXPRESS"
+      ]
+    },
+    {
+      "key": "sbicard",
+      "name": "SBI Card",
+      "category": "CARD",
+      "color": "#280071",
+      "monogram": "SC",
+      "senders": [
+        "SBICRD",
+        "MYSBIC"
+      ],
+      "aliases": [
+        "SBI CARD"
+      ]
+    },
+    {
+      "key": "bbdaily",
+      "name": "bbdaily",
+      "category": "ECOMMERCE",
+      "color": "#84C225",
+      "monogram": "BD",
+      "senders": [
+        "BBDAIY"
+      ],
+      "aliases": [
+        "BBDAILY"
+      ]
+    },
+    {
+      "key": "bankbazaar",
+      "name": "BankBazaar",
+      "category": "OTHER",
+      "color": "#0E4D92",
+      "monogram": "BZ",
+      "senders": [
+        "BBANKC",
+        "BBAZCC",
+        "BNKBZR"
+      ],
+      "aliases": [
+        "BANKBAZAAR"
+      ]
+    },
+    {
+      "key": "justdial",
+      "name": "Justdial",
+      "category": "OTHER",
+      "color": "#FF7700",
+      "monogram": "JD",
+      "senders": [
+        "JUSTDL"
+      ],
+      "aliases": [
+        "JUSTDIAL"
+      ]
+    },
+    {
+      "key": "adityabirlacapital",
+      "name": "Aditya Birla Capital",
+      "category": "INVESTMENT",
+      "color": "#C7222A",
+      "monogram": "AB",
+      "senders": [
+        "ABCSER"
+      ],
+      "aliases": [
+        "ADITYA BIRLA CAPITAL"
+      ]
+    },
+    {
+      "key": "wintwealth",
+      "name": "Wint Wealth",
+      "category": "INVESTMENT",
+      "color": "#EFB914",
+      "monogram": "W",
+      "senders": [
+        "WINTWL"
+      ],
+      "aliases": [
+        "WINT WEALTH"
+      ]
+    },
+    {
+      "key": "poonawalla",
+      "name": "Poonawalla Fincorp",
+      "category": "OTHER",
+      "color": "#0083CA",
+      "monogram": "PF",
+      "senders": [
+        "PFINCO"
+      ],
+      "aliases": [
+        "POONAWALLA FINCORP",
+        "POONAWALLA"
+      ]
+    },
+    {
+      "key": "bajajfinserv",
+      "name": "Bajaj Finserv",
+      "category": "OTHER",
+      "color": "#005BAB",
+      "monogram": "BF",
+      "senders": [
+        "BAJAJO",
+        "BFLSMS"
+      ],
+      "aliases": [
+        "BAJAJ FINSERV",
+        "BAJAJ FINANCE"
       ]
     }
   ]
