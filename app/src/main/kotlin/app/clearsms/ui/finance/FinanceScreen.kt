@@ -22,8 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Wallet
@@ -83,6 +81,7 @@ import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.theme.LocalSemanticAmountColors
@@ -264,7 +263,14 @@ private fun LazyListScope.accountsSection(
             ) {
                 ListItem(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    leadingContent = { Icon(Icons.Outlined.AccountBalance, contentDescription = null) },
+                    leadingContent = {
+                        SenderAvatar(
+                            name = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                            richAvatars = state.showRichAvatars,
+                            isKnownSender = account.bankName.isNotBlank(),
+                            glyph = accountGlyph(account.type),
+                        )
+                    },
                     headlineContent = {
                         Text(
                             text = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
@@ -342,6 +348,7 @@ private fun LazyListScope.creditCardsSection(
     items(state.creditCards, key = { "card_${it.account.id}" }) { card ->
         CreditCardCard(
             card = card,
+            richAvatars = state.showRichAvatars,
             onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
             onOpenSource = { onOpenSource(card.account) },
             onSetLimit = { onSetLimit(card) },
@@ -365,7 +372,14 @@ private fun LazyListScope.transactionsSection(
                     onClickLabel = stringResource(R.string.finance_open_source_sms),
                 ) { onOpenTransaction(tx) },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-            leadingContent = { SenderAvatar(name = tx.bankName.ifBlank { tx.merchantName ?: "?" }, size = 40.dp) },
+            leadingContent = {
+                SenderAvatar(
+                    name = financeTransactionAvatarName(tx.merchantName, tx.bankName),
+                    richAvatars = state.showRichAvatars,
+                    isKnownSender = tx.bankName.isNotBlank(),
+                    glyph = BrandGlyph.BANK,
+                )
+            },
             headlineContent = {
                 Text(
                     text = tx.merchantName ?: tx.bankName.ifBlank { stringResource(R.string.finance_transaction) },
@@ -605,6 +619,7 @@ private fun SummaryBreakdownRow(
 @Composable
 private fun CreditCardCard(
     card: CreditCardItem,
+    richAvatars: Boolean,
     onOpen: () -> Unit,
     onOpenSource: () -> Unit,
     onSetLimit: () -> Unit,
@@ -624,7 +639,12 @@ private fun CreditCardCard(
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.CreditCard, contentDescription = null)
+                SenderAvatar(
+                    name = card.account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                    richAvatars = richAvatars,
+                    isKnownSender = card.account.bankName.isNotBlank(),
+                    glyph = accountGlyph(card.account.type),
+                )
                 Spacer(Modifier.padding(horizontal = 6.dp))
                 Column(Modifier.weight(1f)) {
                     Text(

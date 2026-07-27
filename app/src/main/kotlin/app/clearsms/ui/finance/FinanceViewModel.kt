@@ -56,6 +56,8 @@ data class FinanceUiState(
     val isLoadingMore: Boolean = false,
     /** Badge counts per pill: accounts / cards / transactions this month. */
     val pillCounts: Map<FinanceTab, Int> = emptyMap(),
+    /** Mirrors Settings → Appearance → Show logos and contact photos. */
+    val showRichAvatars: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -109,12 +111,14 @@ class FinanceViewModel
                         if (satisfied) loadingMore.value = false
                     },
                 loadingMore,
-            ) { state, pending ->
+                settingsRepository.showRichAvatars,
+            ) { state, pending, richAvatars ->
                 state.copy(
                     isLoadingMore =
                         pending &&
                             state.hasMoreTransactions &&
                             state.latestTransactions.size < txLimit.value,
+                    showRichAvatars = richAvatars,
                 )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())

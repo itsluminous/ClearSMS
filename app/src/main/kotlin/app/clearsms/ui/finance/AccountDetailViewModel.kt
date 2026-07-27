@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.TransactionEntity
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.TransactionType
@@ -48,6 +49,8 @@ data class AccountDetailUiState(
     val hasMoreTransactions: Boolean = false,
     /** True while the next requested page is still resolving. */
     val isLoadingMore: Boolean = false,
+    /** Mirrors Settings → Appearance → Show logos and contact photos. */
+    val showRichAvatars: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -58,6 +61,7 @@ class AccountDetailViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val financeRepository: FinanceRepository,
+        settingsRepository: SettingsRepository,
         private val messageLookup: MessageLookup,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
@@ -86,8 +90,12 @@ class AccountDetailViewModel
                         if (shown >= txLimit.value || !state.hasMoreTransactions) loadingMore.value = false
                     },
                 loadingMore,
-            ) { state, pending ->
-                state.copy(isLoadingMore = pending && state.hasMoreTransactions)
+                settingsRepository.showRichAvatars,
+            ) { state, pending, richAvatars ->
+                state.copy(
+                    isLoadingMore = pending && state.hasMoreTransactions,
+                    showRichAvatars = richAvatars,
+                )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountDetailUiState())
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -53,6 +54,8 @@ import app.clearsms.data.db.ReminderEntity
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.finance.reminderGlyph
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -142,6 +145,7 @@ fun AlertsScreen(
             items(state.upcoming, key = { "up_${it.id}" }) { reminder ->
                 ReminderCard(
                     reminder = reminder,
+                    richAvatars = state.showRichAvatars,
                     onOpen = { openReminder(reminder) },
                     onDismiss = { viewModel.dismiss(reminder.id) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -159,6 +163,7 @@ fun AlertsScreen(
                     items(state.past, key = { "past_${it.id}" }) { reminder ->
                         ReminderCard(
                             reminder = reminder,
+                            richAvatars = state.showRichAvatars,
                             onOpen = { openReminder(reminder) },
                             onDismiss = { viewModel.dismiss(reminder.id) },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -217,6 +222,7 @@ private fun PastRemindersHeader(
 @Composable
 private fun ReminderCard(
     reminder: ReminderEntity,
+    richAvatars: Boolean,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -233,11 +239,20 @@ private fun ReminderCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypeBadge(type = reminder.type)
                 Spacer(Modifier.weight(1f))
-                reminder.bankName?.let {
+                reminder.bankName?.takeIf { it.isNotBlank() }?.let { bank ->
                     Text(
-                        text = it,
+                        text = bank,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // Same avatar chain as the inbox: bundled logo → brand
+                    // tile → category glyph → letter, gated by the setting.
+                    SenderAvatar(
+                        name = bank,
+                        richAvatars = richAvatars,
+                        isKnownSender = true,
+                        glyph = reminderGlyph(reminder.type),
                     )
                 }
             }

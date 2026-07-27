@@ -55,7 +55,9 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
@@ -93,17 +95,26 @@ fun AccountDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = state.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SenderAvatar(
+                            name = state.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                            richAvatars = state.showRichAvatars,
+                            isKnownSender = state.bankName.isNotBlank(),
+                            glyph = BrandGlyph.BANK,
                         )
-                        Text(
-                            text = stringResource(R.string.finance_masked_account, state.accountNumber),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Spacer(Modifier.padding(horizontal = 6.dp))
+                        Column {
+                            Text(
+                                text = state.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = stringResource(R.string.finance_masked_account, state.accountNumber),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 },
                 navigationIcon = {

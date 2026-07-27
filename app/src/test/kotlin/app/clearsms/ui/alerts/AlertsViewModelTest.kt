@@ -9,6 +9,7 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.ReminderType
+import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.ui.finance.MessageLookup
 import app.clearsms.ui.finance.MessageRef
 import com.google.common.truth.Truth.assertThat
@@ -52,6 +53,7 @@ class AlertsViewModelTest {
     private fun viewModel(messages: Map<Long, MessageEntity> = emptyMap()): AlertsViewModel =
         AlertsViewModel(
             financeRepository = FakeFinanceRepository(past = listOf(reminder(1), reminder(2))),
+            settingsRepository = FakeSettingsRepository(),
             reminderDao = NoopReminderDao(),
             messageLookup = MessageLookup { id -> messages[id] },
             ioDispatcher = dispatcher,
@@ -124,6 +126,7 @@ class AlertsViewModelTest {
                                     typed(4, ReminderType.OTHER),
                                 ),
                         ),
+                    settingsRepository = FakeSettingsRepository(),
                     reminderDao = NoopReminderDao(),
                     messageLookup = MessageLookup { null },
                     ioDispatcher = dispatcher,
@@ -158,6 +161,7 @@ class AlertsViewModelTest {
                             upcoming = listOf(typed(1, ReminderType.SUBSCRIPTION)),
                             past = listOf(typed(2, ReminderType.DEPOSIT), typed(3, ReminderType.DEPOSIT)),
                         ),
+                    settingsRepository = FakeSettingsRepository(),
                     reminderDao = NoopReminderDao(),
                     messageLookup = MessageLookup { null },
                     ioDispatcher = dispatcher,

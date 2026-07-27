@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.ReminderEntity
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.ui.finance.MessageLookup
@@ -31,6 +32,8 @@ data class AlertsUiState(
     val counts: Map<AlertFilter, Int> = emptyMap(),
     /** Past reminders section is collapsed by default; session-only state. */
     val pastExpanded: Boolean = false,
+    /** Mirrors Settings → Appearance → Show logos and contact photos. */
+    val showRichAvatars: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -39,6 +42,7 @@ class AlertsViewModel
     @Inject
     constructor(
         financeRepository: FinanceRepository,
+        settingsRepository: SettingsRepository,
         private val reminderDao: ReminderDao,
         private val messageLookup: MessageLookup,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -65,13 +69,15 @@ class AlertsViewModel
                 financeRepository.observePastReminders(nowMs),
                 filter,
                 pastExpanded,
-            ) { upcoming, past, currentFilter, expanded ->
+                settingsRepository.showRichAvatars,
+            ) { upcoming, past, currentFilter, expanded, richAvatars ->
                 AlertsUiState(
                     filter = currentFilter,
                     upcoming = upcoming.filter { currentFilter.matches(it.type) },
                     past = past.filter { currentFilter.matches(it.type) },
                     counts = AlertFilter.counts(upcoming, past),
                     pastExpanded = expanded,
+                    showRichAvatars = richAvatars,
                     loaded = true,
                 )
             }.flowOn(ioDispatcher)
