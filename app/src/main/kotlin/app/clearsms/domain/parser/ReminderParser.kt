@@ -7,19 +7,27 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Extracts bill / payment reminders (credit card bills, EMIs, insurance
- * premiums, subscription renewals, dated utility bills) from message bodies.
+ * Extracts bill / payment reminders (credit card bills, EMIs, deposit
+ * installments, insurance premiums, subscription renewals, dated utility
+ * bills) from message bodies.
  *
  * Precision rules:
  * - A reminder MUST carry a due date, and the due-context keyword must be
  *   anchored to that date ("due on <date>", "pay by <date>", ...). A bare
  *   "due"/"bill"/"expir" somewhere in the body is not enough — that gate
  *   previously flooded Alerts with unrelated messages.
- * - Completed / settled events (payments received, refunds, reimbursement
- *   claims, debit/credit confirmations) are never reminders.
+ * - Completed / settled events (payments received, thank-you-for-payment
+ *   confirmations, refunds, reimbursement claims, debit/credit
+ *   confirmations) are never reminders, even when the body also mentions a
+ *   premium or a due date.
  * - The generic OTHER type additionally requires a recognized bill domain
  *   (electricity, water, broadband, ...); an untyped, undomained "bill"
  *   mention emits nothing.
+ *
+ * Beyond the due date every reminder tries to carry the amount due (total
+ * plus minimum where present — see [TOTAL_DUE_PATTERNS]) and a short human
+ * [ParsedReminder.label] describing what the bill is for, falling back to a
+ * digit-masked excerpt of the message when nothing structured is found.
  */
 class ReminderParser {
     fun parse(
@@ -34,20 +42,11 @@ class ReminderParser {
         return ParsedReminder(
             type = type,
             dueDate = dueDate,
-            totalDue =
-                TOTAL_DUE_REGEX
-                    .find(body)
-                    ?.groupValues
-                    ?.get(1)
-                    ?.toAmount(),
-            minDue =
-                MIN_DUE_REGEX
-                    .find(body)
-                    ?.groupValues
-                    ?.get(1)
-                    ?.toAmount(),
+            totalDue = firstAmount(body, TOTAL_DUE_PATTERNS),
+            minDue = firstAmount(body, MIN_DUE_PATTERNS),
             accountLast4 = ACCOUNT_REGEX.find(body)?.groupValues?.get(1),
             bankName = SenderNameResolver.bankNameFor(sender, body),
+            label = extractLabel(body),
         )
     }
 
@@ -57,9 +56,16 @@ class ReminderParser {
     ): ReminderType? =
         when {
             CREDIT_CARD_REGEX.containsMatchIn(body) -> ReminderType.CREDIT_CARD
+            // Deposits before EMI: an "RD installment" is a recurring-deposit
+            // contribution, not a loan EMI — bare "instalment" used to drag
+            // these into the EMI bucket.
+            DEPOSIT_REGEX.containsMatchIn(body) -> ReminderType.DEPOSIT
             EMI_REGEX.containsMatchIn(body) -> ReminderType.EMI
             INSURANCE_REGEX.containsMatchIn(body) -> ReminderType.INSURANCE
             SUBSCRIPTION_REGEX.containsMatchIn(body) -> ReminderType.SUBSCRIPTION
+            // A generic instalment with no loan/deposit context is still a
+            // dated payment obligation — keep it, but as OTHER.
+            INSTALLMENT_REGEX.containsMatchIn(body) -> ReminderType.OTHER
             // Generic bills need a recognized domain; "bill" alone is too
             // weak — unless the SENDER is a recognized biller (utilities
             // often just say "your bill", e.g. broadband providers).
@@ -119,6 +125,78 @@ class ReminderParser {
         return null
     }
 
+    // region label
+
+    /**
+     * Short human description of what the reminder is for: a structured
+     * extract (deposit reference, biller product, policy plan, card product,
+     * subscription plan) when one is recognizable, else a digit-masked
+     * excerpt of the message — an excerpt is far better than a bare date.
+     */
+    private fun extractLabel(body: String): String? {
+        structuredLabel(body)?.let { return clip(it) }
+        return clip(excerpt(body))
+    }
+
+    private fun structuredLabel(body: String): String? {
+        // "HDFC Bank RD 12345" -> "RD xx2345" (never a full reference).
+        DEPOSIT_REF_REGEX.find(body)?.let { match ->
+            val kind = match.groupValues[1].uppercase()
+            val ref = match.groupValues[2]
+            return "$kind xx${ref.takeLast(4)}"
+        }
+        // "Bill for your Airtel Mobile 98xxxxxx10 ..." -> "Airtel Mobile bill".
+        BILL_FOR_REGEX.find(body)?.let { match ->
+            return "${match.groupValues[1].trim()} bill"
+        }
+        // "... your ICICIPru policy ICICI Pru iProtect Smart policy no H123" ->
+        // "ICICI Pru iProtect Smart".
+        POLICY_PLAN_REGEX.find(body)?.let { return it.groupValues[1].trim() }
+        POLICY_FOR_REGEX.find(body)?.let { return "${it.groupValues[1].trim()} policy" }
+        // "Tata Neu Infinity HDFC Bank Credit Card" -> the card product.
+        CARD_PRODUCT_REGEX.find(body)?.let { return "${it.groupValues[1].trim()} Credit Card" }
+        // "your Netflix plan / postpaid connection" -> "<name> plan".
+        PLAN_REGEX.find(body)?.let { match ->
+            return "${match.groupValues[1].trim()} ${match.groupValues[2].lowercase()}"
+        }
+        return null
+    }
+
+    /**
+     * Single-line excerpt of the message with long digit runs masked down to
+     * their last 4 digits, so a fallback label never leaks a full account,
+     * policy or phone number.
+     */
+    private fun excerpt(body: String): String =
+        body
+            .replace(WHITESPACE_REGEX, " ")
+            .trim()
+            .replace(LONG_DIGIT_RUN_REGEX) { "xx" + it.value.takeLast(4) }
+
+    /** Clips to [MAX_LABEL_LENGTH] chars at a word boundary. */
+    private fun clip(text: String): String? {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return null
+        if (trimmed.length <= MAX_LABEL_LENGTH) return trimmed
+        val cut = trimmed.take(MAX_LABEL_LENGTH)
+        val atWord = cut.substringBeforeLast(' ', cut)
+        return "${atWord.trimEnd()}\u2026"
+    }
+
+    // endregion
+
+    private fun firstAmount(
+        body: String,
+        patterns: List<Regex>,
+    ): Double? =
+        patterns.firstNotNullOfOrNull { pattern ->
+            pattern
+                .find(body)
+                ?.groupValues
+                ?.get(1)
+                ?.toAmount()
+        }
+
     private fun buildDate(
         day: Int,
         month: Int,
@@ -135,6 +213,8 @@ class ReminderParser {
     private fun String.toAmount(): Double? = replace(",", "").toDoubleOrNull()
 
     private companion object {
+        const val MAX_LABEL_LENGTH = 40
+
         /**
          * Date fragment used to anchor due-context keywords: DD-MM-YY(YY),
          * DD/MM/YYYY, DD-MMM-YY(YY) or "5 Aug 2026".
@@ -142,6 +222,12 @@ class ReminderParser {
         const val DATE =
             "(?<!\\d)(?:\\d{1,2}[-/](?:\\d{1,2}|[A-Za-z]{3})[-/]\\d{2}(?:\\d{2})?|" +
                 "\\d{1,2}[-\\s][A-Za-z]{3,9}[-\\s,]\\s?\\d{2}(?:\\d{2})?)(?!\\d)"
+
+        /**
+         * Currency amount with capture group: `Rs. 1,234.56`, `INR 500`,
+         * `₹99`, and the statement style `INR  Dr. 4,255.00`.
+         */
+        const val AMOUNT = "(?:INR|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?([\\d,]+(?:\\.\\d{1,2})?)"
 
         /**
          * Due-context keywords anchored to a date. The keyword being merely
@@ -174,8 +260,8 @@ class ReminderParser {
         /**
          * Completed / settled / reversed events. These describe money that
          * already moved (or is coming back), so they must never become
-         * reminders — reimbursement claims and payment confirmations were
-         * the bulk of the junk in the Alerts "Others" filter.
+         * reminders — reimbursement claims, thank-you-for-payment texts and
+         * payment confirmations were the bulk of the junk in Alerts.
          */
         val SETTLED_REGEX =
             Regex(
@@ -183,7 +269,13 @@ class ReminderParser {
                     "\\breceived\\s+(?:your\\s+)?payment|" +
                     "successfully\\s+(?:paid|processed|credited|received)|" +
                     "\\bpaid\\s+successfully|" +
-                    "thank\\s+you\\s+for\\s+(?:your\\s+)?(?:payment|paying)|" +
+                    // "Thank You for an online payment of Rs.X ..." — article,
+                    // "online" and trailing words are all optional.
+                    "thank\\s+you\\s+for\\s+(?:an?\\s+|your\\s+)?(?:online\\s+)?(?:payment|paying)|" +
+                    // A payment amount tied to a transaction reference is a
+                    // completed transaction, not a bill.
+                    "payment\\s+of\\s+$AMOUNT[^\\n]{0,80}?(?:transaction\\s+ref|txn\\s+ref|\\bUTR\\b)|" +
+                    "payment\\s+of\\s+$AMOUNT[^\\n]{0,60}?\\bwas\\s+(?:received|made)|" +
                     "has\\s+been\\s+(?:paid|received|credited|processed|settled|reimbursed|refunded)|" +
                     "\\breimburse(?:d|ment)\\b|\\brefund(?:ed)?\\b|\\bsettled\\b|" +
                     "\\bclaim\\s+(?:of|amount|no\\.?|number|id)\\b|" +
@@ -191,7 +283,19 @@ class ReminderParser {
             )
 
         val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|card\\s+(?:bill|statement|ending)")
-        val EMI_REGEX = Regex("(?i)\\bEMI\\b|instal?lment")
+
+        /** Recurring/fixed deposit contributions ("RD Installment Due!"). */
+        val DEPOSIT_REGEX =
+            Regex(
+                "(?i)recurring\\s+deposit|fixed\\s+deposit|" +
+                    "\\bRD\\b[^\\n]{0,60}?instal?l?ment|instal?l?ment[^\\n]{0,60}?\\bRD\\b",
+            )
+
+        /** Loan EMIs only — a bare "instalment" is NOT an EMI. */
+        val EMI_REGEX = Regex("(?i)\\bEMI\\b|loan\\s+instal?lment")
+
+        val INSTALLMENT_REGEX = Regex("(?i)instal?lment")
+
         val INSURANCE_REGEX = Regex("(?i)insurance|premium|\\bpolicy\\b")
         val SUBSCRIPTION_REGEX = Regex("(?i)subscription|\\bplan\\b|renewal|\\brenew\\b|membership")
 
@@ -227,15 +331,80 @@ class ReminderParser {
         /** ISO yyyy-MM-dd, produced by rule extracts and LocalDate.toString(). */
         val ISO_DATE_REGEX = Regex("(?<!\\d)(\\d{4})-(\\d{2})-(\\d{2})(?!\\d)")
 
-        val TOTAL_DUE_REGEX =
-            Regex("(?i)total\\s+(?:amt|amount)?\\s*due(?:\\s+is)?\\s*[:\\s]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)")
+        /**
+         * Amount-due phrasings seen in real bank/biller SMS, most explicit
+         * first. Every pattern is anchored to a due / bill / statement /
+         * premium / EMI / installment context so an unrelated amount in the
+         * body is never picked up.
+         */
+        val TOTAL_DUE_PATTERNS =
+            listOf(
+                // "Total due Rs.15,240", "Total amount due: INR Dr. 4,255.00",
+                // "pay total due of Rs 4444.55".
+                "total\\s+(?:amt|amount)?\\s*due(?:\\s+is)?\\s*(?:of\\s+)?[:\\s]*$AMOUNT",
+                // "Total of Rs 5,432.10 or minimum of Rs 270 is due by".
+                "total\\s+of\\s+$AMOUNT",
+                // "Payment of INR 12345 for Axis Bank Credit Card ... is due on".
+                "payment\\s+of\\s+$AMOUNT[^\\n]{0,80}?\\bis\\s+due",
+                // "statement of INR 15240.00 with due date".
+                "statement\\s+of\\s+$AMOUNT",
+                // "Amount to be paid: Rs 649.00", "Amount payable Rs 649".
+                "amount\\s+(?:to\\s+be\\s+paid|payable)\\s*:?\\s*$AMOUNT",
+                // "Amount INR 12,345.00 Due on 05-AUG-26" (deposit installments).
+                "\\bamount\\s*:?\\s*$AMOUNT\\s+due\\b",
+                // "EMI of Rs.12,500 ... is due".
+                "\\bEMI\\s+of\\s+$AMOUNT",
+                // "installment of Rs 2,000 is due".
+                "instal?lment\\s+of\\s+$AMOUNT",
+                // "premium of Rs.24,000 is due".
+                "premium\\s+of\\s+$AMOUNT",
+                // "Premium due on 05-May-2026 for your ... policy no H123 for Rs. 5000".
+                "(?:premium|policy)[^\\n]{0,120}?\\bfor\\s+$AMOUNT",
+                // "Bill amount Rs 890", "bill of Rs.2,340".
+                "bill\\s+(?:amount|of)\\s*:?\\s*$AMOUNT",
+            ).map { Regex("(?i)$it") }
 
-        val MIN_DUE_REGEX =
-            Regex(
-                "(?i)min(?:imum)?\\s+(?:amt|amount)?\\s*due(?:\\s+is)?\\s*[:\\s]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-            )
+        /** Minimum-due phrasings; kept alongside the total when both exist. */
+        val MIN_DUE_PATTERNS =
+            listOf(
+                // "Min due Rs.762", "minimum amount due of INR 1044",
+                // "Minimum amt due: INR Dr. 212.75".
+                "min(?:imum)?\\s+(?:amt|amount)?\\s*due(?:\\s+is)?\\s*(?:of\\s+)?[:\\s]*$AMOUNT",
+                // "or minimum of Rs 270.55 is due by".
+                "minimum\\s+of\\s+$AMOUNT",
+            ).map { Regex("(?i)$it") }
 
         val ACCOUNT_REGEX =
             Regex("(?i)(?:a/c|acct|account|card)\\s*(?:no\\.?|number)?\\s*(?:ending\\s*)?(?:in\\s+|with\\s+)?[Xx*]*(\\d{3,4})(?!\\d)")
+
+        // region label patterns
+
+        /** "RD 12345", "FD no 987654" — deposit reference. */
+        val DEPOSIT_REF_REGEX = Regex("(?i)\\b(RD|FD)\\s*(?:no\\.?\\s*)?(\\d{3,})")
+
+        /** "Bill for your Airtel Mobile 98xxx" — the biller product. */
+        val BILL_FOR_REGEX =
+            Regex("(?i)bill\\s+for\\s+your\\s+([A-Za-z][A-Za-z ]{2,30}?)(?=\\s*(?:\\d|x{2,}|no\\b|number|is\\b|:|,|\\.))")
+
+        /** "your <brand> policy <PLAN NAME> policy no H123" — the plan name. */
+        val POLICY_PLAN_REGEX = Regex("(?i)policy\\s+([A-Za-z][A-Za-z0-9 .&'-]{3,38}?)\\s+policy\\s+no\\b")
+
+        /** "for your <NAME> policy" — the policy descriptor. */
+        val POLICY_FOR_REGEX = Regex("(?i)for\\s+your\\s+([A-Za-z][A-Za-z0-9 .&'-]{2,38}?)\\s+policy\\b")
+
+        /** "<Product> Credit Card" — the card product incl. bank. */
+        val CARD_PRODUCT_REGEX =
+            Regex("(?i)(?:\\b(?:your|for|the|on)\\s+)?\\b([A-Z][A-Za-z ]{2,33}?)\\s+credit\\s+card\\b")
+
+        /** "your <name> plan/subscription/membership/postpaid". */
+        val PLAN_REGEX =
+            Regex("(?i)your\\s+([A-Za-z][A-Za-z0-9 ]{2,30}?)\\s+(plan|subscription|membership|pack|postpaid)\\b")
+
+        val WHITESPACE_REGEX = Regex("\\s+")
+
+        /** Digit runs long enough to be an account / phone / policy number. */
+        val LONG_DIGIT_RUN_REGEX = Regex("\\d{5,}")
+
+        // endregion
     }
 }

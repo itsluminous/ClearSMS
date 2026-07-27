@@ -29,6 +29,10 @@ interface ReminderDao {
     @Query("DELETE FROM reminders WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    /** Drops the reminder derived from a message, so it can be re-derived. */
+    @Query("DELETE FROM reminders WHERE rawSmsId = :rawSmsId")
+    suspend fun deleteByRawSmsId(rawSmsId: Long)
+
     @Query("DELETE FROM reminders")
     suspend fun deleteAll()
 }
