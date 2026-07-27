@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -48,15 +51,25 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SummaryFrequency
+import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
+import app.clearsms.ui.components.displayName
 
 private enum class SettingsDialog {
     THEME,
     SUMMARY,
+    NOTIFICATION_ACTIONS,
+    SWIPE_START,
+    SWIPE_END,
+    DEFAULT_SCREEN,
+    DEFAULT_FILTER,
     OTP_DELETE,
     OTP_SIZE,
     SIGNATURE,
@@ -154,6 +167,9 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.settings_restore_summary),
                 onClick = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             )
+            // TODO: backupFrequency is written here but not consumed yet — the
+            //  platform stage must schedule/cancel BackupWorker from it (OFF = no
+            //  periodic backups).
             SettingRow(
                 title = stringResource(R.string.settings_backup_frequency),
                 subtitle = backupFrequencyLabel(state.backupFrequency),
@@ -173,6 +189,19 @@ fun SettingsScreen(
                 onToggle = viewModel::setDynamicColor,
             )
             ToggleRow(
+                title = stringResource(R.string.settings_show_rich_avatars),
+                subtitle =
+                    stringResource(
+                        if (state.showRichAvatars) {
+                            R.string.settings_show_rich_avatars_on
+                        } else {
+                            R.string.settings_show_rich_avatars_off
+                        },
+                    ),
+                checked = state.showRichAvatars,
+                onToggle = viewModel::setShowRichAvatars,
+            )
+            ToggleRow(
                 title = stringResource(R.string.settings_show_transaction_details),
                 subtitle = stringResource(R.string.settings_show_transaction_details_summary),
                 checked = state.showTransactionDetails,
@@ -180,6 +209,9 @@ fun SettingsScreen(
             )
 
             SectionHeader(stringResource(R.string.settings_section_notification))
+            // TODO: deliveryReports is written here but not consumed yet — the
+            //  platform stage must read it in SmsSender to request delivery
+            //  status for outgoing messages.
             ToggleRow(
                 title = stringResource(R.string.settings_delivery_reports),
                 subtitle = stringResource(R.string.settings_delivery_reports_summary),
@@ -187,9 +219,44 @@ fun SettingsScreen(
                 onToggle = viewModel::setDeliveryReports,
             )
             SettingRow(
+                title = stringResource(R.string.settings_notification_actions),
+                subtitle = notificationActionsSummary(state.notificationActions),
+                onClick = { dialog = SettingsDialog.NOTIFICATION_ACTIONS },
+            )
+            ToggleRow(
+                title = stringResource(R.string.settings_transaction_notifications),
+                subtitle = stringResource(R.string.settings_transaction_notifications_summary),
+                checked = state.transactionNotifications,
+                onToggle = viewModel::setTransactionNotifications,
+            )
+            SettingRow(
                 title = stringResource(R.string.settings_summary),
                 subtitle = summaryLabel(state.summaryFrequency),
                 onClick = { dialog = SettingsDialog.SUMMARY },
+            )
+
+            SectionHeader(stringResource(R.string.settings_section_gestures))
+            SettingRow(
+                title = stringResource(R.string.settings_swipe_right),
+                subtitle = swipeActionLabel(state.swipeActionStart),
+                onClick = { dialog = SettingsDialog.SWIPE_START },
+            )
+            SettingRow(
+                title = stringResource(R.string.settings_swipe_left),
+                subtitle = swipeActionLabel(state.swipeActionEnd),
+                onClick = { dialog = SettingsDialog.SWIPE_END },
+            )
+
+            SectionHeader(stringResource(R.string.settings_section_startup))
+            SettingRow(
+                title = stringResource(R.string.settings_default_screen),
+                subtitle = destinationLabel(state.defaultDestination),
+                onClick = { dialog = SettingsDialog.DEFAULT_SCREEN },
+            )
+            SettingRow(
+                title = stringResource(R.string.settings_default_inbox_filter),
+                subtitle = inboxFilterLabel(state.defaultInboxFilter),
+                onClick = { dialog = SettingsDialog.DEFAULT_FILTER },
             )
 
             SectionHeader(stringResource(R.string.settings_section_sort))
@@ -275,6 +342,60 @@ fun SettingsScreen(
                 selected = state.summaryFrequency,
                 onSelect = {
                     viewModel.setSummaryFrequency(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        SettingsDialog.NOTIFICATION_ACTIONS ->
+            NotificationActionsDialog(
+                selected = state.notificationActions,
+                onConfirm = {
+                    viewModel.setNotificationActions(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        SettingsDialog.SWIPE_START ->
+            RadioDialog(
+                title = stringResource(R.string.settings_swipe_right),
+                options = SwipeAction.entries.map { it to swipeActionLabel(it) },
+                selected = state.swipeActionStart,
+                onSelect = {
+                    viewModel.setSwipeActionStart(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        SettingsDialog.SWIPE_END ->
+            RadioDialog(
+                title = stringResource(R.string.settings_swipe_left),
+                options = SwipeAction.entries.map { it to swipeActionLabel(it) },
+                selected = state.swipeActionEnd,
+                onSelect = {
+                    viewModel.setSwipeActionEnd(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        SettingsDialog.DEFAULT_SCREEN ->
+            RadioDialog(
+                title = stringResource(R.string.settings_default_screen),
+                options = StartDestination.entries.map { it to destinationLabel(it) },
+                selected = state.defaultDestination,
+                onSelect = {
+                    viewModel.setDefaultDestination(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        SettingsDialog.DEFAULT_FILTER ->
+            RadioDialog(
+                title = stringResource(R.string.settings_default_inbox_filter),
+                options =
+                    (listOf<Category?>(null) + Category.entries).map { it to inboxFilterLabel(it) },
+                selected = state.defaultInboxFilter,
+                onSelect = {
+                    viewModel.setDefaultInboxFilter(it)
                     dialog = null
                 },
                 onDismiss = { dialog = null },
@@ -415,6 +536,7 @@ private fun <T> RadioDialog(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 48.dp)
                                 .selectable(
                                     selected = selected == value,
                                     onClick = { onSelect(value) },
@@ -434,6 +556,63 @@ private fun <T> RadioDialog(
         },
     )
 }
+
+/**
+ * Multi-select picker for notification action buttons. Android renders at
+ * most 3 actions on a notification, so selection is capped at [MAX_NOTIFICATION_ACTIONS].
+ */
+@Composable
+private fun NotificationActionsDialog(
+    selected: Set<NotificationAction>,
+    onConfirm: (Set<NotificationAction>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var current by remember { mutableStateOf(selected) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_notification_actions)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.settings_notification_actions_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                NotificationAction.entries.forEach { action ->
+                    val checked = action in current
+                    val enabled = checked || current.size < MAX_NOTIFICATION_ACTIONS
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .toggleable(
+                                    value = checked,
+                                    enabled = enabled,
+                                    onValueChange = {
+                                        current = if (it) current + action else current - action
+                                    },
+                                    role = Role.Checkbox,
+                                ).padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
+                        Spacer(Modifier.padding(horizontal = 6.dp))
+                        Text(notificationActionLabel(action))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(current) }) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+private const val MAX_NOTIFICATION_ACTIONS = 3
 
 /** OTP size picker with a live preview of the digit size. */
 @Composable
@@ -554,6 +733,47 @@ private fun BlockListDialog(
         },
     )
 }
+
+@Composable
+private fun notificationActionLabel(action: NotificationAction): String =
+    when (action) {
+        NotificationAction.MARK_READ -> stringResource(R.string.action_mark_read)
+        NotificationAction.DELETE -> stringResource(R.string.ui_action_delete)
+        NotificationAction.REPLY -> stringResource(R.string.notification_action_reply)
+        NotificationAction.COPY_OTP -> stringResource(R.string.action_copy_otp)
+        NotificationAction.SHARE_OTP -> stringResource(R.string.notification_action_share_otp)
+    }
+
+@Composable
+private fun notificationActionsSummary(actions: Set<NotificationAction>): String =
+    if (actions.isEmpty()) {
+        stringResource(R.string.settings_notification_actions_none)
+    } else {
+        NotificationAction.entries
+            .filter { it in actions }
+            .map { notificationActionLabel(it) }
+            .joinToString(separator = ", ")
+    }
+
+@Composable
+private fun swipeActionLabel(action: SwipeAction): String =
+    when (action) {
+        SwipeAction.NONE -> stringResource(R.string.swipe_action_none)
+        SwipeAction.TOGGLE_READ -> stringResource(R.string.swipe_action_toggle_read)
+        SwipeAction.DELETE -> stringResource(R.string.ui_action_delete)
+        SwipeAction.ARCHIVE -> stringResource(R.string.action_archive)
+    }
+
+@Composable
+private fun destinationLabel(destination: StartDestination): String =
+    when (destination) {
+        StartDestination.INBOX -> stringResource(R.string.nav_inbox)
+        StartDestination.FINANCE -> stringResource(R.string.nav_finance)
+        StartDestination.ALERTS -> stringResource(R.string.nav_alerts)
+    }
+
+@Composable
+private fun inboxFilterLabel(filter: Category?): String = filter?.displayName() ?: stringResource(R.string.settings_filter_all)
 
 @Composable
 private fun themeLabel(mode: ThemeMode): String =

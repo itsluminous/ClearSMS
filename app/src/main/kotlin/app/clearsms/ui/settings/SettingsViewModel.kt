@@ -8,9 +8,13 @@ import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SummaryFrequency
+import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
@@ -31,8 +35,15 @@ data class SettingsUiState(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val showTransactionDetails: Boolean = true,
+    val showRichAvatars: Boolean = true,
     val deliveryReports: Boolean = false,
     val summaryFrequency: SummaryFrequency = SummaryFrequency.OFF,
+    val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
+    val transactionNotifications: Boolean = true,
+    val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
+    val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
+    val defaultDestination: StartDestination = StartDestination.INBOX,
+    val defaultInboxFilter: Category? = Category.IMPORTANT,
     val otpAutoCopy: Boolean = true,
     val otpAutoDeletePolicy: OtpAutoDeletePolicy = OtpAutoDeletePolicy.NEVER,
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
@@ -73,29 +84,83 @@ class SettingsViewModel
         private val events = MutableSharedFlow<SettingsEvent>()
         val eventFlow: SharedFlow<SettingsEvent> = events
 
+        private data class AppearanceState(
+            val theme: ThemeMode,
+            val dynamicColor: Boolean,
+            val showTransactionDetails: Boolean,
+            val showRichAvatars: Boolean,
+        )
+
+        private data class NotificationState(
+            val deliveryReports: Boolean,
+            val summaryFrequency: SummaryFrequency,
+            val notificationActions: Set<NotificationAction>,
+            val transactionNotifications: Boolean,
+        )
+
+        private data class GestureStartupState(
+            val swipeStart: SwipeAction,
+            val swipeEnd: SwipeAction,
+            val destination: StartDestination,
+            val inboxFilter: Category?,
+        )
+
         private val appearance =
-            combine(settings.theme, uiPrefs.dynamicColor, settings.showTransactionDetails, ::Triple)
+            combine(
+                settings.theme,
+                uiPrefs.dynamicColor,
+                settings.showTransactionDetails,
+                settings.showRichAvatars,
+                ::AppearanceState,
+            )
         private val notifications =
-            combine(uiPrefs.deliveryReports, settings.summaryFrequency, ::Pair)
+            combine(
+                uiPrefs.deliveryReports,
+                settings.summaryFrequency,
+                settings.notificationActions,
+                settings.transactionNotifications,
+                ::NotificationState,
+            )
+        private val gestureStartup =
+            combine(
+                settings.swipeActionStart,
+                settings.swipeActionEnd,
+                settings.defaultDestination,
+                settings.defaultInboxFilter,
+                ::GestureStartupState,
+            )
         private val otp =
             combine(settings.otpAutoCopy, settings.otpAutoDeletePolicy, settings.otpDisplaySize, ::Triple)
         private val other =
             combine(settings.signature, uiPrefs.backupFrequency, uiPrefs.blockedSenders, ::Triple)
 
         val uiState: StateFlow<SettingsUiState> =
-            combine(appearance, notifications, otp, other, combine(sorting, busy, ::Pair)) {
-                    (theme, dynamic, showTx),
-                    (delivery, summary),
+            combine(
+                combine(appearance, gestureStartup, ::Pair),
+                notifications,
+                otp,
+                other,
+                combine(sorting, busy, ::Pair),
+            ) {
+                    (appearanceState, gestures),
+                    notificationState,
                     (autoCopy, autoDelete, size),
                     (signature, backupFreq, blocked),
                     (isSorting, isBusy),
                 ->
                 SettingsUiState(
-                    theme = theme,
-                    dynamicColor = dynamic,
-                    showTransactionDetails = showTx,
-                    deliveryReports = delivery,
-                    summaryFrequency = summary,
+                    theme = appearanceState.theme,
+                    dynamicColor = appearanceState.dynamicColor,
+                    showTransactionDetails = appearanceState.showTransactionDetails,
+                    showRichAvatars = appearanceState.showRichAvatars,
+                    deliveryReports = notificationState.deliveryReports,
+                    summaryFrequency = notificationState.summaryFrequency,
+                    notificationActions = notificationState.notificationActions,
+                    transactionNotifications = notificationState.transactionNotifications,
+                    swipeActionStart = gestures.swipeStart,
+                    swipeActionEnd = gestures.swipeEnd,
+                    defaultDestination = gestures.destination,
+                    defaultInboxFilter = gestures.inboxFilter,
                     otpAutoCopy = autoCopy,
                     otpAutoDeletePolicy = autoDelete,
                     otpDisplaySize = size,
@@ -112,6 +177,20 @@ class SettingsViewModel
         fun setDynamicColor(value: Boolean) = launchIo { uiPrefs.setDynamicColor(value) }
 
         fun setShowTransactionDetails(value: Boolean) = launchIo { settings.setShowTransactionDetails(value) }
+
+        fun setShowRichAvatars(value: Boolean) = launchIo { settings.setShowRichAvatars(value) }
+
+        fun setNotificationActions(value: Set<NotificationAction>) = launchIo { settings.setNotificationActions(value) }
+
+        fun setTransactionNotifications(value: Boolean) = launchIo { settings.setTransactionNotifications(value) }
+
+        fun setSwipeActionStart(value: SwipeAction) = launchIo { settings.setSwipeActionStart(value) }
+
+        fun setSwipeActionEnd(value: SwipeAction) = launchIo { settings.setSwipeActionEnd(value) }
+
+        fun setDefaultDestination(value: StartDestination) = launchIo { settings.setDefaultDestination(value) }
+
+        fun setDefaultInboxFilter(value: Category?) = launchIo { settings.setDefaultInboxFilter(value) }
 
         fun setDeliveryReports(value: Boolean) = launchIo { uiPrefs.setDeliveryReports(value) }
 
