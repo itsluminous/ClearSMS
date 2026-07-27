@@ -225,12 +225,11 @@ After editing the JSON, rebuild the `.db` and include both files in your PR.
 Sender avatars for well-known brands are drawn from a curated table at
 [`rules/brands/brands.json`](rules/brands/brands.json), bundled into the APK as
 `app/src/main/assets/brands.json` (a unit test keeps the two copies identical —
-edit the `rules/brands/` master and copy it over). The app renders an
-**original** mark from these facts — a circular tile in the brand's published
-primary color, a short monogram, and a category badge — with text color chosen
-by WCAG luminance so it stays legible. **No third-party logo artwork is ever
-committed to this repository**; identifying a sender by name and color is fine,
-redistributing trademarked logo files is not.
+edit the `rules/brands/` master and copy it over). For brands without bundled
+logo artwork (see below) the app renders an **original** mark from these
+facts — a circular tile in the brand's published primary color, a short
+monogram, and a category badge — with text color chosen by WCAG luminance so
+it stays legible.
 
 Each entry looks like:
 
@@ -254,39 +253,41 @@ Each entry looks like:
 - `senders` — exact sender IDs after TRAI normalization (`VM-HDFCBK` → `HDFCBK`).
 - `aliases` — whole-word names matched against resolved display names.
 
+### Bundled sender logos
+
+The APK ships real logo artwork for 27 of the curated brands under
+`app/src/main/assets/logos/` (~180 KB total, PNG, max 256 px). The images
+are assembled by [`scripts/build_logo_pack.py`](scripts/build_logo_pack.py)
+`--bundle` from two MIT-licensed projects pinned to exact commits
+([auraveni/global-bank-logos](https://github.com/auraveni/global-bank-logos)
+and [cashfree/payments-icons-library](https://github.com/cashfree/payments-icons-library)),
+so the committed asset set is reproducible by re-running that command.
+Per-file provenance lives in `app/src/main/assets/logos/MANIFEST.md`; the
+upstream MIT licence texts are reproduced in [NOTICE](NOTICE).
+
+On the legal position: the upstream MIT licences cover those projects'
+packaging of the files — the logos themselves remain trademarks of the
+banks and merchants they identify, and are bundled solely to label message
+senders in your own inbox. Logos are never fetched at runtime (the app
+requests no network permission); brands without bundled artwork get the
+generated brand tiles described above.
+
+The avatar fallback chain, in order: contact photo → user-supplied logo
+pack (below) → bundled logo → generated brand tile → category glyph →
+letter avatar. All of it is gated behind *Settings → Appearance → Show
+logos and contact photos*.
+
 ### Sender logo pack (optional, user-supplied)
 
-If you want true logos, *Settings → Appearance → Sender logo pack* lets you
-point the app at a folder on your device (or import a zip) of images you
-provide yourself. Files are matched by name — brand key or sender ID,
-case-insensitive: `hdfc.png`, `HDFCBK.png`, `paytm.webp` (supported:
-`.png`, `.jpg`, `.jpeg`, `.webp`; files over 2 MB are skipped). Images are
-read strictly from local storage, never downloaded, and never leave your
-device. The app ships with no logo images; without a pack it falls back to
-the generated brand tiles described above.
-
-#### Ready-made pack on each release (optional download)
-
-Every [GitHub release](https://github.com/itsluminous/ClearSMS/releases/latest)
-also attaches an optional `clearsms-logo-pack.zip`, assembled by
-[`scripts/build_logo_pack.py`](scripts/build_logo_pack.py) from two
-MIT-licensed projects pinned to exact commits
-([auraveni/global-bank-logos](https://github.com/auraveni/global-bank-logos)
-and [cashfree/payments-icons-library](https://github.com/cashfree/payments-icons-library)).
-Download the zip, then import it in the app via *Settings → Appearance →
-Sender logo pack*. Every image inside is named by brand key
-(`hdfc.png`, `phonepe.png`) so it matches the curated brand table, and the
-zip includes a `MANIFEST.md` (per-file provenance) and `LICENSES.txt`
-(upstream MIT licence text).
-
-To be clear about the legal position: the upstream MIT licences cover
-those projects' packaging of the files, but the logos themselves remain
-trademarks of the banks and merchants they identify. That is why no logo
-artwork is committed to this repository or bundled into the APK — the pack
-is a separate artifact you choose to download and install, used only to
-label senders in your own inbox. If the upstream sources are unreachable
-during a release build, the release simply ships without the pack (the
-APKs are never blocked on it).
+To override or extend the bundled artwork, *Settings → Appearance → Sender
+logo pack* lets you point the app at a folder on your device (or import a
+zip) of images you provide yourself. Files are matched by name — brand key
+or sender ID, case-insensitive: `hdfc.png`, `HDFCBK.png`, `paytm.webp`
+(supported: `.png`, `.jpg`, `.jpeg`, `.webp`; files over 2 MB are skipped).
+Images are read strictly from local storage, never downloaded, and never
+leave your device. A user-supplied image always wins over the bundled logo
+for the same brand. `scripts/build_logo_pack.py --out DIR` can still build
+a standalone zip of the same artwork for use on older builds.
 
 
 ## License
