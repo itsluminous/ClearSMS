@@ -3,26 +3,42 @@ package app.clearsms.ui.conversation
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.map
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.sms.ContactsSource
+import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SmsSender
+import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.BrandGlyph
+import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -38,6 +54,8 @@ data class ConversationItem(
     val message: MessageEntity? = null,
     /** Parsed extraction details (amount, bank, otp_code…) for the detail card. */
     val details: Map<String, String> = emptyMap(),
+    /** Precomputed in the mapper so composition never formats dates. */
+    val timeLabel: String = "",
 )
 
 data class ConversationUiState(
@@ -47,13 +65,17 @@ data class ConversationUiState(
     val isKnownSender: Boolean = false,
     val glyph: BrandGlyph = BrandGlyph.NONE,
     val richAvatars: Boolean = true,
-    val items: List<ConversationItem> = emptyList(),
+    /** Replies typed on this screen, newest last (paged items carry the rest). */
+    val localItems: List<ConversationItem> = emptyList(),
     /** Message to scroll to and briefly highlight, from search / notification. */
     val highlightMessageId: Long? = null,
+    /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
+    val repliable: Boolean = false,
     val sending: Boolean = false,
     val loaded: Boolean = false,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ConversationViewModel
     @Inject
@@ -78,16 +100,41 @@ class ConversationViewModel
         private val sending = MutableStateFlow(false)
         private var nextLocalId = -1L
 
+        /** Multi-select over message ids within the thread. */
+        private val selectionState = MutableStateFlow(SelectionState<Long>())
+        val selection: StateFlow<SelectionState<Long>> = selectionState.asStateFlow()
+
+        /**
+         * Paged thread messages, newest first (the screen renders them with
+         * `reverseLayout`), so a 14k-message thread only ever materializes the
+         * visible window. When navigation carries a highlight target, paging
+         * starts at its position so the message is in the first load.
+         */
+        val pagedItems: Flow<PagingData<ConversationItem>> =
+            flow { emit(initialPosition()) }
+                .flatMapLatest { position ->
+                    Pager(
+                        config =
+                            PagingConfig(
+                                pageSize = PAGE_SIZE,
+                                initialLoadSize = PAGE_SIZE * 2,
+                                enablePlaceholders = false,
+                            ),
+                        initialKey = position,
+                        pagingSourceFactory = { messageRepository.pagedThread(threadId) },
+                    ).flow
+                }.map { data -> data.map { it.toItem() } }
+                .flowOn(ioDispatcher)
+                .cachedIn(viewModelScope)
+
         val uiState: StateFlow<ConversationUiState> =
             combine(
-                messageRepository.observeThread(threadId),
+                flow { emit(messageRepository.firstInThread(threadId)) },
                 sentLocally,
                 sending,
                 settings.showRichAvatars,
-            ) { stored, local, isSending, richAvatars ->
-                val first = stored.firstOrNull()
+            ) { first, local, isSending, richAvatars ->
                 val display = first?.sender?.let { resolveDisplay(it) }
-                val items = (stored.map { it.toItem() } + local).sortedBy { it.timestamp }
                 ConversationUiState(
                     title = display?.name.orEmpty(),
                     address = first?.sender.orEmpty(),
@@ -95,10 +142,11 @@ class ConversationViewModel
                     isKnownSender = display?.isKnownSender ?: false,
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
-                    items = items,
+                    localItems = local,
                     highlightMessageId = highlightMessageId,
+                    repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
                     sending = isSending,
-                    loaded = true,
+                    loaded = first != null,
                 )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
@@ -116,6 +164,7 @@ class ConversationViewModel
                             body = body,
                             timestamp = System.currentTimeMillis(),
                             outgoing = true,
+                            timeLabel = RelativeTime.format(System.currentTimeMillis()),
                         )
                 } finally {
                     sending.value = false
@@ -124,8 +173,55 @@ class ConversationViewModel
         }
 
         fun delete(messageId: Long) {
-            viewModelScope.launch(ioDispatcher) { messageRepository.delete(messageId) }
+            viewModelScope.launch(ioDispatcher) { messageRepository.deleteMessages(listOf(messageId)) }
         }
+
+        // region selection
+
+        fun enterSelection(messageId: Long) {
+            selectionState.update { if (it.active) it.toggle(messageId) else it.enter(messageId) }
+        }
+
+        fun toggleSelection(messageId: Long) {
+            selectionState.update { it.toggle(messageId) }
+        }
+
+        fun exitSelection() {
+            selectionState.value = SelectionState()
+        }
+
+        /** Selects every stored message of the thread (queried, not just loaded pages). */
+        fun selectAll() {
+            viewModelScope.launch(ioDispatcher) {
+                val ids = messageRepository.messageIdsInThread(threadId)
+                selectionState.update { it.withAll(ids) }
+            }
+        }
+
+        /** Deletes the selected messages (batched, synced to the system provider). */
+        fun deleteSelected() {
+            val ids = selectionState.value.selected.toList()
+            exitSelection()
+            viewModelScope.launch(ioDispatcher) { messageRepository.deleteMessages(ids) }
+        }
+
+        /**
+         * Concatenates the selected message bodies in chronological order and
+         * hands the text to [onReady] on the main thread (for the clipboard).
+         */
+        fun copySelected(onReady: (String) -> Unit) {
+            val ids = selectionState.value.selected.toList()
+            exitSelection()
+            viewModelScope.launch {
+                val text =
+                    withContext(ioDispatcher) {
+                        messageRepository.bodiesInOrder(ids).joinToString(separator = "\n\n")
+                    }
+                onReady(text)
+            }
+        }
+
+        // endregion
 
         private fun resolveDisplay(sender: String): SenderDisplay =
             resolveSenderDisplay(
@@ -133,6 +229,11 @@ class ConversationViewModel
                 contactLookup = contactsSource::lookup,
                 directoryLookup = { senderIdStore.lookup(it)?.name },
             )
+
+        private suspend fun initialPosition(): Int? =
+            highlightMessageId
+                ?.let { messageRepository.positionInThread(threadId, it) }
+                ?.takeIf { it > 0 }
 
         private fun MessageEntity.toItem(): ConversationItem =
             ConversationItem(
@@ -142,6 +243,7 @@ class ConversationViewModel
                 outgoing = false,
                 message = this,
                 details = parseDetails(extractedDataJson),
+                timeLabel = RelativeTime.format(timestamp),
             )
 
         private fun parseDetails(raw: String?): Map<String, String> =
@@ -152,4 +254,8 @@ class ConversationViewModel
                     emptyMap()
                 }
             } ?: emptyMap()
+
+        private companion object {
+            const val PAGE_SIZE = 60
+        }
     }

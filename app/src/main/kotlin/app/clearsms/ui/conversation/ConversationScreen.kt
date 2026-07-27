@@ -1,15 +1,16 @@
 package app.clearsms.ui.conversation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,27 +20,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,7 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -59,10 +64,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.amountKindOf
 import kotlinx.coroutines.delay
@@ -79,126 +87,293 @@ fun ConversationScreen(
     viewModel: ConversationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val items = viewModel.pagedItems.collectAsLazyPagingItems()
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val clipboard = LocalClipboardManager.current
     var draft by rememberSaveable { mutableStateOf("") }
-    var sheetItem by remember { mutableStateOf<ConversationItem?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    // Newest local reply renders at the visual bottom (index 0 when reversed).
+    val localDesc = remember(state.localItems) { state.localItems.sortedByDescending { it.timestamp } }
 
     // A message id arriving via navigation (search result / notification) is
     // scrolled to and briefly highlighted exactly once per screen instance.
     var highlightConsumed by rememberSaveable { mutableStateOf(false) }
     var highlightedItemId by remember { mutableStateOf<Long?>(null) }
-
-    LaunchedEffect(state.items.size) {
-        if (state.items.isEmpty()) return@LaunchedEffect
-        val targetIndex =
-            if (highlightConsumed) {
-                null
-            } else {
-                highlightIndexFor(state.items.map { it.id }, state.highlightMessageId)
-            }
-        if (targetIndex != null) {
+    LaunchedEffect(items.itemCount) {
+        if (highlightConsumed || state.highlightMessageId == null || items.itemCount == 0) return@LaunchedEffect
+        val snapshotIds = items.itemSnapshotList.items.map { it.id }
+        val index = highlightIndexFor(snapshotIds, state.highlightMessageId)
+        if (index != null) {
             highlightConsumed = true
             highlightedItemId = state.highlightMessageId
-            listState.scrollToItem(targetIndex)
-        } else {
-            listState.animateScrollToItem(state.items.size - 1)
+            listState.scrollToItem(localDesc.size + index)
         }
     }
 
+    // Sending a reply pins the list back to the bottom.
+    LaunchedEffect(localDesc.size) {
+        if (localDesc.isNotEmpty()) listState.animateScrollToItem(0)
+    }
+
+    BackHandler(enabled = selection.active) { viewModel.exitSelection() }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        SenderAvatar(
-                            name = state.title,
-                            size = 36.dp,
-                            richAvatars = state.richAvatars,
-                            photoUri = state.photoUri,
-                            isKnownSender = state.isKnownSender,
-                            glyph = state.glyph,
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = state.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-            )
+            if (selection.active) {
+                ConversationSelectionBar(
+                    selection = selection,
+                    singleItem =
+                        if (selection.count == 1) {
+                            items.itemSnapshotList.items.firstOrNull { it.id == selection.selected.first() }
+                        } else {
+                            null
+                        },
+                    onClose = viewModel::exitSelection,
+                    onDelete = { confirmDelete = true },
+                    onCopy = {
+                        viewModel.copySelected { text -> clipboard.setText(AnnotatedString(text)) }
+                    },
+                    onSelectAll = viewModel::selectAll,
+                    onCopyOtp = { otp -> clipboard.setText(AnnotatedString(otp)) },
+                    onCreateRule = { body ->
+                        viewModel.exitSelection()
+                        onCreateRule(state.address, body)
+                    },
+                )
+            } else {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            SenderAvatar(
+                                name = state.title,
+                                size = 36.dp,
+                                richAvatars = state.richAvatars,
+                                photoUri = state.photoUri,
+                                isKnownSender = state.isKnownSender,
+                                glyph = state.glyph,
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = state.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
+                    },
+                )
+            }
         },
         bottomBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.conversation_reply_hint)) },
-                    shape = RoundedCornerShape(28.dp),
-                    maxLines = 4,
-                )
-                FilledIconButton(
-                    onClick = {
-                        viewModel.send(draft)
-                        draft = ""
-                    },
-                    enabled = draft.isNotBlank() && !state.sending,
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.Send,
-                        contentDescription = stringResource(R.string.action_send),
+            when {
+                !state.loaded -> Unit
+                state.repliable ->
+                    ReplyComposer(
+                        draft = draft,
+                        onDraftChange = { draft = it },
+                        sending = state.sending,
+                        onSend = {
+                            viewModel.send(draft)
+                            draft = ""
+                        },
                     )
-                }
+                else -> NotRepliableRow()
             }
         },
     ) { padding ->
         LazyColumn(
             state = listState,
+            reverseLayout = true,
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding =
-                androidx.compose.foundation.layout
-                    .PaddingValues(vertical = 8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp),
         ) {
-            itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                val previous = state.items.getOrNull(index - 1)
-                if (previous == null || !RelativeTime.sameDay(previous.timestamp, item.timestamp)) {
-                    DateSeparator(item.timestamp)
-                }
+            // Local (just-sent) replies: newest first == visual bottom.
+            items(
+                count = localDesc.size,
+                key = { i -> localDesc[i].id },
+            ) { i ->
                 MessageBubble(
-                    item = item,
-                    highlighted = item.id == highlightedItemId,
-                    onLongClick = { sheetItem = item },
+                    item = localDesc[i],
+                    highlighted = false,
+                    selected = false,
+                    onClick = {},
+                    onLongClick = {},
                 )
+            }
+            items(
+                count = items.itemCount,
+                key = items.itemKey { it.id },
+            ) { index ->
+                val item = items[index] ?: return@items
+                // The next index holds the chronologically OLDER message; a
+                // date separator belongs above the first message of each day.
+                val older = if (index + 1 < items.itemCount) items.peek(index + 1) else null
+                val showSeparator =
+                    if (older != null) {
+                        !RelativeTime.sameDay(older.timestamp, item.timestamp)
+                    } else {
+                        items.loadState.append.endOfPaginationReached
+                    }
+                Column {
+                    if (showSeparator) DateSeparator(item.timestamp)
+                    MessageBubble(
+                        item = item,
+                        highlighted = item.id == highlightedItemId,
+                        selected = selection.isSelected(item.id),
+                        onClick = { if (selection.active) viewModel.toggleSelection(item.id) else Unit },
+                        onLongClick = { viewModel.enterSelection(item.id) },
+                        selectionActive = selection.active,
+                    )
+                }
             }
         }
     }
 
-    sheetItem?.let { item ->
-        BubbleActionsSheet(
-            item = item,
-            onDismiss = { sheetItem = null },
-            onDelete = {
-                viewModel.delete(item.id)
-                sheetItem = null
+    if (confirmDelete) {
+        val count = selection.count
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.selection_delete_messages_title)) },
+            text = { Text(stringResource(R.string.selection_delete_messages_message, count)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        viewModel.deleteSelected()
+                    },
+                ) { Text(stringResource(R.string.ui_action_delete)) }
             },
-            onCreateRule = {
-                sheetItem = null
-                onCreateRule(state.address, item.body)
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
+    }
+}
+
+/** Contextual top bar shown while message multi-select is active. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConversationSelectionBar(
+    selection: SelectionState<Long>,
+    singleItem: ConversationItem?,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+    onCopy: () -> Unit,
+    onSelectAll: () -> Unit,
+    onCopyOtp: (String) -> Unit,
+    onCreateRule: (body: String) -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    TopAppBar(
+        title = { Text(stringResource(R.string.selection_count, selection.count)) },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.action_exit_selection))
+            }
+        },
+        actions = {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
+            }
+            IconButton(onClick = onCopy) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.action_copy_message))
+            }
+            IconButton(onClick = onSelectAll) {
+                Icon(Icons.Outlined.SelectAll, contentDescription = stringResource(R.string.action_select_all))
+            }
+            if (singleItem != null) {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    singleItem.message?.extractedOtp?.let { otp ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_copy_otp)) },
+                            leadingIcon = { Icon(Icons.Outlined.Password, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                onCopyOtp(otp)
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_add_rule)) },
+                        leadingIcon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onCreateRule(singleItem.body)
+                        },
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun ReplyComposer(
+    draft: String,
+    onDraftChange: (String) -> Unit,
+    sending: Boolean,
+    onSend: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = draft,
+            onValueChange = onDraftChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text(stringResource(R.string.conversation_reply_hint)) },
+            shape = RoundedCornerShape(28.dp),
+            maxLines = 4,
+        )
+        FilledIconButton(
+            onClick = onSend,
+            enabled = draft.isNotBlank() && !sending,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Outlined.Send,
+                contentDescription = stringResource(R.string.action_send),
+            )
+        }
+    }
+}
+
+/** Replaces the composer for one-way senders (alphanumeric ids, short codes). */
+@Composable
+private fun NotRepliableRow() {
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.conversation_not_repliable),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -224,14 +399,25 @@ private fun DateSeparator(timestamp: Long) {
 private fun MessageBubble(
     item: ConversationItem,
     highlighted: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
     onLongClick: () -> Unit,
+    selectionActive: Boolean = false,
 ) {
     var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
     val alignment = if (item.outgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor =
-        if (item.outgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        when {
+            selected -> MaterialTheme.colorScheme.secondaryContainer
+            item.outgoing -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        }
     val textColor =
-        if (item.outgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        when {
+            selected -> MaterialTheme.colorScheme.onSecondaryContainer
+            item.outgoing -> MaterialTheme.colorScheme.onPrimaryContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
 
     // Temporary background behind the opened message: starts filled and fades
     // to transparent over ~1.5s once the row has been composed.
@@ -249,11 +435,19 @@ private fun MessageBubble(
         }
     }
 
+    // The whole row also reflects selection so it is visible at a glance.
+    val rowColor =
+        if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+        } else {
+            highlightColor
+        }
+
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(highlightColor)
+                .background(rowColor)
                 .padding(horizontal = 16.dp, vertical = 3.dp),
         contentAlignment = alignment,
     ) {
@@ -272,7 +466,13 @@ private fun MessageBubble(
                 color = bubbleColor,
                 modifier =
                     Modifier.combinedClickable(
-                        onClick = { if (item.details.isNotEmpty()) expanded = !expanded },
+                        onClick = {
+                            if (selectionActive) {
+                                onClick()
+                            } else if (item.details.isNotEmpty()) {
+                                expanded = !expanded
+                            }
+                        },
                         onLongClick = onLongClick,
                         onLongClickLabel = stringResource(R.string.inbox_row_actions),
                     ),
@@ -280,7 +480,7 @@ private fun MessageBubble(
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                     Text(text = item.body, style = MaterialTheme.typography.bodyLarge, color = textColor)
                     Text(
-                        text = RelativeTime.format(item.timestamp),
+                        text = item.timeLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = textColor.copy(alpha = 0.7f),
                         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
@@ -339,44 +539,4 @@ private fun ParsedDetailCard(details: Map<String, String>) {
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun BubbleActionsSheet(
-    item: ConversationItem,
-    onDismiss: () -> Unit,
-    onDelete: () -> Unit,
-    onCreateRule: () -> Unit,
-) {
-    val clipboard = LocalClipboardManager.current
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(bottom = 24.dp)) {
-            SheetAction(Icons.Outlined.ContentCopy, stringResource(R.string.action_copy_message)) {
-                clipboard.setText(AnnotatedString(item.body))
-                onDismiss()
-            }
-            item.message?.extractedOtp?.let { otp ->
-                SheetAction(Icons.Outlined.Password, stringResource(R.string.action_copy_otp)) {
-                    clipboard.setText(AnnotatedString(otp))
-                    onDismiss()
-                }
-            }
-            SheetAction(Icons.Outlined.Delete, stringResource(R.string.ui_action_delete), onDelete)
-            SheetAction(Icons.Outlined.AddCircleOutline, stringResource(R.string.action_add_rule), onCreateRule)
-        }
-    }
-}
-
-@Composable
-private fun SheetAction(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        leadingContent = { Icon(icon, contentDescription = null) },
-        headlineContent = { Text(label) },
-    )
 }
