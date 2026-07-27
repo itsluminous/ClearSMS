@@ -48,6 +48,48 @@ Run checks the same way CI does:
 ./gradlew ktlintCheck lintDebug testDebugUnitTest
 ```
 
+Release builds are split per ABI: `./gradlew assembleRelease` produces four
+per-architecture APKs (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) plus a
+universal APK under `app/build/outputs/apk/release/`. Without signing
+environment variables (see below) these are unsigned.
+
+## Release signing (CI)
+
+CI builds release APKs on every push. If signing secrets are **not** configured
+(e.g. on forks), it still succeeds and produces unsigned APKs — signed
+publishing activates automatically once the secrets exist.
+
+One-time keystore generation (keep this file and its passwords private; it is
+never committed — `*.jks` is gitignored):
+
+```bash
+keytool -genkeypair -v -keystore clearsms-release.jks -alias clearsms \
+  -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Then configure four repository secrets under
+*Settings → Secrets and variables → Actions*:
+
+| Secret | Value |
+| --- | --- |
+| `SIGNING_KEYSTORE_BASE64` | `base64 -i clearsms-release.jks` output |
+| `SIGNING_KEYSTORE_PASSWORD` | the keystore password |
+| `SIGNING_KEY_ALIAS` | the key alias (e.g. `clearsms`) |
+| `SIGNING_KEY_PASSWORD` | the key password |
+
+Or with the GitHub CLI:
+
+```bash
+gh secret set SIGNING_KEYSTORE_BASE64 --body "$(base64 -i clearsms-release.jks)"
+gh secret set SIGNING_KEYSTORE_PASSWORD
+gh secret set SIGNING_KEY_ALIAS --body "clearsms"
+gh secret set SIGNING_KEY_PASSWORD
+```
+
+Pushing a tag matching `v*` (e.g. `v0.1.0`) creates a GitHub Release with the
+per-ABI (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) and universal APKs
+attached, with auto-generated release notes.
+
 ## Contributing Rules
 
 Categorization rules live under [`rules/`](rules/) and are bundled into the APK at
