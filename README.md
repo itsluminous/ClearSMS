@@ -128,32 +128,83 @@ Two ways to contribute:
    submissions are incorporated into the next release. There are no runtime rule
    downloads — the app stays fully offline.
 
-### Auditing rule coverage
+### Finding missing rules using your own messages
 
-`scripts/audit_rule_coverage.py` replays the bundled rules and the sender-ID
-directory against a real SMS corpus and reports what would be categorized —
-useful for finding high-value gaps before authoring new rules:
+The most useful contribution is telling us which of *your* messages the app fails
+to categorize. `scripts/audit_rule_coverage.py` replays the bundled rules and the
+sender-ID directory against a real SMS corpus and reports exactly that. It runs on
+your computer, needs no app build, and **masks all digits by default** so the
+output is safe to share.
+
+**1. Install the prerequisites**
+
+- Python 3.8 or newer (`python3 --version`)
+- `adb`, from the [Android SDK platform-tools](https://developer.android.com/tools/releases/platform-tools)
+  (macOS: `brew install android-platform-tools`)
+- This repository: `git clone https://github.com/itsluminous/ClearSMS.git && cd ClearSMS`
+
+**2. Enable USB debugging on the phone**
+
+- *Settings → About phone → Software information* and tap **Build number** seven
+  times to unlock Developer options
+- *Settings → Developer options → USB debugging* → on
+- Connect the phone by USB and accept the "Allow USB debugging?" prompt
+- Confirm it is visible: `adb devices` should list your device as `device`
+  (not `unauthorized`)
+
+**3. Run the check**
 
 ```bash
-# Pull the corpus straight from a connected device (adb required):
 python3 scripts/audit_rule_coverage.py --from-device
-
-# Or from a JSONL file with one {"sender": ..., "body": ...} object per line:
-python3 scripts/audit_rule_coverage.py corpus.jsonl --min-coverage 80
 ```
 
-It prints total coverage, per-rule hit counts, and the unmatched messages
-grouped by sender and body shape (ranked by frequency). It also breaks every
-`generic-*` rule hit down by sender (ranked, with a redacted example each) —
-generic rules are meant to be a rarely-used safety net, so this breakdown is
-the work list for authoring sender-specific rules that displace them. Use
-`--generic-top N` to control how many senders are listed per generic rule,
-or `--no-generic-breakdown` to skip the section. Output is redacted by
-default — digits are masked — but the corpus itself is private data: keep it
-outside the repository and never paste raw messages into rules or issues.
-Rules must contain only generic patterns and public brand/sender names.
-`--min-coverage` makes the exit status non-zero below a threshold, so the
-audit can gate CI once a reference corpus is available.
+The script reads your SMS through `adb` into memory only — it writes no copy of
+your messages anywhere. Expect it to take a minute or two on a large inbox.
+
+**4. Read the report**
+
+- **Coverage** — the share of messages that got a confident category.
+- **Per-rule hit counts** — which rules are doing the work.
+- **Unmatched messages** — grouped by sender and body shape, ranked by how often
+  they occur. This is the list worth reporting: the senders at the top are the
+  biggest gaps.
+- **`generic-*` rule breakdown** — messages caught only by the catch-all rules,
+  listed per sender. Generic rules are a last-resort safety net, so anything here
+  ideally deserves a sender-specific rule.
+
+Useful flags: `--top N` (how many unmatched groups to print), `--generic-top N`
+(senders listed per generic rule), `--no-generic-breakdown`, and
+`--min-coverage N` (exit non-zero below a threshold, so the audit can gate CI).
+
+**5. Share the findings**
+
+Open an issue using the **Rule contribution** template and paste the *unmatched
+groups* and *generic breakdown* sections. Before posting, read what you are about
+to share:
+
+- Digits are masked as `X`, but **check the text anyway** — names, email
+  addresses, URLs and order references are not masked.
+- Never pass `--no-redact` on anything you post publicly.
+- Do not attach a full corpus dump, and keep any corpus file outside this
+  repository.
+- Better still, send a pull request: rules are plain JSON under `rules/`, and the
+  schema is documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Rules must contain only generic patterns and public brand/sender names — never
+your account numbers, amounts or personal details.
+
+If you would rather not use a computer at all, the app can do a simpler version of
+this: *Settings → Rules → Share rules with developer* emails your exported rules
+JSON, which tells us what you have had to add by hand.
+
+**Auditing from a file instead of a phone**
+
+If you already have a corpus exported as JSONL (one
+`{"sender": ..., "body": ...}` object per line):
+
+```bash
+python3 scripts/audit_rule_coverage.py corpus.jsonl --min-coverage 80
+```
 
 ### Sender ID database
 

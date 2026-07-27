@@ -8,22 +8,32 @@ body:
       value: |
         Thanks for contributing a rule! Please **redact all personal data** in sample
         messages (amounts, names, account digits, phone numbers).
+
+        Not sure which rules are missing? Run the coverage check against your own
+        phone (see "Finding missing rules using your own messages" in the README):
+        `python3 scripts/audit_rule_coverage.py --from-device`, then paste the
+        relevant sections below.
+  - type: textarea
+    id: audit-report
+    attributes:
+      label: Coverage audit output (optional, but the most useful thing you can share)
+      description: >-
+        The "unmatched" groups and/or "generic-* rule breakdown" sections from
+        scripts/audit_rule_coverage.py. Digits are masked automatically, but check
+        for names, emails and URLs before posting, and never use --no-redact.
+      render: text
   - type: input
     id: sender
     attributes:
       label: Sender ID
-      description: The (normalized) sender the rule targets, e.g. `HDFCBK` or a pattern like `.*HDFC.*`.
+      description: The (normalized) sender the rule targets, e.g. `HDFCBK` or a pattern like `.*HDFC.*`. Leave blank if you are only sharing an audit report.
       placeholder: HDFCBK
-    validations:
-      required: true
   - type: textarea
     id: samples
     attributes:
       label: Redacted sample message(s)
       description: 2–3 example messages the rule should match, with personal data replaced by placeholders.
       placeholder: "Rs.XXXX.XX debited from a/c **1234 on 01-01-26 to VPA merchant@upi."
-    validations:
-      required: true
   - type: dropdown
     id: category
     attributes:
@@ -34,6 +44,7 @@ body:
         - personal
         - otp
         - unknown
+        - "not sure / audit report only"
     validations:
       required: true
   - type: input
