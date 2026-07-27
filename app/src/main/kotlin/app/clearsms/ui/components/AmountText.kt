@@ -10,11 +10,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import app.clearsms.domain.model.TransactionType
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.theme.ClearSmsTheme
+import app.clearsms.ui.theme.LocalSemanticAmountColors
 
 /**
- * Amount rendered in semantic color: error (red) for debits, tertiary (green)
- * for credits, primary (blue) for balance-only amounts. Balances carry no
- * +/− sign because no money moved.
+ * Amount rendered in its fixed semantic color — red for debits, green for
+ * credits, blue for balance-only amounts — from
+ * [app.clearsms.ui.theme.SemanticAmountColors], deliberately NOT the
+ * Material `colorScheme` roles (which shift with the wallpaper on
+ * Android 12+). Balances carry no +/− sign because no money moved.
  */
 @Composable
 fun AmountText(
@@ -23,11 +26,12 @@ fun AmountText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleMedium,
 ) {
+    val colors = LocalSemanticAmountColors.current
     val color =
         when (kind) {
-            AmountKind.DEBIT -> MaterialTheme.colorScheme.error
-            AmountKind.CREDIT -> MaterialTheme.colorScheme.tertiary
-            AmountKind.BALANCE -> MaterialTheme.colorScheme.primary
+            AmountKind.DEBIT -> colors.debit
+            AmountKind.CREDIT -> colors.credit
+            AmountKind.BALANCE -> colors.balance
         }
     val text =
         when (kind) {

@@ -43,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +56,7 @@ import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -173,12 +176,16 @@ fun AccountDetailScreen(
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.weight(1f),
                         )
+                        val amountColors = LocalSemanticAmountColors.current
                         Text(
-                            text =
-                                CurrencyFormat.signedRupees(group.credits, positive = true) + "  " +
-                                    CurrencyFormat.signedRupees(group.debits, positive = false),
+                            text = CurrencyFormat.signedRupees(group.credits, positive = true),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = amountColors.credit,
+                        )
+                        Text(
+                            text = "  " + CurrencyFormat.signedRupees(group.debits, positive = false),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = amountColors.debit,
                         )
                     }
                 }
@@ -268,8 +275,18 @@ private fun TransactionRow(
                 Column {
                     Spacer(Modifier.height(8.dp))
                     tx.balance?.let {
+                        val balanceText = CurrencyFormat.rupees(it)
+                        val line = stringResource(R.string.account_balance_after, balanceText)
+                        val balanceColor = LocalSemanticAmountColors.current.balance
                         Text(
-                            text = stringResource(R.string.account_balance_after, CurrencyFormat.rupees(it)),
+                            text =
+                                buildAnnotatedString {
+                                    append(line)
+                                    val at = line.indexOf(balanceText)
+                                    if (at >= 0) {
+                                        addStyle(SpanStyle(color = balanceColor), at, at + balanceText.length)
+                                    }
+                                },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

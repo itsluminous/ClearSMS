@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import app.clearsms.domain.model.ThemeMode
@@ -84,10 +85,13 @@ fun ClearSmsTheme(
             darkTheme -> DarkScheme
             else -> LightScheme
         }
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = ClearSmsTypography,
-        shapes = ClearSmsShapes,
-        content = content,
-    )
+    val semanticAmountColors = if (darkTheme) SemanticAmountColors.Dark else SemanticAmountColors.Light
+    CompositionLocalProvider(LocalSemanticAmountColors provides semanticAmountColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = ClearSmsTypography,
+            shapes = ClearSmsShapes,
+            content = content,
+        )
+    }
 }

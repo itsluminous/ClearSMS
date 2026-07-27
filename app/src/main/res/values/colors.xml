@@ -6,4 +6,13 @@
     <color name="seed_primary_teal">#FF006A60</color>
     <color name="seed_secondary_indigo">#FF3F51B5</color>
     <color name="ic_launcher_background">#FF006A60</color>
+
+    <!-- Fixed semantic amount colors (light variant). Deliberately outside
+         the Material dynamic palette: debit must always read red, credit
+         green and balance blue regardless of wallpaper. Dark variants live
+         in values-night/colors.xml; the Compose copies are in
+         ui/theme/SemanticAmountColors.kt (kept identical by a unit test). -->
+    <color name="amount_debit">#FFB3261E</color>
+    <color name="amount_credit">#FF1B5E20</color>
+    <color name="amount_balance">#FF0D47A1</color>
 </resources>

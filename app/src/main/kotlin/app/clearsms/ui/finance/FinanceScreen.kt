@@ -64,6 +64,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -77,9 +79,11 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 
 /** Finance dashboard: monthly net, then one pill-selected section — accounts, credit cards or latest transactions. */
@@ -268,8 +272,10 @@ private fun LazyListScope.accountsSection(
                     },
                     trailingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = account.lastKnownBalance?.let { CurrencyFormat.rupees(it) } ?: "—",
+                            account.lastKnownBalance?.let { balance ->
+                                AmountText(amount = balance, kind = AmountKind.BALANCE)
+                            } ?: Text(
+                                text = "—",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
@@ -452,6 +458,7 @@ private fun MonthSummaryCard(
     debits: Double,
     credits: Double,
 ) {
+    val amountColors = LocalSemanticAmountColors.current
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
@@ -462,19 +469,32 @@ private fun MonthSummaryCard(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            Text(
-                text = CurrencyFormat.signedRupees(net, positive = net >= 0),
+            // Fixed semantic color: net outflow red, net inflow green.
+            AmountText(
+                amount = net,
+                kind = if (net < 0) AmountKind.DEBIT else AmountKind.CREDIT,
                 style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Spacer(Modifier.height(8.dp))
+            val creditsText = CurrencyFormat.rupees(credits)
+            val debitsText = CurrencyFormat.rupees(debits)
+            val breakdown = stringResource(R.string.finance_month_breakdown, creditsText, debitsText)
             Text(
                 text =
-                    stringResource(
-                        R.string.finance_month_breakdown,
-                        CurrencyFormat.rupees(credits),
-                        CurrencyFormat.rupees(debits),
-                    ),
+                    buildAnnotatedString {
+                        append(breakdown)
+                        // Credits arg comes first in the template, debits second;
+                        // first/last occurrence keeps this right when both format
+                        // to the same string.
+                        val creditsAt = breakdown.indexOf(creditsText)
+                        if (creditsAt >= 0) {
+                            addStyle(SpanStyle(color = amountColors.credit), creditsAt, creditsAt + creditsText.length)
+                        }
+                        val debitsAt = breakdown.lastIndexOf(debitsText)
+                        if (debitsAt >= 0) {
+                            addStyle(SpanStyle(color = amountColors.debit), debitsAt, debitsAt + debitsText.length)
+                        }
+                    },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -523,11 +543,7 @@ private fun CreditCardCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(
-                        text = CurrencyFormat.rupees(card.outstanding),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    AmountText(amount = card.outstanding, kind = AmountKind.BALANCE)
                 }
             }
             AnimatedVisibility(visible = card.utilization != null) {

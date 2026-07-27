@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark variants of the fixed semantic amount colors (see
+         values/colors.xml). Lightened tones that keep WCAG AA contrast on
+         the dark notification shade and app surfaces. -->
+    <color name="amount_debit">#FFFFB4AB</color>
+    <color name="amount_credit">#FFA5D6A7</color>
+    <color name="amount_balance">#FF90CAF9</color>
+</resources>

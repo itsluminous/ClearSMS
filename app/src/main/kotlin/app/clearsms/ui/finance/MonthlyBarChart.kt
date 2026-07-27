@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.ui.common.CurrencyFormat
+import app.clearsms.ui.theme.LocalSemanticAmountColors
 
 private val CHART_HEIGHT = 160.dp
 private val AXIS_WIDTH = 48.dp
@@ -60,8 +61,10 @@ fun MonthlyBarChart(
     data: List<MonthlyTotals>,
     modifier: Modifier = Modifier,
 ) {
-    val debitColor = MaterialTheme.colorScheme.error
-    val creditColor = MaterialTheme.colorScheme.tertiary
+    // Fixed semantic colors (not colorScheme): debit bars must stay red and
+    // credit bars green whatever the wallpaper-derived palette looks like.
+    val debitColor = LocalSemanticAmountColors.current.debit
+    val creditColor = LocalSemanticAmountColors.current.credit
     val gridColor = MaterialTheme.colorScheme.outlineVariant
 
     var started by remember { mutableStateOf(false) }

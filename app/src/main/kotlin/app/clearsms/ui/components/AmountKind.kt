@@ -1,14 +1,18 @@
 package app.clearsms.ui.components
 
-/** Semantic meaning of a rendered amount, mapped to a distinct color. */
+/**
+ * Semantic meaning of a rendered amount, mapped to a fixed color
+ * ([app.clearsms.ui.theme.SemanticAmountColors] — never the dynamic
+ * Material palette).
+ */
 enum class AmountKind {
-    /** Money left an account — `colorScheme.error` (red). */
+    /** Money left an account — always red. */
     DEBIT,
 
-    /** Money arrived — `colorScheme.tertiary` (green). */
+    /** Money arrived — always green. */
     CREDIT,
 
-    /** A balance report with no movement — `colorScheme.primary` (blue). */
+    /** A balance report with no movement — always blue. */
     BALANCE,
 }
 
