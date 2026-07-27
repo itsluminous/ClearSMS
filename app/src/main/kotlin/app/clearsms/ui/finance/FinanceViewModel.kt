@@ -46,7 +46,11 @@ data class FinanceUiState(
     val monthDebitCount: Int = 0,
     val monthCreditCount: Int = 0,
     val bankAccounts: List<AccountEntity> = emptyList(),
+    /** Accounts with no update for over a year — behind "Show older". */
+    val staleBankAccounts: List<AccountEntity> = emptyList(),
     val creditCards: List<CreditCardItem> = emptyList(),
+    /** Cards with no update for over a year — behind "Show older". */
+    val staleCreditCards: List<CreditCardItem> = emptyList(),
     val cardsAboveSafeLimit: Int = 0,
     /** Bounded page of newest transactions — grows via "load more". */
     val latestTransactions: List<TransactionEntity> = emptyList(),
@@ -92,6 +96,25 @@ class FinanceViewModel
         /** Toggles the summary banner's inline breakdown open/closed. */
         fun toggleSummaryBreakdown() {
             summaryExpandedFlow.value = !summaryExpandedFlow.value
+        }
+
+        /**
+         * "Show older" disclosure per section — deliberately NOT persisted:
+         * dormant rows should re-collapse on the next session, the state
+         * only survives recomposition and config changes within one.
+         */
+        private val showOlderAccountsFlow = MutableStateFlow(false)
+        val showOlderAccounts: StateFlow<Boolean> = showOlderAccountsFlow
+
+        private val showOlderCardsFlow = MutableStateFlow(false)
+        val showOlderCards: StateFlow<Boolean> = showOlderCardsFlow
+
+        fun toggleShowOlderAccounts() {
+            showOlderAccountsFlow.value = !showOlderAccountsFlow.value
+        }
+
+        fun toggleShowOlderCards() {
+            showOlderCardsFlow.value = !showOlderCardsFlow.value
         }
 
         val uiState: StateFlow<FinanceUiState> =
@@ -150,6 +173,13 @@ class FinanceViewModel
             val total = transactions.size
             val monthDebitTxs = monthTxs.filter { it.type == TransactionType.DEBIT }
             val monthCreditTxs = monthTxs.filter { it.type == TransactionType.CREDIT }
+            val nowMs = System.currentTimeMillis()
+            val accountSplit =
+                StaleAccounts.partition(
+                    items = accounts.filter { it.type != AccountType.CREDIT_CARD },
+                    nowMs = nowMs,
+                ) { it.lastUpdated }
+            val cardSplit = StaleAccounts.partition(items = cards, nowMs = nowMs) { it.account.lastUpdated }
             return FinanceUiState(
                 monthNet = MonthlyAggregation.net(monthTxs),
                 monthDebits = monthDebitTxs.sumOf { it.amount },
@@ -157,8 +187,10 @@ class FinanceViewModel
                 monthTxCount = monthTxs.size,
                 monthDebitCount = monthDebitTxs.size,
                 monthCreditCount = monthCreditTxs.size,
-                bankAccounts = accounts.filter { it.type != AccountType.CREDIT_CARD },
-                creditCards = cards,
+                bankAccounts = accountSplit.active,
+                staleBankAccounts = accountSplit.stale,
+                creditCards = cardSplit.active,
+                staleCreditCards = cardSplit.stale,
                 cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),
                 latestTransactions = page,
                 hasMoreTransactions = TransactionPaging.hasMore(shown = page.size, total = total),

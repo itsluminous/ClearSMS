@@ -133,6 +133,8 @@
     <string name="archived_empty_title">Nothing archived</string>
     <string name="archived_empty_subtitle">Conversations you archive appear here.</string>
     <string name="action_unarchive">Unarchive</string>
+    <string name="finance_show_older">Show older (%1$d)</string>
+    <string name="finance_hide_older">Hide older</string>
 
     <!-- Rules -->
     <string name="rules_title">Rules</string>

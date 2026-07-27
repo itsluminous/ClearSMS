@@ -98,6 +98,8 @@ fun FinanceScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val summaryExpanded by viewModel.summaryExpanded.collectAsStateWithLifecycle()
+    val showOlderAccounts by viewModel.showOlderAccounts.collectAsStateWithLifecycle()
+    val showOlderCards by viewModel.showOlderCards.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var limitDialogFor by remember { mutableStateOf<CreditCardItem?>(null) }
     var accountsCollapsed by rememberSaveable { mutableStateOf(false) }
@@ -130,7 +132,12 @@ fun FinanceScreen(
             )
         },
     ) { padding ->
-        if (state.loaded && state.latestTransactions.isEmpty() && state.bankAccounts.isEmpty() && state.creditCards.isEmpty()) {
+        val hasAccounts =
+            state.bankAccounts.isNotEmpty() ||
+                state.staleBankAccounts.isNotEmpty() ||
+                state.creditCards.isNotEmpty() ||
+                state.staleCreditCards.isNotEmpty()
+        if (state.loaded && state.latestTransactions.isEmpty() && !hasAccounts) {
             EmptyState(
                 icon = Icons.Outlined.Wallet,
                 title = stringResource(R.string.finance_empty_title),
@@ -168,6 +175,8 @@ fun FinanceScreen(
                     accountsSection(
                         state = state,
                         collapsed = accountsCollapsed,
+                        showOlder = showOlderAccounts,
+                        onToggleShowOlder = viewModel::toggleShowOlderAccounts,
                         onToggleCollapsed = { accountsCollapsed = !accountsCollapsed },
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
@@ -175,6 +184,8 @@ fun FinanceScreen(
                 FinanceTab.CREDIT_CARDS ->
                     creditCardsSection(
                         state = state,
+                        showOlder = showOlderCards,
+                        onToggleShowOlder = viewModel::toggleShowOlderCards,
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
                         onSetLimit = { limitDialogFor = it },
@@ -236,11 +247,13 @@ private fun FinanceTab.displayName(): String =
 private fun LazyListScope.accountsSection(
     state: FinanceUiState,
     collapsed: Boolean,
+    showOlder: Boolean,
+    onToggleShowOlder: () -> Unit,
     onToggleCollapsed: () -> Unit,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
 ) {
-    if (state.bankAccounts.isEmpty()) {
+    if (state.bankAccounts.isEmpty() && state.staleBankAccounts.isEmpty()) {
         emptySectionItem()
         return
     }
@@ -253,71 +266,146 @@ private fun LazyListScope.accountsSection(
     }
     if (!collapsed) {
         items(state.bankAccounts, key = { "acc_${it.id}" }) { account ->
-            ElevatedCard(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            onClickLabel = stringResource(R.string.finance_open_account_detail),
-                        ) { onOpenAccount(account.accountNumber, account.bankName) },
-            ) {
-                ListItem(
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    leadingContent = {
-                        SenderAvatar(
-                            name = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
-                            richAvatars = state.showRichAvatars,
-                            isKnownSender = account.bankName.isNotBlank(),
-                            glyph = accountGlyph(account.type),
-                        )
-                    },
-                    headlineContent = {
-                        Text(
-                            text = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            text =
-                                stringResource(R.string.finance_masked_account, account.accountNumber) + " · " +
-                                    stringResource(
-                                        R.string.finance_updated,
-                                        RelativeTime.format(account.lastUpdated),
-                                    ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            account.lastKnownBalance?.let { balance ->
-                                AmountText(amount = balance, kind = AmountKind.BALANCE)
-                            } ?: Text(
-                                text = "—",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            IconButton(onClick = { onOpenSource(account) }) {
-                                Icon(
-                                    Icons.AutoMirrored.Outlined.OpenInNew,
-                                    contentDescription = stringResource(R.string.finance_open_source_sms),
-                                )
-                            }
-                        }
-                    },
+            BankAccountCard(
+                account = account,
+                richAvatars = state.showRichAvatars,
+                onOpen = { onOpenAccount(account.accountNumber, account.bankName) },
+                onOpenSource = { onOpenSource(account) },
+            )
+        }
+        if (state.staleBankAccounts.isNotEmpty()) {
+            item(key = "accounts_show_older") {
+                ShowOlderRow(
+                    count = state.staleBankAccounts.size,
+                    expanded = showOlder,
+                    onToggle = onToggleShowOlder,
                 )
+            }
+            if (showOlder) {
+                items(state.staleBankAccounts, key = { "acc_${it.id}" }) { account ->
+                    BankAccountCard(
+                        account = account,
+                        richAvatars = state.showRichAvatars,
+                        onOpen = { onOpenAccount(account.accountNumber, account.bankName) },
+                        onOpenSource = { onOpenSource(account) },
+                    )
+                }
             }
         }
     }
 }
 
+/** One bank account / wallet row — shared by the active and older lists. */
+@Composable
+private fun BankAccountCard(
+    account: AccountEntity,
+    richAvatars: Boolean,
+    onOpen: () -> Unit,
+    onOpenSource: () -> Unit,
+) {
+    ElevatedCard(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel = stringResource(R.string.finance_open_account_detail),
+                ) { onOpen() },
+    ) {
+        ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            leadingContent = {
+                SenderAvatar(
+                    name = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                    richAvatars = richAvatars,
+                    isKnownSender = account.bankName.isNotBlank(),
+                    glyph = accountGlyph(account.type),
+                )
+            },
+            headlineContent = {
+                Text(
+                    text = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            },
+            supportingContent = {
+                Text(
+                    text =
+                        stringResource(R.string.finance_masked_account, account.accountNumber) + " · " +
+                            stringResource(
+                                R.string.finance_updated,
+                                RelativeTime.format(account.lastUpdated),
+                            ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    account.lastKnownBalance?.let { balance ->
+                        AmountText(amount = balance, kind = AmountKind.BALANCE)
+                    } ?: Text(
+                        text = "—",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    IconButton(onClick = onOpenSource) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.OpenInNew,
+                            contentDescription = stringResource(R.string.finance_open_source_sms),
+                        )
+                    }
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Disclosure row for accounts/cards with no update in over a year
+ * ([StaleAccounts.STALE_AFTER]). Collapsed by default; expansion is
+ * session-only.
+ */
+@Composable
+private fun ShowOlderRow(
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text =
+                if (expanded) {
+                    stringResource(R.string.finance_hide_older)
+                } else {
+                    stringResource(R.string.finance_show_older, count)
+                },
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 private fun LazyListScope.creditCardsSection(
     state: FinanceUiState,
+    showOlder: Boolean,
+    onToggleShowOlder: () -> Unit,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
     onSetLimit: (CreditCardItem) -> Unit,
 ) {
-    if (state.creditCards.isEmpty()) {
+    if (state.creditCards.isEmpty() && state.staleCreditCards.isEmpty()) {
         emptySectionItem()
         return
     }
@@ -353,6 +441,26 @@ private fun LazyListScope.creditCardsSection(
             onOpenSource = { onOpenSource(card.account) },
             onSetLimit = { onSetLimit(card) },
         )
+    }
+    if (state.staleCreditCards.isNotEmpty()) {
+        item(key = "cards_show_older") {
+            ShowOlderRow(
+                count = state.staleCreditCards.size,
+                expanded = showOlder,
+                onToggle = onToggleShowOlder,
+            )
+        }
+        if (showOlder) {
+            items(state.staleCreditCards, key = { "card_${it.account.id}" }) { card ->
+                CreditCardCard(
+                    card = card,
+                    richAvatars = state.showRichAvatars,
+                    onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
+                    onOpenSource = { onOpenSource(card.account) },
+                    onSetLimit = { onSetLimit(card) },
+                )
+            }
+        }
     }
 }
 
