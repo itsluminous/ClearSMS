@@ -48,6 +48,13 @@ class MessageRepositoryImpl(
     private val reminderDao get() = database.reminderDao()
     private val ruleDao get() = database.ruleDao()
 
+    /**
+     * Test seam: invoked inside the ingestion transaction after the derived
+     * rows are written, so tests can prove a mid-derivation failure rolls the
+     * message back too. Always null in production.
+     */
+    internal var ingestionFailpointForTest: (suspend () -> Unit)? = null
+
     override fun observeInbox(
         category: Category?,
         unreadOnly: Boolean,
@@ -166,27 +173,38 @@ class MessageRepositoryImpl(
         body: String,
         timestampMs: Long,
     ): MessageEntity {
+        // Classification is pure CPU plus rule reads; only the writes below
+        // need atomicity.
         val enriched = classify(rulesSnapshot(), sender, body)
         val normalized = SenderNormalizer.normalize(sender)
-        val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
-        val blocked = isSenderBlocked(normalized)
+        // Message + derived transaction/account/reminder rows commit together:
+        // a failure mid-derivation must never leave a message without its
+        // finance rows (or vice versa). Retrying the delivery then re-runs the
+        // whole unit; the import path gets the same guarantee from
+        // persistImportedPage, whose unique systemSmsId index makes retries
+        // no-ops.
+        return database.withTransaction {
+            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+            val blocked = isSenderBlocked(normalized)
 
-        val entity =
-            MessageEntity(
-                threadId = threadId,
-                sender = sender,
-                normalizedSender = normalized,
-                body = body,
-                timestamp = timestampMs,
-                category = enriched.result.category,
-                subCategory = enriched.result.subCategory,
-                extractedOtp = enriched.otpCode,
-                extractedDataJson = encodeExtracted(enriched.extracted),
-                isBlockedSender = blocked,
-            )
-        val id = messageDao.insert(entity)
-        persistDerived(id, timestampMs, enriched)
-        return entity.copy(id = id)
+            val entity =
+                MessageEntity(
+                    threadId = threadId,
+                    sender = sender,
+                    normalizedSender = normalized,
+                    body = body,
+                    timestamp = timestampMs,
+                    category = enriched.result.category,
+                    subCategory = enriched.result.subCategory,
+                    extractedOtp = enriched.otpCode,
+                    extractedDataJson = encodeExtracted(enriched.extracted),
+                    isBlockedSender = blocked,
+                )
+            val id = messageDao.insert(entity)
+            persistDerived(id, timestampMs, enriched)
+            ingestionFailpointForTest?.invoke()
+            entity.copy(id = id)
+        }
     }
 
     override suspend fun recategorizeAll() {
@@ -449,7 +467,8 @@ class MessageRepositoryImpl(
         }
     }
 
-    private suspend fun definitions(source: String): List<RuleDefinition> = ruleDao.getBySource(source).mapNotNull { it.toDefinition(json) }
+    private suspend fun definitions(source: String): List<RuleDefinition> =
+        ruleDao.getEnabledBySource(source).mapNotNull { it.toDefinition(json) }
 
     private suspend fun isSenderBlocked(normalizedSender: String): Boolean = messageDao.isSenderBlocked(normalizedSender)
 
