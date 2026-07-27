@@ -34,7 +34,6 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -76,6 +75,7 @@ import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.ui.components.CategoryBadge
+import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.OtpBanner
 import app.clearsms.ui.components.SelectionState
@@ -230,6 +230,7 @@ fun InboxScreen(
                             // Swipes are disabled entirely while selecting.
                             startAction = if (selection.active) SwipeAction.NONE else state.swipeStart,
                             endAction = if (selection.active) SwipeAction.NONE else state.swipeEnd,
+                            deleteSubject = item.display.name,
                             onAction = { action ->
                                 when (action) {
                                     SwipeAction.ARCHIVE -> viewModel.archive(item.message.id)
@@ -262,24 +263,14 @@ fun InboxScreen(
     }
 
     if (confirmDelete) {
-        val count = selection.count
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.selection_delete_threads_title)) },
-            text = { Text(stringResource(R.string.selection_delete_threads_message, count)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmDelete = false
-                        viewModel.deleteSelected()
-                    },
-                ) { Text(stringResource(R.string.ui_action_delete)) }
+        DeleteConfirmationDialog(
+            title = stringResource(R.string.selection_delete_threads_title),
+            text = stringResource(R.string.selection_delete_threads_message, selection.count),
+            onConfirm = {
+                confirmDelete = false
+                viewModel.deleteSelected()
             },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
+            onDismiss = { confirmDelete = false },
         )
     }
 }

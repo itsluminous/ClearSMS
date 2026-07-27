@@ -18,6 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,16 +36,23 @@ import app.clearsms.domain.model.SwipeAction
  * the user-configured [startAction] / [endAction]. [SwipeAction.NONE]
  * disables that direction entirely. The background shows the configured
  * action's icon and label while swiping.
+ *
+ * Reversible actions (archive, read-toggle) run immediately. Delete is
+ * irreversible (it also removes the message from the system SMS provider),
+ * so the row first animates back and a confirmation dialog naming
+ * [deleteSubject] is shown; the delete only happens on confirm.
  */
 @Composable
 fun SwipeableMessageItem(
     startAction: SwipeAction,
     endAction: SwipeAction,
     onAction: (SwipeAction) -> Unit,
+    deleteSubject: String,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
+    var confirmingDelete by remember { mutableStateOf(false) }
     LaunchedEffect(state.currentValue) {
         val direction =
             when (state.currentValue) {
@@ -51,9 +62,28 @@ fun SwipeableMessageItem(
             }
         if (direction != null) {
             val action = resolveSwipeAction(direction, startAction, endAction)
-            if (action != SwipeAction.NONE) onAction(action)
+            // The row always animates back to rest — a delete only removes
+            // it after confirmation, so no dismissed gap is ever left behind.
             state.reset()
+            when (val outcome = SwipeConfirmation.onSwipe(action, confirmingDelete)) {
+                is SwipeConfirmation.Outcome.Perform -> onAction(outcome.action)
+                SwipeConfirmation.Outcome.RequestConfirmation -> confirmingDelete = true
+                SwipeConfirmation.Outcome.Ignore -> Unit
+            }
         }
+    }
+    if (confirmingDelete) {
+        DeleteConfirmationDialog(
+            title = stringResource(R.string.swipe_delete_title),
+            text = stringResource(R.string.swipe_delete_message, deleteSubject),
+            onConfirm = {
+                if (SwipeConfirmation.shouldDeleteOnConfirm(confirmingDelete)) {
+                    confirmingDelete = false
+                    onAction(SwipeAction.DELETE)
+                }
+            },
+            onDismiss = { confirmingDelete = false },
+        )
     }
     SwipeToDismissBox(
         state = state,
