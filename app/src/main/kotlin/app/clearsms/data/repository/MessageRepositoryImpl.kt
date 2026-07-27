@@ -1,5 +1,6 @@
 package app.clearsms.data.repository
 
+import androidx.room.withTransaction
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.ClearSmsDatabase
@@ -72,8 +73,7 @@ class MessageRepositoryImpl(
         body: String,
         timestampMs: Long,
     ): MessageEntity {
-        bundledRuleLoader.ensureLoaded()
-        val enriched = enrich(sender, body)
+        val enriched = classify(rulesSnapshot(), sender, body)
         val normalized = SenderNormalizer.normalize(sender)
         val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
         val blocked = isSenderBlocked(normalized)
@@ -97,9 +97,9 @@ class MessageRepositoryImpl(
     }
 
     override suspend fun recategorizeAll() {
-        bundledRuleLoader.ensureLoaded()
+        val snapshot = rulesSnapshot()
         for (message in messageDao.getAll()) {
-            val enriched = enrich(message.sender, message.body)
+            val enriched = classify(snapshot, message.sender, message.body)
             messageDao.update(
                 message.copy(
                     category = enriched.result.category,
@@ -117,9 +117,101 @@ class MessageRepositoryImpl(
         blocked: Boolean,
     ) = messageDao.setBlockedSender(SenderNormalizer.normalize(sender), blocked)
 
+    // region bulk import
+
+    /**
+     * Decodes the full rule set once. The categorization pipeline re-queries
+     * and re-decodes rules for every message otherwise, which is O(N×R) over
+     * an import; a snapshot makes it O(R).
+     */
+    internal suspend fun rulesSnapshot(): RulesSnapshot {
+        bundledRuleLoader.ensureLoaded()
+        return RulesSnapshot(
+            userRules = definitions(RuleSources.USER),
+            builtinRules = definitions(RuleSources.BUILTIN) + definitions(RuleSources.COMMUNITY),
+        )
+    }
+
+    /**
+     * Pure CPU classification against a pre-decoded [snapshot]; performs no
+     * database writes, so it is safe to run concurrently across a page.
+     */
+    internal fun classify(
+        snapshot: RulesSnapshot,
+        sender: String,
+        body: String,
+    ): Enriched = enrich(sender, body, snapshot.userRules, snapshot.builtinRules)
+
+    /**
+     * Persists one import page in a single transaction using batch inserts.
+     *
+     * Rows whose [ImportedSmsRow.systemSmsId] already exists are skipped by
+     * the unique index (IGNORE strategy), and their derived transaction /
+     * reminder rows are skipped with them — re-processing a page can never
+     * duplicate messages or double finance totals.
+     *
+     * @return the number of messages actually inserted.
+     */
+    internal suspend fun persistImportedPage(page: List<ImportedSmsRow>): Int {
+        if (page.isEmpty()) return 0
+        return database.withTransaction {
+            var maxThreadId = messageDao.maxThreadId() ?: 0L
+            val threadIds = HashMap<String, Long>()
+            val blockedBySender = HashMap<String, Boolean>()
+            val entities =
+                page.map { row ->
+                    val normalized = SenderNormalizer.normalize(row.sender)
+                    val threadId =
+                        threadIds.getOrPut(normalized) {
+                            messageDao.threadIdFor(normalized) ?: ++maxThreadId
+                        }
+                    val enriched = row.enriched
+                    if (enriched != null) {
+                        MessageEntity(
+                            threadId = threadId,
+                            sender = row.sender,
+                            normalizedSender = normalized,
+                            body = row.body,
+                            timestamp = row.timestampMs,
+                            isRead = row.isRead,
+                            category = enriched.result.category,
+                            subCategory = enriched.result.subCategory,
+                            extractedOtp = enriched.otpCode,
+                            extractedDataJson = encodeExtracted(enriched.extracted),
+                            isBlockedSender = blockedBySender.getOrPut(normalized) { isSenderBlocked(normalized) },
+                            systemSmsId = row.systemSmsId,
+                        )
+                    } else {
+                        // Outgoing (sent) message: stored as a read personal message.
+                        MessageEntity(
+                            threadId = threadId,
+                            sender = row.sender,
+                            normalizedSender = normalized,
+                            body = row.body,
+                            timestamp = row.timestampMs,
+                            isRead = true,
+                            category = Category.PERSONAL,
+                            systemSmsId = row.systemSmsId,
+                        )
+                    }
+                }
+            val ids = messageDao.insertAllIgnore(entities)
+            var inserted = 0
+            ids.forEachIndexed { index, id ->
+                if (id == -1L) return@forEachIndexed
+                inserted++
+                val row = page[index]
+                row.enriched?.let { persistDerived(id, row.timestampMs, it) }
+            }
+            inserted
+        }
+    }
+
+    // endregion
+
     // region pipeline
 
-    private data class Enriched(
+    internal data class Enriched(
         val result: CategorizationResult,
         val extracted: Map<String, String>,
         val otpCode: String?,
@@ -128,12 +220,12 @@ class MessageRepositoryImpl(
     )
 
     /** Runs categorizer + parsers and merges rule extracts with parser output. */
-    private suspend fun enrich(
+    private fun enrich(
         sender: String,
         body: String,
+        userRules: List<RuleDefinition>,
+        builtinRules: List<RuleDefinition>,
     ): Enriched {
-        val userRules = definitions(RuleSources.USER)
-        val builtinRules = definitions(RuleSources.BUILTIN) + definitions(RuleSources.COMMUNITY)
         val result = categorizer.categorize(sender, body, userRules, builtinRules)
         val extracts = result.extracted
 
@@ -337,3 +429,22 @@ class MessageRepositoryImpl(
 
     // endregion
 }
+
+/** Immutable decoded rule set, reused for a whole import run. */
+internal data class RulesSnapshot(
+    val userRules: List<RuleDefinition>,
+    val builtinRules: List<RuleDefinition>,
+)
+
+/**
+ * One system SMS provider row prepared for batch persistence.
+ * [enriched] is null for outgoing (sent) messages, which skip classification.
+ */
+internal data class ImportedSmsRow(
+    val systemSmsId: Long,
+    val sender: String,
+    val body: String,
+    val timestampMs: Long,
+    val isRead: Boolean,
+    val enriched: MessageRepositoryImpl.Enriched?,
+)

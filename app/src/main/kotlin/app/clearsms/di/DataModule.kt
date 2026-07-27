@@ -143,12 +143,16 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideMessageRepository(
+    fun provideMessageRepositoryImpl(
         database: ClearSmsDatabase,
         categorizer: MessageCategorizer,
         bundledRuleLoader: BundledRuleLoader,
         json: Json,
-    ): MessageRepository = MessageRepositoryImpl(database, categorizer, bundledRuleLoader, json)
+    ): MessageRepositoryImpl = MessageRepositoryImpl(database, categorizer, bundledRuleLoader, json)
+
+    @Provides
+    @Singleton
+    fun provideMessageRepository(impl: MessageRepositoryImpl): MessageRepository = impl
 
     @Provides
     @Singleton
