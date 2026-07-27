@@ -7,6 +7,20 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Release signing is driven entirely by environment variables so that the same
+// build file works everywhere: in CI with the signing secrets configured the
+// release APKs come out signed, while local builds (and forks / PRs without
+// secrets) gracefully fall back to unsigned release APKs instead of failing.
+val signingKeystoreFile: String? = System.getenv("SIGNING_KEYSTORE_FILE")
+val signingKeystorePassword: String? = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+val signingKeyAlias: String? = System.getenv("SIGNING_KEY_ALIAS")
+val signingKeyPassword: String? = System.getenv("SIGNING_KEY_PASSWORD")
+val hasReleaseSigning =
+    !signingKeystoreFile.isNullOrBlank() &&
+        !signingKeystorePassword.isNullOrBlank() &&
+        !signingKeyAlias.isNullOrBlank() &&
+        !signingKeyPassword.isNullOrBlank()
+
 android {
     namespace = "app.clearsms"
     compileSdk = 35
@@ -21,8 +35,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(signingKeystoreFile!!)
+                storePassword = signingKeystorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Signed only when all four SIGNING_* environment variables are set
+            // (see the top of this file); otherwise the release APK is unsigned.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             // Minification is intentionally disabled for the first release:
             // an SMS app relies heavily on reflection-adjacent frameworks (Room, Hilt,
             // kotlinx.serialization) and shipping an unobfuscated, auditable APK aligns
@@ -34,6 +64,20 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+    }
+
+    // Per-ABI APKs keep downloads small; the universal APK works on any device.
+    // Per-ABI versionCode differentiation is deliberately not applied: it is
+    // only required when uploading multiple APKs to the Play Store, not for
+    // GitHub-based distribution where users pick the matching APK (or the
+    // universal one).
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
         }
     }
 

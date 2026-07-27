@@ -6,6 +6,10 @@ build/
 # Local configuration (SDK path, signing secrets)
 local.properties
 
+# Signing keystores must never be committed
+*.jks
+*.keystore
+
 # IDE
 .idea/
 *.iml
