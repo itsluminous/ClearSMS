@@ -86,6 +86,16 @@ class RecategorizeWorkerTest {
 
             override fun search(query: String): Flow<List<MessageEntity>> = emptyFlow()
 
+            override fun pagedSearch(
+                query: String,
+                category: Category?,
+                cutoffMs: Long?,
+            ): PagingSource<Int, MessageEntity> = throw UnsupportedOperationException()
+
+            override fun observeArchived(): Flow<List<MessageEntity>> = emptyFlow()
+
+            override suspend fun archivedThreadIds(): List<Long> = emptyList()
+
             override suspend fun markRead(
                 messageId: Long,
                 read: Boolean,
