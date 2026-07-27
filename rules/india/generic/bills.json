@@ -6,7 +6,7 @@
       "name": "Generic Bill Due Reminder",
       "priority": 36,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:bill|payment)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+(?:on|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "body_pattern": "(?i)(?:bill|payment)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+(?:on|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -24,7 +24,7 @@
       "name": "Generic Card Statement Due",
       "priority": 35,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*"
+        "body_pattern": "(?i)total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",

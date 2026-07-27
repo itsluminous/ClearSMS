@@ -6,7 +6,7 @@
       "name": "Shortened URL With Prize Bait",
       "priority": 600,
       "match": {
-        "body_pattern": "(?i)(?=[\\s\\S]*(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at))(?=[\\s\\S]*(?:prize|lottery|lucky\\s+draw|jackpot|winner|you\\s+have\\s+won|claim\\s+(?:your|now)|congratulations))[\\s\\S]*"
+        "body_pattern": "(?i)(?=[\\s\\S]*(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at))(?=[\\s\\S]*(?:prize|lottery|lucky\\s+draw|jackpot|winner|you\\s+have\\s+won|claim\\s+(?:your|now)|congratulations))"
       },
       "action": {
         "category": "promotional",
@@ -20,7 +20,7 @@
       "name": "KYC Expiry Phishing",
       "priority": 600,
       "match": {
-        "body_pattern": "(?i)(?=[\\s\\S]*KYC)(?=[\\s\\S]*(?:expir|suspend|block|deactivat|update\\s+(?:immediately|today|now)))(?=[\\s\\S]*(?:http|www\\.|(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at)))[\\s\\S]*"
+        "body_pattern": "(?i)(?=[\\s\\S]*KYC)(?=[\\s\\S]*(?:expir|suspend|block|deactivat|update\\s+(?:immediately|today|now)))(?=[\\s\\S]*(?:http|www\\.|(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at)))"
       },
       "action": {
         "category": "promotional",
@@ -34,7 +34,7 @@
       "name": "Lottery / Prize Winner Bait",
       "priority": 600,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:you\\s+have\\s+won|won\\s+(?:a|an)\\s+(?:lottery|prize|iphone|car)|lucky\\s+draw\\s+winner|claim\\s+your\\s+(?:prize|reward|gift))[\\s\\S]*"
+        "body_pattern": "(?i)(?:you\\s+have\\s+won|won\\s+(?:a|an)\\s+(?:lottery|prize|iphone|car)|lucky\\s+draw\\s+winner|claim\\s+your\\s+(?:prize|reward|gift))"
       },
       "action": {
         "category": "promotional",
@@ -48,8 +48,8 @@
       "name": "HDFC Bank UPI Debit",
       "priority": 305,
       "match": {
-        "sender_pattern": "(?i).*HDFC.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]{0,80}?to\\s+VPA\\s+(\\S+)[\\s\\S]*",
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]{0,80}?to\\s+VPA\\s+(\\S+)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -74,8 +74,8 @@
       "name": "Axis Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*AXIS.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -99,8 +99,8 @@
       "name": "Axis Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*AXIS.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -124,8 +124,8 @@
       "name": "Bank of Baroda Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+\\.{0,3}[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:BOBTXN|BOBSMS|BOB)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+\\.{0,3}[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -149,8 +149,8 @@
       "name": "Bank of Baroda Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+\\.{0,3}[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:BOBTXN|BOBSMS|BOB)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+\\.{0,3}[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -174,8 +174,8 @@
       "name": "Canara Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -199,8 +199,8 @@
       "name": "Canara Bank Account Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -224,8 +224,8 @@
       "name": "Federal Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:FEDBNK|FEDBK|FEDERAL).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:FEDBNK|FEDBK|FEDERAL)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -249,8 +249,8 @@
       "name": "Federal Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:FEDBNK|FEDBK|FEDERAL).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:FEDBNK|FEDBK|FEDERAL)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -274,8 +274,8 @@
       "name": "HDFC Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*HDFC.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:is\\s+)?(?:credited|deposited)\\s+to\\s+(?:your\\s+)?(?:HDFC\\s+Bank\\s+)?a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:is\\s+)?(?:credited|deposited)\\s+to\\s+(?:your\\s+)?(?:HDFC\\s+Bank\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -299,8 +299,8 @@
       "name": "HDFC Bank Debit (Sent From A/C)",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*HDFC.*",
-        "body_pattern": "(?i)[\\s\\S]*sent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+HDFC\\s+Bank\\s+A/C\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)sent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+HDFC\\s+Bank\\s+A/C\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -324,8 +324,8 @@
       "name": "ICICI Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*ICICI.*",
-        "body_pattern": "(?i)[\\s\\S]*ICICI\\s+Bank\\s+Acc(?:oun)?t\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -349,8 +349,8 @@
       "name": "ICICI Bank Account Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*ICICI.*",
-        "body_pattern": "(?i)[\\s\\S]*ICICI\\s+Bank\\s+Acc(?:oun)?t\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:for|with)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:for|with)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -374,8 +374,8 @@
       "name": "IDFC FIRST Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:IDFCFB|IDFCBK|IDFC).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+(?:to|in)\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+(?:to|in)\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -399,8 +399,8 @@
       "name": "IDFC FIRST Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:IDFCFB|IDFCBK|IDFC).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -424,8 +424,8 @@
       "name": "IndusInd Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:INDUSB|INDUSIND).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:INDUSB|INDUSIND)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -449,8 +449,8 @@
       "name": "IndusInd Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:INDUSB|INDUSIND).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:INDUSB|INDUSIND)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -474,8 +474,8 @@
       "name": "Kotak Mahindra Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*KOTAK.*",
-        "body_pattern": "(?i)[\\s\\S]*received\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+(?:your\\s+)?Kotak\\s+Bank\\s+AC\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)KOTAK",
+        "body_pattern": "(?i)received\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+(?:your\\s+)?Kotak\\s+Bank\\s+AC\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -499,8 +499,8 @@
       "name": "Kotak Bank Debit (Sent)",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*KOTAK.*",
-        "body_pattern": "(?i)[\\s\\S]*sent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+Kotak\\s+Bank\\s+AC\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)KOTAK",
+        "body_pattern": "(?i)sent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+Kotak\\s+Bank\\s+AC\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -524,8 +524,8 @@
       "name": "Paytm Payments Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:PYTMB|PAYTMB|IPAYTM|PAYTM).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:received|added)\\s+(?:in|to)\\s+(?:your\\s+)?Paytm\\s+(?:Payments\\s+)?Bank\\s+a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:PYTMB|PAYTMB|IPAYTM|PAYTM)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:received|added)\\s+(?:in|to)\\s+(?:your\\s+)?Paytm\\s+(?:Payments\\s+)?Bank\\s+a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -549,8 +549,8 @@
       "name": "Paytm Payments Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:PYTMB|PAYTMB|IPAYTM|PAYTM).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+paid\\s+from\\s+(?:your\\s+)?Paytm\\s+(?:Payments\\s+)?Bank\\s+a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:PYTMB|PAYTMB|IPAYTM|PAYTM)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+paid\\s+from\\s+(?:your\\s+)?Paytm\\s+(?:Payments\\s+)?Bank\\s+a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -574,8 +574,8 @@
       "name": "Punjab National Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*PNB.*",
-        "body_pattern": "(?i)[\\s\\S]*a/c\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+(?:for|with|by)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)PNB",
+        "body_pattern": "(?i)a/c\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+(?:for|with|by)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -599,8 +599,8 @@
       "name": "PNB Account Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*PNB.*",
-        "body_pattern": "(?i)[\\s\\S]*a/c\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:for|with|by)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)PNB",
+        "body_pattern": "(?i)a/c\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:for|with|by)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -624,8 +624,8 @@
       "name": "State Bank of India Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*SBI.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -649,8 +649,8 @@
       "name": "SBI Transaction Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*SBI.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:tx|txn|transaction)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:done|debited)\\s+on\\s+a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)(?:tx|txn|transaction)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:done|debited)\\s+on\\s+a/c\\s+[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -674,8 +674,8 @@
       "name": "Union Bank of India Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:UNIONB|UBIN|UNION\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*a/c\\s+[Xx*]*(\\d{3,4})\\s+credited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:UNIONB|UBIN|UNION\\s?BANK)",
+        "body_pattern": "(?i)a/c\\s+[Xx*]*(\\d{3,4})\\s+credited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -699,8 +699,8 @@
       "name": "Union Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:UNIONB|UBIN|UNION\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*a/c\\s+[Xx*]*(\\d{3,4})\\s+debited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:UNIONB|UBIN|UNION\\s?BANK)",
+        "body_pattern": "(?i)a/c\\s+[Xx*]*(\\d{3,4})\\s+debited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -724,8 +724,8 @@
       "name": "YES Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:YESBNK|YESBK|YES\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+)?credited\\s+to\\s+(?:YES\\s+BANK\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:YESBNK|YESBK|YES\\s?BANK)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+)?credited\\s+to\\s+(?:YES\\s+BANK\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -749,8 +749,8 @@
       "name": "YES Bank Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:YESBNK|YESBK|YES\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+)?debited\\s+from\\s+(?:YES\\s+BANK\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "sender_pattern": "(?i)(?:YESBNK|YESBK|YES\\s?BANK)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+)?debited\\s+from\\s+(?:YES\\s+BANK\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -774,8 +774,8 @@
       "name": "Axis Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*AXIS.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -798,8 +798,8 @@
       "name": "Bank of Baroda Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:BOBTXN|BOBSMS|BOB)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -822,8 +822,8 @@
       "name": "Canara Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -846,8 +846,8 @@
       "name": "Federal Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:FEDBNK|FEDBK|FEDERAL).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:FEDBNK|FEDBK|FEDERAL)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -870,8 +870,8 @@
       "name": "HDFC Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*HDFC.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -894,8 +894,8 @@
       "name": "ICICI Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*ICICI.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -918,8 +918,8 @@
       "name": "IDFC FIRST Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:IDFCFB|IDFCBK|IDFC).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -942,8 +942,8 @@
       "name": "IndusInd Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:INDUSB|INDUSIND).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:INDUSB|INDUSIND)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -966,8 +966,8 @@
       "name": "Kotak Mahindra Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*KOTAK.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)KOTAK",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -990,8 +990,8 @@
       "name": "Paytm Payments Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:PYTMB|PAYTMB|IPAYTM|PAYTM).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:PYTMB|PAYTMB|IPAYTM|PAYTM)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1014,8 +1014,8 @@
       "name": "Punjab National Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*PNB.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)PNB",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1038,8 +1038,8 @@
       "name": "State Bank of India Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*SBI.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1062,8 +1062,8 @@
       "name": "Union Bank of India Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:UNIONB|UBIN|UNION\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:UNIONB|UBIN|UNION\\s?BANK)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1086,8 +1086,8 @@
       "name": "YES Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:YESBNK|YESBK|YES\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:YESBNK|YESBK|YES\\s?BANK)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1110,8 +1110,8 @@
       "name": "CoWIN Vaccination Appointment",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:COWIN|NHPSMS).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:vaccin|dose)[\\s\\S]{0,80}?(?:scheduled|confirmed|successful|completed)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:COWIN|NHPSMS)",
+        "body_pattern": "(?i)(?:vaccin|dose)[\\s\\S]{0,80}?(?:scheduled|confirmed|successful|completed)"
       },
       "action": {
         "category": "important",
@@ -1125,8 +1125,8 @@
       "name": "CoWIN Vaccination Certificate",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:COWIN|NHPSMS).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:vaccination\\s+)?certificate[\\s\\S]{0,60}?(?:download|available|generated)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:COWIN|NHPSMS)",
+        "body_pattern": "(?i)(?:vaccination\\s+)?certificate[\\s\\S]{0,60}?(?:download|available|generated)"
       },
       "action": {
         "category": "important",
@@ -1140,8 +1140,8 @@
       "name": "DigiLocker DigiLocker Document Issued",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:DGLOCK|DIGLKR).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:issued|added|pushed|available)\\s+(?:in|to)\\s+(?:your\\s+)?DigiLocker[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DGLOCK|DIGLKR)",
+        "body_pattern": "(?i)(?:issued|added|pushed|available)\\s+(?:in|to)\\s+(?:your\\s+)?DigiLocker"
       },
       "action": {
         "category": "important",
@@ -1155,8 +1155,8 @@
       "name": "DigiLocker DigiLocker Account Activity",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:DGLOCK|DIGLKR).*",
-        "body_pattern": "(?i)[\\s\\S]*DigiLocker[\\s\\S]{0,60}?(?:sign[\\s-]?in|login|account\\s+(?:created|accessed))[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DGLOCK|DIGLKR)",
+        "body_pattern": "(?i)DigiLocker[\\s\\S]{0,60}?(?:sign[\\s-]?in|login|account\\s+(?:created|accessed))"
       },
       "action": {
         "category": "important",
@@ -1170,8 +1170,8 @@
       "name": "EPFO EPF Claim Status",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:EPFOHO|EPFO).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:claim|withdrawal)[\\s\\S]{0,60}?(?:settled|approved|received|under\\s+process)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)(?:claim|withdrawal)[\\s\\S]{0,60}?(?:settled|approved|received|under\\s+process)"
       },
       "action": {
         "category": "important",
@@ -1185,8 +1185,8 @@
       "name": "EPFO EPF Contribution Credited",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:EPFOHO|EPFO).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:PF|EPF)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)(?:PF|EPF)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",
@@ -1203,8 +1203,8 @@
       "name": "Income Tax Department Income Tax Return Status",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:ITDEPT|ITDEFL|INCTAX).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:ITR|income\\s+tax\\s+return)[\\s\\S]{0,80}?(?:filed|verified|processed|e-?verif)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:ITDEPT|ITDEFL|INCTAX)",
+        "body_pattern": "(?i)(?:ITR|income\\s+tax\\s+return)[\\s\\S]{0,80}?(?:filed|verified|processed|e-?verif)"
       },
       "action": {
         "category": "important",
@@ -1218,8 +1218,8 @@
       "name": "Income Tax Department Income Tax Refund",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:ITDEPT|ITDEFL|INCTAX).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:income\\s+tax\\s+)?refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|processed|issued)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:ITDEPT|ITDEFL|INCTAX)",
+        "body_pattern": "(?i)(?:income\\s+tax\\s+)?refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|processed|issued)"
       },
       "action": {
         "category": "important",
@@ -1236,8 +1236,8 @@
       "name": "UIDAI Aadhaar Authentication Alert",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:UIDAI|ADHAAR).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:aadha?ar|UIDAI)[\\s\\S]{0,60}?(?:authenticat|e-?KYC)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
+        "body_pattern": "(?i)(?:aadha?ar|UIDAI)[\\s\\S]{0,60}?(?:authenticat|e-?KYC)"
       },
       "action": {
         "category": "important",
@@ -1251,8 +1251,8 @@
       "name": "UIDAI Aadhaar Update Notification",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:UIDAI|ADHAAR).*",
-        "body_pattern": "(?i)[\\s\\S]*aadha?ar[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
+        "body_pattern": "(?i)aadha?ar[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)"
       },
       "action": {
         "category": "important",
@@ -1266,8 +1266,8 @@
       "name": "Axis Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*AXIS.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1288,8 +1288,8 @@
       "name": "Bank of Baroda Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:BOBTXN|BOBSMS|BOB)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1310,8 +1310,8 @@
       "name": "Canara Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1332,8 +1332,8 @@
       "name": "Federal Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:FEDBNK|FEDBK|FEDERAL).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:FEDBNK|FEDBK|FEDERAL)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1354,8 +1354,8 @@
       "name": "HDFC Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*HDFC.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1376,8 +1376,8 @@
       "name": "ICICI Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*ICICI.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1398,8 +1398,8 @@
       "name": "IDFC FIRST Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:IDFCFB|IDFCBK|IDFC).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1420,8 +1420,8 @@
       "name": "IndusInd Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:INDUSB|INDUSIND).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:INDUSB|INDUSIND)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1442,8 +1442,8 @@
       "name": "Kotak Mahindra Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*KOTAK.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)KOTAK",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1464,8 +1464,8 @@
       "name": "Paytm Payments Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:PYTMB|PAYTMB|IPAYTM|PAYTM).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:PYTMB|PAYTMB|IPAYTM|PAYTM)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1486,8 +1486,8 @@
       "name": "Punjab National Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*PNB.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)PNB",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1508,8 +1508,8 @@
       "name": "State Bank of India Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*SBI.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1530,8 +1530,8 @@
       "name": "Union Bank of India Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:UNIONB|UBIN|UNION\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:UNIONB|UBIN|UNION\\s?BANK)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1552,8 +1552,8 @@
       "name": "YES Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:YESBNK|YESBK|YES\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:YESBNK|YESBK|YES\\s?BANK)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1574,8 +1574,8 @@
       "name": "Axis Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*AXIS.*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1594,8 +1594,8 @@
       "name": "Bank of Baroda EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:BOBTXN|BOBSMS|BOB).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:BOBTXN|BOBSMS|BOB)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1614,8 +1614,8 @@
       "name": "Canara Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1634,8 +1634,8 @@
       "name": "Federal Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:FEDBNK|FEDBK|FEDERAL).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:FEDBNK|FEDBK|FEDERAL)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1654,8 +1654,8 @@
       "name": "HDFC Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*HDFC.*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1674,8 +1674,8 @@
       "name": "ICICI Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*ICICI.*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1694,8 +1694,8 @@
       "name": "IDFC FIRST Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:IDFCFB|IDFCBK|IDFC).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1714,8 +1714,8 @@
       "name": "IndusInd Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:INDUSB|INDUSIND).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:INDUSB|INDUSIND)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1734,8 +1734,8 @@
       "name": "Kotak Mahindra Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*KOTAK.*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)KOTAK",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1754,8 +1754,8 @@
       "name": "Paytm Payments Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:PYTMB|PAYTMB|IPAYTM|PAYTM).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:PYTMB|PAYTMB|IPAYTM|PAYTM)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1774,8 +1774,8 @@
       "name": "Punjab National Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*PNB.*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)PNB",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1794,8 +1794,8 @@
       "name": "State Bank of India EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*SBI.*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1814,8 +1814,8 @@
       "name": "Union Bank of India EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:UNIONB|UBIN|UNION\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:UNIONB|UBIN|UNION\\s?BANK)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1834,8 +1834,8 @@
       "name": "YES Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:YESBNK|YESBK|YES\\s?BANK).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:YESBNK|YESBK|YES\\s?BANK)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -1854,8 +1854,8 @@
       "name": "Airtel Recharge Confirmation",
       "priority": 240,
       "match": {
-        "sender_pattern": "(?i).*AIRTEL.*",
-        "body_pattern": "(?i)[\\s\\S]*recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful[\\s\\S]*",
+        "sender_pattern": "(?i)AIRTEL",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1877,8 +1877,8 @@
       "name": "BSNL Recharge Confirmation",
       "priority": 240,
       "match": {
-        "sender_pattern": "(?i).*BSNL.*",
-        "body_pattern": "(?i)[\\s\\S]*recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful[\\s\\S]*",
+        "sender_pattern": "(?i)BSNL",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1900,8 +1900,8 @@
       "name": "Jio Recharge Confirmation",
       "priority": 240,
       "match": {
-        "sender_pattern": "(?i).*(?:JIONET|JIOPAY|JIO).*",
-        "body_pattern": "(?i)[\\s\\S]*recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful[\\s\\S]*",
+        "sender_pattern": "(?i)(?:JIONET|JIOPAY|JIO)",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1923,8 +1923,8 @@
       "name": "Vi Recharge Confirmation",
       "priority": 240,
       "match": {
-        "sender_pattern": "(?i).*(?:VICARE|MYVI|VIFIBR).*",
-        "body_pattern": "(?i)[\\s\\S]*recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful[\\s\\S]*",
+        "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1946,8 +1946,8 @@
       "name": "Airtel Data Balance Alert",
       "priority": 230,
       "match": {
-        "sender_pattern": "(?i).*AIRTEL.*",
-        "body_pattern": "(?i)[\\s\\S]*data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)[\\s\\S]*"
+        "sender_pattern": "(?i)AIRTEL",
+        "body_pattern": "(?i)data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)"
       },
       "action": {
         "category": "important",
@@ -1965,8 +1965,8 @@
       "name": "BSNL Data Balance Alert",
       "priority": 230,
       "match": {
-        "sender_pattern": "(?i).*BSNL.*",
-        "body_pattern": "(?i)[\\s\\S]*data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)[\\s\\S]*"
+        "sender_pattern": "(?i)BSNL",
+        "body_pattern": "(?i)data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)"
       },
       "action": {
         "category": "important",
@@ -1984,8 +1984,8 @@
       "name": "Jio Data Balance Alert",
       "priority": 230,
       "match": {
-        "sender_pattern": "(?i).*(?:JIONET|JIOPAY|JIO).*",
-        "body_pattern": "(?i)[\\s\\S]*data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:JIONET|JIOPAY|JIO)",
+        "body_pattern": "(?i)data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)"
       },
       "action": {
         "category": "important",
@@ -2003,8 +2003,8 @@
       "name": "Vi Data Balance Alert",
       "priority": 230,
       "match": {
-        "sender_pattern": "(?i).*(?:VICARE|MYVI|VIFIBR).*",
-        "body_pattern": "(?i)[\\s\\S]*data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
+        "body_pattern": "(?i)data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)"
       },
       "action": {
         "category": "important",
@@ -2022,8 +2022,8 @@
       "name": "Amazon Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:AMAZON|AMZN).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:AMAZON|AMZN)",
+        "body_pattern": "(?i)(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)"
       },
       "action": {
         "category": "important",
@@ -2040,8 +2040,8 @@
       "name": "bigbasket Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:BIGBKT|BBSKET|BIGBASKET).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:BIGBKT|BBSKET|BIGBASKET)",
+        "body_pattern": "(?i)(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)"
       },
       "action": {
         "category": "important",
@@ -2058,8 +2058,8 @@
       "name": "Blue Dart Shipment Tracking",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:BLDART|BLUDRT|BLUEDART).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:BLDART|BLUDRT|BLUEDART)",
+        "body_pattern": "(?i)(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})"
       },
       "action": {
         "category": "important",
@@ -2077,8 +2077,8 @@
       "name": "Delhivery Shipment Tracking",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:DLHVRY|DELHIVERY).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DLHVRY|DELHIVERY)",
+        "body_pattern": "(?i)(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})"
       },
       "action": {
         "category": "important",
@@ -2096,8 +2096,8 @@
       "name": "Ekart Logistics Shipment Tracking",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:EKART|EKTLOG).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:EKART|EKTLOG)",
+        "body_pattern": "(?i)(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})"
       },
       "action": {
         "category": "important",
@@ -2115,8 +2115,8 @@
       "name": "Flipkart Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:FLPKRT|FKRT|FLIPKART).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)"
       },
       "action": {
         "category": "important",
@@ -2133,8 +2133,8 @@
       "name": "Myntra Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*MYNTRA.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)[\\s\\S]*"
+        "sender_pattern": "(?i)MYNTRA",
+        "body_pattern": "(?i)(?:order|package|parcel|shipment)[\\s\\S]{0,80}?(?:shipped|dispatched|out\\s+for\\s+delivery|delivered|arriving\\s+(?:today|tomorrow|soon)|on\\s+the\\s+way)"
       },
       "action": {
         "category": "important",
@@ -2151,8 +2151,8 @@
       "name": "Swiggy Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*SWIGGY.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))[\\s\\S]*"
+        "sender_pattern": "(?i)SWIGGY",
+        "body_pattern": "(?i)(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))"
       },
       "action": {
         "category": "important",
@@ -2169,8 +2169,8 @@
       "name": "Zomato Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*ZOMATO.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))[\\s\\S]*"
+        "sender_pattern": "(?i)ZOMATO",
+        "body_pattern": "(?i)(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))"
       },
       "action": {
         "category": "important",
@@ -2187,8 +2187,8 @@
       "name": "Blue Dart Delivery Status Update",
       "priority": 215,
       "match": {
-        "sender_pattern": "(?i).*(?:BLDART|BLUDRT|BLUEDART).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))[\\s\\S]*"
+        "sender_pattern": "(?i)(?:BLDART|BLUDRT|BLUEDART)",
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))"
       },
       "action": {
         "category": "important",
@@ -2205,8 +2205,8 @@
       "name": "Delhivery Delivery Status Update",
       "priority": 215,
       "match": {
-        "sender_pattern": "(?i).*(?:DLHVRY|DELHIVERY).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DLHVRY|DELHIVERY)",
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))"
       },
       "action": {
         "category": "important",
@@ -2223,8 +2223,8 @@
       "name": "Ekart Logistics Delivery Status Update",
       "priority": 215,
       "match": {
-        "sender_pattern": "(?i).*(?:EKART|EKTLOG).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))[\\s\\S]*"
+        "sender_pattern": "(?i)(?:EKART|EKTLOG)",
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))"
       },
       "action": {
         "category": "important",
@@ -2241,8 +2241,8 @@
       "name": "Airtel Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*AIRTEL.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)[\\s\\S]*"
+        "sender_pattern": "(?i)AIRTEL",
+        "body_pattern": "(?i)(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)"
       },
       "action": {
         "category": "promotional",
@@ -2256,8 +2256,8 @@
       "name": "Amazon Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*(?:AMAZON|AMZN).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:AMAZON|AMZN)",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",
@@ -2271,8 +2271,8 @@
       "name": "bigbasket Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*(?:BIGBKT|BBSKET|BIGBASKET).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:BIGBKT|BBSKET|BIGBASKET)",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",
@@ -2286,8 +2286,8 @@
       "name": "BSNL Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*BSNL.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)[\\s\\S]*"
+        "sender_pattern": "(?i)BSNL",
+        "body_pattern": "(?i)(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)"
       },
       "action": {
         "category": "promotional",
@@ -2301,8 +2301,8 @@
       "name": "Flipkart Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*(?:FLPKRT|FKRT|FLIPKART).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",
@@ -2316,8 +2316,8 @@
       "name": "Jio Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*(?:JIONET|JIOPAY|JIO).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:JIONET|JIOPAY|JIO)",
+        "body_pattern": "(?i)(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)"
       },
       "action": {
         "category": "promotional",
@@ -2331,8 +2331,8 @@
       "name": "Myntra Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*MYNTRA.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)MYNTRA",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",
@@ -2346,8 +2346,8 @@
       "name": "Swiggy Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*SWIGGY.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)SWIGGY",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",
@@ -2361,8 +2361,8 @@
       "name": "Vi Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*(?:VICARE|MYVI|VIFIBR).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
+        "body_pattern": "(?i)(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)"
       },
       "action": {
         "category": "promotional",
@@ -2376,8 +2376,8 @@
       "name": "Zomato Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*ZOMATO.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)ZOMATO",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",
@@ -2391,7 +2391,7 @@
       "name": "Generic OTP Extraction (keyword first)",
       "priority": 55,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:otp|code|password|pin)\\s*(?:is|:)?\\s*(\\d{4,8})[\\s\\S]*"
+        "body_pattern": "(?i)(?:otp|code|password|pin)\\s*(?:is|:)?\\s*(\\d{4,8})"
       },
       "action": {
         "category": "otp",
@@ -2408,7 +2408,7 @@
       "name": "Generic OTP Extraction (digits first)",
       "priority": 54,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?<!\\d)(\\d{4,8})\\s+is\\s+(?:your|the)\\s+(?:otp|one[\\s-]?time|verification|code|password)[\\s\\S]*"
+        "body_pattern": "(?i)(?<!\\d)(\\d{4,8})\\s+is\\s+(?:your|the)\\s+(?:otp|one[\\s-]?time|verification|code|password)"
       },
       "action": {
         "category": "otp",
@@ -2425,7 +2425,7 @@
       "name": "Generic OTP Extraction (use/enter)",
       "priority": 53,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:use|enter)\\s+(?:otp\\s+)?(\\d{4,8})\\s+(?:to|for|as)[\\s\\S]*"
+        "body_pattern": "(?i)(?:use|enter)\\s+(?:otp\\s+)?(\\d{4,8})\\s+(?:to|for|as)"
       },
       "action": {
         "category": "otp",
@@ -2442,7 +2442,7 @@
       "name": "Contextual 6-digit OTP",
       "priority": 52,
       "match": {
-        "body_pattern": "(?i)(?=[\\s\\S]*(?:verif|authenticat|one[\\s-]?time|login|sign[\\s-]?in))[\\s\\S]*?(?<!\\d)(\\d{6})(?!\\d)[\\s\\S]*"
+        "body_pattern": "(?i)(?=[\\s\\S]*(?:verif|authenticat|one[\\s-]?time|login|sign[\\s-]?in))[\\s\\S]*?(?<!\\d)(\\d{6})(?!\\d)"
       },
       "action": {
         "category": "otp",
@@ -2459,7 +2459,7 @@
       "name": "Generic Debit With Account",
       "priority": 41,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:debited|spent|paid|withdrawn|deducted)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:debited|spent|paid|withdrawn|deducted)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -2482,7 +2482,7 @@
       "name": "Generic Debit Amount Only",
       "priority": 40,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:debited|withdrawn|deducted)\\s+(?:by|for|with)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "body_pattern": "(?i)(?:debited|withdrawn|deducted)\\s+(?:by|for|with)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -2504,7 +2504,7 @@
       "name": "Generic Credit With Account",
       "priority": 39,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|received|deposited)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]*",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|received|deposited)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -2527,7 +2527,7 @@
       "name": "Generic Credit Amount Only",
       "priority": 38,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:credited|deposited)\\s+(?:with|by)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "body_pattern": "(?i)(?:credited|deposited)\\s+(?:with|by)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -2549,7 +2549,7 @@
       "name": "Generic Bill Due Reminder",
       "priority": 36,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:bill|payment)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+(?:on|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "body_pattern": "(?i)(?:bill|payment)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+(?:on|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -2567,7 +2567,7 @@
       "name": "Generic Card Statement Due",
       "priority": 35,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*"
+        "body_pattern": "(?i)total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",
@@ -2585,7 +2585,7 @@
       "name": "Generic Delivery Status Keywords",
       "priority": 31,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow))[\\s\\S]*"
+        "body_pattern": "(?i)(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow))"
       },
       "action": {
         "category": "important",
@@ -2599,7 +2599,7 @@
       "name": "Generic Shipment Tracking Number",
       "priority": 30,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+        "body_pattern": "(?i)(?:AWB|tracking|consignment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})"
       },
       "action": {
         "category": "important",

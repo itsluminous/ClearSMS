@@ -6,8 +6,8 @@
       "name": "Canara Bank Account Debit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -31,8 +31,8 @@
       "name": "Canara Bank Credit Transaction",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:your\\s+)?account\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+(?:with|for)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -56,8 +56,8 @@
       "name": "Canara Bank Balance Alert",
       "priority": 280,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*",
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -80,8 +80,8 @@
       "name": "Canara Bank Credit Card Bill Reminder",
       "priority": 260,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(?:credit\\s+)?card\\s+(?:no\\.?\\s*)?(?:ending\\s+)?[Xx*]*(\\d{4})[\\s\\S]{0,100}?total\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?min(?:imum)?\\s+(?:amt|amount)?\\s*due[\\s:]*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?(?:due\\s+by|pay\\s+by|by)\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",
@@ -102,8 +102,8 @@
       "name": "Canara Bank EMI Reminder",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i).*(?:CANBNK|CANBK|CANARA).*",
-        "body_pattern": "(?i)[\\s\\S]*EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)EMI\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?due\\s+on\\s+(\\d{1,2}[-/\\s](?:[A-Za-z]{3}|\\d{1,2})[-/\\s]\\d{2,4})"
       },
       "action": {
         "category": "important",

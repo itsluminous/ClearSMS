@@ -6,8 +6,8 @@
       "name": "CoWIN Vaccination Appointment",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:COWIN|NHPSMS).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:vaccin|dose)[\\s\\S]{0,80}?(?:scheduled|confirmed|successful|completed)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:COWIN|NHPSMS)",
+        "body_pattern": "(?i)(?:vaccin|dose)[\\s\\S]{0,80}?(?:scheduled|confirmed|successful|completed)"
       },
       "action": {
         "category": "important",
@@ -21,8 +21,8 @@
       "name": "CoWIN Vaccination Certificate",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:COWIN|NHPSMS).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:vaccination\\s+)?certificate[\\s\\S]{0,60}?(?:download|available|generated)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:COWIN|NHPSMS)",
+        "body_pattern": "(?i)(?:vaccination\\s+)?certificate[\\s\\S]{0,60}?(?:download|available|generated)"
       },
       "action": {
         "category": "important",

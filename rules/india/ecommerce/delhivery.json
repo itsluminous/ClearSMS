@@ -6,8 +6,8 @@
       "name": "Delhivery Shipment Tracking",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*(?:DLHVRY|DELHIVERY).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DLHVRY|DELHIVERY)",
+        "body_pattern": "(?i)(?:AWB|tracking|consignment|shipment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})"
       },
       "action": {
         "category": "important",
@@ -25,8 +25,8 @@
       "name": "Delhivery Delivery Status Update",
       "priority": 215,
       "match": {
-        "sender_pattern": "(?i).*(?:DLHVRY|DELHIVERY).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DLHVRY|DELHIVERY)",
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))"
       },
       "action": {
         "category": "important",

@@ -6,7 +6,7 @@
       "name": "Generic Delivery Status Keywords",
       "priority": 31,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow))[\\s\\S]*"
+        "body_pattern": "(?i)(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow))"
       },
       "action": {
         "category": "important",
@@ -20,7 +20,7 @@
       "name": "Generic Shipment Tracking Number",
       "priority": 30,
       "match": {
-        "body_pattern": "(?i)[\\s\\S]*(?:AWB|tracking|consignment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})[\\s\\S]*"
+        "body_pattern": "(?i)(?:AWB|tracking|consignment)\\s*(?:no\\.?|id|number)?[\\s:#-]*([A-Za-z0-9]{8,20})"
       },
       "action": {
         "category": "important",

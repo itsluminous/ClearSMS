@@ -6,8 +6,8 @@
       "name": "UIDAI Aadhaar Update Notification",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:UIDAI|ADHAAR).*",
-        "body_pattern": "(?i)[\\s\\S]*aadha?ar[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
+        "body_pattern": "(?i)aadha?ar[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)"
       },
       "action": {
         "category": "important",
@@ -21,8 +21,8 @@
       "name": "UIDAI Aadhaar Authentication Alert",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:UIDAI|ADHAAR).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:aadha?ar|UIDAI)[\\s\\S]{0,60}?(?:authenticat|e-?KYC)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
+        "body_pattern": "(?i)(?:aadha?ar|UIDAI)[\\s\\S]{0,60}?(?:authenticat|e-?KYC)"
       },
       "action": {
         "category": "important",

@@ -6,8 +6,8 @@
       "name": "DigiLocker DigiLocker Document Issued",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:DGLOCK|DIGLKR).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:issued|added|pushed|available)\\s+(?:in|to)\\s+(?:your\\s+)?DigiLocker[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DGLOCK|DIGLKR)",
+        "body_pattern": "(?i)(?:issued|added|pushed|available)\\s+(?:in|to)\\s+(?:your\\s+)?DigiLocker"
       },
       "action": {
         "category": "important",
@@ -21,8 +21,8 @@
       "name": "DigiLocker DigiLocker Account Activity",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:DGLOCK|DIGLKR).*",
-        "body_pattern": "(?i)[\\s\\S]*DigiLocker[\\s\\S]{0,60}?(?:sign[\\s-]?in|login|account\\s+(?:created|accessed))[\\s\\S]*"
+        "sender_pattern": "(?i)(?:DGLOCK|DIGLKR)",
+        "body_pattern": "(?i)DigiLocker[\\s\\S]{0,60}?(?:sign[\\s-]?in|login|account\\s+(?:created|accessed))"
       },
       "action": {
         "category": "important",

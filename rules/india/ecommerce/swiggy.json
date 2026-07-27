@@ -6,8 +6,8 @@
       "name": "Swiggy Order Delivery Update",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i).*SWIGGY.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))[\\s\\S]*"
+        "sender_pattern": "(?i)SWIGGY",
+        "body_pattern": "(?i)(?:order[\\s\\S]{0,60}?(?:delivered|on\\s+the\\s+way|picked\\s+up|being\\s+prepared|placed)|delivery\\s+(?:partner|executive)[\\s\\S]{0,40}?(?:assigned|arriving|reached))"
       },
       "action": {
         "category": "important",
@@ -24,8 +24,8 @@
       "name": "Swiggy Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*SWIGGY.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)[\\s\\S]*"
+        "sender_pattern": "(?i)SWIGGY",
+        "body_pattern": "(?i)(?:\\d{1,2}%\\s*off|sale\\s+is\\s+live|mega\\s+sale|big\\s+billion|great\\s+indian|flat\\s+\\d+|coupon|promo\\s+code|discount|deal\\s+of\\s+the\\s+day|cashback)"
       },
       "action": {
         "category": "promotional",

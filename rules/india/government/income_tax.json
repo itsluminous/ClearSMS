@@ -6,8 +6,8 @@
       "name": "Income Tax Department Income Tax Refund",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:ITDEPT|ITDEFL|INCTAX).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:income\\s+tax\\s+)?refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|processed|issued)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:ITDEPT|ITDEFL|INCTAX)",
+        "body_pattern": "(?i)(?:income\\s+tax\\s+)?refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|processed|issued)"
       },
       "action": {
         "category": "important",
@@ -24,8 +24,8 @@
       "name": "Income Tax Department Income Tax Return Status",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:ITDEPT|ITDEFL|INCTAX).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:ITR|income\\s+tax\\s+return)[\\s\\S]{0,80}?(?:filed|verified|processed|e-?verif)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:ITDEPT|ITDEFL|INCTAX)",
+        "body_pattern": "(?i)(?:ITR|income\\s+tax\\s+return)[\\s\\S]{0,80}?(?:filed|verified|processed|e-?verif)"
       },
       "action": {
         "category": "important",

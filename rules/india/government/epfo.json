@@ -6,8 +6,8 @@
       "name": "EPFO EPF Contribution Credited",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:EPFOHO|EPFO).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:PF|EPF)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)(?:PF|EPF)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",
@@ -24,8 +24,8 @@
       "name": "EPFO EPF Claim Status",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i).*(?:EPFOHO|EPFO).*",
-        "body_pattern": "(?i)[\\s\\S]*(?:claim|withdrawal)[\\s\\S]{0,60}?(?:settled|approved|received|under\\s+process)[\\s\\S]*"
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)(?:claim|withdrawal)[\\s\\S]{0,60}?(?:settled|approved|received|under\\s+process)"
       },
       "action": {
         "category": "important",

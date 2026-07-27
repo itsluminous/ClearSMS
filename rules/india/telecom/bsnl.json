@@ -6,8 +6,8 @@
       "name": "BSNL Recharge Confirmation",
       "priority": 240,
       "match": {
-        "sender_pattern": "(?i).*BSNL.*",
-        "body_pattern": "(?i)[\\s\\S]*recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful[\\s\\S]*",
+        "sender_pattern": "(?i)BSNL",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -29,8 +29,8 @@
       "name": "BSNL Data Balance Alert",
       "priority": 230,
       "match": {
-        "sender_pattern": "(?i).*BSNL.*",
-        "body_pattern": "(?i)[\\s\\S]*data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)[\\s\\S]*"
+        "sender_pattern": "(?i)BSNL",
+        "body_pattern": "(?i)data\\s+(?:balance|left|remaining|quota)[\\s\\S]{0,20}?([\\d.]+)\\s*(?:GB|MB)"
       },
       "action": {
         "category": "important",
@@ -48,8 +48,8 @@
       "name": "BSNL Promotional Offer",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i).*BSNL.*",
-        "body_pattern": "(?i)[\\s\\S]*(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)[\\s\\S]*"
+        "sender_pattern": "(?i)BSNL",
+        "body_pattern": "(?i)(?:special\\s+offer|exciting\\s+offer|best\\s+plans?|unlimited\\s+(?:calls|data)|limited\\s+period|cashback\\s+offer|dhamaka|recharge\\s+now\\s+(?:&|and)\\s+get)"
       },
       "action": {
         "category": "promotional",
