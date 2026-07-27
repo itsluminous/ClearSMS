@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_inbox">Inbox</string>
+    <string name="nav_finance">Finance</string>
+    <string name="nav_alerts">Alerts</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_search">Search</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_compose">New message</string>
+    <string name="action_send">Send</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_done">Done</string>
+    <string name="action_archive">Archive</string>
+    <string name="ui_action_delete">Delete</string>
+    <string name="action_mark_read">Mark as read</string>
+    <string name="action_mark_unread">Mark as unread</string>
+    <string name="action_block_sender">Block sender</string>
+    <string name="action_change_category">Change category</string>
+    <string name="action_copy_message">Copy message</string>
+    <string name="action_copy_otp">Copy OTP</string>
+    <string name="action_add_rule">Add rule</string>
+
+    <!-- Inbox -->
+    <string name="inbox_title">Clear SMS</string>
+    <string name="inbox_empty_title">No messages yet</string>
+    <string name="inbox_empty_subtitle">Incoming SMS will appear here, automatically organized into categories.</string>
+    <string name="inbox_empty_filtered">Nothing here for this filter.</string>
+    <string name="inbox_row_actions">Message actions</string>
+    <string name="filter_unread">Unread</string>
+
+    <!-- OTP banner -->
+    <string name="otp_banner_from">Code from %1$s</string>
+    <string name="otp_banner_copy">Copy code</string>
+
+    <!-- Conversation -->
+    <string name="conversation_reply_hint">Text message</string>
+    <string name="conversation_details_title">Extracted details</string>
+
+    <!-- Compose -->
+    <string name="compose_title">New message</string>
+    <string name="compose_recipient">To</string>
+    <string name="compose_message">Message</string>
+    <string name="compose_send_failed">Could not send the message</string>
+
+    <!-- Finance -->
+    <string name="finance_title">Finance</string>
+    <string name="finance_empty_title">No transactions yet</string>
+    <string name="finance_empty_subtitle">Debit and credit alerts from your bank will build your dashboard here.</string>
+    <string name="finance_this_month">This month</string>
+    <string name="finance_month_breakdown">%1$s in · %2$s out</string>
+    <string name="finance_accounts">Accounts</string>
+    <string name="finance_credit_cards">Credit cards</string>
+    <string name="finance_latest_transactions">Latest transactions</string>
+    <string name="finance_masked_account">xx%1$s</string>
+    <string name="finance_updated">updated %1$s</string>
+    <string name="finance_unknown_bank">Unknown bank</string>
+    <string name="finance_outstanding">Outstanding</string>
+    <string name="finance_utilization">%1$d%% of limit used</string>
+    <string name="finance_set_card_limit">Set card limit</string>
+    <string name="finance_limit_label">Credit limit (₹)</string>
+    <string name="finance_high_usage_alert">High credit usage detected — %1$d card(s) are above the safe 30% limit</string>
+    <string name="finance_transaction">Transaction</string>
+    <string name="finance_expand_section">Expand section</string>
+    <string name="finance_collapse_section">Collapse section</string>
+
+    <!-- Account detail -->
+    <string name="account_monthly_chart">Monthly activity (last 6 months)</string>
+    <string name="account_filter_all">All</string>
+    <string name="account_filter_debited">Debited</string>
+    <string name="account_filter_credited">Credited</string>
+    <string name="account_empty_title">No transactions</string>
+    <string name="account_empty_subtitle">Transactions for this account will appear here.</string>
+    <string name="account_add_note">Add note</string>
+    <string name="account_note_label">Note</string>
+    <string name="account_balance_after">Balance after: %1$s</string>
+    <string name="account_reference">Ref: %1$s</string>
+
+    <!-- Alerts -->
+    <string name="alerts_title">Alerts</string>
+    <string name="alerts_empty_title">No upcoming bills</string>
+    <string name="alerts_empty_subtitle">Bill reminders and payment due dates from your SMS will show up here.</string>
+    <string name="alerts_filter_all">All</string>
+    <string name="alerts_filter_credit_cards">Credit cards</string>
+    <string name="alerts_filter_emi">EMI</string>
+    <string name="alerts_filter_others">Others</string>
+    <string name="alerts_past_reminders">Past reminders</string>
+    <string name="alerts_due_on">Due %1$s</string>
+    <string name="alerts_total_due">Total due</string>
+    <string name="alerts_min_due">Minimum due</string>
+    <string name="alerts_dismiss">Dismiss</string>
+    <string name="alerts_type_credit_card">Credit card bill</string>
+    <string name="alerts_type_emi">EMI</string>
+    <string name="alerts_type_insurance">Insurance</string>
+    <string name="alerts_type_subscription">Subscription</string>
+    <string name="alerts_type_other">Bill</string>
+
+    <!-- Search -->
+    <string name="search_hint">Search messages</string>
+    <string name="search_clear">Clear search</string>
+    <string name="search_no_results_title">No results</string>
+    <string name="search_no_results_subtitle">Try a different term or loosen the filters.</string>
+    <string name="search_date_any">Any time</string>
+    <string name="search_date_7d">Last 7 days</string>
+    <string name="search_date_30d">Last 30 days</string>
+    <string name="search_date_year">Last year</string>
+
+    <!-- Rules -->
+    <string name="rules_title">Rules</string>
+    <string name="rules_empty_title">No rules yet</string>
+    <string name="rules_empty_subtitle">Rules decide how messages are categorized. Create one from any message.</string>
+    <string name="rules_user_section">Your rules</string>
+    <string name="rules_builtin_section">Bundled rules</string>
+    <string name="rules_new_rule">New rule</string>
+    <string name="rules_import">Import rules</string>
+    <string name="rules_export">Export rules</string>
+    <string name="rules_share">Share rules with developer</string>
+    <string name="rules_share_subject">Clear SMS rules contribution</string>
+    <string name="rules_import_success">Rules imported</string>
+    <string name="rules_import_failed">That file is not a valid rules document</string>
+
+    <!-- Rule wizard -->
+    <string name="rule_wizard_title">Create rule</string>
+    <string name="rule_wizard_name">Rule name</string>
+    <string name="rule_wizard_sender_pattern">Sender pattern (regex)</string>
+    <string name="rule_wizard_body_pattern">Body pattern (regex)</string>
+    <string name="rule_wizard_body_pattern_hint">Digits were generalized to \\d+ so the rule matches similar messages.</string>
+    <string name="rule_wizard_category">Category</string>
+    <string name="rule_wizard_sub_category">Sub-category</string>
+    <string name="rule_wizard_extract">Extract from message</string>
+    <string name="rule_wizard_test_title">Test against a message</string>
+    <string name="rule_wizard_test_sender">Test sender</string>
+    <string name="rule_wizard_test_body">Test message</string>
+    <string name="rule_wizard_test_match">Matches → %1$s %2$s</string>
+    <string name="rule_wizard_test_no_match">No match</string>
+    <string name="rule_wizard_test_invalid">Invalid pattern: %1$s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Clear SMS</string>
+    <string name="onboarding_welcome_body">Your inbox, organized. Messages are categorized, transactions tracked and OTPs surfaced — entirely on this device. No servers, no ads, no tracking.</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_permissions_title">Permissions</string>
+    <string name="onboarding_permissions_body">Clear SMS needs SMS access to organize your messages, and contacts access to recognize people you know. Nothing ever leaves your phone.</string>
+    <string name="onboarding_grant_permissions">Grant permissions</string>
+    <string name="onboarding_default_sms_title">Make Clear SMS your SMS app</string>
+    <string name="onboarding_default_sms_body">To receive and send messages, Clear SMS must be your default SMS app. You can switch back at any time.</string>
+    <string name="onboarding_set_default">Set as default</string>
+    <string name="onboarding_sync_title">Organizing your inbox</string>
+    <string name="onboarding_sync_body">Importing and categorizing your existing messages. This continues in the background.</string>
+    <string name="onboarding_theme_title">Pick a theme</string>
+    <string name="onboarding_theme_body">You can change this any time in Settings.</string>
+    <string name="onboarding_skip">Skip for now</string>
+    <string name="onboarding_done">Done</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_blocking">Blocking</string>
+    <string name="settings_block_list">Block &amp; allow list</string>
+    <string name="settings_block_list_summary">%1$d blocked sender(s)</string>
+    <string name="settings_block_add_hint">Sender or number</string>
+    <string name="settings_block_add">Block</string>
+    <string name="settings_unblock">Unblock</string>
+    <string name="settings_section_backup">Backup &amp; restore</string>
+    <string name="settings_backup_now">Back up now</string>
+    <string name="settings_backup_now_summary">Save all data to a local file you control</string>
+    <string name="settings_restore">Restore</string>
+    <string name="settings_restore_summary">Replace current data from a backup file</string>
+    <string name="settings_backup_frequency">Backup frequency</string>
+    <string name="settings_backup_done">Backup saved</string>
+    <string name="settings_backup_failed">Backup failed</string>
+    <string name="settings_restore_done">Backup restored</string>
+    <string name="settings_restore_failed">That file is not a valid backup</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_dynamic_color_summary">Use colors from your wallpaper (Android 12+)</string>
+    <string name="settings_show_transaction_details">Show transaction details</string>
+    <string name="settings_show_transaction_details_summary">Show amounts and balances in message lists</string>
+    <string name="settings_section_notification">Notifications</string>
+    <string name="settings_delivery_reports">SMS delivery reports</string>
+    <string name="settings_delivery_reports_summary">Confirm when sent messages are delivered</string>
+    <string name="settings_summary">Messages summary</string>
+    <string name="settings_section_sort">Sort</string>
+    <string name="settings_sort_again">Sort inbox again</string>
+    <string name="settings_sort_again_summary">Re-run categorization on all messages</string>
+    <string name="settings_sort_confirm">All messages will be re-categorized using the current rules. This may take a moment.</string>
+    <string name="settings_sort_go">Sort</string>
+    <string name="settings_sort_done">Inbox sorted</string>
+    <string name="settings_section_otp">OTP</string>
+    <string name="settings_otp_auto_copy">Auto copy</string>
+    <string name="settings_otp_auto_copy_summary">Copy incoming OTPs to the clipboard automatically</string>
+    <string name="settings_otp_auto_delete">Auto delete OTP</string>
+    <string name="settings_otp_size">OTP display size</string>
+    <string name="settings_section_rules">Rules</string>
+    <string name="settings_manage_rules">Manage rules</string>
+    <string name="settings_manage_rules_summary">View, create, import, export and share rules</string>
+    <string name="settings_section_signature">Signature</string>
+    <string name="settings_signature">SMS signature</string>
+    <string name="settings_signature_disabled">Disabled</string>
+    <string name="settings_signature_hint">Appended to outgoing messages</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_permissions">Permissions</string>
+    <string name="settings_permissions_summary">Why each permission is needed</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_privacy_policy_summary">Everything stays on your device</string>
+    <string name="settings_licenses">Open source licenses</string>
+    <string name="settings_licenses_summary">Libraries this app is built with</string>
+
+    <!-- Enum labels -->
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="summary_off">Don\'t notify</string>
+    <string name="summary_daily">Daily</string>
+    <string name="summary_weekly">Weekly</string>
+    <string name="otp_delete_never">Never</string>
+    <string name="otp_delete_24h">After 24 hours</string>
+    <string name="otp_delete_3d">After 3 days</string>
+    <string name="otp_delete_7d">After 7 days</string>
+    <string name="otp_size_default">Default</string>
+    <string name="otp_size_a">Option A</string>
+    <string name="otp_size_b">Option B</string>
+    <string name="otp_size_c">Option C</string>
+    <string name="otp_size_d">Option D</string>
+
+    <!-- Privacy policy content -->
+    <string name="privacy_ondevice_title">All processing happens on your device</string>
+    <string name="privacy_ondevice_body">Categorization, OTP extraction and transaction parsing run entirely on this phone. Clear SMS has no servers and makes no network calls at runtime. Your messages are never uploaded, shared or analyzed anywhere else.</string>
+    <string name="privacy_no_network_title">No analytics, no tracking, no ads</string>
+    <string name="privacy_no_network_body">The app contains no analytics SDKs, crash reporters that transmit data, advertising frameworks or proprietary services.</string>
+    <string name="privacy_backups_title">Backups are yours</string>
+    <string name="privacy_backups_body">Backups are plain local files saved where you choose. They are never sent anywhere automatically.</string>
+    <string name="privacy_rules_title">Transparent rules</string>
+    <string name="privacy_rules_body">Every categorization rule is human-readable JSON you can inspect, edit, export and contribute back to the community. Sharing rules with the developer is always an explicit action that uses your email app.</string>
+
+    <!-- Licenses content -->
+    <string name="licenses_app">Apache License 2.0 — free and open source.</string>
+    <string name="licenses_apache2">Apache License 2.0</string>
+
+    <!-- Permission explanations -->
+    <string name="perm_sms_body">Read and receive SMS so messages can be shown and categorized.</string>
+    <string name="perm_send_body">Send SMS replies and new messages.</string>
+    <string name="perm_contacts_body">Recognize senders in your address book so their messages land in Personal.</string>
+    <string name="perm_phone_body">Required by Android for default SMS app duties.</string>
+    <string name="perm_notifications_body">Show new message and OTP notifications.</string>
+    <string name="perm_boot_body">Reschedule background jobs (like OTP auto-delete) after a restart.</string>
+</resources>

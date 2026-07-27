@@ -11,6 +11,8 @@ trim_trailing_whitespace = true
 [*.{kt,kts}]
 ktlint_code_style = ktlint_official
 max_line_length = 140
+# Jetpack Compose: composable functions are PascalCase by convention.
+ktlint_function_naming_ignore_when_annotated_with = Composable
 
 [*.{yml,yaml,json}]
 indent_size = 2
