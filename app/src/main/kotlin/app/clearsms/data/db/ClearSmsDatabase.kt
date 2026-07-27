@@ -23,7 +23,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -44,6 +44,11 @@ import java.time.ZoneId
         // FTS4 over sender+body) and back-fills it from the existing rows —
         // see [ClearSmsDatabase.PopulateMessageFts].
         AutoMigration(from = 5, to = 6, spec = ClearSmsDatabase.PopulateMessageFts::class),
+        // v6 -> v7: adds messages.isOutgoing (default 0 = incoming) and
+        // messages.deliveryStatus, then reconciles existing rows against the
+        // system provider's sent box — see [BackfillMessageDirections]
+        // (provided at build time because it reads the SMS provider).
+        AutoMigration(from = 6, to = 7, spec = BackfillMessageDirections::class),
     ],
 )
 @TypeConverters(Converters::class)

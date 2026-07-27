@@ -236,6 +236,59 @@ interface MessageDao {
     @Query("SELECT threadId FROM messages WHERE normalizedSender = :normalizedSender LIMIT 1")
     suspend fun threadIdFor(normalizedSender: String): Long?
 
+    // region outgoing message status
+
+    @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
+    suspend fun setDeliveryStatus(
+        id: Long,
+        status: DeliveryStatus,
+    )
+
+    @Query("UPDATE messages SET deliveryStatus = :status WHERE systemSmsId = :systemSmsId")
+    suspend fun setDeliveryStatusBySystemId(
+        systemSmsId: Long,
+        status: DeliveryStatus,
+    )
+
+    /**
+     * Compare-and-set status transition: applies [new] only while the row is
+     * still at [expected]. Guards the ordering SENDING → SENT → DELIVERED so
+     * a late sent-report can never downgrade a DELIVERED message.
+     */
+    @Query(
+        """
+        UPDATE messages SET deliveryStatus = :newStatus
+        WHERE systemSmsId = :systemSmsId AND deliveryStatus = :expected
+        """,
+    )
+    suspend fun promoteDeliveryStatusBySystemId(
+        systemSmsId: Long,
+        expected: DeliveryStatus,
+        newStatus: DeliveryStatus,
+    )
+
+    /** Same compare-and-set as above, keyed by our own row id. */
+    @Query("UPDATE messages SET deliveryStatus = :newStatus WHERE id = :id AND deliveryStatus = :expected")
+    suspend fun promoteDeliveryStatus(
+        id: Long,
+        expected: DeliveryStatus,
+        newStatus: DeliveryStatus,
+    )
+
+    /** Live status of one outgoing message (drives the send-outcome snackbar). */
+    @Query("SELECT deliveryStatus FROM messages WHERE id = :id")
+    fun observeDeliveryStatus(id: Long): Flow<DeliveryStatus?>
+
+    /** Rewrites a failed row for re-dispatch: back to SENDING on a fresh provider row. */
+    @Query("UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId WHERE id = :id")
+    suspend fun resetForResend(
+        id: Long,
+        systemSmsId: Long?,
+        status: DeliveryStatus = DeliveryStatus.SENDING,
+    )
+
+    // endregion
+
     @Query("SELECT MAX(threadId) FROM messages")
     suspend fun maxThreadId(): Long?
 

@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.ClearSmsDatabase
+import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.TransactionEntity
@@ -361,7 +362,8 @@ class MessageRepositoryImpl(
                             systemSmsId = row.systemSmsId,
                         )
                     } else {
-                        // Outgoing (sent) message: stored as a read personal message.
+                        // Outgoing (sent) message: stored as a read personal
+                        // message, right-aligned via the persisted direction.
                         MessageEntity(
                             threadId = threadId,
                             sender = row.sender,
@@ -371,6 +373,9 @@ class MessageRepositoryImpl(
                             isRead = true,
                             category = Category.PERSONAL,
                             systemSmsId = row.systemSmsId,
+                            isOutgoing = true,
+                            deliveryStatus =
+                                if (row.delivered) DeliveryStatus.DELIVERED else DeliveryStatus.SENT,
                         )
                     }
                 }
@@ -710,6 +715,7 @@ internal data class RulesSnapshot(
 /**
  * One system SMS provider row prepared for batch persistence.
  * [enriched] is null for outgoing (sent) messages, which skip classification.
+ * [delivered] is only meaningful for outgoing rows (provider `STATUS_COMPLETE`).
  */
 internal data class ImportedSmsRow(
     val systemSmsId: Long,
@@ -718,6 +724,7 @@ internal data class ImportedSmsRow(
     val timestampMs: Long,
     val isRead: Boolean,
     val enriched: MessageRepositoryImpl.Enriched?,
+    val delivered: Boolean = false,
 )
 
 /** Page source that is always empty — the unsearchable-query fallback. */

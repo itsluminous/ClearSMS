@@ -40,4 +40,13 @@ data class MessageEntity(
     @ColumnInfo(defaultValue = "0") val isBlockedSender: Boolean = false,
     /** `_id` of the originating row in the system SMS provider, when imported. */
     val systemSmsId: Long? = null,
+    /**
+     * True for messages the user sent, false for received ones. A boolean
+     * (not an enum) because SMS has exactly two directions, and the SQL
+     * `DEFAULT 0` makes every pre-upgrade or unmatched row incoming — the
+     * safe reading — without a converter. Drives bubble alignment.
+     */
+    @ColumnInfo(defaultValue = "0") val isOutgoing: Boolean = false,
+    /** Send lifecycle for outgoing messages; always null on incoming rows. */
+    val deliveryStatus: DeliveryStatus? = null,
 )

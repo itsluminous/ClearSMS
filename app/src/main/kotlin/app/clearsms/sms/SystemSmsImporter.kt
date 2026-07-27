@@ -54,6 +54,8 @@ class SystemSmsImporter
             val date: Long,
             val read: Boolean,
             val incoming: Boolean,
+            /** Provider `status` == STATUS_COMPLETE (delivery report received). */
+            val delivered: Boolean,
         )
 
         /**
@@ -100,6 +102,7 @@ class SystemSmsImporter
                                                 } else {
                                                     null
                                                 },
+                                            delivered = raw.delivered,
                                         )
                                     }
                                 }.awaitAll()
@@ -141,6 +144,7 @@ class SystemSmsImporter
                 val dateIdx = it.getColumnIndex(Telephony.Sms.DATE)
                 val typeIdx = it.getColumnIndex(Telephony.Sms.TYPE)
                 val readIdx = it.getColumnIndex(Telephony.Sms.READ)
+                val statusIdx = it.getColumnIndex(Telephony.Sms.STATUS)
                 buildList {
                     while (it.moveToNext()) {
                         add(
@@ -151,6 +155,12 @@ class SystemSmsImporter
                                 date = it.getLong(dateIdx),
                                 read = it.getInt(readIdx) == 1,
                                 incoming = it.getInt(typeIdx) == Telephony.Sms.MESSAGE_TYPE_INBOX,
+                                // Guarded: some providers ignore the projection
+                                // and omit STATUS entirely (index -1).
+                                delivered =
+                                    statusIdx >= 0 &&
+                                        !it.isNull(statusIdx) &&
+                                        it.getInt(statusIdx) == Telephony.Sms.STATUS_COMPLETE,
                             ),
                         )
                     }
@@ -192,6 +202,7 @@ class SystemSmsImporter
                     Telephony.Sms.DATE,
                     Telephony.Sms.TYPE,
                     Telephony.Sms.READ,
+                    Telephony.Sms.STATUS,
                 )
         }
     }

@@ -45,4 +45,10 @@ class Converters {
 
     @TypeConverter
     fun toReminderType(value: String): ReminderType = ReminderType.valueOf(value)
+
+    @TypeConverter
+    fun fromDeliveryStatus(value: DeliveryStatus?): String? = value?.name
+
+    @TypeConverter
+    fun toDeliveryStatus(value: String?): DeliveryStatus? = value?.let(DeliveryStatus::valueOf)
 }

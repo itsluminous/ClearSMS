@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.db.AccountDao
+import app.clearsms.data.db.BackfillMessageDirections
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.ReminderDao
@@ -28,6 +29,7 @@ import app.clearsms.data.rules.RuleImporter
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.sms.SystemSentSmsSource
 import app.clearsms.sms.TelephonyWriter
 import dagger.BindsOptionalOf
 import dagger.Module
@@ -84,10 +86,14 @@ object DataModule {
     @Singleton
     fun provideDatabase(
         @ApplicationContext context: Context,
-    ): ClearSmsDatabase =
-        Room
+    ): ClearSmsDatabase {
+        // The v6→v7 direction backfill reads the system SMS provider's sent
+        // box; hand it the source before the database can open and migrate.
+        BackfillMessageDirections.sentSmsSource = SystemSentSmsSource(context)
+        return Room
             .databaseBuilder(context, ClearSmsDatabase::class.java, ClearSmsDatabase.NAME)
             .build()
+    }
 
     @Provides
     fun provideMessageDao(db: ClearSmsDatabase): MessageDao = db.messageDao()
