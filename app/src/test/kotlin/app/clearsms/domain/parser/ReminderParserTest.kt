@@ -74,6 +74,89 @@ class ReminderParserTest {
         assertThat(result.dueDate).isEqualTo(LocalDate.of(2026, 8, 12))
     }
 
+    @Test
+    fun `broadband bill with amount stated after is extracts total and account tail`() {
+        // Defect P1a: "your bill for <MON-YY> on A/C <long number> is INR <amt>"
+        // used to classify as a bill but drop the amount and the account.
+        val result =
+            parser.parse(
+                "QP-ACTCRP",
+                "Patron, Your bill for JUL-26 on A/C 102017641550 is INR 1178.82. Due date:15-JUL-26. " +
+                    "Pay @https://tiny.example.in/ACTGRP/kdkgN?accountNo=102017641550. Team ACT",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.type).isEqualTo(ReminderType.OTHER)
+        assertThat(result.totalDue).isEqualTo(1178.82)
+        assertThat(result.dueDate).isEqualTo(LocalDate.of(2026, 7, 15))
+        // The long account number yields only its masked TAIL, like other billers.
+        assertThat(result.accountLast4).isEqualTo("1550")
+    }
+
+    @Test
+    fun `bill-is pattern does not bind an unrelated amount later in the body`() {
+        // Near-miss for P1a: "is" not followed directly by a currency amount
+        // must not let the pattern jump to a different amount.
+        val result =
+            parser.parse(
+                "QP-ACTCRP",
+                "Patron, Your bill for JUL-26 is ready. Recharge offer of INR 239.00 available. Due date:15-JUL-26. Team ACT",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.totalDue).isNull()
+    }
+
+    @Test
+    fun `card statement with Total amt and Min amt due maps each to its own field`() {
+        // Defect P1b: "Total amt:" (no "due") failed the total pattern while
+        // "Min amt due:" matched — the total was lost and only the min stored.
+        val result =
+            parser.parse(
+                "AD-AXISBK",
+                "Your statement for Axis Bank Credit Card no. XX0266 is generated.\n" +
+                    "Due on: 04-08-26\n" +
+                    "Total amt: INR  Dr. 12374.57\n" +
+                    "Min amt due: INR  Dr. 248.00\n" +
+                    "Pay at axis.bank.in/ccpaynow",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.type).isEqualTo(ReminderType.CREDIT_CARD)
+        assertThat(result.totalDue).isEqualTo(12374.57)
+        assertThat(result.minDue).isEqualTo(248.0)
+        assertThat(result.totalDue!!).isAtLeast(result.minDue!!)
+        assertThat(result.dueDate).isEqualTo(LocalDate.of(2026, 8, 4))
+        assertThat(result.accountLast4).isEqualTo("0266")
+        assertThat(result.bankName).isEqualTo("Axis Bank")
+    }
+
+    @Test
+    fun `total smaller than min is a mis-parse and is re-resolved to a valid total`() {
+        // The loose "total of" phrase grabs 100, which contradicts min=250 —
+        // the parser must re-resolve to the statement amount instead.
+        val result =
+            parser.parse(
+                "ICICIB",
+                "Card update: total of Rs 100 reward points earned. Statement of INR 4,000.00 generated, " +
+                    "minimum of Rs 250.00 is due by 05-08-26 on your credit card.",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.minDue).isEqualTo(250.0)
+        assertThat(result.totalDue).isEqualTo(4000.0)
+        assertThat(result.totalDue!!).isAtLeast(result.minDue!!)
+    }
+
+    @Test
+    fun `total that contradicts min with no valid alternative is dropped not stored`() {
+        val result =
+            parser.parse(
+                "HDFCBK",
+                "Payment of INR 100.00 is due on 05-08-26 for your credit card. Min amt due: INR 500.00.",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.minDue).isEqualTo(500.0)
+        // Storing 100 as the total would violate totalDue >= minDue.
+        assertThat(result.totalDue).isNull()
+    }
+
     // endregion
 
     // region rejection: no due date means no reminder

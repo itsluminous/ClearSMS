@@ -50,11 +50,12 @@ class ReminderParser {
         // The due keyword must be adjacent to a parseable date.
         val dueDate = findAnchoredDueDate(body) ?: return null
         val type = typeClassifier.classify(sender, body) ?: return null
+        val minDue = firstAmount(body, MIN_DUE_PATTERNS)
         return ParsedReminder(
             type = type,
             dueDate = dueDate,
-            totalDue = firstAmount(body, TOTAL_DUE_PATTERNS),
-            minDue = firstAmount(body, MIN_DUE_PATTERNS),
+            totalDue = resolveTotalAgainstMin(body, firstAmount(body, TOTAL_DUE_PATTERNS), minDue),
+            minDue = minDue,
             accountLast4 = ACCOUNT_REGEX.find(body)?.groupValues?.get(1),
             bankName = SenderNameResolver.bankNameFor(sender, body),
             label = extractLabel(body),
@@ -184,6 +185,27 @@ class ReminderParser {
                 ?.toAmount()
         }
 
+    /**
+     * Enforces the invariant totalDue >= minDue. A parse where the "total"
+     * comes out smaller than the minimum is a mis-parse (a minimum-due phrase
+     * captured by a total pattern), so instead of storing it the total is
+     * re-resolved: every total-pattern match in the body is scanned for the
+     * first amount that satisfies the invariant, and when none does the
+     * total is dropped rather than stored wrong.
+     */
+    private fun resolveTotalAgainstMin(
+        body: String,
+        total: Double?,
+        min: Double?,
+    ): Double? {
+        if (total == null || min == null || total >= min) return total
+        return TOTAL_DUE_PATTERNS
+            .asSequence()
+            .flatMap { it.findAll(body) }
+            .mapNotNull { it.groupValues[1].toAmount() }
+            .firstOrNull { it >= min }
+    }
+
     private fun buildDate(
         day: Int,
         month: Int,
@@ -309,8 +331,13 @@ class ReminderParser {
         val TOTAL_DUE_PATTERNS =
             listOf(
                 // "Total due Rs.15,240", "Total amount due: INR Dr. 4,255.00",
-                // "pay total due of Rs 4444.55".
-                "total\\s+(?:amt|amount)?\\s*due(?:\\s+is)?\\s*(?:of\\s+)?[:\\s]*$AMOUNT",
+                // "pay total due of Rs 4444.55" — and the statement style
+                // where "due" only follows the MINIMUM line: "Total amt:
+                // INR  Dr. 12374.57". "due" is required after a bare "total"
+                // but optional once "amt"/"amount" anchors the phrase, so
+                // "Total amt:", "Total amount:", "Total amt due" and
+                // "Total Due" all map here.
+                "total\\s+(?:(?:amt|amount)\\s*(?:due)?|due)(?:\\s+is)?\\s*(?:of\\s+)?[:\\s]*$AMOUNT",
                 // "Total of Rs 5,432.10 or minimum of Rs 270 is due by".
                 "total\\s+of\\s+$AMOUNT",
                 // "Payment of INR 12345 for Axis Bank Credit Card ... is due on".
@@ -331,6 +358,11 @@ class ReminderParser {
                 "(?:premium|policy)[^\\n]{0,120}?\\bfor\\s+$AMOUNT",
                 // "Bill amount Rs 890", "bill of Rs.2,340".
                 "bill\\s+(?:amount|of)\\s*:?\\s*$AMOUNT",
+                // "Your bill for JUL-26 on A/C xx1550 is INR 1178.82" — the
+                // amount stated with "is" after a bill/statement phrase. The
+                // gap is bounded and the currency must follow "is" directly,
+                // so an unrelated amount elsewhere in the body never binds.
+                "\\b(?:bill|statement)\\s+for\\s+[^\\n]{0,60}?\\bis\\s+$AMOUNT",
             ).map { Regex("(?i)$it") }
 
         /** Minimum-due phrasings; kept alongside the total when both exist. */
@@ -343,8 +375,16 @@ class ReminderParser {
                 "minimum\\s+of\\s+$AMOUNT",
             ).map { Regex("(?i)$it") }
 
+        /**
+         * Account/card tail. `\d*?` lets a LONG account number ("A/C
+         * 102017641550") yield its last 4 digits as the stored masked tail —
+         * the same shape other billers produce — without changing how short
+         * masked tails ("XX0266") are captured.
+         */
         val ACCOUNT_REGEX =
-            Regex("(?i)(?:a/c|acct|account|card)\\s*(?:no\\.?|number)?\\s*(?:ending\\s*)?(?:in\\s+|with\\s+)?[Xx*]*(\\d{3,4})(?!\\d)")
+            Regex(
+                "(?i)(?:a/c|acct|account|card)\\s*(?:no\\.?|number)?\\s*(?:ending\\s*)?(?:in\\s+|with\\s+)?[Xx*]*\\d*?(\\d{3,4})(?!\\d)",
+            )
 
         // region label patterns
 
