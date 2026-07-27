@@ -39,10 +39,10 @@ Pick the build matching your device's CPU, or take the universal APK if unsure:
 
 | APK | Use for |
 | --- | --- |
-| `app-arm64-v8a-release.apk` | Almost all phones from ~2017 onward (64-bit ARM) |
-| `app-armeabi-v7a-release.apk` | Older 32-bit ARM devices |
-| `app-x86_64-release.apk` / `app-x86-release.apk` | Emulators and x86 tablets |
-| `app-universal-release.apk` | Any device (largest file) |
+| `ClearSMS-arm64-v8a.apk` | Almost all phones from ~2017 onward (64-bit ARM) |
+| `ClearSMS-armeabi-v7a.apk` | Older 32-bit ARM devices |
+| `ClearSMS-x86_64.apk` / `ClearSMS-x86.apk` | Emulators and x86 tablets |
+| `ClearSMS-universal.apk` | Any device (largest file) |
 
 Check your device's ABI with `adb shell getprop ro.product.cpu.abi`.
 

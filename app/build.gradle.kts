@@ -132,6 +132,21 @@ android {
     }
 }
 
+// Publish human-friendly artifact names: ClearSMS-<abi>.apk for release builds
+// (what ends up attached to a GitHub release) and ClearSMS-<abi>-debug.apk for
+// debug builds, instead of Gradle's default app-<abi>-<buildType>.apk.
+androidComponents {
+    onVariants { variant ->
+        val suffix = if (variant.buildType == "release") "" else "-${variant.buildType}"
+        variant.outputs.forEach { output ->
+            val abi = output.filters.firstOrNull()?.identifier ?: "universal"
+            (output as? com.android.build.api.variant.impl.VariantOutputImpl)
+                ?.outputFileName
+                ?.set("ClearSMS-$abi$suffix.apk")
+        }
+    }
+}
+
 // Exported Room schemas (schemas/<db>/<version>.json) are committed so future
 // schema changes can ship validated migrations against the released baseline.
 ksp {
