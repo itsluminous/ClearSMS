@@ -142,6 +142,580 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-avail-balance-02",
+      "name": "HDFC Bank Available Balance Update",
+      "priority": 285,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)available\\s+bal(?:ance)?\\s+in\\s+a/c\\s+[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+on\\s+[0-9A-Za-z-]{5,12}\\s*:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "account_last4": "$1",
+          "balance": "$2",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-ecs-01",
+      "name": "HDFC Bank ECS/Mandate Debit",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:deducted\\s+from|debited\\s+to)\\s+HDFC\\s+Bank\\s+A/C\\s+No\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b\\s+towards\\s+([^,\\n]{1,45})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-info-01",
+      "name": "HDFC Bank Debit With Narration",
+      "priority": 325,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:HDFC\\s+Bank\\s+)?(?:A/c\\s+)?[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+on\\s+\\S{5,12}\\.\\s*Info:?\\s*([^.\\n]{1,50})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-upi-03",
+      "name": "HDFC Bank UPI Debit To Account",
+      "priority": 313,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:HDFC\\s+Bank\\s+)?a/c\\s+[Xx*]*(\\d{1,4})\\s+on\\s+[\\d/-]{4,10}\\s+to\\s+a/c\\b[\\s\\S]{0,30}?UPI\\s+Ref",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-from-01",
+      "name": "HDFC Bank Generic Debit From Account",
+      "priority": 304,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+HDFC\\s+Bank\\s+(?:A/c\\s+)?[Xx*\\d]{0,10}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-netbanking-01",
+      "name": "HDFC Bank NetBanking Debit",
+      "priority": 311,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+debited\\s+from\\s+A/c\\s+[Xx*\\d]{0,10}?(\\d{4})\\b[\\s\\S]{0,60}?via\\s+HDFC\\s+Bank\\s+NetBanking",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-card-spend-01",
+      "name": "HDFC Bank Card Spend At Merchant",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+HDFC\\s+Bank\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+at\\s+(\\S[^\\n]{0,39}?)\\s+on\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-withdraw-01",
+      "name": "HDFC Bank Card Withdrawal",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)withdrawn\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:from|on)\\s+HDFC\\s+Bank\\s+(?:debit\\s+)?card\\s+[Xx*]*(\\d{1,4})\\s+at\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-deduct-netbanking-01",
+      "name": "HDFC Bank NetBanking Deduction Alert",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)deducted\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from:?\\s*HDFC\\s+Bank\\s+A/c\\s+[Xx*\\d]{0,10}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-credit-deposit-01",
+      "name": "HDFC Bank Deposit Credit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+deposited\\s+(?:in|to)\\s+(?:HDFC\\s+Bank\\s+)?A/[Cc]\\s+(?:No\\.?\\s*)?[Xx*\\d]{0,16}?(\\d{2,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-cc-payment-01",
+      "name": "HDFC Bank Credit Card Payment Received",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:vide\\s+Ref#?\\s*\\S{1,20}\\s+)?(?:received\\s+towards|was\\s+credited\\s+to)\\s+your\\s+(?:HDFC\\s+Bank\\s+)?(?:credit\\s+)?card\\s+ending\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-credit-imps-01",
+      "name": "HDFC Bank IMPS Credit",
+      "priority": 314,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)A/c\\s+[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+credited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-bill-processed-01",
+      "name": "HDFC Bank Bill Payment Processed",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)your\\s+([A-Za-z][^.\\n]{0,40}?)\\s+bill\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,40}?processed\\s+successfully",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "merchant": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-estatement-01",
+      "name": "HDFC Bank Credit Card E-Statement",
+      "priority": 308,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)e-statement\\s+generated!?\\s*for\\s+HDFC\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})\\.?\\s*due\\s+date\\s*:?\\s*([0-9A-Za-z/-]{6,12})\\.?\\s*total\\s+due\\s*:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\.?\\s*min\\s+due\\s*:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "due_date": "$2",
+          "total_due": "$3",
+          "min_due": "$4",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-mandate-01",
+      "name": "HDFC Bank Upcoming Mandate Debit",
+      "priority": 296,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)upcoming\\s+mandate\\s+set\\s+for\\b[\\s\\S]{0,50}?debited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*towards\\s+([^,\\n]{1,40})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "merchant": "$2",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-stmt-undelivered-01",
+      "name": "HDFC Bank Statement Delivery Alert",
+      "priority": 295,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)a/c\\s+statement\\s+for\\s+[Xx*\\d]{4,16}\\s+couldn'?t\\s+be\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-otp-txn-01",
+      "name": "HDFC Bank Card Transaction OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)OTP\\s+is\\s+(\\d{4,8})\\s+for\\s+txn\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+at\\s+([^.\\n]{1,40}?)\\s+on\\s+HDFC\\s+Bank\\s+card\\s+ending\\s+(\\d{2,4})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "account_last4": "$4",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-otp-netbanking-01",
+      "name": "HDFC Bank NetBanking Transfer OTP",
+      "priority": 328,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+OTP\\s+(?:to\\s+transfer|for\\s+payment\\s+of)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?HDFC\\s+Bank"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-money-received-01",
+      "name": "HDFC Bank Money Received (IMPS)",
+      "priority": 314,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)money\\s+received\\s*-\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+your\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{1,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-cc-spend-alert-01",
+      "name": "HDFC Bank Credit Card Spend Alert",
+      "priority": 321,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)you'?ve\\s+spent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(?:HDFC\\s+Bank\\s+)?credit\\s+card\\s+[Xx*]*(\\d{1,4})\\s+at\\s+(\\S[^\\n]{0,39}?)\\s+on\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-smartpay-01",
+      "name": "HDFC Bank SmartPay Auto Payment",
+      "priority": 319,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)auto\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\b[\\s\\S]{0,40}?is\\s+debited\\s+from\\s+Account\\s+ending\\s+[Xx*\\d]{0,16}?(\\d{1,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-for-01",
+      "name": "HDFC Bank Account Debited For",
+      "priority": 309,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)A/c\\s+[Xx*]*(\\d{1,4})\\s+(?:has\\s+been\\s+)?debited\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-card-dispatch-01",
+      "name": "HDFC Bank Card Dispatch/Delivery Update",
+      "priority": 294,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:delivered!?:?|dispatched!?:?|out\\s+for\\s+delivery:?|undelivered:?)\\s*(?:your\\s+)?(?:renewed\\s+)?HDFC\\s+Bank\\s+(?:credit\\s+card|debit\\s+card|cheque\\s?book)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-cc-credit-01",
+      "name": "HDFC Bank Credit Card Credited",
+      "priority": 312,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+on\\s+your\\s+credit\\s+card\\s+ending\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

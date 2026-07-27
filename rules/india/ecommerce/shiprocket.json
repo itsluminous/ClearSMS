@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "shiprocket-delivery-01",
+      "name": "Shiprocket Order Delivery Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:SHPRKT|SHIPROCKET)",
+        "body_pattern": "(?i)(?:has\\s+been\\s+successfully\\s+delivered|we'?ve\\s+delivered\\s+your\\s+order|will\\s+be\\s+delivered\\s+by|has\\s+been\\s+picked\\s+up|late\\s+in\\s+delivering\\s+your\\s+order|has\\s+been\\s+shipped)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

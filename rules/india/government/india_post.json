@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "indiapost-article-01",
+      "name": "India Post Article Tracking",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i)(?:INPOST|INDPOST|IPOST)",
+        "body_pattern": "(?i)article\\s+(?:no\\s*[.:]?\\s*)?[A-Z]{2}\\d{9}IN\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

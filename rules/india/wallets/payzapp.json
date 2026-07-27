@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "payzapp-card-spend-01",
+      "name": "PayZapp Card Spend At Merchant",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)PAYZAP",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+spent\\s+on\\s+your\\s+PayZapp\\s+card\\s+[Xx*]*(\\d{2,4})\\s+at\\s+([^.\\n]{1,40}?)\\.\\s*Available\\s+balance:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "balance": "$4",
+          "type": "debit",
+          "bank": "PayZapp"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "payzapp-wallet-debit-01",
+      "name": "PayZapp Wallet Debit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)PAYZAP",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+from\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "balance": "$3",
+          "type": "debit",
+          "bank": "PayZapp"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "payzapp-wallet-credit-01",
+      "name": "PayZapp Wallet Credit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)PAYZAP",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "balance": "$3",
+          "type": "credit",
+          "bank": "PayZapp"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

@@ -37,6 +37,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "ekart-delivered-02",
+      "name": "Ekart Package Delivered",
+      "priority": 214,
+      "match": {
+        "sender_pattern": "(?i)(?:EKART|EKTLOG)",
+        "body_pattern": "(?i)\\bwas\\s+delivered\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

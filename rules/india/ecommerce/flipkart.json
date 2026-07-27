@@ -33,6 +33,130 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-giftcard-debit-01",
+      "name": "Flipkart Gift Card Debit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+Flipkart\\s+Gift\\s+Card\\s+\\d{6,20}\\s+for\\s+Order",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "bank": "Flipkart Gift Card"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-refund-01",
+      "name": "Flipkart Order Refund",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+your\\s+(?:Flipkart\\s+)?order"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Flipkart"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-pickup-01",
+      "name": "Flipkart Return Pickup",
+      "priority": 225,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)pickup\\s+arranged:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-delivered-02",
+      "name": "Flipkart Order Delivered (Feedback)",
+      "priority": 224,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)from\\s+flipkart\\.com\\s+was\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-shipped-01",
+      "name": "Flipkart Order Shipped",
+      "priority": 223,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)has\\s+been\\s+shipped\\.?\\s*It\\s+will\\s+be\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-refund-02",
+      "name": "Flipkart Item Refund Processed",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,60}?is\\s+successfully\\s+(?:transferred|processed)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Flipkart"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-return-accepted-01",
+      "name": "Flipkart Return Request Accepted",
+      "priority": 222,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)return\\s+request\\s+accepted:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

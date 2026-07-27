@@ -116,6 +116,75 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "canara-amount-debit-01",
+      "name": "Canara Bank Amount Debited",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*]*(\\d{3,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "canara-amount-credit-01",
+      "name": "Canara Bank Amount Credited",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*]*(\\d{3,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "canara-otp-login-01",
+      "name": "Canara Bank Internet Banking OTP",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+OTP\\s+for\\s+logging\\s+in\\s+to\\s+internet\\s+banking[\\s\\S]{0,80}?Canara\\s+Bank"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

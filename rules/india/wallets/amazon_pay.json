@@ -36,6 +36,48 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazonpay-balance-debit-01",
+      "name": "Amazon Pay Balance Payment",
+      "priority": 298,
+      "match": {
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+using\\s+Apay\\s+balance\\s+(?:is\\s+)?successful",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "bank": "Amazon Pay"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazonpay-refund-link-01",
+      "name": "Amazon Pay Refund Linked",
+      "priority": 297,
+      "match": {
+        "body_pattern": "(?i)refund\\s+(?:Amazon\\s+Pay\\s+)?reference\\s+id\\s+\\d{6,20}\\s+of\\s+value\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?Amazon\\s+Pay"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "bank": "Amazon Pay"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

@@ -1,0 +1,128 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "citi-card-spent-01",
+      "name": "Citi Card Spend At Merchant",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+card\\s+[Xx*]*(\\d{4})\\s+on\\s+[0-9A-Za-z-]{6,12}\\s+at\\s+([^.\\n]{1,40}?)\\.\\s*Limit\\s+available",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-stmt-01",
+      "name": "Citi Card Mini Statement",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)mini\\s+statement\\s+for\\s+card\\s+[Xx*\\d]{0,16}?(\\d{4})\\b\\.?\\s*total\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\.?\\s*minimum\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\.?\\s*payment\\s+due\\s+on\\s+([0-9A-Za-z-]{6,12})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "total_due": "$2",
+          "min_due": "$3",
+          "due_date": "$4",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-payment-01",
+      "name": "Citi Card Payment Received (Thanks)",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)thanks\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+via\\s+[A-Za-z]{2,6}\\s+for\\s+card\\s+no\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-payment-02",
+      "name": "Citi Card Payment Received",
+      "priority": 314,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+for\\s+your\\s+credit\\s+card\\s+no\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-credit-01",
+      "name": "Citi Card Credit Received",
+      "priority": 313,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)credit\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+(?:on|from)\\b[\\s\\S]{0,60}?card\\s+(?:ending\\s+)?[Xx*\\d]{0,16}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

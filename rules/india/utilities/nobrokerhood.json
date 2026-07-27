@@ -18,6 +18,26 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "nbhood-payment-01",
+      "name": "NoBrokerHood Payment Successful",
+      "priority": 252,
+      "match": {
+        "sender_pattern": "(?i)(?:NBHOOD|NOBROKER)",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,50}?is\\s+successful[\\s\\S]{0,30}?NoBrokerHood"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "NoBrokerHood"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

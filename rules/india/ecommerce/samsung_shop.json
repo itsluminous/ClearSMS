@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "samsung-shop-order-01",
+      "name": "Samsung Shop Order Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:SAMSHP|SMSNG)",
+        "body_pattern": "(?i)your\\s+Samsung\\s+order\\s+\\d{6,15}"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

@@ -44,6 +44,412 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "hdfc-debit-ecs-01",
+      "name": "HDFC Bank ECS/Mandate Debit",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:deducted\\s+from|debited\\s+to)\\s+HDFC\\s+Bank\\s+A/C\\s+No\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b\\s+towards\\s+([^,\\n]{1,45})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-otp-txn-01",
+      "name": "HDFC Bank Card Transaction OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)OTP\\s+is\\s+(\\d{4,8})\\s+for\\s+txn\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+at\\s+([^.\\n]{1,40}?)\\s+on\\s+HDFC\\s+Bank\\s+card\\s+ending\\s+(\\d{2,4})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "account_last4": "$4",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-refund-01",
+      "name": "ICICI Bank Credit Card Refund (From Merchant)",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+([^\\n]{1,40}?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-otp-txn-01",
+      "name": "ICICI Bank Card Transaction OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+One[- ]?Time\\s+Password\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+transaction\\s+towards\\s+([^\\n]{1,40}?)\\s+using\\s+ICICI\\s+Bank"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "idfc-first-cc-refund-01",
+      "name": "IDFC FIRST Bank Credit Card Refund",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*refund\\s+received\\s+on\\s+your\\s+IDFC\\s+FIRST\\s+Bank\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "IDFC FIRST Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-refund-02",
+      "name": "ICICI Bank Credit Card Merchant Refund",
+      "priority": 329,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(\\S[^\\n]{0,35}?)\\s+refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "merchant": "$1",
+          "amount": "$2",
+          "account_last4": "$3",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-otp-netbanking-01",
+      "name": "HDFC Bank NetBanking Transfer OTP",
+      "priority": 328,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+OTP\\s+(?:to\\s+transfer|for\\s+payment\\s+of)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?HDFC\\s+Bank"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-reversal-01",
+      "name": "ICICI Bank Credit Card Reversal",
+      "priority": 328,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)reversal\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-refund-03",
+      "name": "ICICI Bank Credit Card Credited/Refunded",
+      "priority": 327,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+credited/refunded\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-info-01",
+      "name": "HDFC Bank Debit With Narration",
+      "priority": 325,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:HDFC\\s+Bank\\s+)?(?:A/c\\s+)?[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+on\\s+\\S{5,12}\\.\\s*Info:?\\s*([^.\\n]{1,50})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-card-spent-01",
+      "name": "ICICI Bank Card Spend At Merchant",
+      "priority": 325,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+(?:using|on)\\s+ICICI\\s+Bank\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+on\\s+\\S{5,12}\\s+(?:on|at)\\s+([^\\n]{1,40}?)\\.?\\s+Avl\\s+L",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-card-debit-info-01",
+      "name": "ICICI Bank Credit Card Debit With Info",
+      "priority": 323,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+debited\\s+on\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})[\\s\\S]{0,30}?Info:\\s*([^.\\n]{1,40})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "idfc-first-card-spent-01",
+      "name": "IDFC FIRST Bank Card Spend At Merchant",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+your\\s+IDFC\\s+FIRST\\s+Bank\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{2,4})\\s+at\\s+([^\\n]{1,40}?)\\s+(?:on|at)\\s+\\d",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "IDFC FIRST Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "payzapp-card-spend-01",
+      "name": "PayZapp Card Spend At Merchant",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)PAYZAP",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+spent\\s+on\\s+your\\s+PayZapp\\s+card\\s+[Xx*]*(\\d{2,4})\\s+at\\s+([^.\\n]{1,40}?)\\.\\s*Available\\s+balance:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "balance": "$4",
+          "type": "debit",
+          "bank": "PayZapp"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-spent-01",
+      "name": "SBI Credit Card Spend At Merchant",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+your\\s+SBI\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{4})\\s+at\\s+([^\\n]{1,40}?)\\s+on\\s+[\\d/]{6,10}",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-debit-transfer-01",
+      "name": "SBI Account Debit (Transfer With Balance)",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)Your\\s+A/C\\s+[Xx*\\d]{0,12}?(\\d{4})\\b\\s+debited\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+[\\d/]{4,10}\\s*-\\s*transferred\\s+to\\s+([^\\n]{1,35}?)\\.\\s*Avl\\s+Balance\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "balance": "$4",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-cc-spend-alert-01",
+      "name": "HDFC Bank Credit Card Spend Alert",
+      "priority": 321,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)you'?ve\\s+spent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(?:HDFC\\s+Bank\\s+)?credit\\s+card\\s+[Xx*]*(\\d{1,4})\\s+at\\s+(\\S[^\\n]{0,39}?)\\s+on\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "irctc-cancel-01",
       "name": "IRCTC Ticket Cancellation",
       "priority": 321,
@@ -61,6 +467,179 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "canara-amount-credit-01",
+      "name": "Canara Bank Amount Credited",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*]*(\\d{3,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "canara-amount-debit-01",
+      "name": "Canara Bank Amount Debited",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*]*(\\d{3,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-card-spent-01",
+      "name": "Citi Card Spend At Merchant",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+card\\s+[Xx*]*(\\d{4})\\s+on\\s+[0-9A-Za-z-]{6,12}\\s+at\\s+([^.\\n]{1,40}?)\\.\\s*Limit\\s+available",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-giftcard-debit-01",
+      "name": "Flipkart Gift Card Debit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+Flipkart\\s+Gift\\s+Card\\s+\\d{6,20}\\s+for\\s+Order",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "bank": "Flipkart Gift Card"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-card-spend-01",
+      "name": "HDFC Bank Card Spend At Merchant",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+HDFC\\s+Bank\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+at\\s+(\\S[^\\n]{0,39}?)\\s+on\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-credit-deposit-01",
+      "name": "HDFC Bank Deposit Credit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+deposited\\s+(?:in|to)\\s+(?:HDFC\\s+Bank\\s+)?A/[Cc]\\s+(?:No\\.?\\s*)?[Xx*\\d]{0,16}?(\\d{2,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-stmt-01",
+      "name": "ICICI Bank Credit Card Statement Due",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)total\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*&\\s*min(?:imum)?\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:to\\s+be\\s+paid\\s+by|due\\s+by)\\s+([0-9A-Za-z-]{6,12})\\s+on\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "min_due": "$2",
+          "due_date": "$3",
+          "account_last4": "$4",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "irctc-booking-01",
       "name": "IRCTC Ticket Booking Confirmation",
       "priority": 320,
@@ -72,6 +651,520 @@
         "category": "important",
         "extract": {
           "pnr": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "paytm-wallet-paid-01",
+      "name": "Paytm Wallet Payment To Merchant",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:IPAYTM|PYTMB|PAYTM)",
+        "body_pattern": "(?i)paid\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+to\\s+([^\\n]{1,40}?)\\s+(?:with\\s+Paytm\\s+Ref|from\\s+Paytm\\s+(?:Balance|Payments\\s+Bank\\s+Wallet)|on\\s+[A-Z][a-z]{2}\\s+\\d)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "type": "debit",
+          "bank": "Paytm"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "payzapp-wallet-credit-01",
+      "name": "PayZapp Wallet Credit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)PAYZAP",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "balance": "$3",
+          "type": "credit",
+          "bank": "PayZapp"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "payzapp-wallet-debit-01",
+      "name": "PayZapp Wallet Debit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)PAYZAP",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+from\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "balance": "$3",
+          "type": "debit",
+          "bank": "PayZapp"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-upi-credit-01",
+      "name": "SBI UPI Account Credit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)A/c\\s*[Xx*]*(\\d{1,5})[-\\s]*credited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "zomato-money-debit-01",
+      "name": "Zomato Money Balance Payment",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)ZOMATO",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+Zomato\\s+Money\\s+Balance\\s+is\\s+successful\\.?\\s*Updated\\s+balance:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "balance": "$2",
+          "type": "debit",
+          "bank": "Zomato Money"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-smartpay-01",
+      "name": "HDFC Bank SmartPay Auto Payment",
+      "priority": 319,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)auto\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\b[\\s\\S]{0,40}?is\\s+debited\\s+from\\s+Account\\s+ending\\s+[Xx*\\d]{0,16}?(\\d{1,4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "axis-cashback-01",
+      "name": "Axis Bank Credit Card Cashback",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)cashback\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+[A-Za-z ]{0,30}credit\\s+card\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Axis Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-stmt-01",
+      "name": "Citi Card Mini Statement",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)mini\\s+statement\\s+for\\s+card\\s+[Xx*\\d]{0,16}?(\\d{4})\\b\\.?\\s*total\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\.?\\s*minimum\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\.?\\s*payment\\s+due\\s+on\\s+([0-9A-Za-z-]{6,12})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "total_due": "$2",
+          "min_due": "$3",
+          "due_date": "$4",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-refund-01",
+      "name": "Flipkart Order Refund",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+your\\s+(?:Flipkart\\s+)?order"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Flipkart"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-withdraw-01",
+      "name": "HDFC Bank Card Withdrawal",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)withdrawn\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:from|on)\\s+HDFC\\s+Bank\\s+(?:debit\\s+)?card\\s+[Xx*]*(\\d{1,4})\\s+at\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-payment-01",
+      "name": "ICICI Bank Credit Card Payment Received",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+received\\s+(?:towards|on)\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-loan-credit-01",
+      "name": "SBI Loan Account Credit",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)loan\\s+A/C\\s+[Xx*\\d]{0,12}?(\\d{4})\\b\\s+credited\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-loan-debit-01",
+      "name": "SBI Loan Account Debit",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)loan\\s+[Xx*\\d]{0,12}?(\\d{4})\\b\\s+debited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-refund-02",
+      "name": "Flipkart Item Refund Processed",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,60}?is\\s+successfully\\s+(?:transferred|processed)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Flipkart"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-deduct-netbanking-01",
+      "name": "HDFC Bank NetBanking Deduction Alert",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)deducted\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from:?\\s*HDFC\\s+Bank\\s+A/c\\s+[Xx*\\d]{0,10}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-debit-transfer-02",
+      "name": "SBI Debit By Transfer",
+      "priority": 316,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)has\\s+a\\s+debit\\s+by\\s+transfer\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,30}?Avl\\s+Bal\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "balance": "$2",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "axis-cc-payment-01",
+      "name": "Axis Bank Credit Card Payment Received",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+received\\s+towards\\s+your\\s+Axis\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Axis Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-payment-01",
+      "name": "Citi Card Payment Received (Thanks)",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)thanks\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+via\\s+[A-Za-z]{2,6}\\s+for\\s+card\\s+no\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "cred-cc-payment-01",
+      "name": "CRED Credit Card Payment Received",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)CRED",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+received\\s+for\\s+your\\s+([A-Za-z ]{2,20}?)\\s+credit\\s+card\\b[\\s\\S]{0,90}?CRED\\s+coins",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "bank": "$2",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-cc-payment-01",
+      "name": "HDFC Bank Credit Card Payment Received",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:vide\\s+Ref#?\\s*\\S{1,20}\\s+)?(?:received\\s+towards|was\\s+credited\\s+to)\\s+your\\s+(?:HDFC\\s+Bank\\s+)?(?:credit\\s+)?card\\s+ending\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "idfc-first-cc-payment-01",
+      "name": "IDFC FIRST Bank Credit Card Payment Received",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+received\\s+for\\s+your\\s+IDFC\\s+FIRST\\s+Bank\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "IDFC FIRST Bank"
         }
       },
       "contributed_by": "clearsms",
@@ -96,6 +1189,422 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "ola-refund-01",
+      "name": "Ola Refund Initiated",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)(?:OLACAB|OLAMNY)",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+initiated\\s+to\\s+your\\s+account"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Ola"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-neft-debit-01",
+      "name": "SBI NEFT Account Debit",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)A/c\\s+[Xx*\\d]{0,12}?(\\d{3,4})\\b\\s+has\\s+been\\s+debited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,50}?NEFT",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "smartq-refund-01",
+      "name": "SmartQ Refund Initiated",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)BLTLAB",
+        "body_pattern": "(?i)refund\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*/?-?\\s+has\\s+been\\s+initiated[\\s\\S]{0,100}?SmartQ"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "SmartQ"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-payment-02",
+      "name": "Citi Card Payment Received",
+      "priority": 314,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+for\\s+your\\s+credit\\s+card\\s+no\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-credit-imps-01",
+      "name": "HDFC Bank IMPS Credit",
+      "priority": 314,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)A/c\\s+[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+credited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-money-received-01",
+      "name": "HDFC Bank Money Received (IMPS)",
+      "priority": 314,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)money\\s+received\\s*-\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+your\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{1,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-credit-01",
+      "name": "Citi Card Credit Received",
+      "priority": 313,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)credit\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+(?:on|from)\\b[\\s\\S]{0,60}?card\\s+(?:ending\\s+)?[Xx*\\d]{0,16}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-upi-03",
+      "name": "HDFC Bank UPI Debit To Account",
+      "priority": 313,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:HDFC\\s+Bank\\s+)?a/c\\s+[Xx*]*(\\d{1,4})\\s+on\\s+[\\d/-]{4,10}\\s+to\\s+a/c\\b[\\s\\S]{0,30}?UPI\\s+Ref",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-cc-credit-01",
+      "name": "HDFC Bank Credit Card Credited",
+      "priority": 312,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+on\\s+your\\s+credit\\s+card\\s+ending\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-estatement-mailed-01",
+      "name": "SBI Card E-Statement Mailed",
+      "priority": 312,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)e-statement\\s+of\\s+SBI\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{4})\\s+dated"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-netbanking-01",
+      "name": "HDFC Bank NetBanking Debit",
+      "priority": 311,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+debited\\s+from\\s+A/c\\s+[Xx*\\d]{0,10}?(\\d{4})\\b[\\s\\S]{0,60}?via\\s+HDFC\\s+Bank\\s+NetBanking",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "axis-estatement-01",
+      "name": "Axis Bank Credit Card E-Statement",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)e-statement\\s+of\\s+your\\s+Axis\\s+Bank\\s+Credit\\s+Card\\s+no\\.?\\s*[Xx*]*(\\d{2,4})\\s+has\\s+been\\s+generated\\.?\\s*total\\s+amount\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?),?\\s*minimum\\s+amount\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?),?\\s*due\\s+date\\s+([0-9A-Za-z-]{6,12})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "total_due": "$2",
+          "min_due": "$3",
+          "due_date": "$4",
+          "bank": "Axis Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "canara-otp-login-01",
+      "name": "Canara Bank Internet Banking OTP",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+OTP\\s+for\\s+logging\\s+in\\s+to\\s+internet\\s+banking[\\s\\S]{0,80}?Canara\\s+Bank"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-bill-processed-01",
+      "name": "HDFC Bank Bill Payment Processed",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)your\\s+([A-Za-z][^.\\n]{0,40}?)\\s+bill\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,40}?processed\\s+successfully",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "merchant": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "idfc-first-estatement-01",
+      "name": "IDFC FIRST Bank Credit Card Statement",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)Credit\\s+Card\\s+[Xx*]*(\\d{2,4})\\s*(?:bill\\s+due\\s+by|is\\s+here\\.?\\s*Due\\s+by)\\s+([0-9A-Za-z, -]{6,20}?)\\s*Total\\s+Due:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+Min\\s+Due:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "due_date": "$2",
+          "total_due": "$3",
+          "min_due": "$4",
+          "bank": "IDFC FIRST Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-for-01",
+      "name": "HDFC Bank Account Debited For",
+      "priority": 309,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)A/c\\s+[Xx*]*(\\d{1,4})\\s+(?:has\\s+been\\s+)?debited\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "axis-cc-due-01",
+      "name": "Axis Bank Credit Card Payment Due",
+      "priority": 308,
+      "match": {
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)your\\s+credit\\s+card\\s+[Xx*]*(\\d{2,4})\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+on\\s+([0-9A-Za-z-]{6,12})\\.?\\s*min\\s+due\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "total_due": "$2",
+          "due_date": "$3",
+          "min_due": "$4",
+          "bank": "Axis Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-estatement-01",
+      "name": "HDFC Bank Credit Card E-Statement",
+      "priority": 308,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)e-statement\\s+generated!?\\s*for\\s+HDFC\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})\\.?\\s*due\\s+date\\s*:?\\s*([0-9A-Za-z/-]{6,12})\\.?\\s*total\\s+due\\s*:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\.?\\s*min\\s+due\\s*:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "due_date": "$2",
+          "total_due": "$3",
+          "min_due": "$4",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "hdfc-debit-02",
       "name": "HDFC Bank UPI Debit",
       "priority": 305,
@@ -114,6 +1623,31 @@
           "amount": "$1",
           "account_last4": "$2",
           "merchant": "$3",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-debit-from-01",
+      "name": "HDFC Bank Generic Debit From Account",
+      "priority": 304,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+HDFC\\s+Bank\\s+(?:A/c\\s+)?[Xx*\\d]{0,10}?(\\d{4})\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
           "type": "debit",
           "bank": "HDFC Bank"
         }
@@ -235,6 +1769,21 @@
           "type": "debit",
           "bank": "Bank of Baroda"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "bse-trade-confirm-01",
+      "name": "BSE Trade Confirmation",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:BSELTD|BSESMS)",
+        "body_pattern": "(?i)BSE\\s+Trade\\s+Confirmation\\s+Client\\s+Code"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "investment"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -910,6 +2459,29 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "amazonpay-balance-debit-01",
+      "name": "Amazon Pay Balance Payment",
+      "priority": 298,
+      "match": {
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+using\\s+Apay\\s+balance\\s+(?:is\\s+)?successful",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "bank": "Amazon Pay"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "pluxee-bill-01",
       "name": "Pluxee Reimbursement Bill Uploaded",
       "priority": 298,
@@ -928,6 +2500,25 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "amazonpay-refund-link-01",
+      "name": "Amazon Pay Refund Linked",
+      "priority": 297,
+      "match": {
+        "body_pattern": "(?i)refund\\s+(?:Amazon\\s+Pay\\s+)?reference\\s+id\\s+\\d{6,20}\\s+of\\s+value\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?Amazon\\s+Pay"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "bank": "Amazon Pay"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "pluxee-claim-01",
       "name": "Pluxee Reimbursement Claim Update",
       "priority": 297,
@@ -940,6 +2531,104 @@
         "sub_category": "bank_alert",
         "extract": {
           "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-mandate-01",
+      "name": "HDFC Bank Upcoming Mandate Debit",
+      "priority": 296,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)upcoming\\s+mandate\\s+set\\s+for\\b[\\s\\S]{0,50}?debited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*towards\\s+([^,\\n]{1,40})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "merchant": "$2",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-stmt-undelivered-01",
+      "name": "HDFC Bank Statement Delivery Alert",
+      "priority": 295,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)a/c\\s+statement\\s+for\\s+[Xx*\\d]{4,16}\\s+couldn'?t\\s+be\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-card-dispatch-01",
+      "name": "HDFC Bank Card Dispatch/Delivery Update",
+      "priority": 294,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:delivered!?:?|dispatched!?:?|out\\s+for\\s+delivery:?|undelivered:?)\\s*(?:your\\s+)?(?:renewed\\s+)?HDFC\\s+Bank\\s+(?:credit\\s+card|debit\\s+card|cheque\\s?book)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-card-dispatch-01",
+      "name": "ICICI Bank Card Dispatch/Delivery Update",
+      "priority": 294,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:delivered|out\\s+for\\s+delivery|dispatched):\\s*credit\\s+card\\b[\\s\\S]{0,60}?ICICI\\s+Bank\\s+Card"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hdfc-avail-balance-02",
+      "name": "HDFC Bank Available Balance Update",
+      "priority": 285,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)available\\s+bal(?:ance)?\\s+in\\s+a/c\\s+[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+on\\s+[0-9A-Za-z-]{5,12}\\s*:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "account_last4": "$1",
+          "balance": "$2",
+          "bank": "HDFC Bank"
         }
       },
       "contributed_by": "clearsms",
@@ -1282,6 +2971,26 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "itd-challan-01",
+      "name": "Income Tax Challan Payment",
+      "priority": 272,
+      "match": {
+        "sender_pattern": "(?i)ITD",
+        "body_pattern": "(?i)challan\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+against\\s+CRN"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "Income Tax Department"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "cersai-ckyc-01",
       "name": "CKYC Record Access Alert",
       "priority": 270,
@@ -1418,6 +3127,21 @@
         "extract": {
           "amount": "$1"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "indiapost-article-01",
+      "name": "India Post Article Tracking",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i)(?:INPOST|INDPOST|IPOST)",
+        "body_pattern": "(?i)article\\s+(?:no\\s*[.:]?\\s*)?[A-Z]{2}\\d{9}IN\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -1774,6 +3498,26 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "nbhood-payment-01",
+      "name": "NoBrokerHood Payment Successful",
+      "priority": 252,
+      "match": {
+        "sender_pattern": "(?i)(?:NBHOOD|NOBROKER)",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,50}?is\\s+successful[\\s\\S]{0,30}?NoBrokerHood"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "NoBrokerHood"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "act-bill-01",
       "name": "ACT Fibernet Bill",
       "priority": 250,
@@ -2108,6 +3852,43 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "airtel-postpaid-payment-01",
+      "name": "Airtel Postpaid Payment Applied",
+      "priority": 245,
+      "match": {
+        "sender_pattern": "(?i)AIRTEL",
+        "body_pattern": "(?i)we\\s+have\\s+credited\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+by\\b[\\s\\S]{0,50}?to\\s+your\\s+Airtel\\s+Postpaid"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-bill-due-01",
+      "name": "Airtel Bill Payment Due",
+      "priority": 244,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+on\\s+([0-9A-Za-z-]{6,12})\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "due_date": "$2"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "airtel-recharge-01",
       "name": "Airtel Recharge Confirmation",
       "priority": 240,
@@ -2219,6 +4000,23 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "amazon-otp-01",
+      "name": "Amazon Sign-In OTP",
+      "priority": 230,
+      "match": {
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+Amazon\\s+OTP"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "bsnl-data-balance-01",
       "name": "BSNL Data Balance Alert",
       "priority": 230,
@@ -2271,6 +4069,66 @@
           "data_remaining": "$1",
           "operator": "Vi"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-pickup-01",
+      "name": "Flipkart Return Pickup",
+      "priority": 225,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)pickup\\s+arranged:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-delivered-02",
+      "name": "Flipkart Order Delivered (Feedback)",
+      "priority": 224,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)from\\s+flipkart\\.com\\s+was\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-shipped-01",
+      "name": "Flipkart Order Shipped",
+      "priority": 223,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)has\\s+been\\s+shipped\\.?\\s*It\\s+will\\s+be\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-return-accepted-01",
+      "name": "Flipkart Return Request Accepted",
+      "priority": 222,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)return\\s+request\\s+accepted:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -2367,6 +4225,21 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "dominos-delivery-01",
+      "name": "Domino's Order Out For Delivery",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)DOMINO",
+        "body_pattern": "(?i)(?:Domino'?s\\s+order\\s+is\\s+out\\s+for\\s+delivery|your\\s+order\\s+is\\s+out\\s+for\\s+delivery\\s+with\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "ekart-tracking-01",
       "name": "Ekart Logistics Shipment Tracking",
       "priority": 220,
@@ -2404,6 +4277,21 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "fnp-delivery-01",
+      "name": "Ferns N Petals Order Delivery Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)FNPCOM",
+        "body_pattern": "(?i)(?:has\\s+been\\s+delivered|out\\s+for\\s+delivery|will\\s+be\\s+delivered)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "myntra-delivery-01",
       "name": "Myntra Order Delivery Update",
       "priority": 220,
@@ -2417,6 +4305,51 @@
         "extract": {
           "merchant": "Myntra"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "nimbuspost-delivery-01",
+      "name": "NimbusPost Courier Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:NIMPOS|NIMPST)",
+        "body_pattern": "(?i)Nimbus\\s?post\\s+Courier"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "samsung-shop-order-01",
+      "name": "Samsung Shop Order Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:SAMSHP|SMSNG)",
+        "body_pattern": "(?i)your\\s+Samsung\\s+order\\s+\\d{6,15}"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "shiprocket-delivery-01",
+      "name": "Shiprocket Order Delivery Update",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:SHPRKT|SHIPROCKET)",
+        "body_pattern": "(?i)(?:has\\s+been\\s+successfully\\s+delivered|we'?ve\\s+delivered\\s+your\\s+order|will\\s+be\\s+delivered\\s+by|has\\s+been\\s+picked\\s+up|late\\s+in\\s+delivering\\s+your\\s+order|has\\s+been\\s+shipped)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -2452,6 +4385,70 @@
         "sub_category": "delivery",
         "extract": {
           "merchant": "Zomato"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-delivered-02",
+      "name": "Amazon Order Delivered",
+      "priority": 219,
+      "match": {
+        "body_pattern": "(?i)your\\s+Amazon\\.in\\s+order\\s+\\d{3}-\\d{7}-\\d{7}\\s+has\\s+been\\s+delivered"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-pickup-01",
+      "name": "Amazon Return Pickup Scheduled",
+      "priority": 219,
+      "match": {
+        "body_pattern": "(?i)your\\s+return\\s+pickup\\s+for\\s+\\d{3}-\\d{7}-\\d{7}\\s+is\\s+scheduled"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-agent-delivery-01",
+      "name": "Amazon Delivery Agent Update",
+      "priority": 218,
+      "match": {
+        "body_pattern": "(?i)(?:\\bAmzAgent\\b|Amazon\\s+Delivery\\s+Associate)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-refund-issued-01",
+      "name": "Amazon Refund Issued",
+      "priority": 217,
+      "match": {
+        "body_pattern": "(?i)refund\\s+issued:\\s*amount\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_contain": [
+          "amzn.in"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Amazon"
         }
       },
       "contributed_by": "clearsms",
@@ -2507,6 +4504,21 @@
         "extract": {
           "courier": "Ekart Logistics"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "ekart-delivered-02",
+      "name": "Ekart Package Delivered",
+      "priority": 214,
+      "match": {
+        "sender_pattern": "(?i)(?:EKART|EKTLOG)",
+        "body_pattern": "(?i)\\bwas\\s+delivered\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"

@@ -116,6 +116,203 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-upi-credit-01",
+      "name": "SBI UPI Account Credit",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)A/c\\s*[Xx*]*(\\d{1,5})[-\\s]*credited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\b",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-debit-transfer-01",
+      "name": "SBI Account Debit (Transfer With Balance)",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)Your\\s+A/C\\s+[Xx*\\d]{0,12}?(\\d{4})\\b\\s+debited\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+[\\d/]{4,10}\\s*-\\s*transferred\\s+to\\s+([^\\n]{1,35}?)\\.\\s*Avl\\s+Balance\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "balance": "$4",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-debit-transfer-02",
+      "name": "SBI Debit By Transfer",
+      "priority": 316,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)has\\s+a\\s+debit\\s+by\\s+transfer\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,30}?Avl\\s+Bal\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "balance": "$2",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-loan-credit-01",
+      "name": "SBI Loan Account Credit",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)loan\\s+A/C\\s+[Xx*\\d]{0,12}?(\\d{4})\\b\\s+credited\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-loan-debit-01",
+      "name": "SBI Loan Account Debit",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)loan\\s+[Xx*\\d]{0,12}?(\\d{4})\\b\\s+debited\\s+by\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-spent-01",
+      "name": "SBI Credit Card Spend At Merchant",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+your\\s+SBI\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{4})\\s+at\\s+([^\\n]{1,40}?)\\s+on\\s+[\\d/]{6,10}",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-neft-debit-01",
+      "name": "SBI NEFT Account Debit",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)A/c\\s+[Xx*\\d]{0,12}?(\\d{3,4})\\b\\s+has\\s+been\\s+debited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,50}?NEFT",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-estatement-mailed-01",
+      "name": "SBI Card E-Statement Mailed",
+      "priority": 312,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)e-statement\\s+of\\s+SBI\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{4})\\s+dated"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "bank": "SBI"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

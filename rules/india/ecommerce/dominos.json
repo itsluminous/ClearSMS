@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "dominos-delivery-01",
+      "name": "Domino's Order Out For Delivery",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)DOMINO",
+        "body_pattern": "(?i)(?:Domino'?s\\s+order\\s+is\\s+out\\s+for\\s+delivery|your\\s+order\\s+is\\s+out\\s+for\\s+delivery\\s+with\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

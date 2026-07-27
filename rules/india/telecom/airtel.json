@@ -57,6 +57,43 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-postpaid-payment-01",
+      "name": "Airtel Postpaid Payment Applied",
+      "priority": 245,
+      "match": {
+        "sender_pattern": "(?i)AIRTEL",
+        "body_pattern": "(?i)we\\s+have\\s+credited\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+by\\b[\\s\\S]{0,50}?to\\s+your\\s+Airtel\\s+Postpaid"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-bill-due-01",
+      "name": "Airtel Bill Payment Due",
+      "priority": 244,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+on\\s+([0-9A-Za-z-]{6,12})\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "due_date": "$2"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

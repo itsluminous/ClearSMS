@@ -116,6 +116,230 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-card-spent-01",
+      "name": "ICICI Bank Card Spend At Merchant",
+      "priority": 325,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+(?:using|on)\\s+ICICI\\s+Bank\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+on\\s+\\S{5,12}\\s+(?:on|at)\\s+([^\\n]{1,40}?)\\.?\\s+Avl\\s+L",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-card-debit-info-01",
+      "name": "ICICI Bank Credit Card Debit With Info",
+      "priority": 323,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+debited\\s+on\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})[\\s\\S]{0,30}?Info:\\s*([^.\\n]{1,40})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-stmt-01",
+      "name": "ICICI Bank Credit Card Statement Due",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)total\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*&\\s*min(?:imum)?\\s+due\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:to\\s+be\\s+paid\\s+by|due\\s+by)\\s+([0-9A-Za-z-]{6,12})\\s+on\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "min_due": "$2",
+          "due_date": "$3",
+          "account_last4": "$4",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-payment-01",
+      "name": "ICICI Bank Credit Card Payment Received",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+received\\s+(?:towards|on)\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-refund-01",
+      "name": "ICICI Bank Credit Card Refund (From Merchant)",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+([^\\n]{1,40}?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-refund-02",
+      "name": "ICICI Bank Credit Card Merchant Refund",
+      "priority": 329,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(\\S[^\\n]{0,35}?)\\s+refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "merchant": "$1",
+          "amount": "$2",
+          "account_last4": "$3",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-reversal-01",
+      "name": "ICICI Bank Credit Card Reversal",
+      "priority": 328,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)reversal\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-otp-txn-01",
+      "name": "ICICI Bank Card Transaction OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+One[- ]?Time\\s+Password\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+transaction\\s+towards\\s+([^\\n]{1,40}?)\\s+using\\s+ICICI\\s+Bank"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-refund-03",
+      "name": "ICICI Bank Credit Card Credited/Refunded",
+      "priority": 327,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+credited/refunded\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-card-dispatch-01",
+      "name": "ICICI Bank Card Dispatch/Delivery Update",
+      "priority": 294,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)(?:delivered|out\\s+for\\s+delivery|dispatched):\\s*credit\\s+card\\b[\\s\\S]{0,60}?ICICI\\s+Bank\\s+Card"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }
