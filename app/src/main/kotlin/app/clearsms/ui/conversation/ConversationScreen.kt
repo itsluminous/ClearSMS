@@ -1,5 +1,6 @@
 package app.clearsms.ui.conversation
 
+import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -62,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +74,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import app.clearsms.R
+import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
@@ -117,14 +121,11 @@ fun ConversationScreen(
                             actionLabel = retryLabel,
                             duration = SnackbarDuration.Long,
                         )
-                    if (result == SnackbarResult.ActionPerformed) viewModel.retry(event.itemId)
+                    if (result == SnackbarResult.ActionPerformed) viewModel.retry(event.messageId)
                 }
             }
         }
     }
-
-    // Newest local reply renders at the visual bottom (index 0 when reversed).
-    val localDesc = remember(state.localItems) { state.localItems.sortedByDescending { it.timestamp } }
 
     // A message id arriving via navigation (search result, Alerts/Finance
     // card or notification tap) is scrolled to and briefly highlighted. The
@@ -138,7 +139,7 @@ fun ConversationScreen(
         if (items.itemCount == 0) return@LaunchedEffect
         val index = highlight.onItemsLoaded(items.itemSnapshotList.items.map { it.id })
         if (index != null) {
-            listState.scrollToItem(localDesc.size + index)
+            listState.scrollToItem(index)
             highlightedItemId = viewModel.highlightTarget
         }
     }
@@ -152,10 +153,14 @@ fun ConversationScreen(
         }
     }
 
-    // Sending a reply pins the list back to the bottom.
-    LaunchedEffect(localDesc.size) {
-        if (localDesc.isNotEmpty()) listState.animateScrollToItem(0)
+    // Sending a reply pins the list back to the bottom once the row lands.
+    LaunchedEffect(Unit) {
+        viewModel.scrollToBottom.collect { listState.animateScrollToItem(0) }
     }
+
+    // Tap-to-reveal metadata: at most ONE message is expanded at a time
+    // (see MessageMetadata.onTap); survives rotation.
+    var expandedId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     BackHandler(enabled = selection.active) { viewModel.exitSelection() }
 
@@ -237,19 +242,6 @@ fun ConversationScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
-            // Local (just-sent) replies: newest first == visual bottom.
-            items(
-                count = localDesc.size,
-                key = { i -> localDesc[i].id },
-            ) { i ->
-                MessageBubble(
-                    item = localDesc[i],
-                    highlighted = false,
-                    selected = false,
-                    onClick = {},
-                    onLongClick = {},
-                )
-            }
             items(
                 count = items.itemCount,
                 key = items.itemKey { it.id },
@@ -270,7 +262,14 @@ fun ConversationScreen(
                         item = item,
                         highlighted = item.id == highlightedItemId,
                         selected = selection.isSelected(item.id),
-                        onClick = { if (selection.active) viewModel.toggleSelection(item.id) else Unit },
+                        expanded = expandedId == item.id,
+                        onClick = {
+                            if (selection.active) {
+                                viewModel.toggleSelection(item.id)
+                            } else {
+                                expandedId = MessageMetadata.onTap(expandedId, item.id, selectionActive = false)
+                            }
+                        },
                         onLongClick = { viewModel.enterSelection(item.id) },
                         selectionActive = selection.active,
                     )
@@ -434,6 +433,17 @@ private fun DateSeparator(timestamp: Long) {
     }
 }
 
+/**
+ * One chat bubble. Alignment and colors come from the PERSISTED direction
+ * ([ConversationItem.outgoing]): outgoing right / `primaryContainer`,
+ * incoming left / `surfaceVariant` — stable across app restarts.
+ *
+ * Tapping (outside selection mode) toggles ONE expansion region below the
+ * bubble holding the metadata line (exact timestamp; delivery status for
+ * outgoing, category for incoming) and, when the message has parsed
+ * extraction details, the detail card — a single expander, so metadata and
+ * the transaction/OTP card never fight over the tap.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
@@ -442,9 +452,9 @@ private fun MessageBubble(
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    expanded: Boolean = false,
     selectionActive: Boolean = false,
 ) {
-    var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
     val alignment = if (item.outgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor =
         when {
@@ -505,17 +515,22 @@ private fun MessageBubble(
                     ),
                 color = bubbleColor,
                 modifier =
-                    Modifier.combinedClickable(
-                        onClick = {
-                            if (selectionActive) {
-                                onClick()
-                            } else if (item.details.isNotEmpty()) {
-                                expanded = !expanded
-                            }
-                        },
-                        onLongClick = onLongClick,
-                        onLongClickLabel = stringResource(R.string.inbox_row_actions),
-                    ),
+                    Modifier
+                        // Comfortable touch target for the tap-to-reveal gesture.
+                        .defaultMinSize(minHeight = 48.dp)
+                        .combinedClickable(
+                            onClick = onClick,
+                            onClickLabel =
+                                stringResource(
+                                    if (expanded) {
+                                        R.string.conversation_hide_message_details
+                                    } else {
+                                        R.string.conversation_show_message_details
+                                    },
+                                ),
+                            onLongClick = onLongClick,
+                            onLongClickLabel = stringResource(R.string.inbox_row_actions),
+                        ),
             ) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                     Text(text = item.body, style = MaterialTheme.typography.bodyLarge, color = textColor)
@@ -525,18 +540,19 @@ private fun MessageBubble(
                         color = textColor.copy(alpha = 0.7f),
                         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
                     )
-                    // Locally sent replies carry their send lifecycle on the bubble.
-                    item.sendStatus?.let { status ->
+                    // In-flight and failed sends stay visible on the bubble
+                    // itself; resolved statuses live in the metadata line.
+                    if (item.deliveryStatus == DeliveryStatus.SENDING || item.deliveryStatus == DeliveryStatus.FAILED) {
                         Text(
                             text =
-                                when (status) {
-                                    SendStatus.SENDING -> stringResource(R.string.conversation_sending)
-                                    SendStatus.SENT -> stringResource(R.string.conversation_sent)
-                                    SendStatus.FAILED -> stringResource(R.string.conversation_not_sent)
+                                if (item.deliveryStatus == DeliveryStatus.FAILED) {
+                                    stringResource(R.string.conversation_not_sent)
+                                } else {
+                                    stringResource(R.string.conversation_sending)
                                 },
                             style = MaterialTheme.typography.labelSmall,
                             color =
-                                if (status == SendStatus.FAILED) {
+                                if (item.deliveryStatus == DeliveryStatus.FAILED) {
                                     MaterialTheme.colorScheme.error
                                 } else {
                                     textColor.copy(alpha = 0.7f)
@@ -546,12 +562,52 @@ private fun MessageBubble(
                     }
                 }
             }
-            AnimatedVisibility(visible = expanded && item.details.isNotEmpty()) {
-                ParsedDetailCard(details = item.details)
+            AnimatedVisibility(visible = expanded) {
+                Column(horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start) {
+                    MessageMetadataLine(item)
+                    if (item.details.isNotEmpty()) ParsedDetailCard(details = item.details)
+                }
             }
         }
     }
 }
+
+/**
+ * The unobtrusive metadata line revealed under a tapped bubble: exact
+ * timestamp (honouring the device's 12/24-hour setting), plus the persisted
+ * delivery status for outgoing messages or the category for incoming ones.
+ */
+@Composable
+private fun MessageMetadataLine(item: ConversationItem) {
+    val context = LocalContext.current
+    val is24Hour = remember { DateFormat.is24HourFormat(context) }
+    val timestamp = remember(item.id) { MessageMetadata.timestampLabel(item.timestamp, is24Hour) }
+    val detail =
+        if (item.outgoing) {
+            when (item.deliveryStatus) {
+                DeliveryStatus.SENDING -> stringResource(R.string.conversation_sending)
+                DeliveryStatus.DELIVERED -> stringResource(R.string.conversation_delivered)
+                DeliveryStatus.FAILED -> stringResource(R.string.conversation_not_sent)
+                // No failure recorded and no delivery report (reports off, or
+                // the carrier sent none): honestly "Sent", never "Delivered".
+                DeliveryStatus.SENT, null -> stringResource(R.string.conversation_sent)
+            }
+        } else {
+            item.message?.let { message ->
+                message.subCategory?.let { categoryLabel(it.name) }
+                    ?: categoryLabel(message.category.name)
+            }
+        }
+    Text(
+        text = if (detail != null) "$timestamp · $detail" else timestamp,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
+    )
+}
+
+/** "BANK_ALERT" → "Bank alert" (enum names are already user-meaningful). */
+private fun categoryLabel(name: String): String = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
 
 /** Expandable card showing parsed transaction / OTP fields under a bubble. */
 @Composable

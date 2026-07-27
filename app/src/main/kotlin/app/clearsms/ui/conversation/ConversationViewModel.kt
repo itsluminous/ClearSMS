@@ -8,6 +8,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
@@ -46,21 +47,47 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
-/** One bubble in the conversation: a stored incoming message or a locally sent reply. */
+/** One bubble in the conversation, mapped 1:1 from its persisted row. */
 data class ConversationItem(
     val id: Long,
     val body: String,
     val timestamp: Long,
+    /** Persisted direction ([MessageEntity.isOutgoing]) — drives alignment. */
     val outgoing: Boolean,
-    /** Backing entity for incoming messages (null for locally sent replies). */
+    /** Backing entity (category, OTP, archive state for the selection bar). */
     val message: MessageEntity? = null,
     /** Parsed extraction details (amount, bank, otp_code…) for the detail card. */
     val details: Map<String, String> = emptyMap(),
     /** Precomputed in the mapper so composition never formats dates. */
     val timeLabel: String = "",
-    /** Send lifecycle for locally sent replies (null for incoming messages). */
-    val sendStatus: SendStatus? = null,
+    /** Persisted send lifecycle for outgoing messages (null on incoming). */
+    val deliveryStatus: DeliveryStatus? = null,
 )
+
+/** Maps a stored message to its bubble; direction and status come from the row. */
+internal fun MessageEntity.toConversationItem(json: Json): ConversationItem =
+    ConversationItem(
+        id = id,
+        body = body,
+        timestamp = timestamp,
+        outgoing = isOutgoing,
+        message = this,
+        details = parseDetails(json, extractedDataJson),
+        timeLabel = RelativeTime.format(timestamp),
+        deliveryStatus = if (isOutgoing) deliveryStatus else null,
+    )
+
+private fun parseDetails(
+    json: Json,
+    raw: String?,
+): Map<String, String> =
+    raw?.let {
+        try {
+            json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), it)
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    } ?: emptyMap()
 
 data class ConversationUiState(
     val title: String = "",
@@ -69,8 +96,6 @@ data class ConversationUiState(
     val isKnownSender: Boolean = false,
     val glyph: BrandGlyph = BrandGlyph.NONE,
     val richAvatars: Boolean = true,
-    /** Replies typed on this screen, newest last (paged items carry the rest). */
-    val localItems: List<ConversationItem> = emptyList(),
     /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
     val repliable: Boolean = false,
     val loaded: Boolean = false,
@@ -81,9 +106,9 @@ sealed interface SendEvent {
     /** The send resolved without a recorded failure — show "Message sent". */
     data object Sent : SendEvent
 
-    /** The send failed; [itemId] identifies the bubble a Retry should re-dispatch. */
+    /** The send failed; [messageId] identifies the row a Retry re-dispatches. */
     data class Failed(
-        val itemId: Long,
+        val messageId: Long,
     ) : SendEvent
 }
 
@@ -113,13 +138,13 @@ class ConversationViewModel
          */
         val highlightTarget: Long? = highlightTargetOf(savedStateHandle.get<Long>("messageId"))
 
-        /** Replies sent from this screen; the platform layer owns system persistence. */
-        private val sentLocally = MutableStateFlow<List<ConversationItem>>(emptyList())
-        private var nextLocalId = -1L
-
         /** One-shot send outcomes for the screen's snackbar. */
         private val sendEvents = Channel<SendEvent>(Channel.BUFFERED)
         val events: Flow<SendEvent> = sendEvents.receiveAsFlow()
+
+        /** Fires after a reply is persisted so the screen pins back to the bottom. */
+        private val scrollToBottomSignal = Channel<Unit>(Channel.CONFLATED)
+        val scrollToBottom: Flow<Unit> = scrollToBottomSignal.receiveAsFlow()
 
         /** Multi-select over message ids within the thread. */
         private val selectionState = MutableStateFlow(SelectionState<Long>())
@@ -128,8 +153,12 @@ class ConversationViewModel
         /**
          * Paged thread messages, newest first (the screen renders them with
          * `reverseLayout`), so a 14k-message thread only ever materializes the
-         * visible window. When navigation carries a highlight target, paging
-         * starts at its position so the message is in the first load.
+         * visible window. Replies appear here too: sending persists the row
+         * immediately, Room invalidates the pager, and the bubble renders
+         * from its PERSISTED direction and status — it stays right-aligned
+         * with its outcome after a restart, unlike the old session-state
+         * bubbles. When navigation carries a highlight target, paging starts
+         * at its position so the message is in the first load.
          */
         val pagedItems: Flow<PagingData<ConversationItem>> =
             flow { emit(initialPosition()) }
@@ -144,16 +173,15 @@ class ConversationViewModel
                         initialKey = position,
                         pagingSourceFactory = { messageRepository.pagedThread(threadId) },
                     ).flow
-                }.map { data -> data.map { it.toItem() } }
+                }.map { data -> data.map { it.toConversationItem(json) } }
                 .flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 
         val uiState: StateFlow<ConversationUiState> =
             combine(
                 flow { emit(messageRepository.firstInThread(threadId)) },
-                sentLocally,
                 settings.showRichAvatars,
-            ) { first, local, richAvatars ->
+            ) { first, richAvatars ->
                 val display = first?.sender?.let { resolveDisplay(it) }
                 ConversationUiState(
                     title = display?.name.orEmpty(),
@@ -162,7 +190,6 @@ class ConversationViewModel
                     isKnownSender = display?.isKnownSender ?: false,
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
-                    localItems = local,
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
                     loaded = first != null,
                 )
@@ -170,61 +197,47 @@ class ConversationViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
         /**
-         * Dispatches [body] optimistically: the bubble appears immediately in
-         * [ConversationUiState.localItems] with [SendStatus.SENDING], and its
-         * status plus a [SendEvent] resolve asynchronously from the persisted
-         * message status (see [SendOutcome] for what each state means).
+         * Dispatches [body]: [SmsSender] persists the outgoing row (Sending)
+         * before handing it to the radio, so the bubble appears immediately
+         * through paging invalidation; its status and the snackbar [SendEvent]
+         * then resolve from the persisted [DeliveryStatus].
          */
         fun send(body: String) {
             val destination = uiState.value.address
             if (destination.isBlank() || body.isBlank()) return
-            val now = System.currentTimeMillis()
-            val item =
-                ConversationItem(
-                    id = nextLocalId--,
-                    body = body,
-                    timestamp = now,
-                    outgoing = true,
-                    timeLabel = RelativeTime.format(now),
-                    sendStatus = SendStatus.SENDING,
-                )
-            sentLocally.update { it + item }
-            viewModelScope.launch(ioDispatcher) { dispatch(item.id, destination, body) }
-        }
-
-        /** Re-dispatches a failed reply, resetting its bubble to Sending. */
-        fun retry(itemId: Long) {
-            val item = sentLocally.value.firstOrNull { it.id == itemId } ?: return
-            val destination = uiState.value.address
-            if (destination.isBlank()) return
-            setSendStatus(itemId, SendStatus.SENDING)
-            viewModelScope.launch(ioDispatcher) { dispatch(itemId, destination, item.body) }
-        }
-
-        private suspend fun dispatch(
-            itemId: Long,
-            destination: String,
-            body: String,
-        ) {
-            val dispatchedAt = System.currentTimeMillis()
-            val status =
-                try {
-                    smsSender.send(destination, body)
-                    sentMessageWatcher.await(destination, body, dispatchedAt)
-                } catch (_: Exception) {
-                    SendStatus.FAILED
-                }
-            setSendStatus(itemId, status)
-            sendEvents.send(if (status == SendStatus.FAILED) SendEvent.Failed(itemId) else SendEvent.Sent)
-        }
-
-        private fun setSendStatus(
-            itemId: Long,
-            status: SendStatus,
-        ) {
-            sentLocally.update { list ->
-                list.map { if (it.id == itemId) it.copy(sendStatus = status) else it }
+            viewModelScope.launch(ioDispatcher) {
+                val messageId =
+                    try {
+                        smsSender.send(destination, body)
+                    } catch (_: Exception) {
+                        // Persisting the message itself failed — nothing to retry against.
+                        sendEvents.send(SendEvent.Failed(NO_MESSAGE))
+                        return@launch
+                    }
+                scrollToBottomSignal.trySend(Unit)
+                resolve(messageId)
             }
+        }
+
+        /** Re-dispatches a failed reply on its own row (bubble flips back to Sending). */
+        fun retry(messageId: Long) {
+            if (messageId == NO_MESSAGE) return
+            viewModelScope.launch(ioDispatcher) {
+                try {
+                    smsSender.resend(messageId)
+                } catch (_: Exception) {
+                    sendEvents.send(SendEvent.Failed(messageId))
+                    return@launch
+                }
+                resolve(messageId)
+            }
+        }
+
+        private suspend fun resolve(messageId: Long) {
+            val status = sentMessageWatcher.await(messageId)
+            sendEvents.send(
+                if (status == SendStatus.FAILED) SendEvent.Failed(messageId) else SendEvent.Sent,
+            )
         }
 
         fun delete(messageId: Long) {
@@ -290,27 +303,10 @@ class ConversationViewModel
                 ?.let { messageRepository.positionInThread(threadId, it) }
                 ?.takeIf { it > 0 }
 
-        private fun MessageEntity.toItem(): ConversationItem =
-            ConversationItem(
-                id = id,
-                body = body,
-                timestamp = timestamp,
-                outgoing = false,
-                message = this,
-                details = parseDetails(extractedDataJson),
-                timeLabel = RelativeTime.format(timestamp),
-            )
-
-        private fun parseDetails(raw: String?): Map<String, String> =
-            raw?.let {
-                try {
-                    json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), it)
-                } catch (_: Exception) {
-                    emptyMap()
-                }
-            } ?: emptyMap()
-
         private companion object {
             const val PAGE_SIZE = 60
+
+            /** Sentinel for a send that failed before a row existed. */
+            const val NO_MESSAGE = -1L
         }
     }

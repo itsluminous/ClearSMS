@@ -92,10 +92,10 @@ class ComposeMessageViewModel
 
         /**
          * Dispatches the message and resolves [ComposeUiState.sendStatus]
-         * from the persisted message status (see
-         * [app.clearsms.ui.conversation.SendOutcome]): Sending until the
-         * radio result window closes, then Sent, or Failed the moment a
-         * failure is recorded. Retrying is calling [send] again.
+         * from the persisted message status: [SmsSender] writes the outgoing
+         * row at Sending, and [SentMessageWatcher] resolves it to Sent or
+         * Failed from the recorded radio reports. Retrying is calling [send]
+         * again.
          */
         fun send() {
             val current = state.value
@@ -108,10 +108,8 @@ class ComposeMessageViewModel
                         val signature = settings.signature.first()
                         val fullBody =
                             if (signature.isNotBlank()) "${current.body}\n$signature" else current.body
-                        val destination = current.recipient.trim()
-                        val dispatchedAt = System.currentTimeMillis()
-                        smsSender.send(destination, fullBody)
-                        sentMessageWatcher.await(destination, fullBody, dispatchedAt)
+                        val messageId = smsSender.send(current.recipient.trim(), fullBody)
+                        sentMessageWatcher.await(messageId)
                     } catch (_: Exception) {
                         SendStatus.FAILED
                     }
