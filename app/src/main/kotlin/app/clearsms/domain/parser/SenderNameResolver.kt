@@ -24,6 +24,13 @@ object SenderNameResolver {
         val senderKeys: List<String>,
         /** Whole-word aliases matched against bodies and stored names. */
         val aliases: List<String>,
+        /**
+         * Whether this institution can OWN an account/card. Banks and wallets
+         * are issuers; payment channels (CRED), ecommerce brands (Flipkart)
+         * and telecoms (Airtel) are not — they appear in money messages as
+         * merchants or conduits, never as the account's home.
+         */
+        val isIssuer: Boolean = true,
     )
 
     private val INSTITUTIONS =
@@ -53,14 +60,18 @@ object SenderNameResolver {
             ),
             Institution("PhonePe", listOf("PHONPE"), listOf("PHONEPE")),
             Institution("Amazon Pay", listOf("AMZNPY", "APAYIN"), listOf("AMAZON PAY")),
-            Institution("CRED", listOf("CREDCL", "CREDIN"), listOf("CRED")),
+            // CRED is a payment CHANNEL for other banks' credit cards — a
+            // "payment received for card 4001" via CRED belongs to whichever
+            // bank issued card 4001, so CRED must never own an account.
+            Institution("CRED", listOf("CREDCL", "CREDIN"), listOf("CRED"), isIssuer = false),
             Institution("PayZapp", listOf("PAYZAP"), listOf("PAYZAPP")),
             // Sodexo meal cards were rebranded to Pluxee; both ids are one wallet.
             Institution("Pluxee", listOf("PLUXEE", "SODEXO"), listOf("PLUXEE", "SODEXO")),
             // Non-bank issuers seen in real inboxes — better display names for
-            // the sender-ID fallback path.
-            Institution("Flipkart", listOf("FLPKRT"), listOf("FLIPKART")),
-            Institution("Airtel", listOf("AIRTEL", "AIRBIL", "AIRINF"), listOf("AIRTEL")),
+            // the sender-ID fallback path. Not issuers: a Flipkart refund goes
+            // TO a bank account, an Airtel bill is charged FROM one.
+            Institution("Flipkart", listOf("FLPKRT"), listOf("FLIPKART"), isIssuer = false),
+            Institution("Airtel", listOf("AIRTEL", "AIRBIL", "AIRINF"), listOf("AIRTEL"), isIssuer = false),
         )
 
     /** Aliases sorted longest-first so "Paytm Payments Bank" wins over "Paytm". */
@@ -91,6 +102,44 @@ object SenderNameResolver {
         matchAlias(normalized)?.let { return it.name }
         // 3. Last resort: the normalized sender ID itself.
         return normalized.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * The single account-creation guardrail: whether [name] can plausibly
+     * OWN an account or card — i.e. is a financial institution or wallet.
+     *
+     * Rationale: three real misattribution shapes all shared one root cause —
+     * an `AccountEntity` was created from whatever name landed in
+     * `bankName`, even when that name was a merchant ("at Paytm"), a payment
+     * channel (CRED forwarding a card payment), or an ecommerce brand
+     * (a Flipkart refund credited to a bank account). An account row must
+     * only ever be created for a plausible issuer:
+     *  - a curated institution whose kind is bank/wallet ([Institution.isIssuer]),
+     *  - or an uncurated name that self-evidently names a bank ("...BANK..."),
+     *  - or a name the [body] explicitly places in a card/account phrase
+     *    ("linked to your <Name> Card", "<Name> A/c") — an unknown-but-real
+     *    issuer named by its own message.
+     * Everything else (merchant names, payment apps, ecommerce brands, raw
+     * shortcodes) must NOT create an account; the caller keeps the account's
+     * bank blank so a later, properly attributed message can claim it.
+     */
+    fun isPlausibleIssuer(
+        name: String?,
+        body: String = "",
+    ): Boolean {
+        val trimmed = name?.trim().orEmpty()
+        if (trimmed.isEmpty()) return false
+        val upper = trimmed.uppercase()
+        matchAlias(upper)?.let { return it.isIssuer }
+        if (upper.contains("BANK")) return true
+        if (body.isNotEmpty()) {
+            val anchored =
+                Regex(
+                    "(?i)(?<![A-Za-z0-9])${Regex.escape(trimmed)}\\s+(?:bank|card|a/c|acct|account|wallet)\\b",
+                )
+            if (anchored.containsMatchIn(body)) return true
+        }
+        return false
     }
 
     /**
