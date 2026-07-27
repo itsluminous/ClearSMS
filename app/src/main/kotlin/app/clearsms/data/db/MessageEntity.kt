@@ -15,6 +15,9 @@ import app.clearsms.domain.model.SubCategory
         Index("normalizedSender"),
         Index("category"),
         Index("timestamp"),
+        // Serves the paged conversation query (WHERE threadId ORDER BY
+        // timestamp DESC) without a separate sort step on large threads.
+        Index("threadId", "timestamp"),
         // Idempotency key for the history import: re-processing the same
         // system provider row can never create a duplicate. NULL (messages
         // that arrived live through SMS_DELIVER) is exempt from uniqueness.

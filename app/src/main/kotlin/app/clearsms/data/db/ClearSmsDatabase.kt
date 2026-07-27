@@ -1,5 +1,6 @@
 package app.clearsms.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -13,8 +14,12 @@ import androidx.room.TypeConverters
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 @TypeConverters(Converters::class)
 abstract class ClearSmsDatabase : RoomDatabase() {
