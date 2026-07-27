@@ -1,0 +1,127 @@
+package app.clearsms.ui.composemsg
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.clearsms.R
+
+/** New message: recipient with contact suggestions, body, signature-aware send. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ComposeMessageScreen(
+    onBack: () -> Unit,
+    viewModel: ComposeMessageViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val errorMessage = stringResource(R.string.compose_send_failed)
+
+    LaunchedEffect(state.sent) {
+        if (state.sent) onBack()
+    }
+    LaunchedEffect(state.error) {
+        if (state.error) snackbarHostState.showSnackbar(errorMessage)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.compose_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
+                    }
+                },
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = viewModel::send,
+                icon = {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.Send,
+                        contentDescription = null,
+                    )
+                },
+                text = { Text(stringResource(R.string.action_send)) },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+                    .imePadding(),
+        ) {
+            OutlinedTextField(
+                value = state.recipient,
+                onValueChange = viewModel::onRecipientChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.compose_recipient)) },
+                singleLine = true,
+            )
+            if (suggestions.isNotEmpty()) {
+                LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    items(suggestions, key = { it.name + it.number }) { suggestion ->
+                        ListItem(
+                            modifier = Modifier.clickable { viewModel.pickSuggestion(suggestion) },
+                            leadingContent = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                            headlineContent = { Text(suggestion.name) },
+                            supportingContent = {
+                                Text(
+                                    suggestion.number,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = state.body,
+                onValueChange = viewModel::onBodyChange,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                label = { Text(stringResource(R.string.compose_message)) },
+                minLines = 4,
+            )
+        }
+    }
+}
