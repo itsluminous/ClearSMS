@@ -265,6 +265,29 @@ read strictly from local storage, never downloaded, and never leave your
 device. The app ships with no logo images; without a pack it falls back to
 the generated brand tiles described above.
 
+#### Ready-made pack on each release (optional download)
+
+Every [GitHub release](https://github.com/itsluminous/ClearSMS/releases/latest)
+also attaches an optional `clearsms-logo-pack.zip`, assembled by
+[`scripts/build_logo_pack.py`](scripts/build_logo_pack.py) from two
+MIT-licensed projects pinned to exact commits
+([auraveni/global-bank-logos](https://github.com/auraveni/global-bank-logos)
+and [cashfree/payments-icons-library](https://github.com/cashfree/payments-icons-library)).
+Download the zip, then import it in the app via *Settings → Appearance →
+Sender logo pack*. Every image inside is named by brand key
+(`hdfc.png`, `phonepe.png`) so it matches the curated brand table, and the
+zip includes a `MANIFEST.md` (per-file provenance) and `LICENSES.txt`
+(upstream MIT licence text).
+
+To be clear about the legal position: the upstream MIT licences cover
+those projects' packaging of the files, but the logos themselves remain
+trademarks of the banks and merchants they identify. That is why no logo
+artwork is committed to this repository or bundled into the APK — the pack
+is a separate artifact you choose to download and install, used only to
+label senders in your own inbox. If the upstream sources are unreachable
+during a release build, the release simply ships without the pack (the
+APKs are never blocked on it).
+
 
 ## License
 
