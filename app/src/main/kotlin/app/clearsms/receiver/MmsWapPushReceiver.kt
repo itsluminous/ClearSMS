@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import android.util.Log
 import app.clearsms.R
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.ApplicationScope
@@ -50,9 +51,18 @@ class MmsWapPushReceiver : BroadcastReceiver() {
                 if (!entity.isBlockedSender) {
                     messageNotifier.notify(entity)
                 }
+            } catch (e: Exception) {
+                // A storage or notification failure must never crash the
+                // process — the default SMS app has to survive every
+                // incoming broadcast.
+                Log.e(TAG, "Failed to record incoming MMS notification", e)
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "MmsWapPushReceiver"
     }
 }

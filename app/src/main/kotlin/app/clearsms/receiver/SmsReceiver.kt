@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Telephony
+import android.util.Log
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
@@ -62,19 +63,18 @@ class SmsReceiver : BroadcastReceiver() {
         intent: Intent,
     ) {
         if (intent.action != Telephony.Sms.Intents.SMS_DELIVER_ACTION) return
-        val parts =
-            Telephony.Sms.Intents.getMessagesFromIntent(intent).orEmpty().mapNotNull { sms ->
-                val sender = sms?.displayOriginatingAddress ?: return@mapNotNull null
-                Part(sender, sms.displayMessageBody.orEmpty(), sms.timestampMillis)
-            }
+        val parts = extractParts(intent)
         if (parts.isEmpty()) return
 
         val pendingResult = goAsync()
         applicationScope.launch {
             try {
-                for (merged in mergeParts(parts)) {
-                    process(context, merged)
-                }
+                processIsolating(
+                    mergeParts(parts),
+                    onError = { part, e ->
+                        Log.e(TAG, "Failed to process message from ${part.sender}", e)
+                    },
+                ) { merged -> process(context, merged) }
             } finally {
                 pendingResult.finish()
             }
@@ -125,19 +125,89 @@ class SmsReceiver : BroadcastReceiver() {
     )
 
     companion object {
+        private const val TAG = "SmsReceiver"
+
         /**
-         * Concatenates multipart segments per sender, preserving arrival
-         * order, and keeps the earliest timestamp of each group.
+         * Decodes the PDUs from an `SMS_DELIVER` intent. Malformed PDUs are a
+         * documented source of runtime exceptions from
+         * [Telephony.Sms.Intents.getMessagesFromIntent]; since this runs
+         * directly in [onReceive], a throw here would crash the process on
+         * every redelivery of the same message, so failures are logged and
+         * yield an empty list (no-op) instead.
          */
-        fun mergeParts(parts: List<Part>): List<Part> =
-            parts
-                .groupBy { it.sender }
-                .map { (sender, group) ->
-                    Part(
-                        sender = sender,
-                        body = group.joinToString(separator = "") { it.body },
-                        timestampMs = group.minOf { it.timestampMs },
-                    )
+        internal fun extractParts(intent: Intent): List<Part> {
+            val messages =
+                try {
+                    Telephony.Sms.Intents.getMessagesFromIntent(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Malformed SMS broadcast; dropping", e)
+                    null
                 }
+            return messages.orEmpty().mapNotNull { sms ->
+                val sender =
+                    try {
+                        sms?.displayOriginatingAddress
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Undecodable SMS PDU; skipping part", e)
+                        null
+                    } ?: return@mapNotNull null
+                Part(sender, sms.displayMessageBody.orEmpty(), sms.timestampMillis)
+            }
+        }
+
+        /**
+         * Runs [process] for each merged message, isolating failures: one
+         * message that throws (bad parse, database error, notification
+         * failure) is logged via [onError] and must never abort the rest of
+         * the batch — or escape and crash the process.
+         */
+        internal suspend fun processIsolating(
+            merged: List<Part>,
+            onError: (Part, Exception) -> Unit,
+            process: suspend (Part) -> Unit,
+        ) {
+            for (part in merged) {
+                try {
+                    process(part)
+                } catch (e: Exception) {
+                    onError(part, e)
+                }
+            }
+        }
+
+        /**
+         * Concatenates multipart segments into whole messages, keeping the
+         * earliest timestamp of each group.
+         *
+         * The platform does not expose the multipart reference number on
+         * [android.telephony.SmsMessage], so segments are grouped by sender —
+         * but only CONTIGUOUS runs from the same sender are merged. This keeps
+         * genuine multipart messages (delivered as adjacent PDUs in one
+         * intent) intact while two distinct messages from the same sender that
+         * happen to share a broadcast, separated by another sender's part,
+         * stay separate rows. Tradeoff: two back-to-back distinct messages
+         * from one sender in a single intent are still merged; that is rare
+         * and preferable to splitting real multipart messages.
+         */
+        fun mergeParts(parts: List<Part>): List<Part> {
+            val merged = ArrayList<Part>()
+            var run = ArrayList<Part>()
+            for (part in parts) {
+                if (run.isNotEmpty() && run.first().sender != part.sender) {
+                    merged += mergeRun(run)
+                    run = ArrayList()
+                }
+                run += part
+            }
+            if (run.isNotEmpty()) merged += mergeRun(run)
+            return merged
+        }
+
+        private fun mergeRun(run: List<Part>): Part =
+            Part(
+                sender = run.first().sender,
+                body = run.joinToString(separator = "") { it.body },
+                timestampMs = run.minOf { it.timestampMs },
+            )
     }
 }

@@ -1,6 +1,7 @@
 package app.clearsms.di
 
 import android.content.Context
+import android.util.Log
 import androidx.work.WorkManager
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.sms.ContactLookupImpl
@@ -11,6 +12,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import javax.inject.Qualifier
@@ -34,7 +36,21 @@ object PlatformModule {
     @ApplicationScope
     fun provideApplicationScope(
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
-    ): CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    ): CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher + ingestionExceptionHandler())
+
+    /**
+     * Last-line exception handler for the application scope. A SupervisorJob
+     * only stops failures from cancelling sibling jobs — it does NOT swallow
+     * an exception thrown by a root `launch`; without a handler it would
+     * reach the thread's default handler and crash the process. Work in this
+     * scope is triggered by incoming broadcasts (attacker-influenced data),
+     * so an unexpected failure must degrade into a logged, dropped unit of
+     * work — never a crash of the user's default SMS app.
+     */
+    private fun ingestionExceptionHandler(): CoroutineExceptionHandler =
+        CoroutineExceptionHandler { _, throwable ->
+            Log.e("ClearSmsAppScope", "Uncaught exception in application scope", throwable)
+        }
 
     @Provides
     @Singleton
