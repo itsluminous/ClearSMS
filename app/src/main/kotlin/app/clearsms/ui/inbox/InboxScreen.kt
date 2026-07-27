@@ -1,5 +1,6 @@
 package app.clearsms.ui.inbox
 
+import android.Manifest
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -7,12 +8,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -20,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Inbox
@@ -41,9 +45,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.SwipeAction
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
@@ -67,9 +74,12 @@ import app.clearsms.ui.components.OtpBanner
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.displayName
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
 /** Main inbox: OTP banner, category filter chips and latest-per-sender threads. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun InboxScreen(
     onOpenThread: (Long) -> Unit,
@@ -82,6 +92,14 @@ fun InboxScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var sheetItem by remember { mutableStateOf<InboxItem?>(null) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    val contactsPermission = rememberPermissionState(Manifest.permission.READ_CONTACTS)
+    var hadContactsPermission by remember { mutableStateOf(contactsPermission.status.isGranted) }
+    LaunchedEffect(contactsPermission.status.isGranted) {
+        val granted = contactsPermission.status.isGranted
+        if (granted && !hadContactsPermission) viewModel.onContactsPermissionGranted()
+        hadContactsPermission = granted
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -110,7 +128,7 @@ fun InboxScreen(
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            if (state.loaded && state.items.isEmpty() && state.filter == InboxFilter.All) {
+            if (state.loaded && state.items.isEmpty() && state.filter == InboxFilterState()) {
                 EmptyState(
                     icon = Icons.Outlined.Inbox,
                     title = stringResource(R.string.inbox_empty_title),
@@ -118,6 +136,14 @@ fun InboxScreen(
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (!contactsPermission.status.isGranted) {
+                        item(key = "contacts_permission") {
+                            ContactsPermissionBanner(
+                                onGrant = { contactsPermission.launchPermissionRequest() },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
                     state.latestOtp?.let { otp ->
                         item(key = "otp_banner") {
                             OtpBanner(
@@ -133,7 +159,8 @@ fun InboxScreen(
                             filter = state.filter,
                             unreadCounts = state.unreadCounts,
                             totalUnread = state.totalUnread,
-                            onSelect = viewModel::selectFilter,
+                            onSelectCategory = viewModel::selectCategory,
+                            onToggleUnread = viewModel::toggleUnread,
                         )
                     }
                     if (state.items.isEmpty()) {
@@ -149,11 +176,21 @@ fun InboxScreen(
                     }
                     items(state.items, key = { it.message.id }) { item ->
                         SwipeableMessageItem(
-                            onArchive = { viewModel.archive(item.message.id) },
-                            onDelete = { viewModel.delete(item.message.id) },
+                            startAction = state.swipeStart,
+                            endAction = state.swipeEnd,
+                            onAction = { action ->
+                                when (action) {
+                                    SwipeAction.ARCHIVE -> viewModel.archive(item.message.id)
+                                    SwipeAction.DELETE -> viewModel.delete(item.message.id)
+                                    SwipeAction.TOGGLE_READ ->
+                                        viewModel.markRead(item.message.id, read = !item.message.isRead)
+                                    SwipeAction.NONE -> Unit
+                                }
+                            },
                         ) {
                             InboxRow(
                                 item = item,
+                                richAvatars = state.richAvatars,
                                 onClick = {
                                     viewModel.markRead(item.message.id, read = true)
                                     onOpenThread(item.message.threadId)
@@ -195,39 +232,75 @@ fun InboxScreen(
     }
 }
 
+/** Compact prompt shown while READ_CONTACTS is missing. */
+@Composable
+private fun ContactsPermissionBanner(
+    onGrant: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.Contacts,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(R.string.inbox_contacts_permission),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onGrant) {
+                Text(stringResource(R.string.inbox_contacts_grant))
+            }
+        }
+    }
+}
+
 @Composable
 private fun FilterChipRow(
-    filter: InboxFilter,
+    filter: InboxFilterState,
     unreadCounts: Map<Category, Int>,
     totalUnread: Int,
-    onSelect: (InboxFilter) -> Unit,
+    onSelectCategory: (Category) -> Unit,
+    onToggleUnread: () -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(Category.entries.toList(), key = { it.name }) { category ->
-            val count = unreadCounts[category] ?: 0
+        // "Unread" is an independent toggle that composes with any category.
+        item(key = "unread") {
             FilterChip(
-                selected = filter == InboxFilter.ByCategory(category),
-                onClick = { onSelect(InboxFilter.ByCategory(category)) },
-                label = { Text(category.displayName()) },
+                selected = filter.unreadOnly,
+                onClick = onToggleUnread,
+                label = { Text(stringResource(R.string.filter_unread)) },
                 trailingIcon =
-                    if (count > 0) {
-                        { Badge { Text(count.toString()) } }
+                    if (totalUnread > 0) {
+                        { Badge { Text(totalUnread.toString()) } }
                     } else {
                         null
                     },
             )
         }
-        item(key = "unread") {
+        items(Category.entries.toList(), key = { it.name }) { category ->
+            val count = unreadCounts[category] ?: 0
             FilterChip(
-                selected = filter == InboxFilter.Unread,
-                onClick = { onSelect(InboxFilter.Unread) },
-                label = { Text(stringResource(R.string.filter_unread)) },
+                selected = filter.category == category,
+                onClick = { onSelectCategory(category) },
+                label = { Text(category.displayName()) },
                 trailingIcon =
-                    if (totalUnread > 0) {
-                        { Badge { Text(totalUnread.toString()) } }
+                    if (count > 0) {
+                        { Badge { Text(count.toString()) } }
                     } else {
                         null
                     },
@@ -240,6 +313,7 @@ private fun FilterChipRow(
 @Composable
 private fun InboxRow(
     item: InboxItem,
+    richAvatars: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -253,10 +327,18 @@ private fun InboxRow(
                 onLongClickLabel = stringResource(R.string.inbox_row_actions),
             ),
         colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-        leadingContent = { SenderAvatar(name = item.displayName) },
+        leadingContent = {
+            SenderAvatar(
+                name = item.display.name,
+                richAvatars = richAvatars,
+                photoUri = item.display.photoUri,
+                isKnownSender = item.display.isKnownSender,
+                glyph = item.glyph,
+            )
+        },
         headlineContent = {
             Text(
-                text = item.displayName,
+                text = item.display.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
@@ -316,7 +398,7 @@ private fun MessageActionsSheet(
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(bottom = 24.dp)) {
             Text(
-                text = item.displayName,
+                text = item.display.name,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
