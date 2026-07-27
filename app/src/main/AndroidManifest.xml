@@ -97,6 +97,21 @@
             android:name=".receiver.SmsSentReceiver"
             android:exported="false" />
 
+        <!-- ================================================================
+             Platform-stage additions (not part of the default-SMS-app
+             contract): notification action handlers and reminder alarms.
+             ================================================================ -->
+
+        <!-- Copy / Share / Delete actions on OTP notifications. -->
+        <receiver
+            android:name=".notification.OtpActionReceiver"
+            android:exported="false" />
+
+        <!-- AlarmManager target for bill-due reminders. -->
+        <receiver
+            android:name=".receiver.ReminderAlarmReceiver"
+            android:exported="false" />
+
         <!-- WorkManager: on-demand initialization. The default initializer is
              removed because ClearSmsApplication implements Configuration.Provider
              (HiltWorkerFactory). -->
