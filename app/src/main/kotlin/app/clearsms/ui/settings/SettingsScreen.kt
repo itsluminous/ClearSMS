@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,7 +61,10 @@ import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
+import app.clearsms.ui.components.LogoPack
 import app.clearsms.ui.components.displayName
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 private enum class SettingsDialog {
     THEME,
@@ -72,6 +76,7 @@ private enum class SettingsDialog {
     DEFAULT_FILTER,
     OTP_DELETE,
     OTP_SIZE,
+    LOGO_PACK,
     SIGNATURE,
     BLOCK_LIST,
     BACKUP_FREQUENCY,
@@ -106,6 +111,24 @@ fun SettingsScreen(
     val restoreLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) viewModel.restoreFrom(uri)
+        }
+
+    val logoIndex by LogoPack.index.collectAsStateWithLifecycle()
+    val logoScope = rememberCoroutineScope()
+    val logoImportedTemplate = stringResource(R.string.settings_logo_pack_imported)
+    LaunchedEffect(Unit) { LogoPack.ensureLoaded(context) }
+    val logoFolderLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) LogoPack.setTreeUri(context, uri)
+        }
+    val logoZipLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                logoScope.launch(Dispatchers.IO) {
+                    val imported = LogoPack.importZip(context, uri)
+                    snackbarHostState.showSnackbar(String.format(logoImportedTemplate, imported))
+                }
+            }
         }
 
     LaunchedEffect(Unit) {
@@ -230,6 +253,16 @@ fun SettingsScreen(
                     ),
                 checked = state.showRichAvatars,
                 onToggle = viewModel::setShowRichAvatars,
+            )
+            SettingRow(
+                title = stringResource(R.string.settings_logo_pack),
+                subtitle =
+                    if (logoIndex.isEmpty()) {
+                        stringResource(R.string.settings_logo_pack_empty)
+                    } else {
+                        stringResource(R.string.settings_logo_pack_count, logoIndex.size)
+                    },
+                onClick = { dialog = SettingsDialog.LOGO_PACK },
             )
             ToggleRow(
                 title = stringResource(R.string.settings_show_transaction_details),
@@ -449,6 +482,42 @@ fun SettingsScreen(
                     dialog = null
                 },
                 onDismiss = { dialog = null },
+            )
+        SettingsDialog.LOGO_PACK ->
+            AlertDialog(
+                onDismissRequest = { dialog = null },
+                title = { Text(stringResource(R.string.settings_logo_pack)) },
+                text = {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.settings_logo_pack_note),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        TextButton(
+                            onClick = {
+                                logoFolderLauncher.launch(null)
+                                dialog = null
+                            },
+                        ) { Text(stringResource(R.string.settings_logo_pack_choose_folder)) }
+                        TextButton(
+                            onClick = {
+                                logoZipLauncher.launch(arrayOf("application/zip"))
+                                dialog = null
+                            },
+                        ) { Text(stringResource(R.string.settings_logo_pack_import_zip)) }
+                        if (logoIndex.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    LogoPack.clear(context)
+                                    dialog = null
+                                },
+                            ) { Text(stringResource(R.string.settings_logo_pack_remove)) }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { dialog = null }) { Text(stringResource(R.string.action_cancel)) }
+                },
             )
         SettingsDialog.SIGNATURE ->
             SignatureDialog(
