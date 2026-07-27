@@ -14,11 +14,14 @@ import androidx.room.TypeConverters
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
         AutoMigration(from = 1, to = 2),
+        // v2 -> v3: adds rules.enabled (default 1) so disabling a rule flips
+        // a flag instead of deleting and re-inserting the row.
+        AutoMigration(from = 2, to = 3),
     ],
 )
 @TypeConverters(Converters::class)

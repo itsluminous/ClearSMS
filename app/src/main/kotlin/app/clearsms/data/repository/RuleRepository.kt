@@ -18,6 +18,16 @@ interface RuleRepository {
 
     suspend fun deleteRule(id: String)
 
+    /**
+     * Enables/disables a rule in place. The row (and its `source`) is kept,
+     * so a disable/enable round trip cannot change a rule's identity or turn
+     * a builtin rule into a user rule.
+     */
+    suspend fun setRuleEnabled(
+        id: String,
+        enabled: Boolean,
+    )
+
     /** Serializes the user's own rules to a shareable JSON document. */
     suspend fun exportUserRules(): String
 

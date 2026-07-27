@@ -14,6 +14,16 @@ interface RuleDao {
     @Query("SELECT * FROM rules WHERE source = :source ORDER BY priority DESC")
     suspend fun getBySource(source: String): List<RuleEntity>
 
+    /** Rules the engine should evaluate: same as [getBySource] minus disabled rows. */
+    @Query("SELECT * FROM rules WHERE source = :source AND enabled = 1 ORDER BY priority DESC")
+    suspend fun getEnabledBySource(source: String): List<RuleEntity>
+
+    @Query("UPDATE rules SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(
+        id: String,
+        enabled: Boolean,
+    )
+
     @Query("SELECT * FROM rules ORDER BY id ASC")
     suspend fun getAll(): List<RuleEntity>
 
