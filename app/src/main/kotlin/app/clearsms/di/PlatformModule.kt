@@ -1,11 +1,14 @@
 package app.clearsms.di
 
+import android.content.Context
+import androidx.work.WorkManager
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.sms.ContactLookupImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +35,12 @@ object PlatformModule {
     fun provideApplicationScope(
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
     ): CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(
+        @ApplicationContext context: Context,
+    ): WorkManager = WorkManager.getInstance(context)
 }
 
 /** Fulfils the data layer's optional [ContactLookup] binding. */

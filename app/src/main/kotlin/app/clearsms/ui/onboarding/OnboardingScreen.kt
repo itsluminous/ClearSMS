@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -44,10 +45,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.sms.DefaultSmsAppHelper
-import app.clearsms.work.InitialSyncWorker
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import kotlinx.coroutines.delay
 
 /** Onboarding flow: welcome → permissions → default SMS app → initial sync → theme. */
 @OptIn(ExperimentalPermissionsApi::class)
@@ -65,7 +64,12 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
                 OnboardingStep.WELCOME -> WelcomeStep(onNext = viewModel::next)
                 OnboardingStep.PERMISSIONS -> PermissionsStep(onNext = viewModel::next)
                 OnboardingStep.DEFAULT_SMS -> DefaultSmsStep(onNext = viewModel::next)
-                OnboardingStep.SYNC -> SyncStep(onNext = viewModel::next)
+                OnboardingStep.SYNC ->
+                    SyncStep(
+                        imported = state.syncImported,
+                        total = state.syncTotal,
+                        onSkip = viewModel::next,
+                    )
                 OnboardingStep.THEME ->
                     ThemeStep(
                         selected = state.theme,
@@ -205,16 +209,15 @@ private fun DefaultSmsStep(onNext: () -> Unit) {
 }
 
 @Composable
-private fun SyncStep(onNext: () -> Unit) {
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        InitialSyncWorker.enqueue(context)
-        // The import runs in the background; give it a moment before moving on.
-        delay(2_500)
-        onNext()
-    }
-
+private fun SyncStep(
+    imported: Int,
+    total: Int,
+    onSkip: () -> Unit,
+) {
+    // The import runs in a WorkManager worker enqueued by the ViewModel when
+    // this step is entered; this UI only renders the worker's progress and
+    // onboarding advances automatically when the work finishes. Leaving the
+    // screen (or the app) never interrupts the import.
     StepScaffold(
         icon = {
             Icon(
@@ -227,7 +230,24 @@ private fun SyncStep(onNext: () -> Unit) {
         title = stringResource(R.string.onboarding_sync_title),
         body = stringResource(R.string.onboarding_sync_body),
     ) {
-        CircularProgressIndicator()
+        if (total > 0) {
+            LinearProgressIndicator(
+                progress = { imported.toFloat() / total },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.sync_progress, imported, total),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            CircularProgressIndicator()
+        }
+        Spacer(Modifier.height(16.dp))
+        TextButton(onClick = onSkip) {
+            Text(stringResource(R.string.onboarding_skip))
+        }
     }
 }
 
