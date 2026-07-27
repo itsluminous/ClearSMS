@@ -47,6 +47,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,12 +88,14 @@ import app.clearsms.ui.components.displayName
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.launch
 
 /** Main inbox: OTP banner, category filter chips and latest-per-sender threads. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun InboxScreen(
     onOpenThread: (Long) -> Unit,
+    onOpenMessage: (threadId: Long, messageId: Long) -> Unit,
     onCompose: () -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
@@ -102,6 +107,9 @@ fun InboxScreen(
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val otpCopiedMessage = stringResource(R.string.otp_copied)
 
     val contactsPermission = rememberPermissionState(Manifest.permission.READ_CONTACTS)
     var hadContactsPermission by remember { mutableStateOf(contactsPermission.status.isGranted) }
@@ -116,6 +124,7 @@ fun InboxScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (selection.active) {
                 InboxSelectionBar(
@@ -194,7 +203,12 @@ fun InboxScreen(
                             OtpBanner(
                                 code = otp.code,
                                 senderName = otp.senderName,
-                                onCopied = {},
+                                onCopied = {
+                                    viewModel.markOtpHandled(otp.messageId)
+                                    scope.launch { snackbarHostState.showSnackbar(otpCopiedMessage) }
+                                },
+                                onDismiss = { viewModel.markOtpHandled(otp.messageId) },
+                                onOpenMessage = { onOpenMessage(otp.threadId, otp.messageId) },
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             )
                         }

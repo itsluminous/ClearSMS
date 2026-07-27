@@ -71,6 +71,10 @@ data class LatestOtp(
     val code: String,
     val senderName: String,
     val timestamp: Long,
+    /** Id of the source message: persisted when handled, and the highlight target on tap. */
+    val messageId: Long,
+    /** Thread the banner tap navigates into. */
+    val threadId: Long,
 )
 
 data class InboxUiState(
@@ -140,13 +144,22 @@ class InboxViewModel
                 .cachedIn(viewModelScope)
 
         private val latestOtp =
-            messageRepository
-                .observeInbox(category = Category.OTP, unreadOnly = false)
-                .map { messages ->
-                    messages
-                        .firstOrNull { it.extractedOtp != null && it.timestamp >= System.currentTimeMillis() - OTP_BANNER_WINDOW_MS }
-                        ?.let { LatestOtp(it.extractedOtp!!, resolveDisplay(it.sender).name, it.timestamp) }
-                }.flowOn(ioDispatcher)
+            combine(
+                messageRepository.observeInbox(category = Category.OTP, unreadOnly = false),
+                settings.handledOtpMessageId,
+            ) { messages, handledId ->
+                OtpBannerPolicy
+                    .select(messages, handledId, System.currentTimeMillis())
+                    ?.let {
+                        LatestOtp(
+                            code = it.extractedOtp!!,
+                            senderName = resolveDisplay(it.sender).name,
+                            timestamp = it.timestamp,
+                            messageId = it.id,
+                            threadId = it.threadId,
+                        )
+                    }
+            }.flowOn(ioDispatcher)
 
         private data class Chrome(
             val richAvatars: Boolean,
@@ -182,6 +195,14 @@ class InboxViewModel
 
         fun selectCategory(category: Category) {
             filter.update { it.selectCategory(category) }
+        }
+
+        /**
+         * Persists the OTP as handled (copied or dismissed) so the banner
+         * never shows it again — see [OtpBannerPolicy.select].
+         */
+        fun markOtpHandled(messageId: Long) {
+            viewModelScope.launch(ioDispatcher) { settings.setHandledOtpMessageId(messageId) }
         }
 
         fun toggleUnread() {
@@ -294,8 +315,5 @@ class InboxViewModel
 
         private companion object {
             const val PAGE_SIZE = 40
-
-            /** OTPs older than this are no longer surfaced in the banner. */
-            const val OTP_BANNER_WINDOW_MS = 15L * 60 * 1000
         }
     }

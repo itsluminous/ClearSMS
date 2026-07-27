@@ -143,6 +143,9 @@ private fun MainScaffold(
             composable(Routes.INBOX) {
                 InboxScreen(
                     onOpenThread = { threadId -> navController.navigate(Routes.conversation(threadId)) },
+                    onOpenMessage = { threadId, messageId ->
+                        navController.navigate(Routes.conversation(threadId, messageId))
+                    },
                     onCompose = { navController.navigate(Routes.compose()) },
                     onSearch = { navController.navigate(Routes.SEARCH) },
                     onSettings = { navController.navigate(Routes.SETTINGS) },

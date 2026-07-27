@@ -84,4 +84,15 @@ interface SettingsRepository {
     val transactionNotifications: Flow<Boolean>
 
     suspend fun setTransactionNotifications(value: Boolean)
+
+    /**
+     * Id of the newest OTP message the user has handled (copied or dismissed)
+     * from the inbox banner; 0 when none. Message ids are monotonically
+     * increasing, so the banner hides this id and everything older forever —
+     * across navigation, restarts and re-categorization — while a newer OTP
+     * still surfaces.
+     */
+    val handledOtpMessageId: Flow<Long>
+
+    suspend fun setHandledOtpMessageId(value: Long)
 }
