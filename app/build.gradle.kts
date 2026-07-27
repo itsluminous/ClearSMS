@@ -125,6 +125,12 @@ android {
     }
 }
 
+// Exported Room schemas (schemas/<db>/<version>.json) are committed so future
+// schema changes can ship validated migrations against the released baseline.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Core AndroidX + lifecycle
     implementation(libs.androidx.core.ktx)
