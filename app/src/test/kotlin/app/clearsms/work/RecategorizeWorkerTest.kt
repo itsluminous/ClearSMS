@@ -71,6 +71,10 @@ class RecategorizeWorkerTest {
 
             override suspend fun messageIdsInThread(threadId: Long): List<Long> = emptyList()
 
+            override suspend fun countOtpOlderThan(cutoffMs: Long): Int = 0
+
+            override suspend fun deleteOtpOlderThan(cutoffMs: Long): Int = 0
+
             override suspend fun positionInThread(
                 threadId: Long,
                 messageId: Long,
