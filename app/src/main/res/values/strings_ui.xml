@@ -282,6 +282,20 @@
     <string name="chart_summary_description">Monthly debit and credit totals, %1$s to %2$s. Tap a bar for details.</string>
     <string name="chart_empty_description">No monthly activity yet</string>
 
+    <!-- Finance: transaction paging & source message click-through -->
+    <string name="finance_load_more">Load more</string>
+    <string name="finance_load_more_desc">Load more transactions</string>
+    <string name="finance_loading_more">Loading…</string>
+    <string name="finance_all_loaded">All transactions loaded</string>
+    <string name="finance_open_source_sms">Open source message</string>
+    <string name="finance_open_account_detail">Open account details</string>
+    <string name="source_message_deleted">Original message was deleted</string>
+    <string name="account_open_message">Open message</string>
+
+    <!-- Alerts: past reminders section -->
+    <string name="alerts_past_reminders_count">Past reminders (%1$d)</string>
+    <string name="alerts_expand_past">Expand past reminders</string>
+    <string name="alerts_collapse_past">Collapse past reminders</string>
     <!-- Guided rule wizard (token suggestions) -->
     <string name="rule_wizard_step_source">1. Source message</string>
     <string name="rule_wizard_step_source_hint">Tap a highlighted value to include it in the rule.</string>

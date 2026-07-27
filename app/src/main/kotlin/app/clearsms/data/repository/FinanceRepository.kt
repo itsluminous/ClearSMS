@@ -9,7 +9,22 @@ import kotlinx.coroutines.flow.Flow
 interface FinanceRepository {
     fun observeTransactions(): Flow<List<TransactionEntity>>
 
+    /** Newest [limit] transactions — backs the growing "load more" list. */
+    fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>>
+
     fun observeTransactionsByAccount(accountNumber: String): Flow<List<TransactionEntity>>
+
+    /** Newest [limit] transactions for one account — account-detail "load more" list. */
+    fun observeTransactionsByAccount(
+        accountNumber: String,
+        limit: Int,
+    ): Flow<List<TransactionEntity>>
+
+    /** The most recent transaction for an account/card — the message behind its latest update. */
+    suspend fun latestTransactionForAccount(
+        accountNumber: String,
+        bankName: String,
+    ): TransactionEntity?
 
     fun observeAccounts(): Flow<List<AccountEntity>>
 

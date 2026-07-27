@@ -3,6 +3,7 @@ package app.clearsms.ui.finance
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,12 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -27,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,8 +42,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,25 +62,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.data.db.AccountEntity
+import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import kotlinx.coroutines.launch
 
 /** Finance dashboard: monthly net, then one pill-selected section — accounts, credit cards or latest transactions. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
+    onOpenMessage: (threadId: Long, messageId: Long) -> Unit,
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -79,9 +95,28 @@ fun FinanceScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var limitDialogFor by remember { mutableStateOf<CreditCardItem?>(null) }
     var accountsCollapsed by rememberSaveable { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
+
+    fun openRef(ref: MessageRef?) {
+        if (ref != null) {
+            onOpenMessage(ref.threadId, ref.messageId)
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(sourceDeletedMessage) }
+        }
+    }
+
+    val openTransaction: (TransactionEntity) -> Unit = { tx ->
+        scope.launch { openRef(viewModel.sourceMessageFor(tx.rawSmsId)) }
+    }
+    val openAccountSource: (AccountEntity) -> Unit = { account ->
+        scope.launch { openRef(viewModel.sourceMessageForAccount(account)) }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.finance_title)) },
@@ -120,14 +155,21 @@ fun FinanceScreen(
                         collapsed = accountsCollapsed,
                         onToggleCollapsed = { accountsCollapsed = !accountsCollapsed },
                         onOpenAccount = onOpenAccount,
+                        onOpenSource = openAccountSource,
                     )
                 FinanceTab.CREDIT_CARDS ->
                     creditCardsSection(
                         state = state,
                         onOpenAccount = onOpenAccount,
+                        onOpenSource = openAccountSource,
                         onSetLimit = { limitDialogFor = it },
                     )
-                FinanceTab.TRANSACTIONS -> transactionsSection(state = state)
+                FinanceTab.TRANSACTIONS ->
+                    transactionsSection(
+                        state = state,
+                        onOpenTransaction = openTransaction,
+                        onLoadMore = viewModel::loadMore,
+                    )
             }
         }
     }
@@ -181,6 +223,7 @@ private fun LazyListScope.accountsSection(
     collapsed: Boolean,
     onToggleCollapsed: () -> Unit,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
+    onOpenSource: (AccountEntity) -> Unit,
 ) {
     if (state.bankAccounts.isEmpty()) {
         emptySectionItem()
@@ -199,7 +242,9 @@ private fun LazyListScope.accountsSection(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .clickable { onOpenAccount(account.accountNumber, account.bankName) },
+                        .clickable(
+                            onClickLabel = stringResource(R.string.finance_open_account_detail),
+                        ) { onOpenAccount(account.accountNumber, account.bankName) },
             ) {
                 ListItem(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -222,11 +267,19 @@ private fun LazyListScope.accountsSection(
                         )
                     },
                     trailingContent = {
-                        Text(
-                            text = account.lastKnownBalance?.let { CurrencyFormat.rupees(it) } ?: "—",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = account.lastKnownBalance?.let { CurrencyFormat.rupees(it) } ?: "—",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            IconButton(onClick = { onOpenSource(account) }) {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.OpenInNew,
+                                    contentDescription = stringResource(R.string.finance_open_source_sms),
+                                )
+                            }
+                        }
                     },
                 )
             }
@@ -237,6 +290,7 @@ private fun LazyListScope.accountsSection(
 private fun LazyListScope.creditCardsSection(
     state: FinanceUiState,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
+    onOpenSource: (AccountEntity) -> Unit,
     onSetLimit: (CreditCardItem) -> Unit,
 ) {
     if (state.creditCards.isEmpty()) {
@@ -271,18 +325,27 @@ private fun LazyListScope.creditCardsSection(
         CreditCardCard(
             card = card,
             onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
+            onOpenSource = { onOpenSource(card.account) },
             onSetLimit = { onSetLimit(card) },
         )
     }
 }
 
-private fun LazyListScope.transactionsSection(state: FinanceUiState) {
+private fun LazyListScope.transactionsSection(
+    state: FinanceUiState,
+    onOpenTransaction: (TransactionEntity) -> Unit,
+    onLoadMore: () -> Unit,
+) {
     if (state.latestTransactions.isEmpty()) {
         emptySectionItem()
         return
     }
     items(state.latestTransactions, key = { "tx_${it.id}" }) { tx ->
         ListItem(
+            modifier =
+                Modifier.clickable(
+                    onClickLabel = stringResource(R.string.finance_open_source_sms),
+                ) { onOpenTransaction(tx) },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
             leadingContent = { SenderAvatar(name = tx.bankName.ifBlank { tx.merchantName ?: "?" }, size = 40.dp) },
             headlineContent = {
@@ -302,6 +365,48 @@ private fun LazyListScope.transactionsSection(state: FinanceUiState) {
             },
             trailingContent = { AmountText(amount = tx.amount, type = tx.type) },
         )
+    }
+    item(key = "tx_load_more") {
+        LoadMoreRow(
+            hasMore = state.hasMoreTransactions,
+            loading = state.isLoadingMore,
+            onLoadMore = onLoadMore,
+        )
+    }
+}
+
+/** "Load more" control, replaced by a subtle terminator once everything is loaded. */
+@Composable
+fun LoadMoreRow(
+    hasMore: Boolean,
+    loading: Boolean,
+    onLoadMore: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+        if (hasMore) {
+            val description = stringResource(R.string.finance_load_more_desc)
+            OutlinedButton(
+                onClick = onLoadMore,
+                enabled = !loading,
+                modifier = Modifier.semantics { contentDescription = description },
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.finance_loading_more))
+                } else {
+                    Text(stringResource(R.string.finance_load_more))
+                }
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.finance_all_loaded),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -381,6 +486,7 @@ private fun MonthSummaryCard(
 private fun CreditCardCard(
     card: CreditCardItem,
     onOpen: () -> Unit,
+    onOpenSource: () -> Unit,
     onSetLimit: () -> Unit,
 ) {
     val barColor =
@@ -389,7 +495,13 @@ private fun CreditCardCard(
             UtilizationLevel.WARNING -> MaterialTheme.colorScheme.tertiary
             UtilizationLevel.DANGER -> MaterialTheme.colorScheme.error
         }
-    ElevatedCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
+    ElevatedCard(
+        modifier =
+            Modifier.fillMaxWidth().clickable(
+                onClickLabel = stringResource(R.string.finance_open_account_detail),
+                onClick = onOpen,
+            ),
+    ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CreditCard, contentDescription = null)
@@ -438,8 +550,13 @@ private fun CreditCardCard(
                     )
                 }
             }
-            TextButton(onClick = onSetLimit) {
-                Text(stringResource(R.string.finance_set_card_limit))
+            Row {
+                TextButton(onClick = onSetLimit) {
+                    Text(stringResource(R.string.finance_set_card_limit))
+                }
+                TextButton(onClick = onOpenSource) {
+                    Text(stringResource(R.string.finance_open_source_sms))
+                }
             }
         }
     }

@@ -12,11 +12,17 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
@@ -38,18 +44,25 @@ data class FinanceUiState(
     val bankAccounts: List<AccountEntity> = emptyList(),
     val creditCards: List<CreditCardItem> = emptyList(),
     val cardsAboveSafeLimit: Int = 0,
+    /** Bounded page of newest transactions — grows via "load more". */
     val latestTransactions: List<TransactionEntity> = emptyList(),
+    /** True while more transactions exist beyond the current page. */
+    val hasMoreTransactions: Boolean = false,
+    /** True while the next requested page is still resolving. */
+    val isLoadingMore: Boolean = false,
     /** Badge counts per pill: accounts / cards / transactions this month. */
     val pillCounts: Map<FinanceTab, Int> = emptyMap(),
     val loaded: Boolean = false,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class FinanceViewModel
     @Inject
     constructor(
         private val financeRepository: FinanceRepository,
         private val settingsRepository: SettingsRepository,
+        private val messageLookup: MessageLookup,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         /** Persisted pill selection — restored across app restarts. */
@@ -57,42 +70,95 @@ class FinanceViewModel
             settingsRepository.financeTab
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.ACCOUNTS)
 
+        /** Growing LIMIT for the latest-transactions page. */
+        private val txLimit = MutableStateFlow(TransactionPaging.PAGE_SIZE)
+        private val loadingMore = MutableStateFlow(false)
+
         val uiState: StateFlow<FinanceUiState> =
             combine(
-                financeRepository.observeTransactions(),
-                financeRepository.observeAccounts(),
-            ) { transactions, accounts ->
-                val zone = ZoneId.systemDefault()
-                val currentMonth = YearMonth.now(zone)
-                val monthTxs =
-                    transactions.filter {
-                        YearMonth.from(Instant.ofEpochMilli(it.timestamp).atZone(zone)) == currentMonth
-                    }
-                val cards =
-                    accounts
-                        .filter { it.type == AccountType.CREDIT_CARD }
-                        .map { account ->
-                            val outstanding = account.lastKnownBalance ?: 0.0
-                            val fraction = Utilization.fraction(outstanding, account.creditLimit)
-                            CreditCardItem(
-                                account = account,
-                                outstanding = outstanding,
-                                utilization = fraction,
-                                level = fraction?.let(Utilization::level) ?: UtilizationLevel.NORMAL,
-                            )
+                txLimit
+                    .flatMapLatest { limit ->
+                        combine(
+                            financeRepository.observeTransactions(),
+                            financeRepository.observeAccounts(),
+                            financeRepository.observeLatestTransactions(limit),
+                        ) { transactions, accounts, page ->
+                            buildState(transactions, accounts, page)
                         }
-                FinanceUiState(
-                    monthNet = MonthlyAggregation.net(monthTxs),
-                    monthDebits = monthTxs.filter { it.type == TransactionType.DEBIT }.sumOf { it.amount },
-                    monthCredits = monthTxs.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
-                    bankAccounts = accounts.filter { it.type != AccountType.CREDIT_CARD },
-                    creditCards = cards,
-                    cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),
-                    latestTransactions = transactions.take(LATEST_TRANSACTIONS),
-                    pillCounts = FinancePills.counts(accounts, transactions, currentMonth, zone),
-                    loaded = true,
+                    }.onEach { state ->
+                        // The requested page arrived (or the list is exhausted) — clear the pending flag.
+                        val satisfied = state.latestTransactions.size >= txLimit.value || !state.hasMoreTransactions
+                        if (satisfied) loadingMore.value = false
+                    },
+                loadingMore,
+            ) { state, pending ->
+                state.copy(
+                    isLoadingMore =
+                        pending &&
+                            state.hasMoreTransactions &&
+                            state.latestTransactions.size < txLimit.value,
                 )
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())
+            }.flowOn(ioDispatcher)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())
+
+        private fun buildState(
+            transactions: List<TransactionEntity>,
+            accounts: List<AccountEntity>,
+            page: List<TransactionEntity>,
+        ): FinanceUiState {
+            val zone = ZoneId.systemDefault()
+            val currentMonth = YearMonth.now(zone)
+            val monthTxs =
+                transactions.filter {
+                    YearMonth.from(Instant.ofEpochMilli(it.timestamp).atZone(zone)) == currentMonth
+                }
+            val cards =
+                accounts
+                    .filter { it.type == AccountType.CREDIT_CARD }
+                    .map { account ->
+                        val outstanding = account.lastKnownBalance ?: 0.0
+                        val fraction = Utilization.fraction(outstanding, account.creditLimit)
+                        CreditCardItem(
+                            account = account,
+                            outstanding = outstanding,
+                            utilization = fraction,
+                            level = fraction?.let(Utilization::level) ?: UtilizationLevel.NORMAL,
+                        )
+                    }
+            val total = transactions.size
+            return FinanceUiState(
+                monthNet = MonthlyAggregation.net(monthTxs),
+                monthDebits = monthTxs.filter { it.type == TransactionType.DEBIT }.sumOf { it.amount },
+                monthCredits = monthTxs.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
+                bankAccounts = accounts.filter { it.type != AccountType.CREDIT_CARD },
+                creditCards = cards,
+                cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),
+                latestTransactions = page,
+                hasMoreTransactions = TransactionPaging.hasMore(shown = page.size, total = total),
+                isLoadingMore = false,
+                pillCounts = FinancePills.counts(accounts, transactions, currentMonth, zone),
+                loaded = true,
+            )
+        }
+
+        /** Appends the next page of transactions to the list. */
+        fun loadMore() {
+            loadingMore.value = true
+            txLimit.value = TransactionPaging.nextLimit(txLimit.value)
+        }
+
+        /** Conversation target for the SMS behind [rawSmsId]; null when it was deleted. */
+        suspend fun sourceMessageFor(rawSmsId: Long): MessageRef? =
+            withContext(ioDispatcher) {
+                SourceMessageResolver.resolve(messageLookup.byId(rawSmsId))
+            }
+
+        /** Conversation target for the message behind an account's most recent update. */
+        suspend fun sourceMessageForAccount(account: AccountEntity): MessageRef? =
+            withContext(ioDispatcher) {
+                val latest = financeRepository.latestTransactionForAccount(account.accountNumber, account.bankName)
+                SourceMessageResolver.resolve(latest?.let { messageLookup.byId(it.rawSmsId) })
+            }
 
         fun setTab(tab: FinanceTab) {
             viewModelScope.launch(ioDispatcher) { settingsRepository.setFinanceTab(tab) }
@@ -103,9 +169,5 @@ class FinanceViewModel
             limit: Double?,
         ) {
             viewModelScope.launch(ioDispatcher) { financeRepository.setCardLimit(accountId, limit) }
-        }
-
-        private companion object {
-            const val LATEST_TRANSACTIONS = 20
         }
     }

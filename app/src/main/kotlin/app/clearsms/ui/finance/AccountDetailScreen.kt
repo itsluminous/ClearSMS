@@ -27,6 +27,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -35,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +54,7 @@ import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.EmptyState
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -61,12 +65,28 @@ private val MONTH_HEADER = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLI
 @Composable
 fun AccountDetailScreen(
     onBack: () -> Unit,
+    onOpenMessage: (threadId: Long, messageId: Long) -> Unit,
     viewModel: AccountDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var noteDialogFor by remember { mutableStateOf<TransactionEntity?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
+
+    val openTransaction: (TransactionEntity) -> Unit = { tx ->
+        scope.launch {
+            val ref = viewModel.sourceMessageFor(tx.rawSmsId)
+            if (ref != null) {
+                onOpenMessage(ref.threadId, ref.messageId)
+            } else {
+                snackbarHostState.showSnackbar(sourceDeletedMessage)
+            }
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -167,8 +187,16 @@ fun AccountDetailScreen(
                         tx = tx,
                         loadSms = { viewModel.smsBodyFor(tx.rawSmsId) },
                         onAddNote = { noteDialogFor = tx },
+                        onOpenMessage = { openTransaction(tx) },
                     )
                 }
+            }
+            item(key = "tx_load_more") {
+                LoadMoreRow(
+                    hasMore = state.hasMoreTransactions,
+                    loading = state.isLoadingMore,
+                    onLoadMore = viewModel::loadMore,
+                )
             }
         }
     }
@@ -190,6 +218,7 @@ private fun TransactionRow(
     tx: TransactionEntity,
     loadSms: suspend () -> String?,
     onAddNote: () -> Unit,
+    onOpenMessage: () -> Unit,
 ) {
     var expanded by rememberSaveable(tx.id) { mutableStateOf(false) }
     var smsBody by remember(tx.id) { mutableStateOf<String?>(null) }
@@ -199,7 +228,15 @@ private fun TransactionRow(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+        modifier =
+            Modifier.fillMaxWidth().clickable(
+                onClickLabel =
+                    if (expanded) {
+                        stringResource(R.string.finance_collapse_section)
+                    } else {
+                        stringResource(R.string.finance_expand_section)
+                    },
+            ) { expanded = !expanded },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -253,8 +290,13 @@ private fun TransactionRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    TextButton(onClick = onAddNote) {
-                        Text(stringResource(R.string.account_add_note))
+                    Row {
+                        TextButton(onClick = onAddNote) {
+                            Text(stringResource(R.string.account_add_note))
+                        }
+                        TextButton(onClick = onOpenMessage) {
+                            Text(stringResource(R.string.account_open_message))
+                        }
                     }
                 }
             }
