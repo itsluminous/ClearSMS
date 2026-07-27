@@ -67,8 +67,6 @@ data class ConversationUiState(
     val richAvatars: Boolean = true,
     /** Replies typed on this screen, newest last (paged items carry the rest). */
     val localItems: List<ConversationItem> = emptyList(),
-    /** Message to scroll to and briefly highlight, from search / notification. */
-    val highlightMessageId: Long? = null,
     /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
     val repliable: Boolean = false,
     val sending: Boolean = false,
@@ -91,9 +89,14 @@ class ConversationViewModel
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
 
-        /** Optional target from the nav argument; -1 (the default) means none. */
-        private val highlightMessageId: Long? =
-            savedStateHandle.get<Long>("messageId")?.takeIf { it > 0 }
+        /**
+         * Message to scroll to and briefly highlight, from search / Alerts /
+         * Finance cards / notification taps; -1 (the nav default) means none.
+         * Exposed as a plain property — NOT through [uiState] — because the
+         * state flow combine is asynchronous: the screen's highlight effect
+         * used to race it and silently miss the target on most opens.
+         */
+        val highlightTarget: Long? = highlightTargetOf(savedStateHandle.get<Long>("messageId"))
 
         /** Replies sent from this screen; the platform layer owns system persistence. */
         private val sentLocally = MutableStateFlow<List<ConversationItem>>(emptyList())
@@ -143,7 +146,6 @@ class ConversationViewModel
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
                     localItems = local,
-                    highlightMessageId = highlightMessageId,
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
                     sending = isSending,
                     loaded = first != null,
@@ -231,7 +233,7 @@ class ConversationViewModel
             )
 
         private suspend fun initialPosition(): Int? =
-            highlightMessageId
+            highlightTarget
                 ?.let { messageRepository.positionInThread(threadId, it) }
                 ?.takeIf { it > 0 }
 

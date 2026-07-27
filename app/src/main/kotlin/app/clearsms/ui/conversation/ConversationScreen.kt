@@ -75,8 +75,11 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.amountKindOf
 import kotlinx.coroutines.delay
 
-/** How long the opened-message highlight takes to fade out. */
-private const val HIGHLIGHT_FADE_MS = 1_500
+/** How long the opened-message highlight stays fully visible... */
+private const val HIGHLIGHT_HOLD_MS = 1_600
+
+/** ...and how long it then takes to fade out. */
+private const val HIGHLIGHT_FADE_MS = 600
 
 /** Conversation thread: chat bubbles, date separators, parsed-detail cards and reply. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,18 +100,29 @@ fun ConversationScreen(
     // Newest local reply renders at the visual bottom (index 0 when reversed).
     val localDesc = remember(state.localItems) { state.localItems.sortedByDescending { it.timestamp } }
 
-    // A message id arriving via navigation (search result / notification) is
-    // scrolled to and briefly highlighted exactly once per screen instance.
-    var highlightConsumed by rememberSaveable { mutableStateOf(false) }
+    // A message id arriving via navigation (search result, Alerts/Finance
+    // card or notification tap) is scrolled to and briefly highlighted. The
+    // state machine keeps waiting across page loads until the target is in
+    // the loaded window — the target id is read straight from the ViewModel
+    // (NOT from the async uiState, which raced the first page load and
+    // silently dropped the highlight).
+    val highlight = remember { MessageHighlightState(viewModel.highlightTarget) }
     var highlightedItemId by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(items.itemCount) {
-        if (highlightConsumed || state.highlightMessageId == null || items.itemCount == 0) return@LaunchedEffect
-        val snapshotIds = items.itemSnapshotList.items.map { it.id }
-        val index = highlightIndexFor(snapshotIds, state.highlightMessageId)
+        if (items.itemCount == 0) return@LaunchedEffect
+        val index = highlight.onItemsLoaded(items.itemSnapshotList.items.map { it.id })
         if (index != null) {
-            highlightConsumed = true
-            highlightedItemId = state.highlightMessageId
             listState.scrollToItem(localDesc.size + index)
+            highlightedItemId = viewModel.highlightTarget
+        }
+    }
+    // Hold the highlight fully visible, then let the bubble fade it out.
+    LaunchedEffect(highlightedItemId) {
+        if (highlightedItemId != null) {
+            delay(HIGHLIGHT_HOLD_MS.toLong())
+            highlightedItemId = null
+            delay(HIGHLIGHT_FADE_MS.toLong())
+            highlight.onHighlightFinished()
         }
     }
 
@@ -419,21 +433,21 @@ private fun MessageBubble(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
 
-    // Temporary background behind the opened message: starts filled and fades
-    // to transparent over ~1.5s once the row has been composed.
-    var highlightVisible by remember(highlighted) { mutableStateOf(highlighted) }
+    // Background behind the opened message. The screen holds `highlighted`
+    // true for HIGHLIGHT_HOLD_MS, then this fades to transparent. The tint is
+    // a primary-color wash — the previous secondaryContainer was visually
+    // indistinguishable from the message bubbles, so the "highlight" was
+    // invisible in practice.
     val highlightColor by animateColorAsState(
         targetValue =
-            if (highlightVisible) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+            if (highlighted) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+            } else {
+                Color.Transparent
+            },
         animationSpec = tween(durationMillis = HIGHLIGHT_FADE_MS),
         label = "message_highlight",
     )
-    LaunchedEffect(highlighted) {
-        if (highlighted) {
-            delay(150)
-            highlightVisible = false
-        }
-    }
 
     // The whole row also reflects selection so it is visible at a glance.
     val rowColor =
