@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.ui.components.SenderAvatar
 
 /** New message: recipient with contact suggestions, body, signature-aware send. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,19 +91,59 @@ fun ComposeMessageScreen(
                     .padding(16.dp)
                     .imePadding(),
         ) {
-            OutlinedTextField(
-                value = state.recipient,
-                onValueChange = viewModel::onRecipientChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.compose_recipient)) },
-                singleLine = true,
-            )
-            if (suggestions.isNotEmpty()) {
+            if (state.picked != null) {
+                val picked = state.picked!!
+                // The picked contact renders as NAME + chosen number; the value
+                // sent stays the raw number held in state.recipient.
+                ListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingContent = {
+                        SenderAvatar(
+                            name = picked.name,
+                            size = 40.dp,
+                            richAvatars = true,
+                            photoUri = picked.photoUri,
+                        )
+                    },
+                    headlineContent = { Text(picked.name) },
+                    supportingContent = {
+                        Text(
+                            picked.number,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailingContent = {
+                        IconButton(onClick = viewModel::clearPicked) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = stringResource(R.string.compose_change_recipient),
+                            )
+                        }
+                    },
+                )
+            } else {
+                OutlinedTextField(
+                    value = state.recipient,
+                    onValueChange = viewModel::onRecipientChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.compose_recipient)) },
+                    singleLine = true,
+                )
+            }
+            if (state.picked == null && suggestions.isNotEmpty()) {
                 LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     items(suggestions, key = { it.name + it.number }) { suggestion ->
                         ListItem(
                             modifier = Modifier.clickable { viewModel.pickSuggestion(suggestion) },
-                            leadingContent = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                            leadingContent = {
+                                SenderAvatar(
+                                    name = suggestion.name,
+                                    size = 40.dp,
+                                    richAvatars = true,
+                                    photoUri = suggestion.photoUri,
+                                )
+                            },
                             headlineContent = { Text(suggestion.name) },
                             supportingContent = {
                                 Text(

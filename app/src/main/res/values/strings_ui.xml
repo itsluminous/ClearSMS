@@ -216,6 +216,10 @@
     <string name="settings_sort_confirm">All messages will be re-categorized using the current rules. This may take a moment.</string>
     <string name="settings_sort_go">Sort</string>
     <string name="settings_sort_done">Inbox sorted</string>
+    <string name="settings_sort_running">Sorting inbox…</string>
+    <string name="settings_sort_progress">%1$d of %2$d messages</string>
+    <string name="settings_sort_done_count">Inbox sorted — %1$d messages re-categorized</string>
+    <string name="compose_change_recipient">Change recipient</string>
     <string name="settings_section_otp">OTP</string>
     <string name="settings_otp_auto_copy">Auto copy</string>
     <string name="settings_otp_auto_copy_summary">Copy incoming OTPs to the clipboard automatically</string>

@@ -23,6 +23,8 @@ import javax.inject.Inject
 
 data class ComposeUiState(
     val recipient: String = "",
+    /** The chosen contact when the recipient came from a suggestion (name shown, number sent). */
+    val picked: ContactSuggestion? = null,
     val body: String = "",
     val suggestions: List<ContactSuggestion> = emptyList(),
     val sending: Boolean = false,
@@ -60,13 +62,26 @@ class ComposeMessageViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         fun onRecipientChange(value: String) {
-            state.value = state.value.copy(recipient = value)
+            applySelection(currentSelection.edit(value))
             recipientQuery.value = value
         }
 
         fun pickSuggestion(suggestion: ContactSuggestion) {
-            state.value = state.value.copy(recipient = suggestion.number)
+            applySelection(currentSelection.pick(suggestion))
             recipientQuery.value = ""
+        }
+
+        /** Removes the picked contact and returns to manual entry. */
+        fun clearPicked() {
+            applySelection(currentSelection.clear())
+            recipientQuery.value = ""
+        }
+
+        private val currentSelection: RecipientSelection
+            get() = RecipientSelection(state.value.recipient, state.value.picked)
+
+        private fun applySelection(selection: RecipientSelection) {
+            state.value = state.value.copy(recipient = selection.destination, picked = selection.picked)
         }
 
         fun onBodyChange(value: String) {

@@ -10,6 +10,8 @@ import javax.inject.Singleton
 data class ContactSuggestion(
     val name: String,
     val number: String,
+    /** Contact photo thumbnail (content URI), when the contact has one. */
+    val photoUri: String? = null,
 )
 
 /**
@@ -35,6 +37,7 @@ class ContactSuggestions
                         arrayOf(
                             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
                             ContactsContract.CommonDataKinds.Phone.NUMBER,
+                            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
                         ),
                         "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR " +
                             "${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?",
@@ -44,7 +47,8 @@ class ContactSuggestions
                         while (cursor.moveToNext() && results.size < limit) {
                             val name = cursor.getString(0) ?: continue
                             val number = cursor.getString(1) ?: continue
-                            results += ContactSuggestion(name = name, number = number)
+                            val photoUri = if (cursor.isNull(2)) null else cursor.getString(2)
+                            results += ContactSuggestion(name = name, number = number, photoUri = photoUri)
                         }
                     }
             } catch (_: SecurityException) {
