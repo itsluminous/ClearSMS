@@ -1,8 +1,8 @@
 package app.clearsms.ui.inbox
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,15 +23,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.MarkEmailRead
-import androidx.compose.material.icons.outlined.MarkEmailUnread
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -41,11 +47,11 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -56,7 +62,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,13 +69,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SwipeAction
-import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.OtpBanner
+import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.displayName
@@ -90,7 +98,9 @@ fun InboxScreen(
     viewModel: InboxViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var sheetItem by remember { mutableStateOf<InboxItem?>(null) }
+    val items = viewModel.pagedItems.collectAsLazyPagingItems()
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
+    var confirmDelete by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val contactsPermission = rememberPermissionState(Manifest.permission.READ_CONTACTS)
@@ -101,25 +111,59 @@ fun InboxScreen(
         hadContactsPermission = granted
     }
 
+    // System back exits selection mode instead of leaving the screen.
+    BackHandler(enabled = selection.active) { viewModel.exitSelection() }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
-                title = { Text(stringResource(R.string.inbox_title)) },
-                actions = {
-                    IconButton(onClick = onSearch) {
-                        Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.action_search))
-                    }
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings))
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
+            if (selection.active) {
+                InboxSelectionBar(
+                    selection = selection,
+                    // Single-item-only actions from the old long-press sheet
+                    // live in the overflow when exactly one thread is selected.
+                    singleItem =
+                        if (selection.count == 1) {
+                            items.itemSnapshotList.items.firstOrNull {
+                                it.message.threadId == selection.selected.first()
+                            }
+                        } else {
+                            null
+                        },
+                    onClose = viewModel::exitSelection,
+                    onDelete = { confirmDelete = true },
+                    onArchive = viewModel::archiveSelected,
+                    onToggleRead = viewModel::toggleReadSelected,
+                    onSelectAll = viewModel::selectAll,
+                    onBlock = { sender ->
+                        viewModel.block(sender)
+                        viewModel.exitSelection()
+                    },
+                    onChangeCategory = { sender, body ->
+                        viewModel.exitSelection()
+                        onCreateRule(sender, body)
+                    },
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text(stringResource(R.string.inbox_title)) },
+                    actions = {
+                        IconButton(onClick = onSearch) {
+                            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.action_search))
+                        }
+                        IconButton(onClick = onSettings) {
+                            Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings))
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCompose) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_compose))
+            if (!selection.active) {
+                FloatingActionButton(onClick = onCompose) {
+                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_compose))
+                }
             }
         },
     ) { padding ->
@@ -128,7 +172,8 @@ fun InboxScreen(
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            if (state.loaded && state.items.isEmpty() && state.filter == InboxFilterState()) {
+            val emptyLoaded = items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0
+            if (emptyLoaded && state.filter == InboxFilterState()) {
                 EmptyState(
                     icon = Icons.Outlined.Inbox,
                     title = stringResource(R.string.inbox_empty_title),
@@ -163,7 +208,7 @@ fun InboxScreen(
                             onToggleUnread = viewModel::toggleUnread,
                         )
                     }
-                    if (state.items.isEmpty()) {
+                    if (emptyLoaded) {
                         item(key = "empty_filter") {
                             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                                 Text(
@@ -174,10 +219,17 @@ fun InboxScreen(
                             }
                         }
                     }
-                    items(state.items, key = { it.message.id }) { item ->
+                    items(
+                        count = items.itemCount,
+                        key = items.itemKey { it.message.id },
+                    ) { index ->
+                        val item = items[index] ?: return@items
+                        val threadId = item.message.threadId
+                        val selected = selection.isSelected(threadId)
                         SwipeableMessageItem(
-                            startAction = state.swipeStart,
-                            endAction = state.swipeEnd,
+                            // Swipes are disabled entirely while selecting.
+                            startAction = if (selection.active) SwipeAction.NONE else state.swipeStart,
+                            endAction = if (selection.active) SwipeAction.NONE else state.swipeEnd,
                             onAction = { action ->
                                 when (action) {
                                     SwipeAction.ARCHIVE -> viewModel.archive(item.message.id)
@@ -191,11 +243,16 @@ fun InboxScreen(
                             InboxRow(
                                 item = item,
                                 richAvatars = state.richAvatars,
+                                selected = selected,
                                 onClick = {
-                                    viewModel.markRead(item.message.id, read = true)
-                                    onOpenThread(item.message.threadId)
+                                    if (selection.active) {
+                                        viewModel.toggleSelection(threadId)
+                                    } else {
+                                        viewModel.markRead(item.message.id, read = true)
+                                        onOpenThread(threadId)
+                                    }
                                 },
-                                onLongClick = { sheetItem = item },
+                                onLongClick = { viewModel.enterSelection(threadId) },
                             )
                         }
                     }
@@ -204,32 +261,92 @@ fun InboxScreen(
         }
     }
 
-    sheetItem?.let { item ->
-        MessageActionsSheet(
-            item = item,
-            onDismiss = { sheetItem = null },
-            onMarkRead = { read ->
-                viewModel.markRead(item.message.id, read)
-                sheetItem = null
+    if (confirmDelete) {
+        val count = selection.count
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.selection_delete_threads_title)) },
+            text = { Text(stringResource(R.string.selection_delete_threads_message, count)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        viewModel.deleteSelected()
+                    },
+                ) { Text(stringResource(R.string.ui_action_delete)) }
             },
-            onArchive = {
-                viewModel.archive(item.message.id)
-                sheetItem = null
-            },
-            onDelete = {
-                viewModel.delete(item.message.id)
-                sheetItem = null
-            },
-            onBlock = {
-                viewModel.block(item.message.sender)
-                sheetItem = null
-            },
-            onChangeCategory = {
-                sheetItem = null
-                onCreateRule(item.message.sender, item.message.body)
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
+}
+
+/** Contextual top bar shown while thread multi-select is active. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InboxSelectionBar(
+    selection: SelectionState<Long>,
+    singleItem: InboxItem?,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+    onArchive: () -> Unit,
+    onToggleRead: () -> Unit,
+    onSelectAll: () -> Unit,
+    onBlock: (sender: String) -> Unit,
+    onChangeCategory: (sender: String, body: String) -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    TopAppBar(
+        title = { Text(stringResource(R.string.selection_count, selection.count)) },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.action_exit_selection))
+            }
+        },
+        actions = {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
+            }
+            IconButton(onClick = onArchive) {
+                Icon(Icons.Outlined.Archive, contentDescription = stringResource(R.string.action_archive))
+            }
+            IconButton(onClick = onToggleRead) {
+                Icon(
+                    Icons.Outlined.MarkEmailRead,
+                    contentDescription = stringResource(R.string.action_mark_read_unread),
+                )
+            }
+            IconButton(onClick = onSelectAll) {
+                Icon(Icons.Outlined.SelectAll, contentDescription = stringResource(R.string.action_select_all))
+            }
+            if (singleItem != null) {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_block_sender)) },
+                        leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onBlock(singleItem.message.sender)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_change_category)) },
+                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onChangeCategory(singleItem.message.sender, singleItem.message.body)
+                        },
+                    )
+                }
+            }
+        },
+    )
 }
 
 /** Compact prompt shown while READ_CONTACTS is missing. */
@@ -314,6 +431,7 @@ private fun FilterChipRow(
 private fun InboxRow(
     item: InboxItem,
     richAvatars: Boolean,
+    selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -326,15 +444,27 @@ private fun InboxRow(
                 onLongClick = onLongClick,
                 onLongClickLabel = stringResource(R.string.inbox_row_actions),
             ),
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+        colors =
+            ListItemDefaults.colors(
+                containerColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+            ),
         leadingContent = {
-            SenderAvatar(
-                name = item.display.name,
-                richAvatars = richAvatars,
-                photoUri = item.display.photoUri,
-                isKnownSender = item.display.isKnownSender,
-                glyph = item.glyph,
-            )
+            if (selected) {
+                SelectedCheckAvatar()
+            } else {
+                SenderAvatar(
+                    name = item.display.name,
+                    richAvatars = richAvatars,
+                    photoUri = item.display.photoUri,
+                    isKnownSender = item.display.isKnownSender,
+                    glyph = item.glyph,
+                )
+            }
         },
         headlineContent = {
             Text(
@@ -362,7 +492,7 @@ private fun InboxRow(
         trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = RelativeTime.format(message.timestamp),
+                    text = item.timeLabel,
                     style = MaterialTheme.typography.labelMedium,
                     color =
                         if (unread) {
@@ -384,46 +514,20 @@ private fun InboxRow(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Check-mark avatar replacing the sender avatar on selected rows. */
 @Composable
-private fun MessageActionsSheet(
-    item: InboxItem,
-    onDismiss: () -> Unit,
-    onMarkRead: (Boolean) -> Unit,
-    onArchive: () -> Unit,
-    onDelete: () -> Unit,
-    onBlock: () -> Unit,
-    onChangeCategory: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(bottom = 24.dp)) {
-            Text(
-                text = item.display.name,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+private fun SelectedCheckAvatar() {
+    Surface(
+        modifier = Modifier.size(40.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary,
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.selection_selected),
+                tint = MaterialTheme.colorScheme.onPrimary,
             )
-            if (item.message.isRead) {
-                SheetAction(Icons.Outlined.MarkEmailUnread, stringResource(R.string.action_mark_unread)) { onMarkRead(false) }
-            } else {
-                SheetAction(Icons.Outlined.MarkEmailRead, stringResource(R.string.action_mark_read)) { onMarkRead(true) }
-            }
-            SheetAction(Icons.Outlined.Archive, stringResource(R.string.action_archive), onArchive)
-            SheetAction(Icons.Outlined.Delete, stringResource(R.string.ui_action_delete), onDelete)
-            SheetAction(Icons.Outlined.Block, stringResource(R.string.action_block_sender), onBlock)
-            SheetAction(Icons.Outlined.Edit, stringResource(R.string.action_change_category), onChangeCategory)
         }
     }
-}
-
-@Composable
-private fun SheetAction(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        leadingContent = { Icon(icon, contentDescription = null) },
-        headlineContent = { Text(label) },
-    )
 }
