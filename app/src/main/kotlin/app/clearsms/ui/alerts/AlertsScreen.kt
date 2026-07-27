@@ -1,5 +1,7 @@
 package app.clearsms.ui.alerts
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,21 +15,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +48,7 @@ import app.clearsms.data.db.ReminderEntity
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.components.EmptyState
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -46,15 +56,33 @@ import java.util.Locale
 
 private val DUE_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
 
-/** Alerts: upcoming bill/payment reminder cards plus past reminders. */
+/** Alerts: upcoming bill/payment reminder cards plus a collapsible past section. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
+fun AlertsScreen(
+    onOpenMessage: (threadId: Long, messageId: Long) -> Unit,
+    viewModel: AlertsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
+
+    val openReminder: (ReminderEntity) -> Unit = { reminder ->
+        scope.launch {
+            val ref = viewModel.sourceMessageFor(reminder.rawSmsId)
+            if (ref != null) {
+                onOpenMessage(ref.threadId, ref.messageId)
+            } else {
+                snackbarHostState.showSnackbar(sourceDeletedMessage)
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.alerts_title)) },
@@ -101,40 +129,93 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
             items(state.upcoming, key = { "up_${it.id}" }) { reminder ->
                 ReminderCard(
                     reminder = reminder,
+                    onOpen = { openReminder(reminder) },
                     onDismiss = { viewModel.dismiss(reminder.id) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
             if (state.past.isNotEmpty()) {
                 item(key = "past_header") {
-                    Text(
-                        text = stringResource(R.string.alerts_past_reminders),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    PastRemindersHeader(
+                        count = state.past.size,
+                        expanded = state.pastExpanded,
+                        onToggle = viewModel::togglePastExpanded,
                     )
                 }
-                items(state.past, key = { "past_${it.id}" }) { reminder ->
-                    ReminderCard(
-                        reminder = reminder,
-                        onDismiss = { viewModel.dismiss(reminder.id) },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        past = true,
-                    )
+                if (state.pastExpanded) {
+                    items(state.past, key = { "past_${it.id}" }) { reminder ->
+                        ReminderCard(
+                            reminder = reminder,
+                            onOpen = { openReminder(reminder) },
+                            onDismiss = { viewModel.dismiss(reminder.id) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            past = true,
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/** Collapsible section header: count in the title and a rotation-animated chevron. */
+@Composable
+private fun PastRemindersHeader(
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "past_chevron")
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel =
+                        if (expanded) {
+                            stringResource(R.string.alerts_collapse_past)
+                        } else {
+                            stringResource(R.string.alerts_expand_past)
+                        },
+                    onClick = onToggle,
+                ).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.alerts_past_reminders_count, count),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.Outlined.ExpandMore,
+            contentDescription =
+                if (expanded) {
+                    stringResource(R.string.alerts_collapse_past)
+                } else {
+                    stringResource(R.string.alerts_expand_past)
+                },
+            modifier = Modifier.rotate(rotation),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun ReminderCard(
     reminder: ReminderEntity,
+    onOpen: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     past: Boolean = false,
 ) {
-    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(
+        modifier =
+            modifier.fillMaxWidth().clickable(
+                onClickLabel = stringResource(R.string.finance_open_source_sms),
+                onClick = onOpen,
+            ),
+    ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypeBadge(type = reminder.type)
