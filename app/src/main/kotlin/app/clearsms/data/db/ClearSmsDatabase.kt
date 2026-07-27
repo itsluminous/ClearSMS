@@ -59,13 +59,6 @@ abstract class ClearSmsDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
 
     /**
-     * Reminders without a due date are not actionable (they were the junk in
-     * the Alerts "Others" filter) and can no longer be produced by the
-     * parser. This deletes the invalid rows already on the device; valid
-     * dated reminders are untouched, and a recategorization rebuilds any
-     * reminder the tightened parser still stands behind.
-     */
-    /**
      * The auto migration creates the empty `messages_fts` virtual table;
      * this back-fills it from the existing `messages` rows so search finds
      * pre-upgrade history. Room's generated sync triggers keep it current
@@ -77,6 +70,13 @@ abstract class ClearSmsDatabase : RoomDatabase() {
         }
     }
 
+    /**
+     * Reminders without a due date are not actionable (they were the junk in
+     * the Alerts "Others" filter) and can no longer be produced by the
+     * parser. This deletes the invalid rows already on the device; valid
+     * dated reminders are untouched, and a recategorization rebuilds any
+     * reminder the tightened parser still stands behind.
+     */
     class DeleteUndatedReminders : AutoMigrationSpec {
         override fun onPostMigrate(db: SupportSQLiteDatabase) {
             db.execSQL("DELETE FROM reminders WHERE dueDate IS NULL")
