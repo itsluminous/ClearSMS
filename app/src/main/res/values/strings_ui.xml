@@ -128,6 +128,7 @@
     <string name="search_date_7d">Last 7 days</string>
     <string name="search_date_30d">Last 30 days</string>
     <string name="search_date_year">Last year</string>
+    <string name="search_min_length_hint">Type at least %1$d characters to search</string>
 
     <!-- Rules -->
     <string name="rules_title">Rules</string>

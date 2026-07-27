@@ -47,7 +47,25 @@ interface MessageRepository {
 
     fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>>
 
+    /** Full-text search (token-prefix match); empty flow for unsearchable input. */
     fun search(query: String): Flow<List<MessageEntity>>
+
+    /**
+     * Paged full-text search with the category / date filters composed into
+     * the SQL. [query] is raw user input — sanitized here; an unsearchable
+     * query yields an empty page source.
+     */
+    fun pagedSearch(
+        query: String,
+        category: Category?,
+        cutoffMs: Long?,
+    ): PagingSource<Int, MessageEntity>
+
+    /** Latest message per archived thread, newest first. */
+    fun observeArchived(): Flow<List<MessageEntity>>
+
+    /** Thread ids of the archived view, for select-all. */
+    suspend fun archivedThreadIds(): List<Long>
 
     suspend fun markRead(
         messageId: Long,

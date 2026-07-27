@@ -2,6 +2,7 @@ package app.clearsms.ui.search
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -40,7 +42,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import app.clearsms.R
+import app.clearsms.data.repository.SearchQueryFormat
 import app.clearsms.domain.model.Category
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.CategoryBadge
@@ -56,7 +62,9 @@ fun SearchScreen(
     onBack: () -> Unit,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
+    val query by viewModel.query.collectAsStateWithLifecycle()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val results = viewModel.pagedResults.collectAsLazyPagingItems()
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -66,13 +74,13 @@ fun SearchScreen(
             TopAppBar(
                 title = {
                     OutlinedTextField(
-                        value = state.query,
+                        value = query,
                         onValueChange = viewModel::onQueryChange,
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                         placeholder = { Text(stringResource(R.string.search_hint)) },
                         singleLine = true,
                         trailingIcon = {
-                            if (state.query.isNotEmpty()) {
+                            if (query.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.onQueryChange("") }) {
                                     Icon(
                                         Icons.Outlined.Close,
@@ -135,7 +143,23 @@ fun SearchScreen(
                     }
                 }
             }
-            if (state.searched && state.results.isEmpty()) {
+            if (state.belowMinLength) {
+                item(key = "min_length_hint") {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text =
+                                stringResource(
+                                    R.string.search_min_length_hint,
+                                    SearchQueryFormat.MIN_QUERY_LENGTH,
+                                ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            val settled = results.loadState.refresh is LoadState.NotLoading
+            if (state.searched && settled && results.itemCount == 0) {
                 item(key = "no_results") {
                     EmptyState(
                         icon = Icons.Outlined.SearchOff,
@@ -145,7 +169,11 @@ fun SearchScreen(
                     )
                 }
             }
-            items(state.results, key = { it.message.id }) { item ->
+            items(
+                count = results.itemCount,
+                key = results.itemKey { it.message.id },
+            ) { index ->
+                val item = results[index] ?: return@items
                 val message = item.message
                 ListItem(
                     modifier = Modifier.clickable { onOpenThread(message.threadId, message.id) },
@@ -161,7 +189,7 @@ fun SearchScreen(
                     },
                     headlineContent = {
                         Text(
-                            text = highlight(item.display.name, state.query),
+                            text = highlight(item.display.name, query),
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -169,7 +197,7 @@ fun SearchScreen(
                     },
                     supportingContent = {
                         Text(
-                            text = highlight(message.body, state.query),
+                            text = highlight(message.body, query),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -190,28 +218,44 @@ fun SearchScreen(
     }
 }
 
-/** Bolds and tints all case-insensitive occurrences of [query] within [text]. */
+/**
+ * Bolds and tints all case-insensitive occurrences of each query token
+ * within [text] — token-based to mirror the FTS prefix matching.
+ */
 @Composable
 private fun highlight(
     text: String,
     query: String,
 ): AnnotatedString {
-    if (query.isBlank()) return AnnotatedString(text)
+    val tokens = SearchQueryFormat.tokens(query)
+    if (tokens.isEmpty()) return AnnotatedString(text)
     val highlightStyle =
         SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-    return buildAnnotatedString {
+    // Collect non-overlapping match ranges across all tokens, then emit.
+    val marks = BooleanArray(text.length)
+    for (token in tokens) {
         var start = 0
         while (start < text.length) {
-            val index = text.indexOf(query, startIndex = start, ignoreCase = true)
-            if (index < 0) {
-                append(text.substring(start))
-                break
+            val index = text.indexOf(token, startIndex = start, ignoreCase = true)
+            if (index < 0) break
+            for (i in index until (index + token.length)) marks[i] = true
+            start = index + token.length
+        }
+    }
+    return buildAnnotatedString {
+        var i = 0
+        while (i < text.length) {
+            val marked = marks[i]
+            var end = i
+            while (end < text.length && marks[end] == marked) end++
+            if (marked) {
+                pushStyle(highlightStyle)
+                append(text.substring(i, end))
+                pop()
+            } else {
+                append(text.substring(i, end))
             }
-            append(text.substring(start, index))
-            pushStyle(highlightStyle)
-            append(text.substring(index, index + query.length))
-            pop()
-            start = index + query.length
+            i = end
         }
     }
 }

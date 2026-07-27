@@ -2,9 +2,17 @@ package app.clearsms.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.map
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.SearchQueryFormat
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
@@ -17,15 +25,20 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 /** Date-range filter presets for search. */
@@ -43,12 +56,17 @@ data class SearchResultItem(
     val glyph: BrandGlyph,
 )
 
+/**
+ * Chrome state only — results stream separately through [SearchViewModel.pagedResults]
+ * so a keystroke never waits on result mapping before echoing in the field.
+ */
 data class SearchUiState(
-    val query: String = "",
     val category: Category? = null,
     val dateFilter: DateFilter = DateFilter.ANY,
-    val results: List<SearchResultItem> = emptyList(),
+    /** True once the (debounced) query is long enough to run. */
     val searched: Boolean = false,
+    /** True when there is input but it is below the minimum length. */
+    val belowMinLength: Boolean = false,
     val richAvatars: Boolean = true,
 )
 
@@ -63,44 +81,76 @@ class SearchViewModel
         settings: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
-        private val query = MutableStateFlow("")
+        /**
+         * The text field binds to this directly and [onQueryChange] updates
+         * it synchronously — the round trip through the debounced pipeline
+         * below never delays the echo of a keystroke (the previous design
+         * routed the field value through the result-mapping combine on the
+         * IO dispatcher, which lagged far enough to reorder fast typing).
+         */
+        private val queryState = MutableStateFlow("")
+        val query: StateFlow<String> = queryState.asStateFlow()
+
         private val category = MutableStateFlow<Category?>(null)
         private val dateFilter = MutableStateFlow(DateFilter.ANY)
 
-        private val rawResults =
-            query
-                .debounce(300)
-                .flatMapLatest { text ->
-                    if (text.isBlank()) flowOf(emptyList()) else messageRepository.search(text)
-                }
+        /** Sender → display cache so paged rows never repeat provider lookups. */
+        private val displayCache = ConcurrentHashMap<String, SenderDisplay>()
+
+        private data class Request(
+            val query: String,
+            val category: Category?,
+            val cutoffMs: Long?,
+        )
+
+        /**
+         * Paged results: keystrokes are debounced, gated on
+         * [SearchQueryFormat.MIN_QUERY_LENGTH], and [flatMapLatest] cancels
+         * the in-flight page load the moment a newer request arrives. Row
+         * mapping (sender resolution, glyph) happens here on IO — never
+         * during composition.
+         */
+        val pagedResults: Flow<PagingData<SearchResultItem>> =
+            combine(
+                queryState.map { it.trim() }.debounce(DEBOUNCE_MS).distinctUntilChanged(),
+                category,
+                dateFilter,
+            ) { text, cat, date -> Request(text, cat, cutoffMs(date)) }
+                .distinctUntilChanged()
+                .flatMapLatest { request ->
+                    if (!SearchQueryFormat.isSearchable(request.query)) {
+                        flowOf(EMPTY_RESULTS)
+                    } else {
+                        Pager(
+                            config =
+                                PagingConfig(
+                                    pageSize = PAGE_SIZE,
+                                    initialLoadSize = PAGE_SIZE * 2,
+                                    enablePlaceholders = false,
+                                ),
+                            pagingSourceFactory = {
+                                messageRepository.pagedSearch(request.query, request.category, request.cutoffMs)
+                            },
+                        ).flow
+                    }
+                }.map { data -> data.map { it.toResultItem() } }
+                .flowOn(ioDispatcher)
+                .cachedIn(viewModelScope)
 
         val uiState: StateFlow<SearchUiState> =
-            combine(query, category, dateFilter, rawResults, settings.showRichAvatars) {
-                    text,
-                    cat,
-                    date,
-                    results,
-                    richAvatars,
-                ->
-                val cutoff = cutoffMs(date)
+            combine(queryState, category, dateFilter, settings.showRichAvatars) { text, cat, date, richAvatars ->
+                val trimmed = text.trim()
                 SearchUiState(
-                    query = text,
                     category = cat,
                     dateFilter = date,
-                    results =
-                        results
-                            .filter { message ->
-                                (cat == null || message.category == cat) &&
-                                    (cutoff == null || message.timestamp >= cutoff)
-                            }.map { it.toResultItem() },
-                    searched = text.isNotBlank(),
+                    searched = SearchQueryFormat.isSearchable(trimmed),
+                    belowMinLength = trimmed.isNotEmpty() && !SearchQueryFormat.isSearchable(trimmed),
                     richAvatars = richAvatars,
                 )
-            }.flowOn(ioDispatcher)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
 
         fun onQueryChange(value: String) {
-            query.value = value
+            queryState.value = value
         }
 
         fun toggleCategory(value: Category) {
@@ -113,11 +163,13 @@ class SearchViewModel
 
         private fun MessageEntity.toResultItem(): SearchResultItem {
             val display =
-                resolveSenderDisplay(
-                    sender = sender,
-                    contactLookup = contactsSource::lookup,
-                    directoryLookup = { senderIdStore.lookup(it)?.name },
-                )
+                displayCache.getOrPut(sender) {
+                    resolveSenderDisplay(
+                        sender = sender,
+                        contactLookup = contactsSource::lookup,
+                        directoryLookup = { senderIdStore.lookup(it)?.name },
+                    )
+                }
             return SearchResultItem(
                 message = this,
                 display = display,
@@ -134,5 +186,21 @@ class SearchViewModel
                 DateFilter.LAST_30_DAYS -> now - 30 * day
                 DateFilter.LAST_YEAR -> now - 365 * day
             }
+        }
+
+        companion object {
+            const val DEBOUNCE_MS = 300L
+            const val PAGE_SIZE = 30
+
+            /** Empty results with settled load states (no eternal spinner). */
+            private val EMPTY_RESULTS: PagingData<MessageEntity> =
+                PagingData.empty(
+                    sourceLoadStates =
+                        LoadStates(
+                            refresh = LoadState.NotLoading(endOfPaginationReached = true),
+                            prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                            append = LoadState.NotLoading(endOfPaginationReached = true),
+                        ),
+                )
         }
     }

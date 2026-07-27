@@ -132,14 +132,66 @@ interface MessageDao {
     )
     fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>>
 
+    /**
+     * Paged full-text search over the [MessageFtsEntity] index, composed
+     * with the optional category and date-range filters in SQL so filtering
+     * never materializes the full match set. [match] is an FTS4 MATCH
+     * expression (see `SearchQueryFormat.toFtsMatch`), not raw user input.
+     */
     @Query(
         """
-        SELECT * FROM messages
-        WHERE body LIKE '%' || :query || '%' OR sender LIKE '%' || :query || '%'
-        ORDER BY timestamp DESC
+        SELECT m.* FROM messages m
+        JOIN messages_fts ON m.id = messages_fts.rowid
+        WHERE messages_fts MATCH :match
+          AND (:category IS NULL OR m.category = :category)
+          AND (:cutoffMs IS NULL OR m.timestamp >= :cutoffMs)
+        ORDER BY m.timestamp DESC
         """,
     )
-    fun search(query: String): Flow<List<MessageEntity>>
+    fun pagingSearch(
+        match: String,
+        category: Category?,
+        cutoffMs: Long?,
+    ): PagingSource<Int, MessageEntity>
+
+    /** Non-paged FTS search (repository contract / tests); newest first. */
+    @Query(
+        """
+        SELECT m.* FROM messages m
+        JOIN messages_fts ON m.id = messages_fts.rowid
+        WHERE messages_fts MATCH :match
+        ORDER BY m.timestamp DESC
+        """,
+    )
+    fun search(match: String): Flow<List<MessageEntity>>
+
+    /** Latest message per archived thread, newest first. */
+    @Query(
+        """
+        SELECT m.* FROM messages m
+        INNER JOIN (
+            SELECT threadId, MAX(id) AS maxId
+            FROM messages
+            GROUP BY threadId
+        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        WHERE m.isArchived = 1
+        ORDER BY m.timestamp DESC
+        """,
+    )
+    fun observeArchived(): Flow<List<MessageEntity>>
+
+    /** Thread ids of the archived view, for select-all. */
+    @Query(
+        """
+        SELECT m.threadId FROM messages m
+        INNER JOIN (
+            SELECT threadId, MAX(id) AS maxId FROM messages GROUP BY threadId
+        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        WHERE m.isArchived = 1
+        ORDER BY m.timestamp DESC
+        """,
+    )
+    suspend fun archivedThreadIds(): List<Long>
 
     @Query("SELECT * FROM messages WHERE category = :category AND timestamp < :cutoffMs")
     suspend fun messagesOlderThan(

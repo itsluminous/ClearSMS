@@ -17,12 +17,13 @@ import java.time.ZoneId
 @Database(
     entities = [
         MessageEntity::class,
+        MessageFtsEntity::class,
         AccountEntity::class,
         TransactionEntity::class,
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -39,6 +40,10 @@ import java.time.ZoneId
         // consolidates duplicate / nameless finance accounts — see
         // [ClearSmsDatabase.RebuildDerivedData].
         AutoMigration(from = 4, to = 5, spec = ClearSmsDatabase.RebuildDerivedData::class),
+        // v5 -> v6: adds the messages_fts search index (external-content
+        // FTS4 over sender+body) and back-fills it from the existing rows —
+        // see [ClearSmsDatabase.PopulateMessageFts].
+        AutoMigration(from = 5, to = 6, spec = ClearSmsDatabase.PopulateMessageFts::class),
     ],
 )
 @TypeConverters(Converters::class)
@@ -60,6 +65,18 @@ abstract class ClearSmsDatabase : RoomDatabase() {
      * dated reminders are untouched, and a recategorization rebuilds any
      * reminder the tightened parser still stands behind.
      */
+    /**
+     * The auto migration creates the empty `messages_fts` virtual table;
+     * this back-fills it from the existing `messages` rows so search finds
+     * pre-upgrade history. Room's generated sync triggers keep it current
+     * from then on.
+     */
+    class PopulateMessageFts : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            db.execSQL("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')")
+        }
+    }
+
     class DeleteUndatedReminders : AutoMigrationSpec {
         override fun onPostMigrate(db: SupportSQLiteDatabase) {
             db.execSQL("DELETE FROM reminders WHERE dueDate IS NULL")

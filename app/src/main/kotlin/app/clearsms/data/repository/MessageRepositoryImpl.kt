@@ -28,6 +28,7 @@ import app.clearsms.domain.parser.ReminderTypeClassifier
 import app.clearsms.domain.parser.SenderNameResolver
 import app.clearsms.domain.parser.TransactionParser
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -98,7 +99,25 @@ class MessageRepositoryImpl(
 
     override fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>> = messageDao.observeUnreadCounts()
 
-    override fun search(query: String): Flow<List<MessageEntity>> = messageDao.search(query)
+    override fun search(query: String): Flow<List<MessageEntity>> =
+        when (val match = SearchQueryFormat.toFtsMatch(query)) {
+            null -> flowOf(emptyList())
+            else -> messageDao.search(match)
+        }
+
+    override fun pagedSearch(
+        query: String,
+        category: Category?,
+        cutoffMs: Long?,
+    ): PagingSource<Int, MessageEntity> =
+        when (val match = SearchQueryFormat.toFtsMatch(query)) {
+            null -> EmptyPagingSource()
+            else -> messageDao.pagingSearch(match, category, cutoffMs)
+        }
+
+    override fun observeArchived(): Flow<List<MessageEntity>> = messageDao.observeArchived()
+
+    override suspend fun archivedThreadIds(): List<Long> = messageDao.archivedThreadIds()
 
     override suspend fun markRead(
         messageId: Long,
@@ -682,3 +701,11 @@ internal data class ImportedSmsRow(
     val isRead: Boolean,
     val enriched: MessageRepositoryImpl.Enriched?,
 )
+
+/** Page source that is always empty — the unsearchable-query fallback. */
+private class EmptyPagingSource : PagingSource<Int, MessageEntity>() {
+    override fun getRefreshKey(state: androidx.paging.PagingState<Int, MessageEntity>): Int? = null
+
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MessageEntity> =
+        LoadResult.Page(data = emptyList(), prevKey = null, nextKey = null)
+}
