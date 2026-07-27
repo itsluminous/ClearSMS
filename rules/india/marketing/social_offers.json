@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "social-offer-01",
+      "name": "SOCIAL Restaurant Offer",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)SXCIAL",
+        "body_pattern": "(?i)SOCIAL"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

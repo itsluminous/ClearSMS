@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "sfx-code-01",
+      "name": "Shadowfax Rider Pin Code",
+      "priority": 345,
+      "match": {
+        "sender_pattern": "(?i)(?:SFX(?:DEL|REV|DLV)|SHADOWFAX)",
+        "body_pattern": "(?i)(?:Delivery|EXCHANGE|Reschedule)\\s+Code:\\s*Share\\s+Pin\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sfx-arriving-code-01",
+      "name": "Shadowfax Arriving With Code",
+      "priority": 344,
+      "match": {
+        "sender_pattern": "(?i)(?:SFX(?:DEL|REV|DLV)|SHADOWFAX)",
+        "body_pattern": "(?i)ARRIVING\\s+TODAY[\\s\\S]{0,80}?AWB\\s+([A-Za-z0-9]{8,20})\\.?\\s*Give\\s+CODE\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "tracking_id": "$1",
+          "otp_code": "$2"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sfx-delivered-01",
+      "name": "Shadowfax Delivered/Exchanged",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:SFX(?:DEL|REV|DLV)|SHADOWFAX)",
+        "body_pattern": "(?i)has\\s+been\\s+(?:delivered|exchanged)\\s+by\\s+Shadowfax"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sfx-picked-01",
+      "name": "Shadowfax Return Picked Up",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:SFX(?:DEL|REV|DLV)|SHADOWFAX)",
+        "body_pattern": "(?i)PICKED\\s+SUCCESSFULLY[\\s\\S]{0,80}?AWB\\s+([A-Za-z0-9]{8,20})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "tracking_id": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

@@ -7,7 +7,7 @@
       "priority": 300,
       "match": {
         "sender_pattern": "(?i)ICICI",
-        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:for|with)\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*\\d]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:(?:for|with)\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -32,7 +32,7 @@
       "priority": 300,
       "match": {
         "sender_pattern": "(?i)ICICI",
-        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t\\s+[Xx*]*(\\d{3,4})\\s+(?:is\\s+)?credited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*\\d]*(\\d{3,4})\\s+(?:is\\s+|has\\s+been\\s+)?credited\\s*(?::\\s*|\\s+with\\s+(?:salary\\s+of\\s+)?)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -335,6 +335,164 @@
         "category": "important",
         "sub_category": "delivery",
         "extract": {
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-upi-credit-01",
+      "name": "ICICI Bank UPI Credit With Payer",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)Acct\\s+[Xx*]*(\\d{3,4})\\s+is\\s+credited\\s+with\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\s+from\\s+([^\\n.]{1,40}?)\\.\\s*UPI:?\\s*(\\d{6,14})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "reference": "$4",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-mandate-debit-01",
+      "name": "ICICI Bank UPI Mandate Debit",
+      "priority": 332,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+ICICI\\s+Bank\\s+Savings\\s+Acc(?:oun)?t?\\s+[Xx*]*(\\d{3,4})\\s+on\\s+\\S{5,12}\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\s+UPI\\s+Mandate",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "$3",
+          "type": "debit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-debit-info-01",
+      "name": "ICICI Bank Debit With Narration And Balance",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*]*(\\d{3,4})\\s+debited\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\s+Info\\s*:?\\s*([^\\n]{1,40}?)\\.{1,2}\\s*Avl\\s+Bal\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "merchant": "$3",
+          "balance": "$4",
+          "type": "debit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-credit-info-01",
+      "name": "ICICI Bank Credit With Reference And Balance",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*]*(\\d{3,4})\\s+credited\\s*:?\\s*Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\.?\\s*Info\\s+([^\\n]{1,40}?)\\.\\s*Available\\s+Balance\\s+is\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "reference": "$3",
+          "balance": "$4",
+          "type": "credit",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-autopay-due-01",
+      "name": "ICICI Bank Upcoming Autopay Debit",
+      "priority": 333,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+SAVINGS\\s+Account\\s+[Xx*\\d]*(\\d{3,4})\\s+will\\s+be\\s+debited\\s+for\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(\\S{5,12})\\s+towards\\s+([^\\n.]{1,45})",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "due_date": "$3",
+          "merchant": "$4",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-mandate-debit-02",
+      "name": "ICICI Bank UPI Mandate Debit (account-less)",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)Your\\s+account\\s+has\\s+been\\s+successfully\\s+debited\\s+with\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\s+UPI\\s+Mandate",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "type": "debit",
           "bank": "ICICI Bank"
         }
       },

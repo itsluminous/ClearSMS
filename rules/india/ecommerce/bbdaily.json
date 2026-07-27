@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "bbdaily-promo-01",
+      "name": "bbdaily Grocery Offer Blast",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)BBDAIY",
+        "body_pattern": "(?i)(?:bbdaily|Fresho)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

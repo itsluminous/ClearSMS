@@ -1,0 +1,94 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "meesho-otp-01",
+      "name": "Meesho Delivery/Pickup OTP",
+      "priority": 345,
+      "match": {
+        "sender_pattern": "(?i)(?:MEE?SHO|MEESUP)",
+        "body_pattern": "(?i)Share\\s+OTP\\s+(\\d{4,8})\\s+(?:to\\s+(?:pickup|receive)|with\\s+the\\s+(?:pickup|delivery))"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "meesho-refund-01",
+      "name": "Meesho Refund Processed",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)(?:MEE?SHO|MEESUP)",
+        "body_pattern": "(?i)Refund\\s+for\\s+[^\\n]{1,40}?\\s*of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+successfully\\s+processed"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Meesho"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "meesho-delivery-01",
+      "name": "Meesho Delivery Status",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:MEE?SHO|MEESUP)",
+        "body_pattern": "(?i)(?:successfully\\s+delivered|(?:will\\s+be|expected\\s+to\\s+be)\\s+delivered\\s+by|has\\s+been\\s+shipped|could\\s+not\\s+deliver\\s+your\\s+order|out\\s+for\\s+delivery)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "meesho-return-01",
+      "name": "Meesho Return/Pickup Update",
+      "priority": 295,
+      "match": {
+        "sender_pattern": "(?i)(?:MEE?SHO|MEESUP)",
+        "body_pattern": "(?i)(?:return\\s+pickup|pickup\\s+for\\s+[^\\n]{1,40}?\\.?\\s*done|return\\s+for\\s+[^\\n]{1,40}?\\s+is\\s+cancelled)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "meesho-refund-02",
+      "name": "Meesho Refund Processed (order id shape)",
+      "priority": 329,
+      "match": {
+        "sender_pattern": "(?i)(?:MEE?SHO|MEESUP)",
+        "body_pattern": "(?i)Refund\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+[^\\n]{1,50}?\\s*is\\s+successfully\\s+processed"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Meesho"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

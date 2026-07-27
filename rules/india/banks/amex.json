@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "amex-stmt-01",
+      "name": "Amex Card Statement Generated",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)AMEX",
+        "body_pattern": "(?i)statement\\s+for\\s+AMEX\\s+(?:Corporate\\s+)?Card\\s+[\\dXx*]*(\\d{4})\\b[\\s\\S]{0,30}?generated\\.?\\s*Total\\s+payment\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+by\\s+([\\d/]{6,10})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "total_due": "$2",
+          "due_date": "$3",
+          "bank": "American Express"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "iskcon-donation-01",
+      "name": "ISKCON Donation Appeal",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)ISKC?ON",
+        "body_pattern": "(?i)(?:ISKCON|ANNA-?DAAN)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

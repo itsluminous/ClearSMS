@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "wintwealth-otp-01",
+      "name": "Wint Wealth Verification Code",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)WINTWL",
+        "body_pattern": "(?i)Wint\\s+Wealth[\\s\\S]{0,60}?verification\\s+code\\s+is\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

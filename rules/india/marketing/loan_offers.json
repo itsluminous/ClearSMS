@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "bajaj-loan-promo-01",
+      "name": "Bajaj Finserv Loan Marketing",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:^(?:[A-Z]{2}-)?180008(?:-[SPTG])?$|BAJAJO|BFLSMS)",
+        "body_pattern": "(?i)(?:Bajaj|loan|EMI)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "zype-loan-promo-01",
+      "name": "Zype Loan Marketing",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)^(?:[A-Z]{2}-)?127940(?:-[SPTG])?$",
+        "body_pattern": "(?i)Zype"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "poonawalla-loan-promo-01",
+      "name": "Poonawalla Fincorp Loan Marketing",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)^(?:[A-Z]{2}-)?112299(?:-[SPTG])?$",
+        "body_pattern": "(?i)Poonawalla"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "finbud-loan-promo-01",
+      "name": "Finbud Loan Marketing",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)FINB(?:GS|MN|UD)",
+        "body_pattern": "(?i)(?:loan|Finbud)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

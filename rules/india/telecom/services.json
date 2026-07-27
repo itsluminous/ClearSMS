@@ -52,6 +52,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "trai-dnd-reply-01",
+      "name": "TRAI DND Service Reply",
+      "priority": 260,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?1909(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:\\bDND\\b|do\\s+not\\s+disturb)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "xpbees-delivery-code-01",
+      "name": "XpressBees Out For Delivery Code",
+      "priority": 345,
+      "match": {
+        "sender_pattern": "(?i)(?:XPBEES|XPRESSBEES|XBEES)",
+        "body_pattern": "(?i)out\\s+for\\s+delivery[\\s\\S]{0,40}?share\\s+delivery\\s+code\\s*:?\\s*(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "xpbees-delivered-01",
+      "name": "XpressBees Order Delivered",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:XPBEES|XPRESSBEES|XBEES)",
+        "body_pattern": "(?i)We\\s+have\\s+delivered\\s+your\\s+[^\\n]{1,30}?order\\s*:?\\s*(\\d{8,20})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "tracking_id": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "xpbees-pickup-01",
+      "name": "XpressBees Pickup Done",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:XPBEES|XPRESSBEES|XBEES)",
+        "body_pattern": "(?i)PICK-?UP\\s+DONE:?\\s*AWB\\s*:?\\s*([A-Za-z0-9]{8,20})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "tracking_id": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

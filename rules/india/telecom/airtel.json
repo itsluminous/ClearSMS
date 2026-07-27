@@ -94,6 +94,39 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-pack-expiry-01",
+      "name": "Airtel Pack Expiry Recharge Reminder",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRTEL|^(?:[A-Z]{2}-)?6500\\d{2}(?:-[SPTG])?$)",
+        "body_pattern": "(?i)Your\\s+Airtel\\s+pack\\b[\\s\\S]{0,60}?(?:about\\s+to\\s+expire|has\\s+expired|expires)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-marketing-01",
+      "name": "Airtel Marketing Shortcode Blast",
+      "priority": 140,
+      "match": {
+        "sender_pattern": "(?i)^(?:[A-Z]{2}-)?(?:6500\\d{2}|56321)(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:airtel|xstream)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

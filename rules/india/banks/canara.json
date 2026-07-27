@@ -123,7 +123,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
-        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*]*(\\d{3,4})\\b",
+        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*\\d]*?(\\d{3,4})\\b",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -148,7 +148,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
-        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*]*(\\d{3,4})\\b",
+        "body_pattern": "(?i)an\\s+amount\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+(?:your\\s+account\\s+)?[Xx*\\d]*?(\\d{3,4})\\b",
         "body_must_not_contain": [
           "OTP",
           "otp"

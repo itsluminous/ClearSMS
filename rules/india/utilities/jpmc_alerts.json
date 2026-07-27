@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "jpmc-alert-01",
+      "name": "JPMC Emergency Contact Verification",
+      "priority": 300,
+      "match": {
+        "body_pattern": "(?i)^JPMC\\s+Alert:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

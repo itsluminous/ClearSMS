@@ -3,11 +3,11 @@
   "rules": [
     {
       "id": "nbhood-invoice-01",
-      "name": "Society Maintenance Invoice",
+      "name": "Society Maintenance Invoice / Payment Due",
       "priority": 250,
       "match": {
         "sender_pattern": "(?i)(?:NBHOOD|NOBROKER)",
-        "body_pattern": "(?i)invoice\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+        "body_pattern": "(?i)(?:invoice\\s+of|payment\\s+due\\s*:)\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",

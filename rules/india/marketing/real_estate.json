@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "thrsxt-realestate-01",
+      "name": "Real Estate Blast (THRSXT)",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)THRSXT",
+        "body_pattern": "(?i)(?:BHK|apartment|plot|Lacs|Call\\s+Now)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "shriram-realestate-01",
+      "name": "Shriram Properties Blast",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)^(?:[A-Z]{2}-)?254314(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:Shriram|homes|plots|BED)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "dsmax-realestate-01",
+      "name": "DS-MAX Properties Blast",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)DSMAX",
+        "body_pattern": "(?i)DS-?MAX"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "mspl-realestate-01",
+      "name": "MSPL Real Estate Blast",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)MSPL(?:BN|IN)",
+        "body_pattern": "(?i)(?:Township|BHK|Cr)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}
