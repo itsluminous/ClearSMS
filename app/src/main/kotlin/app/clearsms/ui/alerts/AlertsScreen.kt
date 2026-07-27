@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material3.Badge
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -38,7 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -110,20 +115,25 @@ fun AlertsScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(AlertFilter.entries.toList(), key = { it.name }) { option ->
+                        val label = option.displayName()
+                        val count = state.counts[option] ?: 0
+                        val description =
+                            pluralStringResource(R.plurals.alerts_filter_pill_reminders, count, label, count)
                         FilterChip(
                             selected = state.filter == option,
                             onClick = { viewModel.setFilter(option) },
-                            label = {
-                                Text(
-                                    when (option) {
-                                        AlertFilter.ALL -> stringResource(R.string.alerts_filter_all)
-                                        AlertFilter.CREDIT_CARDS -> stringResource(R.string.alerts_filter_credit_cards)
-                                        AlertFilter.EMI -> stringResource(R.string.alerts_filter_emi)
-                                        AlertFilter.DELIVERY -> stringResource(R.string.alerts_filter_delivery)
-                                        AlertFilter.OTHERS -> stringResource(R.string.alerts_filter_others)
-                                    },
-                                )
-                            },
+                            label = { Text(label) },
+                            trailingIcon =
+                                if (count > 0) {
+                                    { Badge { Text(count.toString()) } }
+                                } else {
+                                    null
+                                },
+                            modifier =
+                                Modifier
+                                    // M3 chips are 32dp tall; guarantee the 48dp touch target.
+                                    .heightIn(min = 48.dp)
+                                    .semantics { contentDescription = description },
                         )
                     }
                 }
@@ -314,6 +324,19 @@ private fun ReminderCard(
         }
     }
 }
+
+@Composable
+private fun AlertFilter.displayName(): String =
+    when (this) {
+        AlertFilter.ALL -> stringResource(R.string.alerts_filter_all)
+        AlertFilter.CREDIT_CARDS -> stringResource(R.string.alerts_filter_credit_cards)
+        AlertFilter.EMI -> stringResource(R.string.alerts_filter_emi)
+        AlertFilter.INSURANCE -> stringResource(R.string.alerts_filter_insurance)
+        AlertFilter.BILL -> stringResource(R.string.alerts_filter_bill)
+        AlertFilter.SUBSCRIPTION -> stringResource(R.string.alerts_filter_subscription)
+        AlertFilter.DEPOSIT -> stringResource(R.string.alerts_filter_deposit)
+        AlertFilter.DELIVERY -> stringResource(R.string.alerts_filter_delivery)
+    }
 
 @Composable
 private fun TypeBadge(type: ReminderType) {

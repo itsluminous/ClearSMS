@@ -6,7 +6,6 @@ import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
-import app.clearsms.domain.model.ReminderType
 import app.clearsms.ui.finance.MessageLookup
 import app.clearsms.ui.finance.MessageRef
 import app.clearsms.ui.finance.SourceMessageResolver
@@ -24,19 +23,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-/** Reminder filter chips: all, credit cards, EMI, deliveries, everything else. */
-enum class AlertFilter {
-    ALL,
-    CREDIT_CARDS,
-    EMI,
-    DELIVERY,
-    OTHERS,
-}
-
 data class AlertsUiState(
     val filter: AlertFilter = AlertFilter.ALL,
     val upcoming: List<ReminderEntity> = emptyList(),
     val past: List<ReminderEntity> = emptyList(),
+    /** Reminders (upcoming + past) per pill, for the count badges. */
+    val counts: Map<AlertFilter, Int> = emptyMap(),
     /** Past reminders section is collapsed by default; session-only state. */
     val pastExpanded: Boolean = false,
     val loaded: Boolean = false,
@@ -76,8 +68,9 @@ class AlertsViewModel
             ) { upcoming, past, currentFilter, expanded ->
                 AlertsUiState(
                     filter = currentFilter,
-                    upcoming = upcoming.filter { matches(it, currentFilter) },
-                    past = past.filter { matches(it, currentFilter) },
+                    upcoming = upcoming.filter { currentFilter.matches(it.type) },
+                    past = past.filter { currentFilter.matches(it.type) },
+                    counts = AlertFilter.counts(upcoming, past),
                     pastExpanded = expanded,
                     loaded = true,
                 )
@@ -102,20 +95,5 @@ class AlertsViewModel
         suspend fun sourceMessageFor(rawSmsId: Long): MessageRef? =
             withContext(ioDispatcher) {
                 SourceMessageResolver.resolve(messageLookup.byId(rawSmsId))
-            }
-
-        private fun matches(
-            reminder: ReminderEntity,
-            filter: AlertFilter,
-        ): Boolean =
-            when (filter) {
-                AlertFilter.ALL -> true
-                AlertFilter.CREDIT_CARDS -> reminder.type == ReminderType.CREDIT_CARD
-                AlertFilter.EMI -> reminder.type == ReminderType.EMI
-                AlertFilter.DELIVERY -> reminder.type == ReminderType.DELIVERY
-                AlertFilter.OTHERS ->
-                    reminder.type != ReminderType.CREDIT_CARD &&
-                        reminder.type != ReminderType.EMI &&
-                        reminder.type != ReminderType.DELIVERY
             }
     }

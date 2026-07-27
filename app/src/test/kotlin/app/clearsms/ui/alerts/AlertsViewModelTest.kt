@@ -100,6 +100,85 @@ class AlertsViewModelTest {
         runTest {
             assertThat(viewModel().sourceMessageFor(999L)).isNull()
         }
+
+    private fun typed(
+        id: Long,
+        type: ReminderType,
+    ) = reminder(id).copy(type = type)
+
+    @Test
+    fun `selected pill filters both upcoming and past lists`() =
+        runTest {
+            val vm =
+                AlertsViewModel(
+                    financeRepository =
+                        FakeFinanceRepository(
+                            upcoming =
+                                listOf(
+                                    typed(1, ReminderType.INSURANCE),
+                                    typed(2, ReminderType.CREDIT_CARD),
+                                ),
+                            past =
+                                listOf(
+                                    typed(3, ReminderType.INSURANCE),
+                                    typed(4, ReminderType.OTHER),
+                                ),
+                        ),
+                    reminderDao = NoopReminderDao(),
+                    messageLookup = MessageLookup { null },
+                    ioDispatcher = dispatcher,
+                )
+
+            vm.uiState.test {
+                var state = awaitItem()
+                if (!state.loaded) state = awaitItem()
+                assertThat(state.upcoming).hasSize(2)
+                assertThat(state.past).hasSize(2)
+
+                vm.setFilter(AlertFilter.INSURANCE)
+                state = awaitItem()
+                assertThat(state.upcoming.map { it.id }).containsExactly(1L)
+                assertThat(state.past.map { it.id }).containsExactly(3L)
+
+                vm.setFilter(AlertFilter.BILL)
+                state = awaitItem()
+                assertThat(state.upcoming).isEmpty()
+                assertThat(state.past.map { it.id }).containsExactly(4L)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `pill counts reflect all reminders regardless of active filter`() =
+        runTest {
+            val vm =
+                AlertsViewModel(
+                    financeRepository =
+                        FakeFinanceRepository(
+                            upcoming = listOf(typed(1, ReminderType.SUBSCRIPTION)),
+                            past = listOf(typed(2, ReminderType.DEPOSIT), typed(3, ReminderType.DEPOSIT)),
+                        ),
+                    reminderDao = NoopReminderDao(),
+                    messageLookup = MessageLookup { null },
+                    ioDispatcher = dispatcher,
+                )
+
+            vm.uiState.test {
+                var state = awaitItem()
+                if (!state.loaded) state = awaitItem()
+                assertThat(state.counts[AlertFilter.ALL]).isEqualTo(3)
+                assertThat(state.counts[AlertFilter.SUBSCRIPTION]).isEqualTo(1)
+                assertThat(state.counts[AlertFilter.DEPOSIT]).isEqualTo(2)
+
+                vm.setFilter(AlertFilter.DEPOSIT)
+                state = awaitItem()
+                // Counts stay global so the badges do not collapse to the
+                // filtered subset.
+                assertThat(state.counts[AlertFilter.ALL]).isEqualTo(3)
+                assertThat(state.counts[AlertFilter.SUBSCRIPTION]).isEqualTo(1)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 }
 
 private class FakeFinanceRepository(

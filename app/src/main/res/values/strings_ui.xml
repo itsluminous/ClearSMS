@@ -353,4 +353,14 @@
 
     <!-- Reminder detail -->
     <string name="alerts_type_deposit">Deposit</string>
+
+    <!-- Alerts filter pills -->
+    <string name="alerts_filter_insurance">Insurance</string>
+    <string name="alerts_filter_bill">Bill</string>
+    <string name="alerts_filter_subscription">Subscription</string>
+    <string name="alerts_filter_deposit">Deposit</string>
+    <plurals name="alerts_filter_pill_reminders">
+        <item quantity="one">%1$s, %2$d reminder</item>
+        <item quantity="other">%1$s, %2$d reminders</item>
+    </plurals>
 </resources>
