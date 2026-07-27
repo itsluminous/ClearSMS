@@ -281,4 +281,47 @@
     <string name="chart_bar_description">%1$s, debits %2$s, credits %3$s</string>
     <string name="chart_summary_description">Monthly debit and credit totals, %1$s to %2$s. Tap a bar for details.</string>
     <string name="chart_empty_description">No monthly activity yet</string>
+
+    <!-- Guided rule wizard (token suggestions) -->
+    <string name="rule_wizard_step_source">1. Source message</string>
+    <string name="rule_wizard_step_source_hint">Tap a highlighted value to include it in the rule.</string>
+    <string name="rule_wizard_sample_sender">Sender</string>
+    <string name="rule_wizard_sample_body">Paste a sample message</string>
+    <string name="rule_wizard_analyze">Analyze message</string>
+    <string name="rule_wizard_step_category">2. What is this message?</string>
+    <string name="rule_wizard_step_extract">3. What should we extract?</string>
+    <string name="rule_wizard_extract_empty">No values detected — this rule will only categorize messages.</string>
+    <string name="rule_wizard_field_ignore">Ignore</string>
+    <string name="rule_wizard_step_conditions">4. When should this rule apply?</string>
+    <string name="rule_wizard_keywords_hint">Message must contain</string>
+    <string name="rule_wizard_must_not">Must NOT contain (comma separated)</string>
+    <string name="rule_wizard_bind_sender">Only from this sender</string>
+    <string name="rule_wizard_step_test">5. Test</string>
+    <string name="rule_wizard_show_pattern">Show generated pattern</string>
+    <string name="rule_wizard_hide_pattern">Hide generated pattern</string>
+    <string name="rule_wizard_source_match">Matches the source message</string>
+    <string name="rule_wizard_source_no_match">Does not match the source message</string>
+    <string name="rule_wizard_extracted_values">Extracted values</string>
+    <string name="rule_wizard_try_another">Try another message</string>
+    <string name="rule_wizard_advanced">Advanced: edit pattern</string>
+    <string name="rule_wizard_advanced_reset">Reset to suggested pattern</string>
+    <string name="rule_wizard_step_save">6. Save</string>
+    <string name="rule_wizard_priority">Priority</string>
+    <string name="rule_wizard_priority_hint">User rules above 1000 outrank bundled rules.</string>
+    <string name="rule_token_amount">Amount</string>
+    <string name="rule_token_balance">Balance</string>
+    <string name="rule_token_account">Account / card last digits</string>
+    <string name="rule_token_otp">OTP code</string>
+    <string name="rule_token_date">Date</string>
+    <string name="rule_token_reference">Reference / transaction id</string>
+    <string name="rule_token_percent">Percentage</string>
+    <string name="rule_token_number">Number</string>
+    <string name="rule_token_vendor">Vendor / merchant</string>
+    <string name="rule_token_keyword">Keyword</string>
+    <string name="rule_error_empty_pattern">Nothing to match yet — analyze a sample message first.</string>
+    <string name="rule_error_invalid_pattern">The pattern does not compile. Fix it or reset to the suggested pattern.</string>
+    <string name="rule_error_catch_all">The pattern starts or ends with a catch-all like .* — remove it; matching already scans the whole message.</string>
+    <string name="rule_error_capture_mismatch">The pattern has fewer capture groups than the extraction mapping needs.</string>
+    <string name="rule_error_duplicate_field">Two values are mapped to the same field — set one of them to Ignore.</string>
+    <string name="rule_error_no_source_match">The rule no longer matches the source message. Loosen the conditions or reset the pattern.</string>
 </resources>
