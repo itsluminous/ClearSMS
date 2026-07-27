@@ -188,7 +188,6 @@ fun ConversationScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             SenderAvatar(
                                 name = state.title,
-                                size = 36.dp,
                                 richAvatars = state.richAvatars,
                                 photoUri = state.photoUri,
                                 isKnownSender = state.isKnownSender,

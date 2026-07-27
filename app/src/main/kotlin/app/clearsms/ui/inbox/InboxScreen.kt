@@ -77,6 +77,7 @@ import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
@@ -203,6 +204,7 @@ fun InboxScreen(
                             OtpBanner(
                                 code = otp.code,
                                 senderName = otp.senderName,
+                                displaySize = state.otpDisplaySize,
                                 onCopied = {
                                     viewModel.markOtpHandled(otp.messageId)
                                     scope.launch { snackbarHostState.showSnackbar(otpCopiedMessage) }
@@ -523,8 +525,8 @@ private fun InboxRow(
 @Composable
 private fun SelectedCheckAvatar() {
     Surface(
-        modifier = Modifier.size(40.dp),
-        shape = CircleShape,
+        modifier = Modifier.size(AvatarDefaults.size),
+        shape = AvatarDefaults.shape,
         color = MaterialTheme.colorScheme.primary,
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

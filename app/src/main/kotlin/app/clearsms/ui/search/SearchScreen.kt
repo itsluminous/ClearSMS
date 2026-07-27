@@ -153,7 +153,6 @@ fun SearchScreen(
                     leadingContent = {
                         SenderAvatar(
                             name = item.display.name,
-                            size = 40.dp,
                             richAvatars = state.richAvatars,
                             photoUri = item.display.photoUri,
                             isKnownSender = item.display.isKnownSender,

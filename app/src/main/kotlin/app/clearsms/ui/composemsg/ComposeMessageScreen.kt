@@ -120,7 +120,6 @@ fun ComposeMessageScreen(
                     leadingContent = {
                         SenderAvatar(
                             name = picked.name,
-                            size = 40.dp,
                             richAvatars = true,
                             photoUri = picked.photoUri,
                         )
@@ -159,7 +158,6 @@ fun ComposeMessageScreen(
                             leadingContent = {
                                 SenderAvatar(
                                     name = suggestion.name,
-                                    size = 40.dp,
                                     richAvatars = true,
                                     photoUri = suggestion.photoUri,
                                 )

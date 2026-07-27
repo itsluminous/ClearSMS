@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -29,31 +28,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.clearsms.ui.theme.ClearSmsTheme
 import kotlin.math.abs
 
 /**
- * Brand-style avatar for known senders.
+ * Brand-style avatar for known senders, clipped to the shared
+ * [AvatarDefaults.shape] at [AvatarDefaults.size] like every other avatar.
  *
- * With a curated [brand] from the bundled table, it renders a circular tile
- * filled with the brand's published primary color (a deepened tonal variant
- * in dark theme), the brand monogram in a WCAG-AA-contrasting white or black
- * (see [monogramColorFor]), and a small category badge. Without one, it falls
+ * With a curated [brand] from the bundled table, it renders a tile filled
+ * with the brand's published primary color (a deepened tonal variant in dark
+ * theme), the brand monogram in a WCAG-AA-contrasting white or black (see
+ * [monogramColorFor]), and a small category badge. Without one, it falls
  * back to the sender name's initials on a deterministic hash color.
  *
- * Deliberately NOT a real logo: bundling third-party bank/brand trademarks
- * would require individual licensing and puts an open-source APK at legal
- * risk, so the app synthesizes a stable visual identity instead. Users who
- * want true logos can supply their own via the local logo pack setting.
+ * Deliberately NOT a real logo: the generated tile is an original mark drawn
+ * from published facts (name, color, category), used for the many brands
+ * whose artwork is not bundled in the APK's asset set.
  */
 @Composable
 fun SenderBrandMark(
     name: String,
     glyph: BrandGlyph,
     modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
     brand: Brand? = null,
 ) {
     val brandColor = brand?.let { parseBrandColor(it.color) }
@@ -64,14 +61,15 @@ fun SenderBrandMark(
             Color.hsl(BRAND_HUES[abs(name.hashCode()) % BRAND_HUES.size], 0.55f, 0.38f)
         }
     val monogram = brand?.monogram?.take(3)?.ifBlank { null } ?: initialsOf(name)
-    val shape = if (brand != null) CircleShape else RoundedCornerShape(12.dp)
+    val style = if (brand != null) AvatarStyle.BRAND else AvatarStyle.BRAND_MARK
+    val size = AvatarDefaults.sizeFor(style)
     val badgeGlyph = brand?.category?.toGlyph() ?: glyph
     Box(modifier = modifier.size(size)) {
         Box(
             modifier =
                 Modifier
                     .size(size)
-                    .clip(shape)
+                    .clip(AvatarDefaults.shapeFor(style))
                     .background(background),
             contentAlignment = Alignment.Center,
         ) {
