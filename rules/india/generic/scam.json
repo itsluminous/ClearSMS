@@ -6,7 +6,10 @@
       "name": "Shortened URL With Prize Bait",
       "priority": 600,
       "match": {
-        "body_pattern": "(?i)(?=[\\s\\S]*(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at))(?=[\\s\\S]*(?:prize|lottery|lucky\\s+draw|jackpot|winner|you\\s+have\\s+won|claim\\s+(?:your|now)|congratulations))"
+        "body_pattern": "(?i)(?=[\\s\\S]*(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at))(?=[\\s\\S]*(?:prize|lottery|lucky\\s+draw|jackpot|winner|you\\s+have\\s+won|claim\\s+(?:your|now)|congratulations))",
+        "body_must_not_contain": [
+          "Team TechGig"
+        ]
       },
       "action": {
         "category": "promotional",

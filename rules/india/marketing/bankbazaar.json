@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "bankbazaar-offer-01",
+      "name": "BankBazaar Card Offer Blast",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:BBANKC|BBAZCC|BNKBZR|BNKBCC|BANKBR|BBCCRD|BBCRDZ|BBCRCD|BBCRDT|BBANCC)",
+        "body_pattern": "(?i)(?:DELIVERED\\s+TO\\s+(?:YOUR\\s+)?INBOX|IN\\s+INBOX|BankBazaar)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}
