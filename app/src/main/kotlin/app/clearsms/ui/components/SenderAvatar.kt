@@ -39,7 +39,10 @@ private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 33
  * curated brand tile (bundled brand table, matched on [sender] and [name]) →
  * category-glyph monogram tile for directory-known senders → plain letter
  * avatar. With the setting off, always the plain letter avatar. Unknown
- * senders always get a letter — never a blank tile.
+ * senders always get a letter — never a blank tile. The small category
+ * badge ([GlyphBadge]) renders on every variant in both settings states:
+ * it identifies the sender kind (bank / wallet / telecom / government…),
+ * so turning off logos and photos must not hide it.
  *
  * Every variant clips to [AvatarDefaults.shape] at [AvatarDefaults.size] —
  * the diameter and shape are deliberately not parameters, so inbox rows, the
@@ -84,17 +87,20 @@ fun SenderAvatar(
         )
     when (style) {
         AvatarStyle.PHOTO ->
-            SubcomposeAsyncImage(
-                model = photoUri,
-                contentDescription = stringResource(R.string.avatar_contact_photo),
-                // Center-crop: non-square photos fill the circle, never squashed.
-                contentScale = ContentScale.Crop,
-                error = { PlainAvatar(name = name) },
-                modifier =
-                    modifier
-                        .size(AvatarDefaults.sizeFor(style))
-                        .clip(AvatarDefaults.shapeFor(style)),
-            )
+            Box(modifier = modifier.size(AvatarDefaults.sizeFor(style))) {
+                SubcomposeAsyncImage(
+                    model = photoUri,
+                    contentDescription = stringResource(R.string.avatar_contact_photo),
+                    // Center-crop: non-square photos fill the circle, never squashed.
+                    contentScale = ContentScale.Crop,
+                    error = { PlainAvatar(name = name) },
+                    modifier =
+                        Modifier
+                            .size(AvatarDefaults.sizeFor(style))
+                            .clip(AvatarDefaults.shapeFor(style)),
+                )
+                GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = AvatarDefaults.sizeFor(style))
+            }
         AvatarStyle.BUNDLED -> {
             // Decoded once per key on IO (BundledLogoCache); the brand tile
             // renders immediately so a list item's first frame never waits
@@ -105,20 +111,23 @@ fun SenderAvatar(
             }
             val logo = bitmap
             if (logo != null) {
-                Image(
-                    bitmap = logo,
-                    contentDescription = stringResource(R.string.avatar_sender_logo, name),
-                    // Fit inside a circular white plate: logos are shown whole
-                    // (never cropped), and clipping to the shared circle means
-                    // transparent-background artwork gets no box edges.
-                    contentScale = ContentScale.Fit,
-                    modifier =
-                        modifier
-                            .size(AvatarDefaults.sizeFor(style))
-                            .clip(AvatarDefaults.shapeFor(style))
-                            .background(Color.White)
-                            .padding(4.dp),
-                )
+                Box(modifier = modifier.size(AvatarDefaults.sizeFor(style))) {
+                    Image(
+                        bitmap = logo,
+                        contentDescription = stringResource(R.string.avatar_sender_logo, name),
+                        // Fit inside a circular white plate: logos are shown whole
+                        // (never cropped), and clipping to the shared circle means
+                        // transparent-background artwork gets no box edges.
+                        contentScale = ContentScale.Fit,
+                        modifier =
+                            Modifier
+                                .size(AvatarDefaults.sizeFor(style))
+                                .clip(AvatarDefaults.shapeFor(style))
+                                .background(Color.White)
+                                .padding(4.dp),
+                    )
+                    GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = AvatarDefaults.sizeFor(style))
+                }
             } else {
                 SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand)
             }
@@ -127,7 +136,13 @@ fun SenderAvatar(
             SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand)
         AvatarStyle.BRAND_MARK ->
             SenderBrandMark(name = name, glyph = glyph, modifier = modifier)
-        AvatarStyle.PLAIN -> PlainAvatar(name = name, modifier = modifier)
+        AvatarStyle.PLAIN ->
+            // The category glyph is informational, so it stays visible even
+            // with "Show logos and contact photos" off.
+            Box(modifier = modifier.size(AvatarDefaults.sizeFor(style))) {
+                PlainAvatar(name = name)
+                GlyphBadge(glyph = avatarBadgeGlyph(brandCategory = null, glyph = glyph), avatarSize = AvatarDefaults.sizeFor(style))
+            }
     }
 }
 

@@ -77,6 +77,18 @@ fun BrandCategory.toGlyph(): BrandGlyph =
     }
 
 /**
+ * The badge glyph an avatar renders, independent of the rich-avatars
+ * setting: the category glyph is informational (bank / wallet / telecom /
+ * government…), not decoration, so it stays visible on the plain letter
+ * avatar too. A curated brand's category wins when it maps to a real glyph;
+ * otherwise the message-derived [glyph] is used.
+ */
+fun avatarBadgeGlyph(
+    brandCategory: BrandCategory?,
+    glyph: BrandGlyph,
+): BrandGlyph = brandCategory?.toGlyph()?.takeIf { it != BrandGlyph.NONE } ?: glyph
+
+/**
  * Derives a category glyph for a known sender from the message sub-category
  * and, failing that, from keywords in the resolved sender name.
  */

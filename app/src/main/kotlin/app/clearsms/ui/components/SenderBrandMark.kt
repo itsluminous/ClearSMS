@@ -3,6 +3,7 @@ package app.clearsms.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.clearsms.ui.theme.ClearSmsTheme
 import kotlin.math.abs
@@ -63,7 +65,7 @@ fun SenderBrandMark(
     val monogram = brand?.monogram?.take(3)?.ifBlank { null } ?: initialsOf(name)
     val style = if (brand != null) AvatarStyle.BRAND else AvatarStyle.BRAND_MARK
     val size = AvatarDefaults.sizeFor(style)
-    val badgeGlyph = brand?.category?.toGlyph() ?: glyph
+    val badgeGlyph = avatarBadgeGlyph(brand?.category, glyph)
     Box(modifier = modifier.size(size)) {
         Box(
             modifier =
@@ -80,23 +82,37 @@ fun SenderBrandMark(
                 color = monogramColorFor(background),
             )
         }
-        glyphIconFor(badgeGlyph)?.let { icon ->
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(size * 0.42f)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(2.dp),
-                )
-            }
+        GlyphBadge(glyph = badgeGlyph, avatarSize = size)
+    }
+}
+
+/**
+ * The small category badge drawn over an avatar's bottom-end corner. Shared
+ * by every avatar variant so the glyph is always present — including on
+ * contact photos, bundled logos and the plain letter avatar shown when
+ * "Show logos and contact photos" is off.
+ */
+@Composable
+fun BoxScope.GlyphBadge(
+    glyph: BrandGlyph,
+    avatarSize: Dp,
+) {
+    glyphIconFor(glyph)?.let { icon ->
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(avatarSize * 0.42f)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(2.dp),
+            )
         }
     }
 }
