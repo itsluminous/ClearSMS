@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- SMS functionality requires telephony hardware. -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="true" />
+
     <!-- Permissions required by a default SMS app (REQUIREMENTS §1.2) -->
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.WRITE_SMS" />
@@ -44,6 +49,12 @@
                 <data android:scheme="smsto" />
                 <data android:scheme="mms" />
                 <data android:scheme="mmsto" />
+            </intent-filter>
+            <!-- Internal deep links used by notification tap actions. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="clearsms" />
             </intent-filter>
         </activity>
 
