@@ -44,6 +44,58 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "irctc-cancel-01",
+      "name": "IRCTC Ticket Cancellation",
+      "priority": 321,
+      "match": {
+        "sender_pattern": "(?i)IRCTC",
+        "body_pattern": "(?i)PNR[\\s:]*(\\d{10})\\s+ticket\\s+cancelled"
+      },
+      "action": {
+        "category": "important",
+        "extract": {
+          "pnr": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "irctc-booking-01",
+      "name": "IRCTC Ticket Booking Confirmation",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)IRCTC",
+        "body_pattern": "(?i)PNR[\\s:]*(\\d{10})[\\s\\S]{0,20}?TRN"
+      },
+      "action": {
+        "category": "important",
+        "extract": {
+          "pnr": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "irctc-refund-01",
+      "name": "IRCTC Refund Update",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)IRCTC",
+        "body_pattern": "(?i)\\brefund(?:ed)?\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "hdfc-debit-02",
       "name": "HDFC Bank UPI Debit",
       "priority": 305,
@@ -64,6 +116,24 @@
           "merchant": "$3",
           "type": "debit",
           "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazonpay-debit-01",
+      "name": "Amazon Pay Balance Payment",
+      "priority": 300,
+      "match": {
+        "body_pattern": "(?i)payment\\s+(?:of|on)\\b[\\s\\S]{0,40}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,40}?amazon\\s+pay\\s+balance"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
         }
       },
       "contributed_by": "clearsms",
@@ -520,6 +590,20 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "onemg-lab-01",
+      "name": "Tata 1mg Lab Order Update",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)ONEMG",
+        "body_pattern": "(?i)(?:lab\\s+test\\s+order|sample\\s+collection|samples?\\s+were\\s+collected|phlebotomist|lab\\s+report)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "paytm-bank-credit-01",
       "name": "Paytm Payments Bank Credit Transaction",
       "priority": 300,
@@ -564,6 +648,25 @@
           "account_last4": "$2",
           "type": "debit",
           "bank": "Paytm Payments Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-debit-01",
+      "name": "Pluxee Meal Card Spend",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+from"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
         }
       },
       "contributed_by": "clearsms",
@@ -764,6 +867,79 @@
           "account_last4": "$2",
           "type": "debit",
           "bank": "YES Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazonpay-credit-01",
+      "name": "Amazon Pay Rewards Credit",
+      "priority": 299,
+      "match": {
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+earnings\\s+on[\\s\\S]{0,80}?credited"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-credit-01",
+      "name": "Pluxee Wallet Credit",
+      "priority": 299,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+credited\\s+in\\s+your"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-bill-01",
+      "name": "Pluxee Reimbursement Bill Uploaded",
+      "priority": 298,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)reimbursements?\\s+bill\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-claim-01",
+      "name": "Pluxee Reimbursement Claim Update",
+      "priority": 297,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)reimbursement\\s+claim\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "amount": "$1"
         }
       },
       "contributed_by": "clearsms",
@@ -1101,6 +1277,21 @@
           "balance": "$2",
           "bank": "YES Bank"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "cersai-ckyc-01",
+      "name": "CKYC Record Access Alert",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i)(?:CKYCR|CERSAI)",
+        "body_pattern": "(?i)CKYC"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -1526,6 +1717,19 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "telecom-porting-01",
+      "name": "Mobile Number Porting (MNP) Update",
+      "priority": 260,
+      "match": {
+        "body_pattern": "(?i)(?:\\bUPC\\s+for\\s+(?:your\\s+)?mobile|\\bport(?:ing)?\\s+request|\\bport-?in\\s+your\\s+mobile)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "union-card-bill-01",
       "name": "Union Bank of India Credit Card Bill Reminder",
       "priority": 260,
@@ -1564,6 +1768,24 @@
           "min_due": "$3",
           "due_date": "$4",
           "bank": "YES Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "act-bill-01",
+      "name": "ACT Fibernet Bill",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP)",
+        "body_pattern": "(?i)bill\\s+for[\\s\\S]{0,30}?A/C[\\s\\S]{0,30}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
         }
       },
       "contributed_by": "clearsms",
@@ -1750,6 +1972,24 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "nbhood-invoice-01",
+      "name": "Society Maintenance Invoice",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:NBHOOD|NOBROKER)",
+        "body_pattern": "(?i)invoice\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "paytm-bank-emi-01",
       "name": "Paytm Payments Bank EMI Reminder",
       "priority": 250,
@@ -1844,6 +2084,24 @@
           "amount": "$1",
           "due_date": "$2",
           "bank": "YES Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "act-receipt-01",
+      "name": "ACT Fibernet Payment Receipt",
+      "priority": 245,
+      "match": {
+        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP)",
+        "body_pattern": "(?i)receipt\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1"
         }
       },
       "contributed_by": "clearsms",
@@ -2013,6 +2271,23 @@
           "data_remaining": "$1",
           "operator": "Vi"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-prime-01",
+      "name": "Amazon Prime Membership Renewal",
+      "priority": 221,
+      "match": {
+        "body_pattern": "(?i)prime\\s+membership[\\s\\S]{0,60}?(?:renew|expired)",
+        "body_must_contain": [
+          "amazon"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -2237,6 +2512,62 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "irctc-info-01",
+      "name": "IRCTC Service Update",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)IRCTC"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "onemg-info-01",
+      "name": "Tata 1mg Service Update",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)ONEMG"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-info-01",
+      "name": "Pluxee Service Update",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "electricity-bill-01",
+      "name": "Electricity Bill Ready",
+      "priority": 155,
+      "match": {
+        "body_pattern": "(?i)electricity\\s+bill[\\s\\S]{0,60}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "airtel-promo-01",
       "name": "Airtel Promotional Offer",
       "priority": 150,
@@ -2357,6 +2688,36 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "telecom-roaming-01",
+      "name": "International Roaming Notice",
+      "priority": 150,
+      "match": {
+        "body_pattern": "(?i)international\\s+roaming"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "utility-consumer-bill-01",
+      "name": "Utility Bill by Consumer Number",
+      "priority": 150,
+      "match": {
+        "body_pattern": "(?i)bill\\s+for[\\s\\S]{0,40}?consumer\\s+no[\\s\\S]{0,40}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "vi-promo-01",
       "name": "Vi Promotional Offer",
       "priority": 150,
@@ -2382,6 +2743,32 @@
       "action": {
         "category": "promotional",
         "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "telecom-callertune-01",
+      "name": "Callertune Service Notice",
+      "priority": 145,
+      "match": {
+        "body_pattern": "(?i)callertunes?\\b"
+      },
+      "action": {
+        "category": "promotional"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "telecom-survey-01",
+      "name": "Network Feedback Survey",
+      "priority": 140,
+      "match": {
+        "body_pattern": "(?i)(?:network\\s+experience|recommend[\\s\\S]{0,30}?friends\\s*&?\\s*family|responding\\s+to\\s+the\\s+survey)"
+      },
+      "action": {
+        "category": "promotional"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -2450,6 +2837,71 @@
           "otp_code": "$1"
         },
         "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-otp-05",
+      "name": "Branded OTP (digits first)",
+      "priority": 51,
+      "match": {
+        "body_pattern": "(?i)(?<!\\d)(\\d{4,8})\\s+is\\s+your\\s+(?:\\w+[ .-]){0,3}?otp"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-itops-alert-01",
+      "name": "IT Monitoring / Pager Alert",
+      "priority": 45,
+      "match": {
+        "body_pattern": "(?i)(?:spl?unk\\s+alert|open\\s+problem\\s+p-\\d+|acknowledgement\\s+expired|amazon\\s+alerting|\\d+\\s+incidents?:)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-recharge-01",
+      "name": "Generic Recharge Successful",
+      "priority": 43,
+      "match": {
+        "body_pattern": "(?i)recharge\\s+(?:of\\s+|done\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,40}?successful"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-refund-01",
+      "name": "Generic Refund Notification",
+      "priority": 42,
+      "match": {
+        "body_pattern": "(?i)\\brefund[\\s\\S]{0,60}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
@@ -2545,6 +2997,24 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "generic-debit-03",
+      "name": "Wallet/UPI Payment (paid to)",
+      "priority": 37,
+      "match": {
+        "body_pattern": "(?i)\\bpaid\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+to\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "generic-bill-01",
       "name": "Generic Bill Due Reminder",
       "priority": 36,
@@ -2581,6 +3051,41 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "generic-debit-04",
+      "name": "Payment Successful",
+      "priority": 34,
+      "match": {
+        "body_pattern": "(?i)payment\\s+(?:of|on)\\b[\\s\\S]{0,40}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,80}?\\bsuccessful"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-balance-01",
+      "name": "Available Balance Update",
+      "priority": 32,
+      "match": {
+        "body_pattern": "(?i)av(?:l|ail(?:able)?)\\.?\\s+bal(?:ance)?[\\s\\S]{0,30}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "balance": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
       "id": "generic-delivery-01",
       "name": "Generic Delivery Status Keywords",
       "priority": 31,
@@ -2607,6 +3112,34 @@
         "extract": {
           "tracking_id": "$1"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-delivery-03",
+      "name": "Return/Exchange Pickup",
+      "priority": 29,
+      "match": {
+        "body_pattern": "(?i)(?:return|exchange)\\s+pick-?up\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-coupon-01",
+      "name": "Coupon/Voucher Blast",
+      "priority": 20,
+      "match": {
+        "body_pattern": "(?i)(?:coupon|voucher)\\s+worth\\b"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"

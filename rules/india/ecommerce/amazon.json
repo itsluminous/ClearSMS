@@ -33,6 +33,23 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-prime-01",
+      "name": "Amazon Prime Membership Renewal",
+      "priority": 221,
+      "match": {
+        "body_pattern": "(?i)prime\\s+membership[\\s\\S]{0,60}?(?:renew|expired)",
+        "body_must_contain": [
+          "amazon"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }

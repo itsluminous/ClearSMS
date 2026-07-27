@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "telecom-porting-01",
+      "name": "Mobile Number Porting (MNP) Update",
+      "priority": 260,
+      "match": {
+        "body_pattern": "(?i)(?:\\bUPC\\s+for\\s+(?:your\\s+)?mobile|\\bport(?:ing)?\\s+request|\\bport-?in\\s+your\\s+mobile)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "telecom-roaming-01",
+      "name": "International Roaming Notice",
+      "priority": 150,
+      "match": {
+        "body_pattern": "(?i)international\\s+roaming"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "telecom-callertune-01",
+      "name": "Callertune Service Notice",
+      "priority": 145,
+      "match": {
+        "body_pattern": "(?i)callertunes?\\b"
+      },
+      "action": {
+        "category": "promotional"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "telecom-survey-01",
+      "name": "Network Feedback Survey",
+      "priority": 140,
+      "match": {
+        "body_pattern": "(?i)(?:network\\s+experience|recommend[\\s\\S]{0,30}?friends\\s*&?\\s*family|responding\\s+to\\s+the\\s+survey)"
+      },
+      "action": {
+        "category": "promotional"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

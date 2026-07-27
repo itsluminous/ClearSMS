@@ -1,0 +1,92 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "pluxee-debit-01",
+      "name": "Pluxee Meal Card Spend",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+from"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-credit-01",
+      "name": "Pluxee Wallet Credit",
+      "priority": 299,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+credited\\s+in\\s+your"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-bill-01",
+      "name": "Pluxee Reimbursement Bill Uploaded",
+      "priority": 298,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)reimbursements?\\s+bill\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-claim-01",
+      "name": "Pluxee Reimbursement Claim Update",
+      "priority": 297,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)reimbursement\\s+claim\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "pluxee-info-01",
+      "name": "Pluxee Service Update",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

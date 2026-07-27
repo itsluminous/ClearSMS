@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "cersai-ckyc-01",
+      "name": "CKYC Record Access Alert",
+      "priority": 270,
+      "match": {
+        "sender_pattern": "(?i)(?:CKYCR|CERSAI)",
+        "body_pattern": "(?i)CKYC"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

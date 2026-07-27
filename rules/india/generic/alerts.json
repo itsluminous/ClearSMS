@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "generic-itops-alert-01",
+      "name": "IT Monitoring / Pager Alert",
+      "priority": 45,
+      "match": {
+        "body_pattern": "(?i)(?:spl?unk\\s+alert|open\\s+problem\\s+p-\\d+|acknowledgement\\s+expired|amazon\\s+alerting|\\d+\\s+incidents?:)"
+      },
+      "action": {
+        "category": "important"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
+    }
+  ]
+}

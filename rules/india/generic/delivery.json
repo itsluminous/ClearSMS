@@ -31,6 +31,20 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-delivery-03",
+      "name": "Return/Exchange Pickup",
+      "priority": 29,
+      "match": {
+        "body_pattern": "(?i)(?:return|exchange)\\s+pick-?up\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-27T00:00:00Z"
     }
   ]
 }
