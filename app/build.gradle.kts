@@ -125,6 +125,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
 
+    // Material Components (provides the XML Theme.Material3.* parent used in themes.xml)
+    implementation(libs.google.material)
+
     // Desugaring (java.time on minSdk 23)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
