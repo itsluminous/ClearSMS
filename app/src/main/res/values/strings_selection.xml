@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Multi-select contextual bar -->
+    <string name="selection_count">%1$d selected</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_exit_selection">Exit selection</string>
+    <string name="action_more_options">More options</string>
+    <string name="action_mark_read_unread">Mark read/unread</string>
+    <string name="selection_selected">Selected</string>
+
+    <!-- Bulk delete confirmations (deletion also removes messages from the
+         system SMS store, so it cannot be undone) -->
+    <string name="selection_delete_threads_title">Delete conversations?</string>
+    <string name="selection_delete_threads_message">%1$d conversation(s) will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
+    <string name="selection_delete_messages_title">Delete messages?</string>
+    <string name="selection_delete_messages_message">%1$d message(s) will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
+
+    <!-- Reply availability -->
+    <string name="conversation_not_repliable">This sender doesn\'t accept replies</string>
+</resources>
