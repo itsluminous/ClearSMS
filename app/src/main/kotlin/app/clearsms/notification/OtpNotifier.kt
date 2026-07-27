@@ -37,6 +37,7 @@ class OtpNotifier
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val senderResolver: NotificationSenderResolver,
     ) {
         fun notify(
             message: MessageEntity,
@@ -62,19 +63,21 @@ class OtpNotifier
             selected: Set<NotificationAction>,
         ): Notification {
             val title = buildTitle(otp, displaySize)
+            // Same resolution chain as the UI (contact → directory → brand → raw).
+            val senderName = senderResolver.resolve(message.sender).name
             val publicVersion =
                 NotificationCompat
                     .Builder(context, Channels.OTP)
                     .setSmallIcon(R.drawable.ic_notification)
                     // Digit-free on purpose: no OTP on the lockscreen.
-                    .setContentTitle(context.getString(R.string.otp_public_title, message.sender))
+                    .setContentTitle(context.getString(R.string.otp_public_title, senderName))
                     .build()
             val builder =
                 NotificationCompat
                     .Builder(context, Channels.OTP)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(title)
-                    .setContentText(context.getString(R.string.otp_from, message.sender))
+                    .setContentText(context.getString(R.string.otp_from, senderName))
                     .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)

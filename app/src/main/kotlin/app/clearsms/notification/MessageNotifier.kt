@@ -26,9 +26,19 @@ class MessageNotifier
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val senderResolver: NotificationSenderResolver,
+        private val iconFactory: SenderIconFactory,
     ) {
         /**
          * Posts / updates the notification for [message]'s thread.
+         *
+         * The sender is resolved through the same chain the UI uses (contact
+         * name + photo → sender-ID directory → curated brand table → raw
+         * address); a denied READ_CONTACTS or any lookup failure degrades to
+         * the raw address. Callers invoke this off the main thread (the
+         * receiver's IO application scope), so the cached contact lookup never
+         * blocks UI. No shortcut/bubble APIs are used, so the [Person] built
+         * here is the only conversation identity to keep consistent.
          *
          * [selected] is the user's notification-action choice (defaults to
          * the settings default for callers without settings access, e.g. the
@@ -40,11 +50,13 @@ class MessageNotifier
             selected: Set<NotificationAction> = DEFAULT_SELECTED,
         ) {
             Channels.ensureCreated(context)
+            val resolved = senderResolver.resolve(message.sender)
             val sender =
                 Person
                     .Builder()
-                    .setName(message.sender)
+                    .setName(resolved.name)
                     .setKey(message.normalizedSender)
+                    .setIcon(iconFactory.iconFor(resolved))
                     .build()
             val style =
                 NotificationCompat
@@ -60,7 +72,7 @@ class MessageNotifier
                 NotificationCompat
                     .Builder(context, Channels.MESSAGES)
                     .setSmallIcon(R.drawable.ic_notification)
-                    .setContentTitle(message.sender)
+                    .setContentTitle(resolved.name)
                     .setContentText(message.body)
                     .setStyle(style)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -73,12 +85,13 @@ class MessageNotifier
         /** High-priority warning for a message flagged as a likely scam. */
         fun notifyScam(message: MessageEntity) {
             Channels.ensureCreated(context)
+            val resolvedName = senderResolver.resolve(message.sender).name
             val notification =
                 NotificationCompat
                     .Builder(context, Channels.SECURITY)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(context.getString(R.string.scam_warning_title))
-                    .setContentText(context.getString(R.string.scam_warning_text, message.sender))
+                    .setContentText(context.getString(R.string.scam_warning_text, resolvedName))
                     .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)

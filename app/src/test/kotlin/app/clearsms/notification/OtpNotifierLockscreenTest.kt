@@ -33,8 +33,19 @@ class OtpNotifierLockscreenTest {
             extractedOtp = "123456",
         )
 
+    /** Stub resolver: keeps the raw sender so assertions stay deterministic. */
+    private val rawResolver =
+        object : NotificationSenderResolver(
+            context,
+            app.clearsms.sms.ContactsSource(context),
+            app.clearsms.data.senderid
+                .SenderIdStore(context),
+        ) {
+            override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
+        }
+
     private fun build(selected: Set<NotificationAction> = MessageNotifier.DEFAULT_SELECTED): Notification =
-        OtpNotifier(context).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
+        OtpNotifier(context, rawResolver).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
 
     @Test
     fun `notification is private with a public version`() {
