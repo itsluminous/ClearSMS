@@ -14,9 +14,11 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.ApplicationScope
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.notification.MessageNotifier
 import app.clearsms.notification.OtpNotifier
+import app.clearsms.notification.TransactionNotifier
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.work.ReminderAlarmScheduler
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,6 +52,9 @@ class SmsReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var messageNotifier: MessageNotifier
+
+    @Inject
+    lateinit var transactionNotifier: TransactionNotifier
 
     @Inject
     lateinit var reminderAlarmScheduler: ReminderAlarmScheduler
@@ -90,11 +95,19 @@ class SmsReceiver : BroadcastReceiver() {
         reminderAlarmScheduler.scheduleForMessage(entity.id)
         if (entity.isBlockedSender) return
 
+        val selectedActions = settingsRepository.notificationActions.first()
         when {
-            entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(context, entity)
+            entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(context, entity, selectedActions)
             entity.subCategory == SubCategory.SCAM -> messageNotifier.notifyScam(entity)
+            // Parsed transaction notification (opt-out via settings). When
+            // the setting is off — or the message has no renderable parsed
+            // data (notify returns false) — control falls through to the
+            // plain message notification below, i.e. today's behavior.
+            entity.subCategory == SubCategory.TRANSACTION &&
+                settingsRepository.transactionNotifications.first() &&
+                transactionNotifier.notify(entity, selectedActions) -> Unit
             entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
-                messageNotifier.notify(entity)
+                messageNotifier.notify(entity, selectedActions)
             // Promotional and unknown messages stay silent by design.
             else -> Unit
         }
@@ -103,6 +116,7 @@ class SmsReceiver : BroadcastReceiver() {
     private suspend fun notifyOtp(
         context: Context,
         entity: MessageEntity,
+        selectedActions: Set<NotificationAction>,
     ) {
         val otp = entity.extractedOtp ?: return
         val autoCopy = settingsRepository.otpAutoCopy.first()
@@ -114,7 +128,7 @@ class SmsReceiver : BroadcastReceiver() {
             val clipboard = context.getSystemService(ClipboardManager::class.java)
             clipboard?.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.otp_clip_label), otp))
         }
-        otpNotifier.notify(entity, otp, settingsRepository.otpDisplaySize.first())
+        otpNotifier.notify(entity, otp, settingsRepository.otpDisplaySize.first(), selectedActions)
     }
 
     /** One decoded PDU (or one merged message). */
