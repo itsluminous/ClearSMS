@@ -7,36 +7,73 @@ enum class AvatarStyle {
     /** The saved contact's photo thumbnail. */
     PHOTO,
 
-    /** Monogram brand mark with a category glyph for known senders. */
+    /** A user-supplied image from the optional local logo pack. */
+    LOGO,
+
+    /** Curated brand tile: brand color + monogram from the bundled brand table. */
+    BRAND,
+
+    /** Monogram tile with a category glyph for directory-known senders. */
     BRAND_MARK,
 
-    /** Today's plain initial-on-tonal-color avatar. */
+    /** Plain initial-on-tonal-color avatar. */
     PLAIN,
 }
 
 /** Small category glyph shown on a [SenderBrandMark]. */
 enum class BrandGlyph {
     BANK,
+    CARD,
+    WALLET,
     CART,
+    DELIVERY,
     GOVERNMENT,
     TELECOM,
+    UTILITY,
+    INVESTMENT,
+    HEALTH,
+    TRAVEL,
     NONE,
 }
 
 /**
- * Picks the avatar rendering: photos and brand marks only when the
- * "rich avatars" setting is on; otherwise always the plain avatar.
+ * Picks the avatar rendering. With rich avatars ON the fallback chain is:
+ * contact photo → user-supplied logo → curated brand tile → category glyph
+ * tile (directory-known sender) → plain letter avatar. OFF is always plain —
+ * no photos, no brand colors. Unknown senders always land on the letter
+ * avatar, never a blank tile.
  */
 fun avatarStyleFor(
     richAvatars: Boolean,
     photoUri: String?,
     isKnownSender: Boolean,
+    hasLogo: Boolean = false,
+    hasBrand: Boolean = false,
 ): AvatarStyle =
     when {
         !richAvatars -> AvatarStyle.PLAIN
         photoUri != null -> AvatarStyle.PHOTO
+        hasLogo -> AvatarStyle.LOGO
+        hasBrand -> AvatarStyle.BRAND
         isKnownSender -> AvatarStyle.BRAND_MARK
         else -> AvatarStyle.PLAIN
+    }
+
+/** Maps a curated brand's category to its badge glyph. */
+fun BrandCategory.toGlyph(): BrandGlyph =
+    when (this) {
+        BrandCategory.BANK -> BrandGlyph.BANK
+        BrandCategory.CARD -> BrandGlyph.CARD
+        BrandCategory.WALLET -> BrandGlyph.WALLET
+        BrandCategory.TELECOM -> BrandGlyph.TELECOM
+        BrandCategory.ECOMMERCE -> BrandGlyph.CART
+        BrandCategory.DELIVERY -> BrandGlyph.DELIVERY
+        BrandCategory.GOVERNMENT -> BrandGlyph.GOVERNMENT
+        BrandCategory.UTILITY -> BrandGlyph.UTILITY
+        BrandCategory.INVESTMENT -> BrandGlyph.INVESTMENT
+        BrandCategory.HEALTH -> BrandGlyph.HEALTH
+        BrandCategory.TRAVEL -> BrandGlyph.TRAVEL
+        BrandCategory.OTHER -> BrandGlyph.NONE
     }
 
 /**

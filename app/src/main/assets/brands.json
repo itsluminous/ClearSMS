@@ -1,0 +1,680 @@
+{
+  "version": "1.0",
+  "brands": [
+    {
+      "key": "hdfc",
+      "name": "HDFC Bank",
+      "category": "BANK",
+      "color": "#004C8F",
+      "monogram": "H",
+      "senders": [
+        "HDFCBK",
+        "HDFCB"
+      ],
+      "aliases": [
+        "HDFC",
+        "HDFC BANK"
+      ]
+    },
+    {
+      "key": "icici",
+      "name": "ICICI Bank",
+      "category": "BANK",
+      "color": "#F06321",
+      "monogram": "I",
+      "senders": [
+        "ICICIB",
+        "ICICIT"
+      ],
+      "aliases": [
+        "ICICI",
+        "ICICI BANK"
+      ]
+    },
+    {
+      "key": "sbi",
+      "name": "State Bank of India",
+      "category": "BANK",
+      "color": "#280071",
+      "monogram": "SBI",
+      "senders": [
+        "SBIINB",
+        "SBIUPI",
+        "SBIPSG",
+        "SBIOTP",
+        "CBSSBI",
+        "ATMSBI"
+      ],
+      "aliases": [
+        "SBI",
+        "STATE BANK"
+      ]
+    },
+    {
+      "key": "axis",
+      "name": "Axis Bank",
+      "category": "BANK",
+      "color": "#97144D",
+      "monogram": "A",
+      "senders": [
+        "AXISBK",
+        "AXISB"
+      ],
+      "aliases": [
+        "AXIS",
+        "AXIS BANK"
+      ]
+    },
+    {
+      "key": "kotak",
+      "name": "Kotak Mahindra Bank",
+      "category": "BANK",
+      "color": "#ED1C24",
+      "monogram": "K",
+      "senders": [
+        "KOTAKB",
+        "KOTAKM"
+      ],
+      "aliases": [
+        "KOTAK"
+      ]
+    },
+    {
+      "key": "pnb",
+      "name": "Punjab National Bank",
+      "category": "BANK",
+      "color": "#A20E37",
+      "monogram": "PNB",
+      "senders": [
+        "PNBSMS",
+        "PNBOTP"
+      ],
+      "aliases": [
+        "PNB",
+        "PUNJAB NATIONAL"
+      ]
+    },
+    {
+      "key": "bob",
+      "name": "Bank of Baroda",
+      "category": "BANK",
+      "color": "#F15A29",
+      "monogram": "BOB",
+      "senders": [
+        "BOBTXN",
+        "BOBSMS"
+      ],
+      "aliases": [
+        "BANK OF BARODA"
+      ]
+    },
+    {
+      "key": "canara",
+      "name": "Canara Bank",
+      "category": "BANK",
+      "color": "#0072BC",
+      "monogram": "C",
+      "senders": [
+        "CANBNK",
+        "CANARA"
+      ],
+      "aliases": [
+        "CANARA"
+      ]
+    },
+    {
+      "key": "union",
+      "name": "Union Bank of India",
+      "category": "BANK",
+      "color": "#D71920",
+      "monogram": "U",
+      "senders": [
+        "UNIONB",
+        "UBOI"
+      ],
+      "aliases": [
+        "UNION BANK"
+      ]
+    },
+    {
+      "key": "idfcfirst",
+      "name": "IDFC FIRST Bank",
+      "category": "BANK",
+      "color": "#9C1D26",
+      "monogram": "ID",
+      "senders": [
+        "IDFCFB",
+        "IDFCBK"
+      ],
+      "aliases": [
+        "IDFC",
+        "IDFC FIRST"
+      ]
+    },
+    {
+      "key": "indusind",
+      "name": "IndusInd Bank",
+      "category": "BANK",
+      "color": "#98272A",
+      "monogram": "IN",
+      "senders": [
+        "INDUSB",
+        "INDBNK"
+      ],
+      "aliases": [
+        "INDUSIND"
+      ]
+    },
+    {
+      "key": "yesbank",
+      "name": "Yes Bank",
+      "category": "BANK",
+      "color": "#00204E",
+      "monogram": "Y",
+      "senders": [
+        "YESBNK"
+      ],
+      "aliases": [
+        "YES BANK"
+      ]
+    },
+    {
+      "key": "federal",
+      "name": "Federal Bank",
+      "category": "BANK",
+      "color": "#F7A800",
+      "monogram": "F",
+      "senders": [
+        "FEDBNK",
+        "FEDERL"
+      ],
+      "aliases": [
+        "FEDERAL BANK"
+      ]
+    },
+    {
+      "key": "citi",
+      "name": "Citi",
+      "category": "BANK",
+      "color": "#003B70",
+      "monogram": "CT",
+      "senders": [
+        "CITIBK",
+        "CITI"
+      ],
+      "aliases": [
+        "CITIBANK"
+      ]
+    },
+    {
+      "key": "paytm",
+      "name": "Paytm",
+      "category": "WALLET",
+      "color": "#00BAF2",
+      "monogram": "P",
+      "senders": [
+        "PAYTMB",
+        "IPAYTM",
+        "PYTMPB"
+      ],
+      "aliases": [
+        "PAYTM"
+      ]
+    },
+    {
+      "key": "phonepe",
+      "name": "PhonePe",
+      "category": "WALLET",
+      "color": "#5F259F",
+      "monogram": "PE",
+      "senders": [
+        "PHONPE"
+      ],
+      "aliases": [
+        "PHONEPE"
+      ]
+    },
+    {
+      "key": "amazonpay",
+      "name": "Amazon Pay",
+      "category": "WALLET",
+      "color": "#FF9900",
+      "monogram": "AP",
+      "senders": [
+        "AMZNPY",
+        "APAYIN"
+      ],
+      "aliases": [
+        "AMAZON PAY"
+      ]
+    },
+    {
+      "key": "cred",
+      "name": "CRED",
+      "category": "WALLET",
+      "color": "#0D0D0D",
+      "monogram": "CR",
+      "senders": [
+        "CREDCL"
+      ],
+      "aliases": [
+        "CRED"
+      ]
+    },
+    {
+      "key": "payzapp",
+      "name": "PayZapp",
+      "category": "WALLET",
+      "color": "#0066B3",
+      "monogram": "PZ",
+      "senders": [
+        "PAYZAP"
+      ],
+      "aliases": [
+        "PAYZAPP"
+      ]
+    },
+    {
+      "key": "pluxee",
+      "name": "Pluxee",
+      "category": "WALLET",
+      "color": "#221C46",
+      "monogram": "PX",
+      "senders": [
+        "PLUXEE",
+        "SODEXO"
+      ],
+      "aliases": [
+        "PLUXEE"
+      ]
+    },
+    {
+      "key": "airtel",
+      "name": "Airtel",
+      "category": "TELECOM",
+      "color": "#E40000",
+      "monogram": "A",
+      "senders": [
+        "AIRTEL",
+        "ARTLBB"
+      ],
+      "aliases": [
+        "AIRTEL"
+      ]
+    },
+    {
+      "key": "jio",
+      "name": "Jio",
+      "category": "TELECOM",
+      "color": "#0A2885",
+      "monogram": "JIO",
+      "senders": [
+        "JIONET",
+        "JIOPAY"
+      ],
+      "aliases": [
+        "JIO"
+      ]
+    },
+    {
+      "key": "vi",
+      "name": "Vi",
+      "category": "TELECOM",
+      "color": "#9C2AA0",
+      "monogram": "VI",
+      "senders": [
+        "VICARE",
+        "VODAID"
+      ],
+      "aliases": [
+        "VODAFONE IDEA"
+      ]
+    },
+    {
+      "key": "bsnl",
+      "name": "BSNL",
+      "category": "TELECOM",
+      "color": "#005BAA",
+      "monogram": "B",
+      "senders": [
+        "BSNLIN"
+      ],
+      "aliases": [
+        "BSNL"
+      ]
+    },
+    {
+      "key": "amazon",
+      "name": "Amazon",
+      "category": "ECOMMERCE",
+      "color": "#FF9900",
+      "monogram": "A",
+      "senders": [
+        "AMAZON",
+        "AMZNIN"
+      ],
+      "aliases": [
+        "AMAZON"
+      ]
+    },
+    {
+      "key": "flipkart",
+      "name": "Flipkart",
+      "category": "ECOMMERCE",
+      "color": "#2874F0",
+      "monogram": "F",
+      "senders": [
+        "FLPKRT",
+        "FKRTPL"
+      ],
+      "aliases": [
+        "FLIPKART"
+      ]
+    },
+    {
+      "key": "myntra",
+      "name": "Myntra",
+      "category": "ECOMMERCE",
+      "color": "#FF3F6C",
+      "monogram": "M",
+      "senders": [
+        "MYNTRA"
+      ],
+      "aliases": [
+        "MYNTRA"
+      ]
+    },
+    {
+      "key": "swiggy",
+      "name": "Swiggy",
+      "category": "ECOMMERCE",
+      "color": "#FC8019",
+      "monogram": "S",
+      "senders": [
+        "SWIGGY"
+      ],
+      "aliases": [
+        "SWIGGY"
+      ]
+    },
+    {
+      "key": "zomato",
+      "name": "Zomato",
+      "category": "ECOMMERCE",
+      "color": "#E23744",
+      "monogram": "Z",
+      "senders": [
+        "ZOMATO"
+      ],
+      "aliases": [
+        "ZOMATO"
+      ]
+    },
+    {
+      "key": "bigbasket",
+      "name": "bigbasket",
+      "category": "ECOMMERCE",
+      "color": "#84C225",
+      "monogram": "BB",
+      "senders": [
+        "BGBSKT",
+        "BBSKET"
+      ],
+      "aliases": [
+        "BIGBASKET"
+      ]
+    },
+    {
+      "key": "dominos",
+      "name": "Domino's",
+      "category": "ECOMMERCE",
+      "color": "#006491",
+      "monogram": "D",
+      "senders": [
+        "DOMINO"
+      ],
+      "aliases": [
+        "DOMINOS"
+      ]
+    },
+    {
+      "key": "samsungshop",
+      "name": "Samsung Shop",
+      "category": "ECOMMERCE",
+      "color": "#1428A0",
+      "monogram": "S",
+      "senders": [
+        "SMSNGS",
+        "SAMSNG"
+      ],
+      "aliases": [
+        "SAMSUNG"
+      ]
+    },
+    {
+      "key": "delhivery",
+      "name": "Delhivery",
+      "category": "DELIVERY",
+      "color": "#E4002B",
+      "monogram": "D",
+      "senders": [
+        "DLHVRY",
+        "DELHIV"
+      ],
+      "aliases": [
+        "DELHIVERY"
+      ]
+    },
+    {
+      "key": "bluedart",
+      "name": "Blue Dart",
+      "category": "DELIVERY",
+      "color": "#0057A8",
+      "monogram": "BD",
+      "senders": [
+        "BLDART",
+        "BLUDRT"
+      ],
+      "aliases": [
+        "BLUE DART",
+        "BLUEDART"
+      ]
+    },
+    {
+      "key": "ekart",
+      "name": "Ekart",
+      "category": "DELIVERY",
+      "color": "#1F74BA",
+      "monogram": "E",
+      "senders": [
+        "EKARTL",
+        "EKTLOG"
+      ],
+      "aliases": [
+        "EKART"
+      ]
+    },
+    {
+      "key": "indiapost",
+      "name": "India Post",
+      "category": "DELIVERY",
+      "color": "#ED1C24",
+      "monogram": "IP",
+      "senders": [
+        "INPOST",
+        "DOPIND"
+      ],
+      "aliases": [
+        "INDIA POST"
+      ]
+    },
+    {
+      "key": "incometax",
+      "name": "Income Tax Dept",
+      "category": "GOVERNMENT",
+      "color": "#21406B",
+      "monogram": "IT",
+      "senders": [
+        "ITDEPT",
+        "ITDEFL",
+        "INCTAX"
+      ],
+      "aliases": [
+        "INCOME TAX"
+      ]
+    },
+    {
+      "key": "epfo",
+      "name": "EPFO",
+      "category": "GOVERNMENT",
+      "color": "#8A1E41",
+      "monogram": "E",
+      "senders": [
+        "EPFOHO"
+      ],
+      "aliases": [
+        "EPFO"
+      ]
+    },
+    {
+      "key": "uidai",
+      "name": "UIDAI",
+      "category": "GOVERNMENT",
+      "color": "#ED1C24",
+      "monogram": "U",
+      "senders": [
+        "UIDAID",
+        "AADHAR"
+      ],
+      "aliases": [
+        "UIDAI",
+        "AADHAAR"
+      ]
+    },
+    {
+      "key": "digilocker",
+      "name": "DigiLocker",
+      "category": "GOVERNMENT",
+      "color": "#2E3192",
+      "monogram": "DL",
+      "senders": [
+        "DIGLKR",
+        "NADEGL"
+      ],
+      "aliases": [
+        "DIGILOCKER"
+      ]
+    },
+    {
+      "key": "cersai",
+      "name": "CERSAI",
+      "category": "GOVERNMENT",
+      "color": "#00539C",
+      "monogram": "CS",
+      "senders": [
+        "CERSAI"
+      ],
+      "aliases": [
+        "CERSAI"
+      ]
+    },
+    {
+      "key": "cowin",
+      "name": "CoWIN",
+      "category": "GOVERNMENT",
+      "color": "#F58634",
+      "monogram": "CW",
+      "senders": [
+        "NHPSMS",
+        "COWIN"
+      ],
+      "aliases": [
+        "COWIN"
+      ]
+    },
+    {
+      "key": "irctc",
+      "name": "IRCTC",
+      "category": "TRAVEL",
+      "color": "#FA9C1B",
+      "monogram": "IR",
+      "senders": [
+        "IRCTCI",
+        "IRCTC"
+      ],
+      "aliases": [
+        "IRCTC"
+      ]
+    },
+    {
+      "key": "ola",
+      "name": "Ola",
+      "category": "TRAVEL",
+      "color": "#B7D433",
+      "monogram": "O",
+      "senders": [
+        "OLACAB",
+        "OLAMNY"
+      ],
+      "aliases": [
+        "OLA CABS"
+      ]
+    },
+    {
+      "key": "actfibernet",
+      "name": "ACT Fibernet",
+      "category": "UTILITY",
+      "color": "#F37021",
+      "monogram": "ACT",
+      "senders": [
+        "ACTBBD",
+        "ACTCRP"
+      ],
+      "aliases": [
+        "ACT FIBERNET"
+      ]
+    },
+    {
+      "key": "nobrokerhood",
+      "name": "NoBrokerHood",
+      "category": "UTILITY",
+      "color": "#FD3752",
+      "monogram": "NB",
+      "senders": [
+        "NBHOOD",
+        "NOBRKR"
+      ],
+      "aliases": [
+        "NOBROKERHOOD"
+      ]
+    },
+    {
+      "key": "bse",
+      "name": "BSE",
+      "category": "INVESTMENT",
+      "color": "#23418E",
+      "monogram": "BSE",
+      "senders": [
+        "BSEIND"
+      ],
+      "aliases": [
+        "BSE"
+      ]
+    },
+    {
+      "key": "tata1mg",
+      "name": "Tata 1mg",
+      "category": "HEALTH",
+      "color": "#F26841",
+      "monogram": "1MG",
+      "senders": [
+        "ONEMGX",
+        "TATMGD"
+      ],
+      "aliases": [
+        "TATA 1MG",
+        "1MG"
+      ]
+    }
+  ]
+}
