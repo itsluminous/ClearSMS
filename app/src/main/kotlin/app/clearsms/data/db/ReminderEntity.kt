@@ -19,6 +19,8 @@ data class ReminderEntity(
     val minDue: Double? = null,
     val accountLast4: String? = null,
     val bankName: String? = null,
+    /** Free-form label: the order/tracking reference for DELIVERY reminders. */
+    val label: String? = null,
     /** Row id of the originating message in the messages table. */
     val rawSmsId: Long,
     val createdAt: Long,
