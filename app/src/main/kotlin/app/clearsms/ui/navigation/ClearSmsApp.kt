@@ -152,12 +152,21 @@ private fun MainScaffold(
             composable(Routes.FINANCE) {
                 FinanceScreen(
                     onOpenAccount = { number, bank -> navController.navigate(Routes.accountDetail(number, bank)) },
+                    onOpenMessage = { threadId, messageId ->
+                        navController.navigate(Routes.conversation(threadId, messageId))
+                    },
                 )
             }
             composable(
                 route = Routes.ALERTS,
                 deepLinks = listOf(navDeepLink { uriPattern = "clearsms://alerts" }),
-            ) { AlertsScreen() }
+            ) {
+                AlertsScreen(
+                    onOpenMessage = { threadId, messageId ->
+                        navController.navigate(Routes.conversation(threadId, messageId))
+                    },
+                )
+            }
             composable(Routes.SEARCH) {
                 SearchScreen(
                     onOpenThread = { threadId, messageId ->
@@ -205,7 +214,12 @@ private fun MainScaffold(
                         navArgument("bank") { defaultValue = "" },
                     ),
             ) {
-                AccountDetailScreen(onBack = { navController.popBackStack() })
+                AccountDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenMessage = { threadId, messageId ->
+                        navController.navigate(Routes.conversation(threadId, messageId))
+                    },
+                )
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
