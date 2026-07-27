@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.backup.BackupManager
+import app.clearsms.data.backup.RestoreResult
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.IoDispatcher
@@ -18,6 +19,7 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
+import app.clearsms.work.BackupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -60,9 +62,15 @@ sealed interface SettingsEvent {
 
     data object BackupFailed : SettingsEvent
 
-    data object RestoreDone : SettingsEvent
+    /** Restore succeeded; carries per-table counts and any defaulted/skipped tallies. */
+    data class RestoreDone(
+        val result: RestoreResult,
+    ) : SettingsEvent
 
-    data object RestoreFailed : SettingsEvent
+    /** Restore failed; [reason] is a human-readable cause when known. */
+    data class RestoreFailed(
+        val reason: String? = null,
+    ) : SettingsEvent
 
     data object SortDone : SettingsEvent
 }
@@ -204,7 +212,13 @@ class SettingsViewModel
 
         fun setSignature(value: String) = launchIo { settings.setSignature(value) }
 
-        fun setBackupFrequency(value: BackupFrequency) = launchIo { uiPrefs.setBackupFrequency(value) }
+        fun setBackupFrequency(value: BackupFrequency) =
+            launchIo {
+                uiPrefs.setBackupFrequency(value)
+                // The setting is only honored if it actually drives the
+                // schedule: OFF cancels the periodic work, DAILY/WEEKLY enqueue it.
+                BackupWorker.applyFrequency(context, value)
+            }
 
         fun blockSender(sender: String) =
             launchIo {
@@ -236,10 +250,18 @@ class SettingsViewModel
             launchIo {
                 busy.value = true
                 try {
-                    context.contentResolver.openInputStream(uri)?.use { backupManager.importFrom(it) }
-                    events.emit(SettingsEvent.RestoreDone)
+                    val result =
+                        context.contentResolver.openInputStream(uri)?.use { backupManager.importFrom(it) }
+                    if (result != null) {
+                        events.emit(SettingsEvent.RestoreDone(result))
+                    } else {
+                        events.emit(SettingsEvent.RestoreFailed())
+                    }
+                } catch (e: IllegalArgumentException) {
+                    // Validation failures (bad file, newer format) carry a reason.
+                    events.emit(SettingsEvent.RestoreFailed(e.message))
                 } catch (_: Exception) {
-                    events.emit(SettingsEvent.RestoreFailed)
+                    events.emit(SettingsEvent.RestoreFailed())
                 } finally {
                     busy.value = false
                 }

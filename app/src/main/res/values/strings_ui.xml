@@ -176,8 +176,11 @@
     <string name="settings_backup_frequency">Backup frequency</string>
     <string name="settings_backup_done">Backup saved</string>
     <string name="settings_backup_failed">Backup failed</string>
-    <string name="settings_restore_done">Backup restored</string>
+    <string name="settings_restore_done_counts">Restored %1$d messages, %2$d transactions, %3$d accounts, %4$d rules, %5$d reminders.</string>
+    <string name="settings_restore_done_issues">%1$d unknown values were defaulted and %2$d rows skipped.</string>
     <string name="settings_restore_failed">That file is not a valid backup</string>
+    <string name="settings_restore_failed_reason">Restore failed: %1$s</string>
+    <string name="settings_auto_backup_note">Automatic backups are stored unencrypted in this app\'s private storage. Other apps cannot read them without root.</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_dynamic_color">Dynamic color</string>

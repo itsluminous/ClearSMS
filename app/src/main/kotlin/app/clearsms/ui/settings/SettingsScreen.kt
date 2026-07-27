@@ -95,9 +95,9 @@ fun SettingsScreen(
 
     val backupDone = stringResource(R.string.settings_backup_done)
     val backupFailed = stringResource(R.string.settings_backup_failed)
-    val restoreDone = stringResource(R.string.settings_restore_done)
     val restoreFailed = stringResource(R.string.settings_restore_failed)
     val sortDone = stringResource(R.string.settings_sort_done)
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val backupLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -114,8 +114,35 @@ fun SettingsScreen(
                 when (event) {
                     SettingsEvent.BackupDone -> backupDone
                     SettingsEvent.BackupFailed -> backupFailed
-                    SettingsEvent.RestoreDone -> restoreDone
-                    SettingsEvent.RestoreFailed -> restoreFailed
+                    is SettingsEvent.RestoreDone -> {
+                        val r = event.result
+                        buildString {
+                            append(
+                                context.getString(
+                                    R.string.settings_restore_done_counts,
+                                    r.messages,
+                                    r.transactions,
+                                    r.accounts,
+                                    r.rules,
+                                    r.reminders,
+                                ),
+                            )
+                            if (r.defaultedValues > 0 || r.skippedRows > 0) {
+                                append(' ')
+                                append(
+                                    context.getString(
+                                        R.string.settings_restore_done_issues,
+                                        r.defaultedValues,
+                                        r.skippedRows,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    is SettingsEvent.RestoreFailed ->
+                        event.reason
+                            ?.let { context.getString(R.string.settings_restore_failed_reason, it) }
+                            ?: restoreFailed
                     SettingsEvent.SortDone -> sortDone
                 },
             )
@@ -167,13 +194,16 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.settings_restore_summary),
                 onClick = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             )
-            // TODO: backupFrequency is written here but not consumed yet — the
-            //  platform stage must schedule/cancel BackupWorker from it (OFF = no
-            //  periodic backups).
             SettingRow(
                 title = stringResource(R.string.settings_backup_frequency),
                 subtitle = backupFrequencyLabel(state.backupFrequency),
                 onClick = { dialog = SettingsDialog.BACKUP_FREQUENCY },
+            )
+            Text(
+                text = stringResource(R.string.settings_auto_backup_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
 
             SectionHeader(stringResource(R.string.settings_section_appearance))
