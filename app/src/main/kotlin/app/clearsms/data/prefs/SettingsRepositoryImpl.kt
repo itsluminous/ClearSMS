@@ -5,9 +5,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SummaryFrequency
+import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -72,6 +78,77 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_ONBOARDING_COMPLETE] = value }
     }
 
+    override val showRichAvatars: Flow<Boolean> =
+        dataStore.data.map { it[KEY_SHOW_RICH_AVATARS] ?: true }
+
+    override suspend fun setShowRichAvatars(value: Boolean) {
+        dataStore.edit { it[KEY_SHOW_RICH_AVATARS] = value }
+    }
+
+    override val notificationActions: Flow<Set<NotificationAction>> =
+        dataStore.data.map { prefs ->
+            prefs[KEY_NOTIFICATION_ACTIONS]?.let { stored ->
+                stored
+                    .mapNotNull { name ->
+                        NotificationAction.entries.firstOrNull { it.name == name }
+                    }.toSet()
+            } ?: DEFAULT_NOTIFICATION_ACTIONS
+        }
+
+    override suspend fun setNotificationActions(value: Set<NotificationAction>) {
+        dataStore.edit { prefs ->
+            prefs[KEY_NOTIFICATION_ACTIONS] = value.map { it.name }.toSet()
+        }
+    }
+
+    override val swipeActionStart: Flow<SwipeAction> =
+        dataStore.data.map { it[KEY_SWIPE_ACTION_START].toEnum(SwipeAction.ARCHIVE) }
+
+    override suspend fun setSwipeActionStart(value: SwipeAction) {
+        dataStore.edit { it[KEY_SWIPE_ACTION_START] = value.name }
+    }
+
+    override val swipeActionEnd: Flow<SwipeAction> =
+        dataStore.data.map { it[KEY_SWIPE_ACTION_END].toEnum(SwipeAction.DELETE) }
+
+    override suspend fun setSwipeActionEnd(value: SwipeAction) {
+        dataStore.edit { it[KEY_SWIPE_ACTION_END] = value.name }
+    }
+
+    override val defaultDestination: Flow<StartDestination> =
+        dataStore.data.map { it[KEY_DEFAULT_DESTINATION].toEnum(StartDestination.INBOX) }
+
+    override suspend fun setDefaultDestination(value: StartDestination) {
+        dataStore.edit { it[KEY_DEFAULT_DESTINATION] = value.name }
+    }
+
+    override val defaultInboxFilter: Flow<Category?> =
+        dataStore.data.map { prefs ->
+            when (val stored = prefs[KEY_DEFAULT_INBOX_FILTER]) {
+                null -> Category.IMPORTANT
+                FILTER_ALL -> null
+                else -> stored.toEnum(Category.IMPORTANT)
+            }
+        }
+
+    override suspend fun setDefaultInboxFilter(value: Category?) {
+        dataStore.edit { it[KEY_DEFAULT_INBOX_FILTER] = value?.name ?: FILTER_ALL }
+    }
+
+    override val financeTab: Flow<FinanceTab> =
+        dataStore.data.map { it[KEY_FINANCE_TAB].toEnum(FinanceTab.ACCOUNTS) }
+
+    override suspend fun setFinanceTab(value: FinanceTab) {
+        dataStore.edit { it[KEY_FINANCE_TAB] = value.name }
+    }
+
+    override val transactionNotifications: Flow<Boolean> =
+        dataStore.data.map { it[KEY_TRANSACTION_NOTIFICATIONS] ?: true }
+
+    override suspend fun setTransactionNotifications(value: Boolean) {
+        dataStore.edit { it[KEY_TRANSACTION_NOTIFICATIONS] = value }
+    }
+
     private inline fun <reified T : Enum<T>> String?.toEnum(default: T): T =
         this?.let { name ->
             enumValues<T>().firstOrNull { it.name == name }
@@ -86,5 +163,19 @@ class SettingsRepositoryImpl(
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
         val KEY_SIGNATURE = stringPreferencesKey("signature")
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+        val KEY_SHOW_RICH_AVATARS = booleanPreferencesKey("show_rich_avatars")
+        val KEY_NOTIFICATION_ACTIONS = stringSetPreferencesKey("notification_actions")
+        val KEY_SWIPE_ACTION_START = stringPreferencesKey("swipe_action_start")
+        val KEY_SWIPE_ACTION_END = stringPreferencesKey("swipe_action_end")
+        val KEY_DEFAULT_DESTINATION = stringPreferencesKey("default_destination")
+        val KEY_DEFAULT_INBOX_FILTER = stringPreferencesKey("default_inbox_filter")
+        val KEY_FINANCE_TAB = stringPreferencesKey("finance_tab")
+        val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
+
+        /** Sentinel stored when the default inbox filter is All (null). */
+        const val FILTER_ALL = "ALL"
+
+        val DEFAULT_NOTIFICATION_ACTIONS =
+            setOf(NotificationAction.MARK_READ, NotificationAction.REPLY)
     }
 }
