@@ -15,6 +15,10 @@ import app.clearsms.domain.model.SubCategory
         Index("normalizedSender"),
         Index("category"),
         Index("timestamp"),
+        // Idempotency key for the history import: re-processing the same
+        // system provider row can never create a duplicate. NULL (messages
+        // that arrived live through SMS_DELIVER) is exempt from uniqueness.
+        Index("systemSmsId", unique = true),
     ],
 )
 data class MessageEntity(
@@ -31,4 +35,6 @@ data class MessageEntity(
     val extractedOtp: String? = null,
     val extractedDataJson: String? = null,
     @ColumnInfo(defaultValue = "0") val isBlockedSender: Boolean = false,
+    /** `_id` of the originating row in the system SMS provider, when imported. */
+    val systemSmsId: Long? = null,
 )

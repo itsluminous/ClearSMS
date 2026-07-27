@@ -87,6 +87,15 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(messages: List<MessageEntity>)
 
+    /**
+     * Batch insert that silently skips rows violating the unique
+     * `systemSmsId` index, making the history import idempotent.
+     *
+     * @return one row id per input message, `-1` for skipped duplicates.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAllIgnore(messages: List<MessageEntity>): List<Long>
+
     @Update
     suspend fun update(message: MessageEntity)
 
