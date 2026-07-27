@@ -3,14 +3,16 @@ package app.clearsms.sms
 import android.content.Context
 import android.provider.Telephony
 import android.util.Log
-import app.clearsms.data.db.MessageDao
-import app.clearsms.data.db.MessageEntity
-import app.clearsms.data.repository.MessageRepository
-import app.clearsms.data.repository.SenderNormalizer
+import app.clearsms.data.repository.ImportedSmsRow
+import app.clearsms.data.repository.MessageRepositoryImpl
 import app.clearsms.di.IoDispatcher
-import app.clearsms.domain.model.Category
+import app.clearsms.work.SyncCheckpointStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,97 +21,177 @@ import javax.inject.Singleton
  * Bulk-imports the existing message history from the system SMS provider
  * (`content://sms`) into the local database.
  *
- * Received messages go through [MessageRepository.insertIncoming] so the full
- * categorization + extraction pipeline runs over the user's history; outgoing
- * (sent) messages are stored directly as read personal messages.
+ * Designed to survive interruption and re-runs:
+ * - **Resumable** — rows are read in `_id` order in pages of [PAGE_SIZE];
+ *   after each page's transaction commits, a durable [SyncCheckpointStore]
+ *   checkpoint advances. A killed or retried import resumes from the
+ *   checkpoint and redoes at most one page.
+ * - **Idempotent** — every imported row carries its system `_id`, guarded by
+ *   a unique index; re-processing a row can never duplicate it.
+ * - **Parallel** — pages are read by a single reader on the IO dispatcher,
+ *   classification (CPU-bound regex work) fans out across a bounded
+ *   [Dispatchers.Default] slice, and results are batch-inserted in one
+ *   transaction per page. The decoded rule set is snapshotted once for the
+ *   whole run instead of being re-decoded per message.
+ *
+ * Incoming messages go through the full categorization + extraction pipeline;
+ * outgoing (sent) messages are stored directly as read personal messages.
  */
 @Singleton
 class SystemSmsImporter
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val messageRepository: MessageRepository,
-        private val messageDao: MessageDao,
+        private val repository: MessageRepositoryImpl,
+        private val checkpointStore: SyncCheckpointStore,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
+        /** One raw row read from the system SMS provider. */
+        private data class RawSms(
+            val id: Long,
+            val address: String?,
+            val body: String?,
+            val date: Long,
+            val read: Boolean,
+            val incoming: Boolean,
+        )
+
         /**
-         * Imports all inbox and sent messages, oldest first, invoking
-         * [onProgress] with (imported, total) after each message.
+         * Imports inbox and sent messages in `_id` order, resuming from the
+         * durable checkpoint. Invokes [onProgress] with (processed, total)
+         * once per committed page.
          *
-         * @return the number of messages imported.
+         * @return the number of messages newly inserted by this run.
          */
         suspend fun importAll(onProgress: suspend (imported: Int, total: Int) -> Unit = { _, _ -> }): Int =
             withContext(ioDispatcher) {
-                val resolver = context.contentResolver
-                val projection =
-                    arrayOf(
-                        Telephony.Sms.ADDRESS,
-                        Telephony.Sms.BODY,
-                        Telephony.Sms.DATE,
-                        Telephony.Sms.TYPE,
-                        Telephony.Sms.READ,
-                    )
-                val cursor =
-                    try {
-                        resolver.query(Telephony.Sms.CONTENT_URI, projection, null, null, "${Telephony.Sms.DATE} ASC")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Cannot query the system SMS provider", e)
-                        null
-                    } ?: return@withContext 0
+                val checkpoint = checkpointStore.get()
+                val remaining = countRemaining(checkpoint.lastSystemSmsId)
+                val total = checkpoint.processedCount + remaining
+                var processed = checkpoint.processedCount
+                onProgress(processed, total)
+                if (remaining == 0) return@withContext 0
 
-                var imported = 0
-                cursor.use {
-                    val total = it.count
-                    val addressIdx = it.getColumnIndex(Telephony.Sms.ADDRESS)
-                    val bodyIdx = it.getColumnIndex(Telephony.Sms.BODY)
-                    val dateIdx = it.getColumnIndex(Telephony.Sms.DATE)
-                    val typeIdx = it.getColumnIndex(Telephony.Sms.TYPE)
-                    val readIdx = it.getColumnIndex(Telephony.Sms.READ)
-                    while (it.moveToNext()) {
-                        val address = it.getString(addressIdx) ?: continue
-                        val body = it.getString(bodyIdx) ?: continue
-                        val date = it.getLong(dateIdx)
-                        val read = it.getInt(readIdx) == 1
-                        when (it.getInt(typeIdx)) {
-                            Telephony.Sms.MESSAGE_TYPE_INBOX -> {
-                                val entity = messageRepository.insertIncoming(address, body, date)
-                                if (read) messageRepository.markRead(entity.id)
-                                imported++
-                            }
-                            Telephony.Sms.MESSAGE_TYPE_SENT -> {
-                                insertSent(address, body, date)
-                                imported++
-                            }
-                            // Drafts, outbox and failed messages are skipped.
-                            else -> Unit
+                val snapshot = repository.rulesSnapshot()
+                val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+                val classifyDispatcher = Dispatchers.Default.limitedParallelism(parallelism)
+
+                var cursorId = checkpoint.lastSystemSmsId
+                var inserted = 0
+                while (true) {
+                    val page = readPage(cursorId, PAGE_SIZE)
+                    if (page.isEmpty()) break
+                    val rows =
+                        coroutineScope {
+                            page
+                                .mapNotNull { raw ->
+                                    val address = raw.address ?: return@mapNotNull null
+                                    val body = raw.body ?: return@mapNotNull null
+                                    async(classifyDispatcher) {
+                                        ImportedSmsRow(
+                                            systemSmsId = raw.id,
+                                            sender = address,
+                                            body = body,
+                                            timestampMs = raw.date,
+                                            isRead = raw.read,
+                                            enriched =
+                                                if (raw.incoming) {
+                                                    repository.classify(snapshot, address, body)
+                                                } else {
+                                                    null
+                                                },
+                                        )
+                                    }
+                                }.awaitAll()
                         }
-                        onProgress(imported, total)
-                    }
+                    inserted += repository.persistImportedPage(rows)
+                    processed += page.size
+                    cursorId = page.last().id
+                    // Advance the checkpoint only after the page's transaction
+                    // committed, so an interruption redoes at most one page.
+                    checkpointStore.set(SyncCheckpointStore.Checkpoint(cursorId, processed))
+                    onProgress(processed, total)
                 }
-                imported
+                inserted
             }
 
-        private suspend fun insertSent(
-            destination: String,
-            body: String,
-            timestampMs: Long,
-        ) {
-            val normalized = SenderNormalizer.normalize(destination)
-            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
-            messageDao.insert(
-                MessageEntity(
-                    threadId = threadId,
-                    sender = destination,
-                    normalizedSender = normalized,
-                    body = body,
-                    timestamp = timestampMs,
-                    isRead = true,
-                    category = Category.PERSONAL,
-                ),
+        /** Counts importable rows past the checkpoint (for progress totals). */
+        private fun countRemaining(afterId: Long): Int =
+            query(
+                projection = arrayOf(Telephony.Sms._ID),
+                afterId = afterId,
+                sortOrder = null,
+            )?.use { it.count } ?: 0
+
+        /** Reads the next page of importable rows in ascending `_id` order. */
+        private fun readPage(
+            afterId: Long,
+            limit: Int,
+        ): List<RawSms> {
+            val cursor =
+                query(
+                    projection = PROJECTION,
+                    afterId = afterId,
+                    sortOrder = "${Telephony.Sms._ID} ASC LIMIT $limit",
+                ) ?: return emptyList()
+            return cursor.use {
+                val idIdx = it.getColumnIndex(Telephony.Sms._ID)
+                val addressIdx = it.getColumnIndex(Telephony.Sms.ADDRESS)
+                val bodyIdx = it.getColumnIndex(Telephony.Sms.BODY)
+                val dateIdx = it.getColumnIndex(Telephony.Sms.DATE)
+                val typeIdx = it.getColumnIndex(Telephony.Sms.TYPE)
+                val readIdx = it.getColumnIndex(Telephony.Sms.READ)
+                buildList {
+                    while (it.moveToNext()) {
+                        add(
+                            RawSms(
+                                id = it.getLong(idIdx),
+                                address = it.getString(addressIdx),
+                                body = it.getString(bodyIdx),
+                                date = it.getLong(dateIdx),
+                                read = it.getInt(readIdx) == 1,
+                                incoming = it.getInt(typeIdx) == Telephony.Sms.MESSAGE_TYPE_INBOX,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        private fun query(
+            projection: Array<String>,
+            afterId: Long,
+            sortOrder: String?,
+        ) = try {
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                SELECTION,
+                arrayOf(afterId.toString()),
+                sortOrder,
             )
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot query the system SMS provider", e)
+            null
         }
 
         private companion object {
             const val TAG = "SystemSmsImporter"
+            const val PAGE_SIZE = 500
+
+            /** Inbox and sent rows past the checkpoint; drafts/outbox/failed are skipped. */
+            val SELECTION =
+                "${Telephony.Sms._ID} > ? AND ${Telephony.Sms.TYPE} IN " +
+                    "(${Telephony.Sms.MESSAGE_TYPE_INBOX}, ${Telephony.Sms.MESSAGE_TYPE_SENT})"
+
+            val PROJECTION =
+                arrayOf(
+                    Telephony.Sms._ID,
+                    Telephony.Sms.ADDRESS,
+                    Telephony.Sms.BODY,
+                    Telephony.Sms.DATE,
+                    Telephony.Sms.TYPE,
+                    Telephony.Sms.READ,
+                )
         }
     }
