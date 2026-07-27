@@ -1,7 +1,6 @@
 package app.clearsms.domain.parser
 
 import app.clearsms.domain.model.ParsedReminder
-import app.clearsms.domain.model.ReminderType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -20,9 +19,13 @@ import java.util.Locale
  *   confirmations, refunds, reimbursement claims, debit/credit
  *   confirmations) are never reminders, even when the body also mentions a
  *   premium or a due date.
- * - The generic OTHER type additionally requires a recognized bill domain
- *   (electricity, water, broadband, ...); an untyped, undomained "bill"
- *   mention emits nothing.
+ * - A reminder needs a payment OBLIGATION: marketing/investment pitches and
+ *   voucher/coupon expiries are rejected outright ([MARKETING_PITCH_REGEX],
+ *   [VOUCHER_REGEX]) — a date plus a financial-sounding word obligates
+ *   nothing.
+ * - The TYPE is decided by [ReminderTypeClassifier], which scores anchored
+ *   evidence per type (see its KDoc table) instead of first-keyword-wins —
+ *   so identical bills from one biller always land in one bucket.
  *
  * Beyond the due date every reminder tries to carry the amount due (total
  * plus minimum where present — see [TOTAL_DUE_PATTERNS]) and a short human
@@ -30,15 +33,23 @@ import java.util.Locale
  * digit-masked excerpt of the message when nothing structured is found.
  */
 class ReminderParser {
+    private val typeClassifier = ReminderTypeClassifier()
+
     fun parse(
         sender: String,
         body: String,
     ): ParsedReminder? {
         // Completed/settled events are not actionable reminders.
         if (SETTLED_REGEX.containsMatchIn(body)) return null
+        // A reminder needs a payment OBLIGATION on the user's own product.
+        // Marketing pitches (investment upsells) and voucher/coupon expiries
+        // carry dates and financial words but obligate nothing — they must
+        // never surface in Alerts.
+        if (MARKETING_PITCH_REGEX.containsMatchIn(body)) return null
+        if (VOUCHER_REGEX.containsMatchIn(body)) return null
         // The due keyword must be adjacent to a parseable date.
         val dueDate = findAnchoredDueDate(body) ?: return null
-        val type = detectType(sender, body) ?: return null
+        val type = typeClassifier.classify(sender, body) ?: return null
         return ParsedReminder(
             type = type,
             dueDate = dueDate,
@@ -49,30 +60,6 @@ class ReminderParser {
             label = extractLabel(body),
         )
     }
-
-    private fun detectType(
-        sender: String,
-        body: String,
-    ): ReminderType? =
-        when {
-            CREDIT_CARD_REGEX.containsMatchIn(body) -> ReminderType.CREDIT_CARD
-            // Deposits before EMI: an "RD installment" is a recurring-deposit
-            // contribution, not a loan EMI — bare "instalment" used to drag
-            // these into the EMI bucket.
-            DEPOSIT_REGEX.containsMatchIn(body) -> ReminderType.DEPOSIT
-            EMI_REGEX.containsMatchIn(body) -> ReminderType.EMI
-            INSURANCE_REGEX.containsMatchIn(body) -> ReminderType.INSURANCE
-            SUBSCRIPTION_REGEX.containsMatchIn(body) -> ReminderType.SUBSCRIPTION
-            // A generic instalment with no loan/deposit context is still a
-            // dated payment obligation — keep it, but as OTHER.
-            INSTALLMENT_REGEX.containsMatchIn(body) -> ReminderType.OTHER
-            // Generic bills need a recognized domain; "bill" alone is too
-            // weak — unless the SENDER is a recognized biller (utilities
-            // often just say "your bill", e.g. broadband providers).
-            BILL_DOMAIN_REGEX.containsMatchIn(body) -> ReminderType.OTHER
-            BILL_WORD_REGEX.containsMatchIn(body) && KNOWN_BILLER_SENDER_REGEX.containsMatchIn(sender) -> ReminderType.OTHER
-            else -> null
-        }
 
     /** First due-date whose keyword is directly anchored to the date text. */
     private fun findAnchoredDueDate(body: String): LocalDate? {
@@ -282,44 +269,26 @@ class ReminderParser {
                     "\\bdebited\\b|\\bcredited\\b",
             )
 
-        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|card\\s+(?:bill|statement|ending)")
-
-        /** Recurring/fixed deposit contributions ("RD Installment Due!"). */
-        val DEPOSIT_REGEX =
+        /**
+         * Investment / upsell sales-pitch language. A payment ask embedded in
+         * a marketing pitch ("investment in ULIPs can reap benefits...") is
+         * an upsell, not a payment obligation — it must never become a
+         * reminder even when the body also carries a premium and a date.
+         */
+        val MARKETING_PITCH_REGEX =
             Regex(
-                "(?i)recurring\\s+deposit|fixed\\s+deposit|" +
-                    "\\bRD\\b[^\\n]{0,60}?instal?l?ment|instal?l?ment[^\\n]{0,60}?\\bRD\\b",
+                "(?i)\\breap\\s+benefits?\\b|\\brising\\s+(?:capital\\s+|stock\\s+)?markets?\\b|" +
+                    "\\bwealth\\s+creation\\b|\\bmarket[-\\s]linked\\s+returns?\\b|" +
+                    "\\bgrow\\s+your\\s+(?:money|wealth|savings)\\b|\\bwhy\\s+invest\\b|" +
+                    "\\bbest\\s+time\\s+to\\s+invest\\b|\\binvest\\s+today\\b|\\bstart\\s+investing\\b",
             )
-
-        /** Loan EMIs only — a bare "instalment" is NOT an EMI. */
-        val EMI_REGEX = Regex("(?i)\\bEMI\\b|loan\\s+instal?lment")
-
-        val INSTALLMENT_REGEX = Regex("(?i)instal?lment")
-
-        val INSURANCE_REGEX = Regex("(?i)insurance|premium|\\bpolicy\\b")
-        val SUBSCRIPTION_REGEX = Regex("(?i)subscription|\\bplan\\b|renewal|\\brenew\\b|membership")
-
-        /** Recognized bill domains required for the generic OTHER type. */
-        val BILL_DOMAIN_REGEX =
-            Regex(
-                "(?i)electricity|\\bpower\\s+bill|water\\s+bill|\\bgas\\b|broadband|internet\\s+bill|" +
-                    "landline|postpaid|\\bDTH\\b|\\bd2h\\b|\\brent\\b|property\\s+tax|\\btax\\b|" +
-                    "maintenance\\s+(?:bill|fee|charge)|\\bfee\\b|\\bfees\\b|utility\\s+bill|municipal",
-            )
-
-        /** A literal bill mention — only meaningful from a known biller sender. */
-        val BILL_WORD_REGEX = Regex("(?i)\\bbill\\b")
 
         /**
-         * Utility / telecom / broadband biller sender ids whose "your bill"
-         * messages are trusted even without a domain keyword in the body.
+         * Voucher / coupon / gift-card grants. Their expiry date is a benefit
+         * lapsing, not money the user owes — e.g. quarterly lounge vouchers
+         * "from <X> Credit Card" used to land in the credit-card bucket.
          */
-        val KNOWN_BILLER_SENDER_REGEX =
-            Regex(
-                "(?i)ACTGRP|ACTFBN|ACTBBN|ACTCOR|AIRBIL|AIRTEL|JIOFBR|JIOBB|BSNL|VICARE|" +
-                    "BSES|BESCOM|MSEDCL|TNEB|TSSPD|APSPDC|KSEB|PSPCL|UPPCL|WBSEDC|CESC|" +
-                    "ADANI|TATAPW|TPDDL|TORRNT|IGL|MGL|MAHGAS|GAIL|HPCL|BPCL|IOCL",
-            )
+        val VOUCHER_REGEX = Regex("(?i)\\bvouchers?\\b|\\bcoupons?\\b|\\bgift\\s*card\\b|\\bpromo\\s+code\\b")
 
         /** DD-MM-YY or DD/MM/YYYY style dates. */
         val NUMERIC_DATE_REGEX = Regex("(?<!\\d)(\\d{1,2})[-/](\\d{1,2})[-/](\\d{2}(?:\\d{2})?)(?!\\d)")
