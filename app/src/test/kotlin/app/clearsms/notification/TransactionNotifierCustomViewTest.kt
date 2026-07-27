@@ -23,7 +23,20 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class TransactionNotifierCustomViewTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val notifier = TransactionNotifier(context, Json)
+    private val notifier =
+        TransactionNotifier(
+            context,
+            Json,
+            object : NotificationSenderResolver(
+                context,
+                app.clearsms.sms.ContactsSource(context),
+                app.clearsms.data.senderid
+                    .SenderIdStore(context),
+            ) {
+                override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
+            },
+            SenderIconFactory(context),
+        )
 
     private fun message(extracted: String) =
         MessageEntity(

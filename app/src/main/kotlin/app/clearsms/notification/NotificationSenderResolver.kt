@@ -6,6 +6,7 @@ import app.clearsms.sms.ContactInfo
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.components.Brand
 import app.clearsms.ui.components.BrandCatalog
+import app.clearsms.ui.components.BrandCategory
 import app.clearsms.ui.components.initialsOf
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -24,6 +25,12 @@ data class NotificationSender(
     val monogram: String,
     /** Brand tile color (ARGB) when the sender maps to a curated brand; null → hash color. */
     val colorArgb: Int? = null,
+    /** Curated brand key — also the bundled logo asset key (`logos/<key>.png`). */
+    val brandKey: String? = null,
+    /** Curated brand category; drives the badge on generated tiles. */
+    val brandCategory: BrandCategory? = null,
+    /** True when the bundled sender-ID directory knows this sender. */
+    val isKnownSender: Boolean = false,
 )
 
 /**
@@ -60,6 +67,9 @@ fun resolveNotificationSender(
         name = name,
         monogram = brand?.monogram?.take(3)?.ifBlank { null } ?: initialsOf(name),
         colorArgb = brand?.color?.let(::parseHexColor),
+        brandKey = brand?.key,
+        brandCategory = brand?.category,
+        isKnownSender = directoryName != null,
     )
 }
 

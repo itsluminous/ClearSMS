@@ -85,13 +85,14 @@ class MessageNotifier
         /** High-priority warning for a message flagged as a likely scam. */
         fun notifyScam(message: MessageEntity) {
             Channels.ensureCreated(context)
-            val resolvedName = senderResolver.resolve(message.sender).name
+            val resolved = senderResolver.resolve(message.sender)
             val notification =
                 NotificationCompat
                     .Builder(context, Channels.SECURITY)
                     .setSmallIcon(R.drawable.ic_notification)
+                    .setLargeIcon(iconFactory.largeIconFor(resolved))
                     .setContentTitle(context.getString(R.string.scam_warning_title))
-                    .setContentText(context.getString(R.string.scam_warning_text, resolvedName))
+                    .setContentText(context.getString(R.string.scam_warning_text, resolved.name))
                     .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)

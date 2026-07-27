@@ -45,7 +45,7 @@ class OtpNotifierLockscreenTest {
         }
 
     private fun build(selected: Set<NotificationAction> = MessageNotifier.DEFAULT_SELECTED): Notification =
-        OtpNotifier(context, rawResolver).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
+        OtpNotifier(context, rawResolver, SenderIconFactory(context)).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
 
     @Test
     fun `notification is private with a public version`() {

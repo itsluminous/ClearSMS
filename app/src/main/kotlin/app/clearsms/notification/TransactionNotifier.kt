@@ -66,6 +66,8 @@ class TransactionNotifier
     constructor(
         @ApplicationContext private val context: Context,
         private val json: Json,
+        private val senderResolver: NotificationSenderResolver,
+        private val iconFactory: SenderIconFactory,
     ) {
         /**
          * Posts a parsed-transaction notification for [message].
@@ -113,10 +115,14 @@ class TransactionNotifier
                     repliable = NotificationActionPlanner.isRepliableAddress(message.sender),
                 )
             val amountColor = ContextCompat.getColor(context, amountColorRes(content.kind))
+            // Bank identity via the shared avatar chain (logo / brand tile) —
+            // resolution never throws, so the notification always renders.
+            val largeIcon = iconFactory.largeIconFor(senderResolver.resolve(message.sender))
             val builder =
                 NotificationCompat
                     .Builder(context, Channels.TRANSACTIONS)
                     .setSmallIcon(R.drawable.ic_notification)
+                    .setLargeIcon(largeIcon)
                     // Title/text stay set for accessibility services and
                     // surfaces that ignore custom views (e.g. wearables).
                     .setContentTitle(content.title)

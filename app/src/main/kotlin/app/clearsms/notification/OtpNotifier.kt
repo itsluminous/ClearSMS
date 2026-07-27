@@ -38,6 +38,7 @@ class OtpNotifier
     constructor(
         @ApplicationContext private val context: Context,
         private val senderResolver: NotificationSenderResolver,
+        private val iconFactory: SenderIconFactory,
     ) {
         fun notify(
             message: MessageEntity,
@@ -64,11 +65,16 @@ class OtpNotifier
         ): Notification {
             val title = buildTitle(otp, displaySize)
             // Same resolution chain as the UI (contact → directory → brand → raw).
-            val senderName = senderResolver.resolve(message.sender).name
+            val resolved = senderResolver.resolve(message.sender)
+            val senderName = resolved.name
+            // Sender identity (logo/photo/tile) carries no digits, so it is
+            // safe on the lockscreen public version too.
+            val largeIcon = iconFactory.largeIconFor(resolved)
             val publicVersion =
                 NotificationCompat
                     .Builder(context, Channels.OTP)
                     .setSmallIcon(R.drawable.ic_notification)
+                    .setLargeIcon(largeIcon)
                     // Digit-free on purpose: no OTP on the lockscreen.
                     .setContentTitle(context.getString(R.string.otp_public_title, senderName))
                     .build()
@@ -76,6 +82,7 @@ class OtpNotifier
                 NotificationCompat
                     .Builder(context, Channels.OTP)
                     .setSmallIcon(R.drawable.ic_notification)
+                    .setLargeIcon(largeIcon)
                     .setContentTitle(title)
                     .setContentText(context.getString(R.string.otp_from, senderName))
                     .setStyle(NotificationCompat.BigTextStyle().bigText(message.body))
