@@ -11,7 +11,40 @@ import app.clearsms.domain.model.TransactionType
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.theme.ClearSmsTheme
 
-/** Amount rendered in semantic color: error for debits, tertiary for credits. */
+/**
+ * Amount rendered in semantic color: error (red) for debits, tertiary (green)
+ * for credits, primary (blue) for balance-only amounts. Balances carry no
+ * +/− sign because no money moved.
+ */
+@Composable
+fun AmountText(
+    amount: Double,
+    kind: AmountKind,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.titleMedium,
+) {
+    val color =
+        when (kind) {
+            AmountKind.DEBIT -> MaterialTheme.colorScheme.error
+            AmountKind.CREDIT -> MaterialTheme.colorScheme.tertiary
+            AmountKind.BALANCE -> MaterialTheme.colorScheme.primary
+        }
+    val text =
+        when (kind) {
+            AmountKind.DEBIT -> CurrencyFormat.signedRupees(amount, positive = false)
+            AmountKind.CREDIT -> CurrencyFormat.signedRupees(amount, positive = true)
+            AmountKind.BALANCE -> CurrencyFormat.rupees(amount)
+        }
+    Text(
+        text = text,
+        style = style,
+        fontWeight = FontWeight.SemiBold,
+        color = color,
+        modifier = modifier,
+    )
+}
+
+/** Convenience overload for callers holding a [TransactionType]. */
 @Composable
 fun AmountText(
     amount: Double,
@@ -19,13 +52,11 @@ fun AmountText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleMedium,
 ) {
-    val debit = type == TransactionType.DEBIT
-    Text(
-        text = CurrencyFormat.signedRupees(amount, positive = !debit),
-        style = style,
-        fontWeight = FontWeight.SemiBold,
-        color = if (debit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
+    AmountText(
+        amount = amount,
+        kind = if (type == TransactionType.DEBIT) AmountKind.DEBIT else AmountKind.CREDIT,
         modifier = modifier,
+        style = style,
     )
 }
 
@@ -33,6 +64,6 @@ fun AmountText(
 @Composable
 private fun AmountTextPreview() {
     ClearSmsTheme {
-        AmountText(amount = 1234.5, type = TransactionType.DEBIT)
+        AmountText(amount = 1234.5, kind = AmountKind.BALANCE)
     }
 }
