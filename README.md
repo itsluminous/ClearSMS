@@ -169,6 +169,52 @@ python3 scripts/build_sender_db.py \
 
 After editing the JSON, rebuild the `.db` and include both files in your PR.
 
+### Brand identity table
+
+Sender avatars for well-known brands are drawn from a curated table at
+[`rules/brands/brands.json`](rules/brands/brands.json), bundled into the APK as
+`app/src/main/assets/brands.json` (a unit test keeps the two copies identical —
+edit the `rules/brands/` master and copy it over). The app renders an
+**original** mark from these facts — a circular tile in the brand's published
+primary color, a short monogram, and a category badge — with text color chosen
+by WCAG luminance so it stays legible. **No third-party logo artwork is ever
+committed to this repository**; identifying a sender by name and color is fine,
+redistributing trademarked logo files is not.
+
+Each entry looks like:
+
+```json
+{
+  "key": "hdfc",
+  "name": "HDFC Bank",
+  "category": "BANK",
+  "color": "#004C8F",
+  "monogram": "H",
+  "senders": ["HDFCBK", "HDFCB"],
+  "aliases": ["HDFC", "HDFC BANK"]
+}
+```
+
+- `key` — unique lowercase identifier (also the logo-pack filename key).
+- `category` — one of `BANK`, `CARD`, `WALLET`, `TELECOM`, `ECOMMERCE`,
+  `DELIVERY`, `GOVERNMENT`, `UTILITY`, `INVESTMENT`, `HEALTH`, `TRAVEL`, `OTHER`.
+- `color` — the brand's widely-published primary color as `#RRGGBB`.
+- `monogram` — 1–3 characters drawn on the tile.
+- `senders` — exact sender IDs after TRAI normalization (`VM-HDFCBK` → `HDFCBK`).
+- `aliases` — whole-word names matched against resolved display names.
+
+### Sender logo pack (optional, user-supplied)
+
+If you want true logos, *Settings → Appearance → Sender logo pack* lets you
+point the app at a folder on your device (or import a zip) of images you
+provide yourself. Files are matched by name — brand key or sender ID,
+case-insensitive: `hdfc.png`, `HDFCBK.png`, `paytm.webp` (supported:
+`.png`, `.jpg`, `.jpeg`, `.webp`; files over 2 MB are skipped). Images are
+read strictly from local storage, never downloaded, and never leave your
+device. The app ships with no logo images; without a pack it falls back to
+the generated brand tiles described above.
+
+
 ## License
 
 [Apache License 2.0](LICENSE)
