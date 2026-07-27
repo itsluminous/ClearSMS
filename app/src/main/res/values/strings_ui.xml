@@ -341,4 +341,13 @@
     <string name="rule_error_capture_mismatch">The pattern has fewer capture groups than the extraction mapping needs.</string>
     <string name="rule_error_duplicate_field">Two values are mapped to the same field — set one of them to Ignore.</string>
     <string name="rule_error_no_source_match">The rule no longer matches the source message. Loosen the conditions or reset the pattern.</string>
+    <!-- Alerts: delivery reminders -->
+    <string name="alerts_filter_delivery">Delivery</string>
+    <string name="alerts_type_delivery">Delivery</string>
+    <string name="alerts_expected_on">Expected %1$s</string>
+    <string name="alerts_tracking_ref">Ref: %1$s</string>
+
+    <!-- Swipe-to-delete confirmation -->
+    <string name="swipe_delete_title">Delete message?</string>
+    <string name="swipe_delete_message">The latest message from %1$s will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
 </resources>

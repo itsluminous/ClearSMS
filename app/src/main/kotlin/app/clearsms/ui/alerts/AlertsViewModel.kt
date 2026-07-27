@@ -20,13 +20,16 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
-/** Reminder filter chips: all, credit cards, EMI, everything else. */
+/** Reminder filter chips: all, credit cards, EMI, deliveries, everything else. */
 enum class AlertFilter {
     ALL,
     CREDIT_CARDS,
     EMI,
+    DELIVERY,
     OTHERS,
 }
 
@@ -52,7 +55,17 @@ class AlertsViewModel
 
         /** Session-only expansion state for the "Past reminders" section (collapsed by default). */
         private val pastExpanded = MutableStateFlow(false)
-        private val nowMs = System.currentTimeMillis()
+
+        /**
+         * Upcoming/past cutoff: start of TODAY, so an item due (or a package
+         * expected) today still counts as upcoming rather than instantly past.
+         */
+        private val nowMs =
+            LocalDate
+                .now()
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
 
         val uiState: StateFlow<AlertsUiState> =
             combine(
@@ -99,6 +112,10 @@ class AlertsViewModel
                 AlertFilter.ALL -> true
                 AlertFilter.CREDIT_CARDS -> reminder.type == ReminderType.CREDIT_CARD
                 AlertFilter.EMI -> reminder.type == ReminderType.EMI
-                AlertFilter.OTHERS -> reminder.type != ReminderType.CREDIT_CARD && reminder.type != ReminderType.EMI
+                AlertFilter.DELIVERY -> reminder.type == ReminderType.DELIVERY
+                AlertFilter.OTHERS ->
+                    reminder.type != ReminderType.CREDIT_CARD &&
+                        reminder.type != ReminderType.EMI &&
+                        reminder.type != ReminderType.DELIVERY
             }
     }

@@ -15,11 +15,13 @@ import app.clearsms.data.rules.toDefinition
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.ParsedDelivery
 import app.clearsms.domain.model.ParsedReminder
 import app.clearsms.domain.model.ParsedTransaction
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.domain.model.TransactionType
+import app.clearsms.domain.parser.DeliveryParser
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.TransactionParser
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -39,6 +42,7 @@ class MessageRepositoryImpl(
     private val otpParser: OtpParser = OtpParser(),
     private val transactionParser: TransactionParser = TransactionParser(),
     private val reminderParser: ReminderParser = ReminderParser(),
+    private val deliveryParser: DeliveryParser = DeliveryParser(),
     /** Platform hook syncing deletions to the system SMS provider (null in tests). */
     private val systemSmsDeleter: SystemSmsDeleter? = null,
 ) : MessageRepository {
@@ -328,6 +332,8 @@ class MessageRepositoryImpl(
         val otpCode: String?,
         val transaction: ParsedTransaction?,
         val reminder: ParsedReminder?,
+        /** Relative dates resolve against the message timestamp at persist time. */
+        val delivery: ParsedDelivery? = null,
     )
 
     /** Runs categorizer + parsers and merges rule extracts with parser output. */
@@ -358,13 +364,27 @@ class MessageRepositoryImpl(
                 else -> null
             }
 
-        val parsedReminder = reminderParser.parse(sender, evalBody)
+        // Delivery expectations only come from messages the categorizer
+        // already recognized as deliveries — the parser is not allowed to
+        // introduce a fresh source of false positives.
+        val delivery =
+            if (result.subCategory == SubCategory.DELIVERY) {
+                deliveryParser.parse(sender, evalBody)
+            } else {
+                null
+            }
+
+        val parsedReminder = if (delivery == null) reminderParser.parse(sender, evalBody) else null
         val reminder =
             when {
                 parsedReminder != null -> mergeReminder(parsedReminder, extracts)
                 result.subCategory == SubCategory.BILL -> reminderFromExtracts(extracts)
                 else -> null
-            }
+                // A reminder without a due date is not actionable; this also
+                // keeps transaction confirmations (SubCategory.TRANSACTION)
+                // from doubling as reminders unless they genuinely carry a
+                // due date, e.g. a card statement.
+            }?.takeIf { it.dueDate != null }
 
         val merged = LinkedHashMap<String, String>()
         transaction?.let { tx ->
@@ -391,6 +411,7 @@ class MessageRepositoryImpl(
             otpCode = otpCode,
             transaction = transaction,
             reminder = reminder,
+            delivery = delivery,
         )
     }
 
@@ -432,6 +453,27 @@ class MessageRepositoryImpl(
                         minDue = reminder.minDue,
                         accountLast4 = reminder.accountLast4,
                         bankName = reminder.bankName,
+                        rawSmsId = messageId,
+                        createdAt = timestampMs,
+                    ),
+                )
+            }
+        }
+        enriched.delivery?.let { delivery ->
+            if (!skipExisting || reminderDao.findByRawSmsId(messageId) == null) {
+                // "today"/"tomorrow" resolve against the MESSAGE date, not the
+                // current clock — imports of old messages stay correct.
+                val messageDate =
+                    Instant
+                        .ofEpochMilli(timestampMs)
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                reminderDao.insert(
+                    ReminderEntity(
+                        type = ReminderType.DELIVERY,
+                        dueDate = delivery.expectedDate(messageDate).toEpochMs(),
+                        bankName = delivery.merchant,
+                        label = delivery.reference,
                         rawSmsId = messageId,
                         createdAt = timestampMs,
                     ),
@@ -513,15 +555,14 @@ class MessageRepositoryImpl(
         )
 
     private fun reminderFromExtracts(extracts: Map<String, String>): ParsedReminder? {
-        val dueDate = extracts["due_date"]?.let { reminderParser.parseDate(it) }
-        val totalDue = extracts["total_due"]?.toAmount()
-        val minDue = extracts["min_due"]?.toAmount() ?: extracts["amount"]?.toAmount()
-        if (dueDate == null && totalDue == null && minDue == null) return null
+        // Undated candidates are not actionable reminders — an amount alone
+        // (e.g. a reimbursement-claim SMS) must not become an Alerts card.
+        val dueDate = extracts["due_date"]?.let { reminderParser.parseDate(it) } ?: return null
         return ParsedReminder(
             type = ReminderType.OTHER,
             dueDate = dueDate,
-            totalDue = totalDue,
-            minDue = minDue,
+            totalDue = extracts["total_due"]?.toAmount(),
+            minDue = extracts["min_due"]?.toAmount() ?: extracts["amount"]?.toAmount(),
             accountLast4 = extracts["account_last4"],
             bankName = extracts["bank"],
         )

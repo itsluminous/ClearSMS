@@ -1,6 +1,7 @@
 package app.clearsms.data.repository
 
 import app.clearsms.data.db.ReminderEntity
+import app.clearsms.domain.model.ReminderType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -46,6 +47,17 @@ object ReminderDeduplication {
         reminder: ReminderEntity,
         zone: ZoneId,
     ): Any {
+        if (reminder.type == ReminderType.DELIVERY) {
+            // Same order/tracking reference = same delivery, regardless of
+            // date: a later SMS with a revised date REPLACES the old card
+            // (the common "delayed delivery" case).
+            reminder.label?.takeIf { it.isNotBlank() }?.let { return "delivery-ref-" + it.uppercase() }
+            // No reference: group by courier/merchant + expected day.
+            val merchant =
+                reminder.bankName?.takeIf { it.isNotBlank() }?.uppercase()
+                    ?: return "row-${reminder.id}-${reminder.rawSmsId}"
+            return Triple("delivery-$merchant", reminder.type, reminder.dueDate?.let { dueDay(it, zone) })
+        }
         val account =
             reminder.accountLast4?.takeIf { it.isNotBlank() }
                 ?: reminder.bankName?.takeIf { it.isNotBlank() }?.uppercase()
@@ -59,7 +71,7 @@ object ReminderDeduplication {
         zone: ZoneId,
     ): LocalDate = Instant.ofEpochMilli(dueMs).atZone(zone).toLocalDate()
 
-    /** Newest reminder wins; null amount fields fall back to the most recent non-null value. */
+    /** Newest reminder wins; null amount/label fields fall back to the most recent non-null value. */
     private fun merge(group: List<ReminderEntity>): ReminderEntity {
         if (group.size == 1) return group.first()
         val newestFirst = group.sortedByDescending { it.createdAt }
@@ -67,6 +79,7 @@ object ReminderDeduplication {
         return newest.copy(
             totalDue = newestFirst.firstNotNullOfOrNull { it.totalDue },
             minDue = newestFirst.firstNotNullOfOrNull { it.minDue },
+            label = newestFirst.firstNotNullOfOrNull { it.label },
         )
     }
 }

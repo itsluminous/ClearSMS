@@ -118,6 +118,7 @@ fun AlertsScreen(
                                         AlertFilter.ALL -> stringResource(R.string.alerts_filter_all)
                                         AlertFilter.CREDIT_CARDS -> stringResource(R.string.alerts_filter_credit_cards)
                                         AlertFilter.EMI -> stringResource(R.string.alerts_filter_emi)
+                                        AlertFilter.DELIVERY -> stringResource(R.string.alerts_filter_delivery)
                                         AlertFilter.OTHERS -> stringResource(R.string.alerts_filter_others)
                                     },
                                 )
@@ -229,11 +230,12 @@ private fun ReminderCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
+            val delivery = reminder.type == ReminderType.DELIVERY
             reminder.dueDate?.let { dueMs ->
                 Text(
                     text =
                         stringResource(
-                            R.string.alerts_due_on,
+                            if (delivery) R.string.alerts_expected_on else R.string.alerts_due_on,
                             DUE_DATE_FORMAT.format(Instant.ofEpochMilli(dueMs).atZone(ZoneId.systemDefault())),
                         ),
                     style = MaterialTheme.typography.titleLarge,
@@ -241,40 +243,51 @@ private fun ReminderCard(
                     color = if (past) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 )
             }
-            reminder.accountLast4?.let {
-                Text(
-                    text = stringResource(R.string.finance_masked_account, it),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                reminder.totalDue?.let {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.alerts_total_due),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = CurrencyFormat.rupees(it),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+            if (delivery) {
+                // Deliveries show the tracking reference and never currency fields.
+                reminder.label?.let {
+                    Text(
+                        text = stringResource(R.string.alerts_tracking_ref, it),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                reminder.minDue?.let {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.alerts_min_due),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = CurrencyFormat.rupees(it),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
+            } else {
+                reminder.accountLast4?.let {
+                    Text(
+                        text = stringResource(R.string.finance_masked_account, it),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    reminder.totalDue?.let {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.alerts_total_due),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = CurrencyFormat.rupees(it),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                    reminder.minDue?.let {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.alerts_min_due),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = CurrencyFormat.rupees(it),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
                     }
                 }
             }
@@ -298,6 +311,7 @@ private fun TypeBadge(type: ReminderType) {
                     ReminderType.EMI -> stringResource(R.string.alerts_type_emi)
                     ReminderType.INSURANCE -> stringResource(R.string.alerts_type_insurance)
                     ReminderType.SUBSCRIPTION -> stringResource(R.string.alerts_type_subscription)
+                    ReminderType.DELIVERY -> stringResource(R.string.alerts_type_delivery)
                     ReminderType.OTHER -> stringResource(R.string.alerts_type_other)
                 },
             style = MaterialTheme.typography.labelMedium,
