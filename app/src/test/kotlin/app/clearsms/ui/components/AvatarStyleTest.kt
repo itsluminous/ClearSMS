@@ -18,6 +18,62 @@ class AvatarStyleTest {
     }
 
     @Test
+    fun `user-supplied logo pack overrides the bundled asset logo`() {
+        assertThat(
+            avatarStyleFor(
+                richAvatars = true,
+                photoUri = null,
+                isKnownSender = true,
+                hasLogo = true,
+                hasBundledLogo = true,
+                hasBrand = true,
+            ),
+        ).isEqualTo(AvatarStyle.LOGO)
+    }
+
+    @Test
+    fun `bundled asset logo beats the generated brand tile`() {
+        assertThat(
+            avatarStyleFor(
+                richAvatars = true,
+                photoUri = null,
+                isKnownSender = true,
+                hasLogo = false,
+                hasBundledLogo = true,
+                hasBrand = true,
+            ),
+        ).isEqualTo(AvatarStyle.BUNDLED)
+    }
+
+    @Test
+    fun `contact photo beats every logo source`() {
+        assertThat(
+            avatarStyleFor(
+                richAvatars = true,
+                photoUri = "content://photo/1",
+                isKnownSender = true,
+                hasLogo = true,
+                hasBundledLogo = true,
+                hasBrand = true,
+            ),
+        ).isEqualTo(AvatarStyle.PHOTO)
+    }
+
+    @Test
+    fun `disabled rich mode stays plain even with a bundled logo available`() {
+        assertThat(
+            avatarStyleFor(
+                richAvatars = false,
+                photoUri = "content://photo/1",
+                isKnownSender = true,
+                hasLogo = true,
+                hasBundledLogo = true,
+                hasBrand = true,
+            ),
+        ).isEqualTo(AvatarStyle.PLAIN)
+    }
+
+    @Test
     fun `rich mode falls back to plain for unknown senders without photos`() {
         assertThat(avatarStyleFor(richAvatars = true, photoUri = null, isKnownSender = false))
             .isEqualTo(AvatarStyle.PLAIN)

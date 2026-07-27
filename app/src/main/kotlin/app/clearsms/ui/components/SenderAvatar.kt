@@ -1,7 +1,9 @@
 package app.clearsms.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,11 +12,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -34,10 +39,11 @@ private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 33
 /**
  * Sender avatar. With [richAvatars] (the "Show logos and contact photos"
  * setting) the fallback chain is: contact photo → user-supplied logo pack
- * image → curated brand tile (bundled brand table, matched on [sender] and
- * [name]) → category-glyph monogram tile for directory-known senders → plain
- * letter avatar. With the setting off, always the plain letter avatar.
- * Unknown senders always get a letter — never a blank tile.
+ * image (always overrides bundled artwork) → bundled asset logo → curated
+ * brand tile (bundled brand table, matched on [sender] and [name]) →
+ * category-glyph monogram tile for directory-known senders → plain letter
+ * avatar. With the setting off, always the plain letter avatar. Unknown
+ * senders always get a letter — never a blank tile.
  */
 @Composable
 fun SenderAvatar(
@@ -61,7 +67,10 @@ fun SenderAvatar(
             }
         }
     if (richAvatars) {
-        LaunchedEffect(Unit) { LogoPack.ensureLoaded(context) }
+        LaunchedEffect(Unit) {
+            LogoPack.ensureLoaded(context)
+            BundledLogos.ensureLoaded(context)
+        }
     }
     val logoIndex by LogoPack.index.collectAsStateWithLifecycle()
     val logoUri =
@@ -72,6 +81,8 @@ fun SenderAvatar(
         } else {
             null
         }
+    val bundledKeys by BundledLogos.keys.collectAsStateWithLifecycle()
+    val bundledKey = brand?.key?.takeIf { richAvatars && it in bundledKeys }
 
     when (
         avatarStyleFor(
@@ -79,6 +90,7 @@ fun SenderAvatar(
             photoUri = photoUri,
             isKnownSender = isKnownSender,
             hasLogo = logoUri != null,
+            hasBundledLogo = bundledKey != null,
             hasBrand = brand != null,
         )
     ) {
@@ -107,6 +119,31 @@ fun SenderAvatar(
                         .size(size)
                         .clip(CircleShape),
             )
+        AvatarStyle.BUNDLED -> {
+            // Decoded once per key on IO (BundledLogoCache); the brand tile
+            // renders immediately so a list item's first frame never waits
+            // on the decode, and a corrupt asset simply keeps the tile.
+            var bitmap by remember(bundledKey) { mutableStateOf<ImageBitmap?>(null) }
+            LaunchedEffect(bundledKey) {
+                bitmap = bundledKey?.let { BundledLogos.bitmap(it) }
+            }
+            val logo = bitmap
+            if (logo != null) {
+                Image(
+                    bitmap = logo,
+                    contentDescription = stringResource(R.string.avatar_sender_logo, name),
+                    contentScale = ContentScale.Fit,
+                    modifier =
+                        modifier
+                            .size(size)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .padding(4.dp),
+                )
+            } else {
+                SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size, brand = brand)
+            }
+        }
         AvatarStyle.BRAND ->
             SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size, brand = brand)
         AvatarStyle.BRAND_MARK ->
