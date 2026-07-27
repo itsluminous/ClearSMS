@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import app.clearsms.R
 import app.clearsms.ui.alerts.AlertsScreen
 import app.clearsms.ui.composemsg.ComposeMessageScreen
@@ -142,7 +143,10 @@ private fun MainScaffold(
                     onOpenAccount = { number, bank -> navController.navigate(Routes.accountDetail(number, bank)) },
                 )
             }
-            composable(Routes.ALERTS) { AlertsScreen() }
+            composable(
+                route = Routes.ALERTS,
+                deepLinks = listOf(navDeepLink { uriPattern = "clearsms://alerts" }),
+            ) { AlertsScreen() }
             composable(Routes.SEARCH) {
                 SearchScreen(
                     onOpenThread = { threadId -> navController.navigate(Routes.conversation(threadId)) },
@@ -152,6 +156,7 @@ private fun MainScaffold(
             composable(
                 route = Routes.CONVERSATION,
                 arguments = listOf(navArgument("threadId") { type = NavType.LongType }),
+                deepLinks = listOf(navDeepLink { uriPattern = "clearsms://conversation/{threadId}" }),
             ) {
                 ConversationScreen(
                     onBack = { navController.popBackStack() },
