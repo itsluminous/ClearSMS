@@ -42,7 +42,18 @@ class DeliveryParser {
                 ?.let(dateParser::parseDate)
         }
 
-    /** Courier / merchant name from the sender id or body, if recognizable. */
+    /**
+     * Courier / merchant name from the sender id or body, if recognizable.
+     *
+     * The BODY matters as much as the sender: courier deliveries routinely
+     * arrive from someone else's sender id (a bank announcing "your Debit
+     * Card will be delivered via Blue Dart" from HDFCBK, a food chain via a
+     * generic shortcode) with the courier named only in the text. In those
+     * cases the courier is shown as the DELIVERY AGENT on the Alerts card —
+     * the message itself stays attributed to its real sender (the bank), and
+     * nothing here reclassifies the message: this parser only ever runs on
+     * messages already categorized as deliveries.
+     */
     private fun merchantFor(
         sender: String,
         body: String,
@@ -80,13 +91,24 @@ class DeliveryParser {
 
         val OUT_FOR_DELIVERY_REGEX = Regex("(?i)out\\s+for\\s+delivery")
 
-        /** Order / tracking / consignment reference (must contain a digit). */
+        /**
+         * Order / tracking / consignment reference (must contain a digit).
+         * Covers "Article No:JQ0XXX9386XIN" (India Post), "Awb #338XXX641",
+         * and underscore-bearing order ids like "Order OPD_NHK-130".
+         */
         val REFERENCE_REGEX =
             Regex(
-                "(?i)(?:order|shipment|consignment|tracking|package|parcel|awb)\\s*" +
-                    "(?:no\\.?|number|id)?\\s*[:#]?\\s*((?=[A-Za-z0-9-]*\\d)[A-Za-z0-9-]{5,25})",
+                "(?i)(?:order|shipment|consignment|tracking|package|parcel|awb|article)\\s*" +
+                    "(?:no\\.?|number|id)?\\s*[:#]?\\s*((?=[A-Za-z0-9_-]*\\d)[A-Za-z0-9_-]{5,25})",
             )
 
+        /**
+         * Courier / merchant lookup keys, matched against BOTH the sender id
+         * and the body text (uppercased, substring match) — several couriers
+         * only ever appear in the body ("via Blue Dart", "? INDIAPOST",
+         * "Nimbuspost Courier"). "DOMINO" covers both the "Domino's" and
+         * "DOMINOS" spellings.
+         */
         val MERCHANTS =
             listOf(
                 "AMAZON" to "Amazon",
@@ -100,6 +122,7 @@ class DeliveryParser {
                 "DELHIVERY" to "Delhivery",
                 "DLHVRY" to "Delhivery",
                 "BLUEDART" to "Blue Dart",
+                "BLUE DART" to "Blue Dart",
                 "BLUDRT" to "Blue Dart",
                 "EKART" to "Ekart",
                 "DTDC" to "DTDC",
@@ -108,6 +131,7 @@ class DeliveryParser {
                 "SHIPROCKET" to "Shiprocket",
                 "INDPST" to "India Post",
                 "INDIA POST" to "India Post",
+                "INDIAPOST" to "India Post",
                 "FEDEX" to "FedEx",
                 "DHL" to "DHL",
                 "ECOMEX" to "Ecom Express",
@@ -115,6 +139,9 @@ class DeliveryParser {
                 "ZOMATO" to "Zomato",
                 "BIGBASKET" to "bigbasket",
                 "BLINKIT" to "Blinkit",
+                "DOMINO" to "Domino's",
+                "NIMBUSPOST" to "Nimbuspost",
+                "SHADOWFAX" to "Shadowfax",
             )
     }
 }

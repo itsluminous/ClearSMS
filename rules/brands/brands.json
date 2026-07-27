@@ -502,10 +502,12 @@
       "monogram": "IP",
       "senders": [
         "INPOST",
-        "DOPIND"
+        "DOPIND",
+        "INDPST"
       ],
       "aliases": [
-        "INDIA POST"
+        "INDIA POST",
+        "INDIAPOST"
       ]
     },
     {
@@ -719,6 +721,21 @@
       ],
       "aliases": [
         "XPRESSBEES"
+      ]
+    },
+    {
+      "key": "nimbuspost",
+      "name": "Nimbuspost",
+      "category": "DELIVERY",
+      "color": "#5C4EE5",
+      "monogram": "NP",
+      "senders": [
+        "NMBPST",
+        "NIMBUS"
+      ],
+      "aliases": [
+        "NIMBUSPOST",
+        "NIMBUS POST"
       ]
     },
     {

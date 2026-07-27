@@ -53,4 +53,95 @@ class DeliveryParserTest {
     fun `delivered confirmation without expectation is ignored`() {
         assertThat(parser.parse("EKARTL", "Your order OD1122334455 was handed to the courier.")).isNull()
     }
+
+    // region body-named couriers (P1c-P1f): the sender does not identify the
+    // courier, only the text does.
+
+    @Test
+    fun `india post article out for delivery resolves courier and article number`() {
+        // Defect P1c: "INDIAPOST" (no space) named only in the body.
+        val result =
+            parser.parse(
+                "CP-030421",
+                "Article No:JQ023293863IN Out for delivery through JEEVAN S (Beat No:B6) on 27/05/2025 10:35:07 ? INDIAPOST",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("India Post")
+        assertThat(result.reference).isEqualTo("JQ023293863IN")
+        assertThat(result.expectedDate(messageDate)).isEqualTo(messageDate)
+    }
+
+    @Test
+    fun `bank sender delivering a card via blue dart shows the courier not the bank`() {
+        // Defect P1d: the SENDER is HDFC Bank; Blue Dart is the delivery
+        // agent named in the body. The courier is what the Alerts card shows
+        // as the agent — the message itself remains the bank's.
+        val result =
+            parser.parse(
+                "VM-HDFCBK",
+                "Your HDFC Bank Debit Card will be delivered today via Blue Dart Awb #33888164111. " +
+                    "Track here https://hdfcbk.example/HDFCBK/s/edWNM96k",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("Blue Dart")
+        assertThat(result.reference).isEqualTo("33888164111")
+        assertThat(result.expectedDate(messageDate)).isEqualTo(messageDate)
+    }
+
+    @Test
+    fun `cheque book dispatch via blue dart carries awb and explicit date`() {
+        // Defect P1e: same bank-sender shape with an explicit delivery date.
+        val result =
+            parser.parse(
+                "VM-HDFCBK",
+                "Your HDFC Bank Cheque Book is dispatched via Blue Dart Awb #31731645562 & will be delivered by 17-05-2023.",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("Blue Dart")
+        assertThat(result.reference).isEqualTo("31731645562")
+        assertThat(result.explicitDate).isEqualTo(LocalDate.of(2023, 5, 17))
+    }
+
+    @Test
+    fun `dominos is recognized in both spellings`() {
+        // Defect P1f: "Domino's" and "DOMINOS" from generic shortcodes.
+        val apostrophe =
+            parser.parse("VD-DMTRAK", "Dear guest, your Domino's order is out for delivery. Click on tinyurl.example/yper5jng to track it.")
+        assertThat(apostrophe).isNotNull()
+        assertThat(apostrophe!!.merchant).isEqualTo("Domino's")
+        assertThat(apostrophe.expectedDate(messageDate)).isEqualTo(messageDate)
+
+        val plain =
+            parser.parse(
+                "VD-DMTRAK",
+                "Dear Guest, your DOMINOS order is out for delivery with OMKAR MALLIKARJUN. " +
+                    "Click on https://dmn.example.net/PnXa8 to track your order",
+            )
+        assertThat(plain).isNotNull()
+        assertThat(plain!!.merchant).isEqualTo("Domino's")
+    }
+
+    @Test
+    fun `nimbuspost courier order with underscore reference is resolved`() {
+        val result =
+            parser.parse(
+                "JD-NPSMSA",
+                "Hi Prakash Kumar, Your Order OPD_NHK-130 from (Offiga , THE SNAPMO...) is out for delivery. " +
+                    "Nimbuspost Courier - https://odrtrk.example/t/oqRNgNwk",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("Nimbuspost")
+        assertThat(result.reference).isEqualTo("OPD_NHK-130")
+        assertThat(result.expectedDate(messageDate)).isEqualTo(messageDate)
+    }
+
+    @Test
+    fun `courier named in body without a delivery expectation stays ignored`() {
+        // Near-miss: a courier mention alone must not fabricate a delivery.
+        assertThat(
+            parser.parse("VM-HDFCBK", "Your pickup request via Blue Dart Awb #31731645562 is registered."),
+        ).isNull()
+    }
+
+    // endregion
 }
