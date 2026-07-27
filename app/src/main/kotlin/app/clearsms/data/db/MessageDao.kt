@@ -147,6 +147,20 @@ interface MessageDao {
         cutoffMs: Long,
     ): List<MessageEntity>
 
+    /** Count for the confirm-before-delete step of the manual OTP cleanup. */
+    @Query("SELECT COUNT(*) FROM messages WHERE category = :category AND timestamp < :cutoffMs")
+    suspend fun countOlderThan(
+        category: Category,
+        cutoffMs: Long,
+    ): Int
+
+    /** Ids behind [countOlderThan], fed into the shared bulk-delete path. */
+    @Query("SELECT id FROM messages WHERE category = :category AND timestamp < :cutoffMs")
+    suspend fun idsOlderThan(
+        category: Category,
+        cutoffMs: Long,
+    ): List<Long>
+
     @Query("SELECT * FROM messages WHERE id = :id")
     suspend fun getById(id: Long): MessageEntity?
 

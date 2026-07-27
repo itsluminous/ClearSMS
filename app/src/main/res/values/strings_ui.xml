@@ -81,6 +81,12 @@
     <string name="finance_transaction">Transaction</string>
     <string name="finance_expand_section">Expand section</string>
     <string name="finance_collapse_section">Collapse section</string>
+    <string name="finance_summary_show_breakdown">Show monthly breakdown</string>
+    <string name="finance_summary_hide_breakdown">Hide monthly breakdown</string>
+    <string name="finance_summary_value_desc">This month: net %1$s, %2$s received, %3$s spent, %4$d transactions</string>
+    <string name="finance_breakdown_received">Money received (%1$d)</string>
+    <string name="finance_breakdown_spent">Money spent (%1$d)</string>
+    <string name="finance_summary_tx_count">%1$d transactions this month</string>
 
     <!-- Account detail -->
     <string name="account_monthly_chart">Monthly activity (last 6 months)</string>
@@ -235,6 +241,20 @@
     <string name="settings_otp_auto_copy_summary">Copy incoming OTPs to the clipboard automatically</string>
     <string name="settings_otp_auto_delete">Auto delete OTP</string>
     <string name="settings_otp_size">OTP display size</string>
+    <string name="settings_clear_otp">Clear older OTPs</string>
+    <string name="settings_clear_otp_summary">One-time cleanup — deletes now, nothing is saved</string>
+    <string name="settings_clear_otp_note">Runs once, right now — this is not a saved setting. For recurring cleanup use “Auto delete OTP” above.</string>
+    <string name="clear_otp_all">All</string>
+    <string name="clear_otp_1_day">Older than 1 day</string>
+    <string name="clear_otp_3_days">Older than 3 days</string>
+    <string name="clear_otp_1_week">Older than 1 week</string>
+    <string name="clear_otp_2_weeks">Older than 2 weeks</string>
+    <string name="clear_otp_1_month">Older than 1 month</string>
+    <string name="settings_clear_otp_confirm_title">Delete OTP messages?</string>
+    <string name="settings_clear_otp_confirm_text">%1$d OTP message(s) will be deleted, including from the phone’s SMS storage. This cannot be undone.</string>
+    <string name="settings_clear_otp_done">%1$d OTP message(s) deleted</string>
+    <string name="settings_clear_otp_empty">No OTP messages to clear</string>
+    <string name="action_continue">Continue</string>
     <string name="settings_section_rules">Rules</string>
     <string name="settings_manage_rules">Manage rules</string>
     <string name="settings_manage_rules_summary">View, create, import, export and share rules</string>

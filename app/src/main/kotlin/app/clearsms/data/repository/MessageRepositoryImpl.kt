@@ -141,6 +141,18 @@ class MessageRepositoryImpl(
         SqliteChunker.chunk(systemIds).forEach { deleter.deleteBySystemIds(it) }
     }
 
+    override suspend fun countOtpOlderThan(cutoffMs: Long): Int = messageDao.countOlderThan(Category.OTP, cutoffMs)
+
+    override suspend fun deleteOtpOlderThan(cutoffMs: Long): Int {
+        // Eligibility is category == OTP, nothing else: extractedOtp alone
+        // does not qualify a message (an IMPORTANT bank alert carrying a code
+        // must survive). Deletion reuses deleteMessages — the one batched
+        // transaction + provider-sync path — rather than a second mechanism.
+        val ids = messageDao.idsOlderThan(Category.OTP, cutoffMs)
+        deleteMessages(ids)
+        return ids.size
+    }
+
     override suspend fun setReadForMessages(
         ids: List<Long>,
         read: Boolean,

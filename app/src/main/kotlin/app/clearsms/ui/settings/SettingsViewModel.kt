@@ -88,7 +88,26 @@ sealed interface SettingsEvent {
     data class SortDone(
         val count: Int,
     ) : SettingsEvent
+
+    /** Manual OTP cleanup finished; [count] messages were deleted. */
+    data class OtpCleared(
+        val count: Int,
+    ) : SettingsEvent
+
+    /** Manual OTP cleanup found nothing matching the chosen range. */
+    data object OtpClearEmpty : SettingsEvent
 }
+
+/**
+ * A requested-but-unconfirmed manual OTP cleanup: the count backs the
+ * confirmation dialog, and the cutoff is frozen at request time so the
+ * confirmed deletion targets exactly what was counted.
+ */
+data class PendingOtpClear(
+    val range: ClearOtpRange,
+    val cutoffMs: Long,
+    val count: Int,
+)
 
 @HiltViewModel
 class SettingsViewModel
@@ -103,6 +122,10 @@ class SettingsViewModel
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val busy = MutableStateFlow(false)
+
+        /** Non-null while the OTP-cleanup confirmation dialog should be showing. */
+        private val pendingOtpClearFlow = MutableStateFlow<PendingOtpClear?>(null)
+        val pendingOtpClear: StateFlow<PendingOtpClear?> = pendingOtpClearFlow
 
         private val events = MutableSharedFlow<SettingsEvent>()
         val eventFlow: SharedFlow<SettingsEvent> = events
@@ -339,6 +362,43 @@ class SettingsViewModel
         /** Cancels a running re-sort; committed pages stay consistent. */
         fun cancelSort() {
             RecategorizeWorker.cancel(workManager)
+        }
+
+        /**
+         * Settings → OTP → Clear older OTPs: counts the matching messages
+         * first. A non-empty match raises the confirmation dialog via
+         * [pendingOtpClear]; an empty one reports straight to a snackbar.
+         * Nothing is deleted (and nothing is persisted) until [confirmClearOtp].
+         */
+        fun requestClearOtp(range: ClearOtpRange) {
+            launchIo {
+                val cutoff = range.cutoffMs(System.currentTimeMillis())
+                val count = messageRepository.countOtpOlderThan(cutoff)
+                if (count == 0) {
+                    events.emit(SettingsEvent.OtpClearEmpty)
+                } else {
+                    pendingOtpClearFlow.value = PendingOtpClear(range, cutoff, count)
+                }
+            }
+        }
+
+        /** Runs the confirmed one-shot OTP cleanup and reports how many were deleted. */
+        fun confirmClearOtp() {
+            val pending = pendingOtpClearFlow.value ?: return
+            pendingOtpClearFlow.value = null
+            launchIo {
+                busy.value = true
+                try {
+                    val deleted = messageRepository.deleteOtpOlderThan(pending.cutoffMs)
+                    events.emit(SettingsEvent.OtpCleared(deleted))
+                } finally {
+                    busy.value = false
+                }
+            }
+        }
+
+        fun dismissClearOtp() {
+            pendingOtpClearFlow.value = null
         }
 
         private fun launchIo(block: suspend () -> Unit) {

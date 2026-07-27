@@ -62,6 +62,24 @@ interface MessageRepository {
     /** Batched whole-thread delete; also removes rows from the system provider. */
     suspend fun deleteThreads(threadIds: List<Long>)
 
+    /**
+     * Number of messages categorized [Category.OTP] older than [cutoffMs]
+     * (strict `<`). Counted first so the manual "Clear older OTPs" action can
+     * confirm before deleting. Only the OTP category is eligible: a message
+     * that merely contains an OTP code but was categorized elsewhere is not
+     * counted.
+     */
+    suspend fun countOtpOlderThan(cutoffMs: Long): Int
+
+    /**
+     * Deletes messages categorized [Category.OTP] older than [cutoffMs]
+     * through the same batched path as [deleteMessages] (chunked single
+     * transaction + system-provider sync).
+     *
+     * @return the number of messages deleted.
+     */
+    suspend fun deleteOtpOlderThan(cutoffMs: Long): Int
+
     suspend fun setReadForMessages(
         ids: List<Long>,
         read: Boolean,

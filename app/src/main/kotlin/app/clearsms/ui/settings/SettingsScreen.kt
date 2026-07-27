@@ -16,6 +16,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
+import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.LogoPack
 import app.clearsms.ui.components.displayName
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +78,7 @@ private enum class SettingsDialog {
     DEFAULT_FILTER,
     OTP_DELETE,
     OTP_SIZE,
+    CLEAR_OTP,
     LOGO_PACK,
     SIGNATURE,
     BLOCK_LIST,
@@ -95,6 +98,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val pendingOtpClear by viewModel.pendingOtpClear.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
 
@@ -167,6 +171,10 @@ fun SettingsScreen(
                             ?: restoreFailed
                     is SettingsEvent.SortDone ->
                         context.getString(R.string.settings_sort_done_count, event.count)
+                    is SettingsEvent.OtpCleared ->
+                        context.getString(R.string.settings_clear_otp_done, event.count)
+                    SettingsEvent.OtpClearEmpty ->
+                        context.getString(R.string.settings_clear_otp_empty)
                 },
             )
         }
@@ -373,6 +381,15 @@ fun SettingsScreen(
                 subtitle = otpSizeLabel(state.otpDisplaySize),
                 onClick = { dialog = SettingsDialog.OTP_SIZE },
             )
+            // One-shot ACTION, not a preference: the leading icon and the
+            // "runs now" copy keep it visually distinct from "Auto delete
+            // OTP" above, which is the recurring policy.
+            ActionRow(
+                icon = Icons.Outlined.DeleteSweep,
+                title = stringResource(R.string.settings_clear_otp),
+                subtitle = stringResource(R.string.settings_clear_otp_summary),
+                onClick = { dialog = SettingsDialog.CLEAR_OTP },
+            )
 
             SectionHeader(stringResource(R.string.settings_section_rules))
             SettingRow(
@@ -510,6 +527,14 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.CLEAR_OTP ->
+            ClearOtpDialog(
+                onContinue = { range ->
+                    viewModel.requestClearOtp(range)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
         SettingsDialog.LOGO_PACK ->
             AlertDialog(
                 onDismissRequest = { dialog = null },
@@ -592,6 +617,18 @@ fun SettingsScreen(
             )
         null -> Unit
     }
+
+    // Confirm-before-delete for the manual OTP cleanup: reuses the shared
+    // delete dialog because this also removes the messages from the system
+    // SMS provider and cannot be undone.
+    pendingOtpClear?.let { pending ->
+        DeleteConfirmationDialog(
+            title = stringResource(R.string.settings_clear_otp_confirm_title),
+            text = stringResource(R.string.settings_clear_otp_confirm_text, pending.count),
+            onConfirm = viewModel::confirmClearOtp,
+            onDismiss = viewModel::dismissClearOtp,
+        )
+    }
 }
 
 @Composable
@@ -603,6 +640,95 @@ private fun SectionHeader(title: String) {
         modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
     )
 }
+
+/**
+ * A row that runs a one-shot action rather than editing a preference — the
+ * leading icon separates it visually from the plain [SettingRow]s around it.
+ */
+@Composable
+private fun ActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
+        leadingContent = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        headlineContent = { Text(title) },
+        supportingContent = {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+    )
+}
+
+/**
+ * Single-choice picker for the one-shot OTP cleanup. Unlike [RadioDialog]
+ * nothing is pre-selected and nothing is persisted: the choice only feeds the
+ * confirmation step that follows.
+ */
+@Composable
+private fun ClearOtpDialog(
+    onContinue: (ClearOtpRange) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var choice by remember { mutableStateOf<ClearOtpRange?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_clear_otp)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.settings_clear_otp_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ClearOtpRange.entries.forEach { range ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .selectable(
+                                    selected = choice == range,
+                                    onClick = { choice = range },
+                                    role = Role.RadioButton,
+                                ).padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = choice == range, onClick = null)
+                        Spacer(Modifier.padding(horizontal = 6.dp))
+                        Text(clearOtpRangeLabel(range))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = choice != null,
+                onClick = { choice?.let(onContinue) },
+            ) { Text(stringResource(R.string.action_continue)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun clearOtpRangeLabel(range: ClearOtpRange): String =
+    when (range) {
+        ClearOtpRange.ALL -> stringResource(R.string.clear_otp_all)
+        ClearOtpRange.OLDER_THAN_1_DAY -> stringResource(R.string.clear_otp_1_day)
+        ClearOtpRange.OLDER_THAN_3_DAYS -> stringResource(R.string.clear_otp_3_days)
+        ClearOtpRange.OLDER_THAN_1_WEEK -> stringResource(R.string.clear_otp_1_week)
+        ClearOtpRange.OLDER_THAN_2_WEEKS -> stringResource(R.string.clear_otp_2_weeks)
+        ClearOtpRange.OLDER_THAN_1_MONTH -> stringResource(R.string.clear_otp_1_month)
+    }
 
 @Composable
 private fun SettingRow(
