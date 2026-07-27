@@ -15,9 +15,12 @@ object Routes {
     const val PERMISSIONS_INFO = "settings/permissions"
     const val RULES = "rules"
 
-    const val CONVERSATION = "conversation/{threadId}"
+    const val CONVERSATION = "conversation/{threadId}?messageId={messageId}"
 
-    fun conversation(threadId: Long) = "conversation/$threadId"
+    fun conversation(
+        threadId: Long,
+        messageId: Long = -1L,
+    ) = "conversation/$threadId?messageId=$messageId"
 
     const val COMPOSE = "compose?recipient={recipient}&body={body}"
 

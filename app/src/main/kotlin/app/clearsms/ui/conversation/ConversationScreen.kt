@@ -1,17 +1,22 @@
 package app.clearsms.ui.conversation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -45,15 +50,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.components.AmountKind
+import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.amountKindOf
+import kotlinx.coroutines.delay
+
+/** How long the opened-message highlight takes to fade out. */
+private const val HIGHLIGHT_FADE_MS = 1_500
 
 /** Conversation thread: chat bubbles, date separators, parsed-detail cards and reply. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,14 +83,49 @@ fun ConversationScreen(
     var sheetItem by remember { mutableStateOf<ConversationItem?>(null) }
     val listState = rememberLazyListState()
 
+    // A message id arriving via navigation (search result / notification) is
+    // scrolled to and briefly highlighted exactly once per screen instance.
+    var highlightConsumed by rememberSaveable { mutableStateOf(false) }
+    var highlightedItemId by remember { mutableStateOf<Long?>(null) }
+
     LaunchedEffect(state.items.size) {
-        if (state.items.isNotEmpty()) listState.animateScrollToItem(state.items.size - 1)
+        if (state.items.isEmpty()) return@LaunchedEffect
+        val targetIndex =
+            if (highlightConsumed) {
+                null
+            } else {
+                highlightIndexFor(state.items.map { it.id }, state.highlightMessageId)
+            }
+        if (targetIndex != null) {
+            highlightConsumed = true
+            highlightedItemId = state.highlightMessageId
+            listState.scrollToItem(targetIndex)
+        } else {
+            listState.animateScrollToItem(state.items.size - 1)
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.title) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SenderAvatar(
+                            name = state.title,
+                            size = 36.dp,
+                            richAvatars = state.richAvatars,
+                            photoUri = state.photoUri,
+                            isKnownSender = state.isKnownSender,
+                            glyph = state.glyph,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = state.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -129,6 +179,7 @@ fun ConversationScreen(
                 }
                 MessageBubble(
                     item = item,
+                    highlighted = item.id == highlightedItemId,
                     onLongClick = { sheetItem = item },
                 )
             }
@@ -138,7 +189,6 @@ fun ConversationScreen(
     sheetItem?.let { item ->
         BubbleActionsSheet(
             item = item,
-            senderAddress = state.address,
             onDismiss = { sheetItem = null },
             onDelete = {
                 viewModel.delete(item.id)
@@ -173,6 +223,7 @@ private fun DateSeparator(timestamp: Long) {
 @Composable
 private fun MessageBubble(
     item: ConversationItem,
+    highlighted: Boolean,
     onLongClick: () -> Unit,
 ) {
     var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
@@ -181,7 +232,31 @@ private fun MessageBubble(
         if (item.outgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val textColor =
         if (item.outgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp), contentAlignment = alignment) {
+
+    // Temporary background behind the opened message: starts filled and fades
+    // to transparent over ~1.5s once the row has been composed.
+    var highlightVisible by remember(highlighted) { mutableStateOf(highlighted) }
+    val highlightColor by animateColorAsState(
+        targetValue =
+            if (highlightVisible) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+        animationSpec = tween(durationMillis = HIGHLIGHT_FADE_MS),
+        label = "message_highlight",
+    )
+    LaunchedEffect(highlighted) {
+        if (highlighted) {
+            delay(150)
+            highlightVisible = false
+        }
+    }
+
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(highlightColor)
+                .padding(horizontal = 16.dp, vertical = 3.dp),
+        contentAlignment = alignment,
+    ) {
         Column(
             modifier = Modifier.widthIn(max = 320.dp),
             horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start,
@@ -240,11 +315,26 @@ private fun ParsedDetailCard(details: Map<String, String>) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
+                    val kind =
+                        when (key) {
+                            "amount" -> amountKindOf(details)
+                            "balance" -> AmountKind.BALANCE
+                            else -> null
+                        }
+                    val amount = value.toDoubleOrNull()
+                    if (kind != null && amount != null) {
+                        AmountText(
+                            amount = amount,
+                            kind = kind,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    } else {
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
                 }
             }
         }
@@ -255,7 +345,6 @@ private fun ParsedDetailCard(details: Map<String, String>) {
 @Composable
 private fun BubbleActionsSheet(
     item: ConversationItem,
-    senderAddress: String,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
     onCreateRule: () -> Unit,

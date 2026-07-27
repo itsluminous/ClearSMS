@@ -31,6 +31,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import app.clearsms.R
+import app.clearsms.domain.model.StartDestination
 import app.clearsms.ui.alerts.AlertsScreen
 import app.clearsms.ui.composemsg.ComposeMessageScreen
 import app.clearsms.ui.conversation.ConversationScreen
@@ -68,7 +69,11 @@ fun ClearSmsApp(
             false -> OnboardingScreen()
             true -> {
                 LaunchedEffect(Unit) { onOnboarded() }
-                MainScaffold(initialRecipient, initialBody)
+                MainScaffold(
+                    initialRecipient = initialRecipient,
+                    initialBody = initialBody,
+                    startDestination = state.defaultDestination,
+                )
             }
         }
     }
@@ -78,6 +83,7 @@ fun ClearSmsApp(
 private fun MainScaffold(
     initialRecipient: String?,
     initialBody: String?,
+    startDestination: StartDestination,
     navController: NavHostController = rememberNavController(),
 ) {
     val destinations =
@@ -126,7 +132,12 @@ private fun MainScaffold(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.INBOX,
+            startDestination =
+                when (startDestination) {
+                    StartDestination.INBOX -> Routes.INBOX
+                    StartDestination.FINANCE -> Routes.FINANCE
+                    StartDestination.ALERTS -> Routes.ALERTS
+                },
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.INBOX) {
@@ -149,14 +160,27 @@ private fun MainScaffold(
             ) { AlertsScreen() }
             composable(Routes.SEARCH) {
                 SearchScreen(
-                    onOpenThread = { threadId -> navController.navigate(Routes.conversation(threadId)) },
+                    onOpenThread = { threadId, messageId ->
+                        navController.navigate(Routes.conversation(threadId, messageId))
+                    },
                     onBack = { navController.popBackStack() },
                 )
             }
             composable(
                 route = Routes.CONVERSATION,
-                arguments = listOf(navArgument("threadId") { type = NavType.LongType }),
-                deepLinks = listOf(navDeepLink { uriPattern = "clearsms://conversation/{threadId}" }),
+                arguments =
+                    listOf(
+                        navArgument("threadId") { type = NavType.LongType },
+                        navArgument("messageId") {
+                            type = NavType.LongType
+                            defaultValue = -1L
+                        },
+                    ),
+                deepLinks =
+                    listOf(
+                        navDeepLink { uriPattern = "clearsms://conversation/{threadId}" },
+                        navDeepLink { uriPattern = "clearsms://conversation/{threadId}?messageId={messageId}" },
+                    ),
             ) {
                 ConversationScreen(
                     onBack = { navController.popBackStack() },

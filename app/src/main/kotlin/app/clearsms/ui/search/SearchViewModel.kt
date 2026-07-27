@@ -3,9 +3,16 @@ package app.clearsms.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.sms.ContactsSource
+import app.clearsms.ui.components.BrandGlyph
+import app.clearsms.ui.components.SenderDisplay
+import app.clearsms.ui.components.brandGlyphFor
+import app.clearsms.ui.components.resolveSenderDisplay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,12 +36,20 @@ enum class DateFilter {
     LAST_YEAR,
 }
 
+/** One search hit with its resolved sender display. */
+data class SearchResultItem(
+    val message: MessageEntity,
+    val display: SenderDisplay,
+    val glyph: BrandGlyph,
+)
+
 data class SearchUiState(
     val query: String = "",
     val category: Category? = null,
     val dateFilter: DateFilter = DateFilter.ANY,
-    val results: List<MessageEntity> = emptyList(),
+    val results: List<SearchResultItem> = emptyList(),
     val searched: Boolean = false,
+    val richAvatars: Boolean = true,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -43,6 +58,9 @@ class SearchViewModel
     @Inject
     constructor(
         private val messageRepository: MessageRepository,
+        private val senderIdStore: SenderIdStore,
+        private val contactsSource: ContactsSource,
+        settings: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val query = MutableStateFlow("")
@@ -57,18 +75,26 @@ class SearchViewModel
                 }
 
         val uiState: StateFlow<SearchUiState> =
-            combine(query, category, dateFilter, rawResults) { text, cat, date, results ->
+            combine(query, category, dateFilter, rawResults, settings.showRichAvatars) {
+                    text,
+                    cat,
+                    date,
+                    results,
+                    richAvatars,
+                ->
                 val cutoff = cutoffMs(date)
                 SearchUiState(
                     query = text,
                     category = cat,
                     dateFilter = date,
                     results =
-                        results.filter { message ->
-                            (cat == null || message.category == cat) &&
-                                (cutoff == null || message.timestamp >= cutoff)
-                        },
+                        results
+                            .filter { message ->
+                                (cat == null || message.category == cat) &&
+                                    (cutoff == null || message.timestamp >= cutoff)
+                            }.map { it.toResultItem() },
                     searched = text.isNotBlank(),
+                    richAvatars = richAvatars,
                 )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
@@ -83,6 +109,20 @@ class SearchViewModel
 
         fun setDateFilter(value: DateFilter) {
             dateFilter.value = value
+        }
+
+        private fun MessageEntity.toResultItem(): SearchResultItem {
+            val display =
+                resolveSenderDisplay(
+                    sender = sender,
+                    contactLookup = contactsSource::lookup,
+                    directoryLookup = { senderIdStore.lookup(it)?.name },
+                )
+            return SearchResultItem(
+                message = this,
+                display = display,
+                glyph = brandGlyphFor(subCategory, display.name),
+            )
         }
 
         private fun cutoffMs(filter: DateFilter): Long? {

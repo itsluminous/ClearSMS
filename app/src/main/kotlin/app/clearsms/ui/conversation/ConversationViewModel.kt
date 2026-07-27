@@ -4,10 +4,16 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SmsSender
+import app.clearsms.ui.components.BrandGlyph
+import app.clearsms.ui.components.SenderDisplay
+import app.clearsms.ui.components.brandGlyphFor
+import app.clearsms.ui.components.resolveSenderDisplay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +43,13 @@ data class ConversationItem(
 data class ConversationUiState(
     val title: String = "",
     val address: String = "",
+    val photoUri: String? = null,
+    val isKnownSender: Boolean = false,
+    val glyph: BrandGlyph = BrandGlyph.NONE,
+    val richAvatars: Boolean = true,
     val items: List<ConversationItem> = emptyList(),
+    /** Message to scroll to and briefly highlight, from search / notification. */
+    val highlightMessageId: Long? = null,
     val sending: Boolean = false,
     val loaded: Boolean = false,
 )
@@ -49,11 +61,17 @@ class ConversationViewModel
         savedStateHandle: SavedStateHandle,
         private val messageRepository: MessageRepository,
         private val senderIdStore: SenderIdStore,
+        private val contactsSource: ContactsSource,
         private val smsSender: SmsSender,
+        settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
+
+        /** Optional target from the nav argument; -1 (the default) means none. */
+        private val highlightMessageId: Long? =
+            savedStateHandle.get<Long>("messageId")?.takeIf { it > 0 }
 
         /** Replies sent from this screen; the platform layer owns system persistence. */
         private val sentLocally = MutableStateFlow<List<ConversationItem>>(emptyList())
@@ -65,14 +83,20 @@ class ConversationViewModel
                 messageRepository.observeThread(threadId),
                 sentLocally,
                 sending,
-            ) { stored, local, isSending ->
+                settings.showRichAvatars,
+            ) { stored, local, isSending, richAvatars ->
                 val first = stored.firstOrNull()
-                val items =
-                    (stored.map { it.toItem() } + local).sortedBy { it.timestamp }
+                val display = first?.sender?.let { resolveDisplay(it) }
+                val items = (stored.map { it.toItem() } + local).sortedBy { it.timestamp }
                 ConversationUiState(
-                    title = first?.sender?.let { senderIdStore.lookup(it)?.name ?: it }.orEmpty(),
+                    title = display?.name.orEmpty(),
                     address = first?.sender.orEmpty(),
+                    photoUri = display?.photoUri,
+                    isKnownSender = display?.isKnownSender ?: false,
+                    glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
+                    richAvatars = richAvatars,
                     items = items,
+                    highlightMessageId = highlightMessageId,
                     sending = isSending,
                     loaded = true,
                 )
@@ -102,6 +126,13 @@ class ConversationViewModel
         fun delete(messageId: Long) {
             viewModelScope.launch(ioDispatcher) { messageRepository.delete(messageId) }
         }
+
+        private fun resolveDisplay(sender: String): SenderDisplay =
+            resolveSenderDisplay(
+                sender = sender,
+                contactLookup = contactsSource::lookup,
+                directoryLookup = { senderIdStore.lookup(it)?.name },
+            )
 
         private fun MessageEntity.toItem(): ConversationItem =
             ConversationItem(

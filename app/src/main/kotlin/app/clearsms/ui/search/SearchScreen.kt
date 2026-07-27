@@ -52,7 +52,7 @@ import app.clearsms.ui.components.displayName
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    onOpenThread: (Long) -> Unit,
+    onOpenThread: (threadId: Long, messageId: Long) -> Unit,
     onBack: () -> Unit,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
@@ -145,14 +145,24 @@ fun SearchScreen(
                     )
                 }
             }
-            items(state.results, key = { it.id }) { message ->
+            items(state.results, key = { it.message.id }) { item ->
+                val message = item.message
                 ListItem(
-                    modifier = Modifier.clickable { onOpenThread(message.threadId) },
+                    modifier = Modifier.clickable { onOpenThread(message.threadId, message.id) },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-                    leadingContent = { SenderAvatar(name = message.sender, size = 40.dp) },
+                    leadingContent = {
+                        SenderAvatar(
+                            name = item.display.name,
+                            size = 40.dp,
+                            richAvatars = state.richAvatars,
+                            photoUri = item.display.photoUri,
+                            isKnownSender = item.display.isKnownSender,
+                            glyph = item.glyph,
+                        )
+                    },
                     headlineContent = {
                         Text(
-                            text = highlight(message.sender, state.query),
+                            text = highlight(item.display.name, state.query),
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
