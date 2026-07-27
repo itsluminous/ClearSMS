@@ -60,9 +60,25 @@ class DeliveryParser {
     ): String? {
         val upperSender = sender.uppercase()
         MERCHANTS.firstOrNull { (key, _) -> upperSender.contains(key) }?.let { return it.second }
-        val upperBody = body.uppercase()
-        return MERCHANTS.firstOrNull { (key, _) -> upperBody.contains(key) }?.second
+        // URLs are stripped BEFORE substring matching so a tracking link can
+        // never misattribute the delivery to an unrelated brand whose name
+        // happens to appear in a path or query string. Brand DOMAINS are then
+        // matched separately, against the parsed hostname only.
+        val urls = URL_REGEX.findAll(body).toList()
+        val bodySansUrls = URL_REGEX.replace(body, " ").uppercase()
+        MERCHANTS.firstOrNull { (key, _) -> bodySansUrls.contains(key) }?.let { return it.second }
+        return urls.firstNotNullOfOrNull { url -> brandForHost(url.groupValues[1].lowercase()) }
     }
+
+    /**
+     * Brand for a URL hostname: exact registered-domain match or a true
+     * subdomain of it ("www.croma.com" -> Croma). A domain merely EMBEDDED
+     * elsewhere in a hostname ("croma.com.evil.net") never matches.
+     */
+    private fun brandForHost(host: String): String? =
+        BRAND_DOMAINS.firstNotNullOfOrNull { (domain, name) ->
+            name.takeIf { host == domain || host.endsWith(".$domain") }
+        }
 
     private companion object {
         /** Reuses the reminder parser's date grammar (DD-MM-YY, DD MMM YYYY, ISO). */
@@ -130,6 +146,7 @@ class DeliveryParser {
                 "XPRSBS" to "XpressBees",
                 "SHIPROCKET" to "Shiprocket",
                 "INDPST" to "India Post",
+                "INDPOST" to "India Post",
                 "INDIA POST" to "India Post",
                 "INDIAPOST" to "India Post",
                 "FEDEX" to "FedEx",
@@ -142,6 +159,29 @@ class DeliveryParser {
                 "DOMINO" to "Domino's",
                 "NIMBUSPOST" to "Nimbuspost",
                 "SHADOWFAX" to "Shadowfax",
+                // Body signature is "Rgds, Team Croma"; the sender id varies.
+                "CROMA" to "Croma",
+            )
+
+        /** URL with its hostname captured; spans are excluded from name matching. */
+        val URL_REGEX = Regex("(?i)\\bhttps?://([A-Za-z0-9.-]{1,80})(?:[/?#]\\S{0,200})?")
+
+        /**
+         * Known brand registered domains, matched against URL hostnames only
+         * (see [brandForHost]). Brands like Croma often identify themselves
+         * mainly through their order-tracking link.
+         */
+        val BRAND_DOMAINS =
+            listOf(
+                "croma.com" to "Croma",
+                "amazon.in" to "Amazon",
+                "flipkart.com" to "Flipkart",
+                "myntra.com" to "Myntra",
+                "delhivery.com" to "Delhivery",
+                "bluedart.com" to "Blue Dart",
+                "dtdc.in" to "DTDC",
+                "indiapost.gov.in" to "India Post",
+                "ekartlogistics.com" to "Ekart",
             )
     }
 }

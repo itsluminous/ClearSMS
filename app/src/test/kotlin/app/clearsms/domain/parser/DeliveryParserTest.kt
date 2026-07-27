@@ -144,4 +144,69 @@ class DeliveryParserTest {
     }
 
     // endregion
+
+    // region brand identification (Croma, INDPOST, URL domains)
+
+    @Test
+    fun `croma is recognized from the team signature and its order url`() {
+        val result =
+            parser.parse(
+                "CP-610700",
+                "Hi, Your SOA060358391060 is out for delivery! Track it at " +
+                    "https://www.croma.com/my-account/orders Rgds, Team Croma",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("Croma")
+    }
+
+    @Test
+    fun `croma is recognized from the url host alone`() {
+        val result =
+            parser.parse(
+                "CP-610700",
+                "Hi, Your order SOA060358391060 is out for delivery! " +
+                    "Track: https://www.croma.com/my-account/orders",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("Croma")
+    }
+
+    @Test
+    fun `indpost sender spelling resolves to india post`() {
+        val result =
+            parser.parse(
+                "INDPOST",
+                "Article No:UC440591633IN Out for delivery through BASAVARAJ KA (Beat No:B14) on 29/06/2022 10:53:11 - INDPOST",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("India Post")
+        assertThat(result.reference).isEqualTo("UC440591633IN")
+    }
+
+    @Test
+    fun `a brand name inside an unrelated url never attributes the delivery`() {
+        // The tracking link's path mentions another brand; the URL is
+        // excluded from name matching and its HOST is not a known brand
+        // domain, so no misattribution happens.
+        val result =
+            parser.parse(
+                "XY-COURIER",
+                "Your parcel AWB 5523104 is out for delivery. Track at https://trk.example.net/amazon/flipkart-deals",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isNull()
+    }
+
+    @Test
+    fun `a brand domain embedded in a hostile hostname never matches`() {
+        val result =
+            parser.parse(
+                "XY-COURIER",
+                "Your parcel AWB 5523104 is out for delivery. Track at https://croma.com.evil.example/track",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isNull()
+    }
+
+    // endregion
 }
