@@ -100,6 +100,7 @@ fun InboxScreen(
     onCompose: () -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
+    onArchived: () -> Unit,
     onCreateRule: (sender: String, body: String) -> Unit,
     viewModel: InboxViewModel = hiltViewModel(),
 ) {
@@ -163,6 +164,24 @@ fun InboxScreen(
                         }
                         IconButton(onClick = onSettings) {
                             Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings))
+                        }
+                        // Overflow, not Settings: archived lives where archiving happens.
+                        var menuOpen by remember { mutableStateOf(false) }
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(
+                                Icons.Outlined.MoreVert,
+                                contentDescription = stringResource(R.string.action_more_options),
+                            )
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.archived_title)) },
+                                leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onArchived()
+                                },
+                            )
                         }
                     },
                     scrollBehavior = scrollBehavior,

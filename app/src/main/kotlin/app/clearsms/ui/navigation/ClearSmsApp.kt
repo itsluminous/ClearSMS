@@ -37,6 +37,7 @@ import app.clearsms.ui.composemsg.ComposeMessageScreen
 import app.clearsms.ui.conversation.ConversationScreen
 import app.clearsms.ui.finance.AccountDetailScreen
 import app.clearsms.ui.finance.FinanceScreen
+import app.clearsms.ui.inbox.ArchivedScreen
 import app.clearsms.ui.inbox.InboxScreen
 import app.clearsms.ui.onboarding.OnboardingScreen
 import app.clearsms.ui.rules.RuleWizardScreen
@@ -149,7 +150,14 @@ private fun MainScaffold(
                     onCompose = { navController.navigate(Routes.compose()) },
                     onSearch = { navController.navigate(Routes.SEARCH) },
                     onSettings = { navController.navigate(Routes.SETTINGS) },
+                    onArchived = { navController.navigate(Routes.ARCHIVED) },
                     onCreateRule = { sender, body -> navController.navigate(Routes.ruleWizard(sender, body)) },
+                )
+            }
+            composable(Routes.ARCHIVED) {
+                ArchivedScreen(
+                    onOpenThread = { threadId -> navController.navigate(Routes.conversation(threadId)) },
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.FINANCE) {

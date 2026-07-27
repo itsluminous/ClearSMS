@@ -129,6 +129,10 @@
     <string name="search_date_30d">Last 30 days</string>
     <string name="search_date_year">Last year</string>
     <string name="search_min_length_hint">Type at least %1$d characters to search</string>
+    <string name="archived_title">Archived</string>
+    <string name="archived_empty_title">Nothing archived</string>
+    <string name="archived_empty_subtitle">Conversations you archive appear here.</string>
+    <string name="action_unarchive">Unarchive</string>
 
     <!-- Rules -->
     <string name="rules_title">Rules</string>

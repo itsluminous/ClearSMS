@@ -6,6 +6,7 @@ import android.net.Uri
 object Routes {
     const val ONBOARDING = "onboarding"
     const val INBOX = "inbox"
+    const val ARCHIVED = "inbox/archived"
     const val FINANCE = "finance"
     const val ALERTS = "alerts"
     const val SEARCH = "search"
