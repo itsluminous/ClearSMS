@@ -40,6 +40,17 @@
     <!-- OTP banner -->
     <string name="otp_banner_from">Code from %1$s</string>
     <string name="otp_banner_copy">Copy code</string>
+    <string name="otp_banner_dismiss">Dismiss code</string>
+    <string name="otp_banner_open">Open message</string>
+    <string name="otp_copied">OTP copied</string>
+
+    <!-- Send feedback -->
+    <string name="message_sent">Message sent</string>
+    <string name="message_not_sent">Message not sent</string>
+    <string name="action_retry">Retry</string>
+    <string name="conversation_sending">Sending…</string>
+    <string name="conversation_sent">Sent</string>
+    <string name="conversation_not_sent">Not sent</string>
 
     <!-- Conversation -->
     <string name="conversation_reply_hint">Text message</string>
@@ -49,7 +60,6 @@
     <string name="compose_title">New message</string>
     <string name="compose_recipient">To</string>
     <string name="compose_message">Message</string>
-    <string name="compose_send_failed">Could not send the message</string>
 
     <!-- Finance -->
     <string name="finance_title">Finance</string>

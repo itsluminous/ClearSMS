@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.sms.SmsSender
+import app.clearsms.ui.conversation.SendStatus
+import app.clearsms.ui.conversation.SentMessageWatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.FlowPreview
@@ -27,9 +29,8 @@ data class ComposeUiState(
     val picked: ContactSuggestion? = null,
     val body: String = "",
     val suggestions: List<ContactSuggestion> = emptyList(),
-    val sending: Boolean = false,
-    val sent: Boolean = false,
-    val error: Boolean = false,
+    /** Lifecycle of the current send; null before the first attempt. */
+    val sendStatus: SendStatus? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -39,6 +40,7 @@ class ComposeMessageViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val smsSender: SmsSender,
+        private val sentMessageWatcher: SentMessageWatcher,
         private val settings: SettingsRepository,
         private val contactSuggestions: ContactSuggestions,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -88,20 +90,32 @@ class ComposeMessageViewModel
             state.value = state.value.copy(body = value)
         }
 
+        /**
+         * Dispatches the message and resolves [ComposeUiState.sendStatus]
+         * from the persisted message status (see
+         * [app.clearsms.ui.conversation.SendOutcome]): Sending until the
+         * radio result window closes, then Sent, or Failed the moment a
+         * failure is recorded. Retrying is calling [send] again.
+         */
         fun send() {
             val current = state.value
-            if (current.recipient.isBlank() || current.body.isBlank() || current.sending) return
+            if (current.recipient.isBlank() || current.body.isBlank()) return
+            if (current.sendStatus == SendStatus.SENDING) return
+            state.value = current.copy(sendStatus = SendStatus.SENDING)
             viewModelScope.launch(ioDispatcher) {
-                state.value = current.copy(sending = true, error = false)
-                try {
-                    val signature = settings.signature.first()
-                    val fullBody =
-                        if (signature.isNotBlank()) "${current.body}\n$signature" else current.body
-                    smsSender.send(current.recipient.trim(), fullBody)
-                    state.value = state.value.copy(sending = false, sent = true)
-                } catch (_: Exception) {
-                    state.value = state.value.copy(sending = false, error = true)
-                }
+                val status =
+                    try {
+                        val signature = settings.signature.first()
+                        val fullBody =
+                            if (signature.isNotBlank()) "${current.body}\n$signature" else current.body
+                        val destination = current.recipient.trim()
+                        val dispatchedAt = System.currentTimeMillis()
+                        smsSender.send(destination, fullBody)
+                        sentMessageWatcher.await(destination, fullBody, dispatchedAt)
+                    } catch (_: Exception) {
+                        SendStatus.FAILED
+                    }
+                state.value = state.value.copy(sendStatus = status)
             }
         }
     }

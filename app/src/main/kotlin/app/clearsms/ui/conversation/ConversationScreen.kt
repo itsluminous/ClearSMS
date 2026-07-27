@@ -43,6 +43,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -96,6 +100,28 @@ fun ConversationScreen(
     var draft by rememberSaveable { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Send outcomes surface as snackbars; a failure offers a Retry action.
+    val sentMessage = stringResource(R.string.message_sent)
+    val notSentMessage = stringResource(R.string.message_not_sent)
+    val retryLabel = stringResource(R.string.action_retry)
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                SendEvent.Sent -> snackbarHostState.showSnackbar(sentMessage)
+                is SendEvent.Failed -> {
+                    val result =
+                        snackbarHostState.showSnackbar(
+                            message = notSentMessage,
+                            actionLabel = retryLabel,
+                            duration = SnackbarDuration.Long,
+                        )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.retry(event.itemId)
+                }
+            }
+        }
+    }
 
     // Newest local reply renders at the visual bottom (index 0 when reversed).
     val localDesc = remember(state.localItems) { state.localItems.sortedByDescending { it.timestamp } }
@@ -187,6 +213,7 @@ fun ConversationScreen(
                 )
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             when {
                 !state.loaded -> Unit
@@ -194,8 +221,9 @@ fun ConversationScreen(
                     ReplyComposer(
                         draft = draft,
                         onDraftChange = { draft = it },
-                        sending = state.sending,
                         onSend = {
+                            // Optimistic: the field clears immediately and the
+                            // bubble tracks the send state.
                             viewModel.send(draft)
                             draft = ""
                         },
@@ -339,7 +367,6 @@ private fun ConversationSelectionBar(
 private fun ReplyComposer(
     draft: String,
     onDraftChange: (String) -> Unit,
-    sending: Boolean,
     onSend: () -> Unit,
 ) {
     Row(
@@ -357,7 +384,7 @@ private fun ReplyComposer(
         )
         FilledIconButton(
             onClick = onSend,
-            enabled = draft.isNotBlank() && !sending,
+            enabled = draft.isNotBlank(),
         ) {
             Icon(
                 Icons.AutoMirrored.Outlined.Send,
@@ -499,6 +526,25 @@ private fun MessageBubble(
                         color = textColor.copy(alpha = 0.7f),
                         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
                     )
+                    // Locally sent replies carry their send lifecycle on the bubble.
+                    item.sendStatus?.let { status ->
+                        Text(
+                            text =
+                                when (status) {
+                                    SendStatus.SENDING -> stringResource(R.string.conversation_sending)
+                                    SendStatus.SENT -> stringResource(R.string.conversation_sent)
+                                    SendStatus.FAILED -> stringResource(R.string.conversation_not_sent)
+                                },
+                            style = MaterialTheme.typography.labelSmall,
+                            color =
+                                if (status == SendStatus.FAILED) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    textColor.copy(alpha = 0.7f)
+                                },
+                            modifier = Modifier.align(Alignment.End),
+                        )
+                    }
                 }
             }
             AnimatedVisibility(visible = expanded && item.details.isNotEmpty()) {

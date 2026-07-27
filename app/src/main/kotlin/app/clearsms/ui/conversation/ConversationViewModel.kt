@@ -25,6 +25,7 @@ import app.clearsms.ui.components.resolveSenderDisplay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,6 +58,8 @@ data class ConversationItem(
     val details: Map<String, String> = emptyMap(),
     /** Precomputed in the mapper so composition never formats dates. */
     val timeLabel: String = "",
+    /** Send lifecycle for locally sent replies (null for incoming messages). */
+    val sendStatus: SendStatus? = null,
 )
 
 data class ConversationUiState(
@@ -69,9 +73,19 @@ data class ConversationUiState(
     val localItems: List<ConversationItem> = emptyList(),
     /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
     val repliable: Boolean = false,
-    val sending: Boolean = false,
     val loaded: Boolean = false,
 )
+
+/** One-shot send outcome consumed by the screen's snackbar. */
+sealed interface SendEvent {
+    /** The send resolved without a recorded failure — show "Message sent". */
+    data object Sent : SendEvent
+
+    /** The send failed; [itemId] identifies the bubble a Retry should re-dispatch. */
+    data class Failed(
+        val itemId: Long,
+    ) : SendEvent
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -83,6 +97,7 @@ class ConversationViewModel
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
         private val smsSender: SmsSender,
+        private val sentMessageWatcher: SentMessageWatcher,
         settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -100,8 +115,11 @@ class ConversationViewModel
 
         /** Replies sent from this screen; the platform layer owns system persistence. */
         private val sentLocally = MutableStateFlow<List<ConversationItem>>(emptyList())
-        private val sending = MutableStateFlow(false)
         private var nextLocalId = -1L
+
+        /** One-shot send outcomes for the screen's snackbar. */
+        private val sendEvents = Channel<SendEvent>(Channel.BUFFERED)
+        val events: Flow<SendEvent> = sendEvents.receiveAsFlow()
 
         /** Multi-select over message ids within the thread. */
         private val selectionState = MutableStateFlow(SelectionState<Long>())
@@ -134,9 +152,8 @@ class ConversationViewModel
             combine(
                 flow { emit(messageRepository.firstInThread(threadId)) },
                 sentLocally,
-                sending,
                 settings.showRichAvatars,
-            ) { first, local, isSending, richAvatars ->
+            ) { first, local, richAvatars ->
                 val display = first?.sender?.let { resolveDisplay(it) }
                 ConversationUiState(
                     title = display?.name.orEmpty(),
@@ -147,30 +164,66 @@ class ConversationViewModel
                     richAvatars = richAvatars,
                     localItems = local,
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
-                    sending = isSending,
                     loaded = first != null,
                 )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
+        /**
+         * Dispatches [body] optimistically: the bubble appears immediately in
+         * [ConversationUiState.localItems] with [SendStatus.SENDING], and its
+         * status plus a [SendEvent] resolve asynchronously from the persisted
+         * message status (see [SendOutcome] for what each state means).
+         */
         fun send(body: String) {
             val destination = uiState.value.address
             if (destination.isBlank() || body.isBlank()) return
-            viewModelScope.launch(ioDispatcher) {
-                sending.value = true
+            val now = System.currentTimeMillis()
+            val item =
+                ConversationItem(
+                    id = nextLocalId--,
+                    body = body,
+                    timestamp = now,
+                    outgoing = true,
+                    timeLabel = RelativeTime.format(now),
+                    sendStatus = SendStatus.SENDING,
+                )
+            sentLocally.update { it + item }
+            viewModelScope.launch(ioDispatcher) { dispatch(item.id, destination, body) }
+        }
+
+        /** Re-dispatches a failed reply, resetting its bubble to Sending. */
+        fun retry(itemId: Long) {
+            val item = sentLocally.value.firstOrNull { it.id == itemId } ?: return
+            val destination = uiState.value.address
+            if (destination.isBlank()) return
+            setSendStatus(itemId, SendStatus.SENDING)
+            viewModelScope.launch(ioDispatcher) { dispatch(itemId, destination, item.body) }
+        }
+
+        private suspend fun dispatch(
+            itemId: Long,
+            destination: String,
+            body: String,
+        ) {
+            val dispatchedAt = System.currentTimeMillis()
+            val status =
                 try {
                     smsSender.send(destination, body)
-                    sentLocally.value = sentLocally.value +
-                        ConversationItem(
-                            id = nextLocalId--,
-                            body = body,
-                            timestamp = System.currentTimeMillis(),
-                            outgoing = true,
-                            timeLabel = RelativeTime.format(System.currentTimeMillis()),
-                        )
-                } finally {
-                    sending.value = false
+                    sentMessageWatcher.await(destination, body, dispatchedAt)
+                } catch (_: Exception) {
+                    SendStatus.FAILED
                 }
+            setSendStatus(itemId, status)
+            sendEvents.send(if (status == SendStatus.FAILED) SendEvent.Failed(itemId) else SendEvent.Sent)
+        }
+
+        private fun setSendStatus(
+            itemId: Long,
+            status: SendStatus,
+        ) {
+            sentLocally.update { list ->
+                list.map { if (it.id == itemId) it.copy(sendStatus = status) else it }
             }
         }
 
