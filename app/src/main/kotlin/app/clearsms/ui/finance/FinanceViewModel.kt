@@ -41,6 +41,10 @@ data class FinanceUiState(
     val monthNet: Double = 0.0,
     val monthDebits: Double = 0.0,
     val monthCredits: Double = 0.0,
+    /** Transactions dated inside the current month (all / debit / credit). */
+    val monthTxCount: Int = 0,
+    val monthDebitCount: Int = 0,
+    val monthCreditCount: Int = 0,
     val bankAccounts: List<AccountEntity> = emptyList(),
     val creditCards: List<CreditCardItem> = emptyList(),
     val cardsAboveSafeLimit: Int = 0,
@@ -73,6 +77,20 @@ class FinanceViewModel
         /** Growing LIMIT for the latest-transactions page. */
         private val txLimit = MutableStateFlow(TransactionPaging.PAGE_SIZE)
         private val loadingMore = MutableStateFlow(false)
+
+        /**
+         * Whether the month-summary banner shows its inline breakdown.
+         * Deliberately separate from [selectedTab]: expanding the banner is a
+         * disclosure gesture, not a navigation, so it never disturbs the
+         * persisted pill selection.
+         */
+        private val summaryExpandedFlow = MutableStateFlow(false)
+        val summaryExpanded: StateFlow<Boolean> = summaryExpandedFlow
+
+        /** Toggles the summary banner's inline breakdown open/closed. */
+        fun toggleSummaryBreakdown() {
+            summaryExpandedFlow.value = !summaryExpandedFlow.value
+        }
 
         val uiState: StateFlow<FinanceUiState> =
             combine(
@@ -126,10 +144,15 @@ class FinanceViewModel
                         )
                     }
             val total = transactions.size
+            val monthDebitTxs = monthTxs.filter { it.type == TransactionType.DEBIT }
+            val monthCreditTxs = monthTxs.filter { it.type == TransactionType.CREDIT }
             return FinanceUiState(
                 monthNet = MonthlyAggregation.net(monthTxs),
-                monthDebits = monthTxs.filter { it.type == TransactionType.DEBIT }.sumOf { it.amount },
-                monthCredits = monthTxs.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
+                monthDebits = monthDebitTxs.sumOf { it.amount },
+                monthCredits = monthCreditTxs.sumOf { it.amount },
+                monthTxCount = monthTxs.size,
+                monthDebitCount = monthDebitTxs.size,
+                monthCreditCount = monthCreditTxs.size,
                 bankAccounts = accounts.filter { it.type != AccountType.CREDIT_CARD },
                 creditCards = cards,
                 cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),

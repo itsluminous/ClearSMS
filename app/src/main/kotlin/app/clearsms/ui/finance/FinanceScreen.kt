@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +36,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -96,6 +98,7 @@ fun FinanceScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val summaryExpanded by viewModel.summaryExpanded.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var limitDialogFor by remember { mutableStateOf<CreditCardItem?>(null) }
     var accountsCollapsed by rememberSaveable { mutableStateOf(false) }
@@ -143,7 +146,16 @@ fun FinanceScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "summary") {
-                MonthSummaryCard(net = state.monthNet, debits = state.monthDebits, credits = state.monthCredits)
+                MonthSummaryCard(
+                    net = state.monthNet,
+                    debits = state.monthDebits,
+                    credits = state.monthCredits,
+                    txCount = state.monthTxCount,
+                    debitCount = state.monthDebitCount,
+                    creditCount = state.monthCreditCount,
+                    expanded = summaryExpanded,
+                    onToggle = viewModel::toggleSummaryBreakdown,
+                )
             }
             item(key = "pills") {
                 FinancePillRow(
@@ -452,23 +464,67 @@ private fun SectionHeader(
     }
 }
 
+/**
+ * The big monthly figure, now interactive: tapping expands an inline
+ * breakdown (money in / money out with counts) in place. Expansion was chosen
+ * over navigating to the transactions list because the list has no
+ * month-scoped filter — jumping there would show *latest* transactions, not
+ * "this month" — and expanding in place leaves the persisted pill selection
+ * untouched, so the banner never fights the pill row's own state.
+ */
 @Composable
 private fun MonthSummaryCard(
     net: Double,
     debits: Double,
     credits: Double,
+    txCount: Int,
+    debitCount: Int,
+    creditCount: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
 ) {
     val amountColors = LocalSemanticAmountColors.current
+    val creditsText = CurrencyFormat.rupees(credits)
+    val debitsText = CurrencyFormat.rupees(debits)
+    val valueDescription =
+        stringResource(
+            R.string.finance_summary_value_desc,
+            CurrencyFormat.rupees(net),
+            creditsText,
+            debitsText,
+            txCount,
+        )
+    val clickLabel =
+        stringResource(
+            if (expanded) R.string.finance_summary_hide_breakdown else R.string.finance_summary_show_breakdown,
+        )
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(20.dp)) {
-            Text(
-                text = stringResource(R.string.finance_this_month),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+        // The clickable sits inside the Card so the ripple is clipped to the
+        // card shape; heightIn guards the 48dp touch target even when empty.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable(onClickLabel = clickLabel, onClick = onToggle)
+                .semantics { contentDescription = valueDescription }
+                .padding(20.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.finance_this_month),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
             // Fixed semantic color: net outflow red, net inflow green.
             AmountText(
                 amount = net,
@@ -476,29 +532,73 @@ private fun MonthSummaryCard(
                 style = MaterialTheme.typography.displaySmall,
             )
             Spacer(Modifier.height(8.dp))
-            val creditsText = CurrencyFormat.rupees(credits)
-            val debitsText = CurrencyFormat.rupees(debits)
-            val breakdown = stringResource(R.string.finance_month_breakdown, creditsText, debitsText)
-            Text(
-                text =
-                    buildAnnotatedString {
-                        append(breakdown)
-                        // Credits arg comes first in the template, debits second;
-                        // first/last occurrence keeps this right when both format
-                        // to the same string.
-                        val creditsAt = breakdown.indexOf(creditsText)
-                        if (creditsAt >= 0) {
-                            addStyle(SpanStyle(color = amountColors.credit), creditsAt, creditsAt + creditsText.length)
-                        }
-                        val debitsAt = breakdown.lastIndexOf(debitsText)
-                        if (debitsAt >= 0) {
-                            addStyle(SpanStyle(color = amountColors.debit), debitsAt, debitsAt + debitsText.length)
-                        }
-                    },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            if (!expanded) {
+                val breakdown = stringResource(R.string.finance_month_breakdown, creditsText, debitsText)
+                Text(
+                    text =
+                        buildAnnotatedString {
+                            append(breakdown)
+                            // Credits arg comes first in the template, debits second;
+                            // first/last occurrence keeps this right when both format
+                            // to the same string.
+                            val creditsAt = breakdown.indexOf(creditsText)
+                            if (creditsAt >= 0) {
+                                addStyle(SpanStyle(color = amountColors.credit), creditsAt, creditsAt + creditsText.length)
+                            }
+                            val debitsAt = breakdown.lastIndexOf(debitsText)
+                            if (debitsAt >= 0) {
+                                addStyle(SpanStyle(color = amountColors.debit), debitsAt, debitsAt + debitsText.length)
+                            }
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                    Spacer(Modifier.height(8.dp))
+                    SummaryBreakdownRow(
+                        label = stringResource(R.string.finance_breakdown_received, creditCount),
+                        amountText = creditsText,
+                        color = amountColors.credit,
+                    )
+                    SummaryBreakdownRow(
+                        label = stringResource(R.string.finance_breakdown_spent, debitCount),
+                        amountText = debitsText,
+                        color = amountColors.debit,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.finance_summary_tx_count, txCount),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun SummaryBreakdownRow(
+    label: String,
+    amountText: String,
+    color: Color,
+) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = amountText,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+        )
     }
 }
 
