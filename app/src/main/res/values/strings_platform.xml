@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification channels -->
+    <string name="channel_otp">OTP codes</string>
+    <string name="channel_otp_desc">Heads-up notifications for one-time passwords</string>
+    <string name="channel_messages">Messages</string>
+    <string name="channel_messages_desc">Incoming personal and important messages</string>
+    <string name="channel_security">Security warnings</string>
+    <string name="channel_security_desc">Warnings about likely scam or fraud messages</string>
+    <string name="channel_summary">Summaries and reminders</string>
+    <string name="channel_summary_desc">Daily digests and bill payment reminders</string>
+    <string name="channel_sync">Message import</string>
+    <string name="channel_sync_desc">Progress while importing existing messages</string>
+
+    <!-- OTP notification -->
+    <string name="otp_from">OTP from %1$s</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="otp_clip_label">OTP</string>
+    <string name="otp_copied">OTP copied</string>
+    <string name="otp_share_title">Share OTP</string>
+
+    <!-- Message notifications -->
+    <string name="notification_me">Me</string>
+    <string name="scam_warning_title">Possible scam message</string>
+    <string name="scam_warning_text">Suspicious message from %1$s — be careful with links and requests</string>
+    <string name="send_failed_title">Message not sent</string>
+    <string name="send_failed_text">Could not send your message to %1$s</string>
+
+    <!-- MMS placeholder -->
+    <string name="mms_placeholder_sender">MMS</string>
+    <string name="mms_placeholder_body">Multimedia message received. Open your previous messaging app to view it — MMS download is not supported yet.</string>
+
+    <!-- Summary digest -->
+    <string name="summary_title">Your message summary</string>
+    <string name="summary_money_line">Spent ₹%1$.2f · Received ₹%2$.2f</string>
+    <string name="summary_otp_line">%1$d OTPs received</string>
+    <string name="summary_unread_line">%1$d unread important messages</string>
+
+    <!-- Bill reminders -->
+    <string name="bill_due_title">Bill due tomorrow</string>
+    <string name="bill_due_account">ending %1$s</string>
+    <string name="bill_due_text">%1$s payment is due tomorrow</string>
+    <string name="bill_due_text_amount">%1$s — ₹%2$.2f due tomorrow</string>
+
+    <!-- Initial sync -->
+    <string name="sync_title">Importing your messages</string>
+    <string name="sync_progress">%1$d of %2$d messages</string>
+</resources>
