@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -131,8 +130,10 @@ fun AlertsScreen(
                                 },
                             modifier =
                                 Modifier
-                                    // M3 chips are 32dp tall; guarantee the 48dp touch target.
-                                    .heightIn(min = 48.dp)
+                                    // No explicit height: M3 chips are 32dp tall and already
+                                    // expand their touch target to the 48dp minimum, so forcing
+                                    // a taller height here made this row inconsistent with the
+                                    // Inbox and Finance chip rows.
                                     .semantics { contentDescription = description },
                         )
                     }
