@@ -17,15 +17,26 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * Regexes are compiled once and cached; rules with invalid patterns are skipped
  * (and reported through [log]) so one bad community rule cannot break the engine.
+ *
+ * Evaluation is additionally bounded by a per-message wall-clock budget
+ * ([evaluationBudgetNanos]): user-imported and community rules run against
+ * EVERY incoming message, so a single pathological (catastrophically
+ * backtracking) pattern must degrade into a skipped rule set — never a hung
+ * ingestion pipeline. When the budget is exceeded the engine logs the rule
+ * that blew it and returns null, letting categorization fall through to the
+ * next stage.
  */
 class RuleEngine(
     private val log: (String) -> Unit = {},
+    private val evaluationBudgetNanos: Long = DEFAULT_EVALUATION_BUDGET_NANOS,
+    private val nanoTime: () -> Long = System::nanoTime,
 ) {
     private val regexCache = ConcurrentHashMap<String, Any>()
 
     /**
      * Runs [rules] against the message and returns the result of the first
-     * (highest-priority) matching rule, or null when nothing matches.
+     * (highest-priority) matching rule, or null when nothing matches or the
+     * evaluation budget is exhausted.
      */
     fun evaluate(
         rules: List<RuleDefinition>,
@@ -33,9 +44,17 @@ class RuleEngine(
         body: String,
     ): CategorizationResult? {
         val ordered = rules.sortedByDescending { it.priority }
+        val start = nanoTime()
         for (rule in ordered) {
             val result = evaluateRule(rule, sender, body)
             if (result != null) return result
+            if (nanoTime() - start > evaluationBudgetNanos) {
+                log(
+                    "Rule evaluation budget exceeded after rule '${rule.id}'; " +
+                        "skipping remaining rules for this message",
+                )
+                return null
+            }
         }
         return null
     }
@@ -102,6 +121,13 @@ class RuleEngine(
     }
 
     companion object {
+        /**
+         * Per-message evaluation budget across ALL rules (250 ms). Generous —
+         * the full bundled set evaluates in single-digit milliseconds — but a
+         * hard stop against a future rule with catastrophic backtracking.
+         */
+        const val DEFAULT_EVALUATION_BUDGET_NANOS: Long = 250_000_000L
+
         private val GROUP_REF_REGEX = Regex("\\$(\\d+)")
 
         /** Sentinel cached for patterns that failed to compile. */

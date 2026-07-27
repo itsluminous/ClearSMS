@@ -226,14 +226,20 @@ class MessageRepositoryImpl(
         userRules: List<RuleDefinition>,
         builtinRules: List<RuleDefinition>,
     ): Enriched {
+        // Same evaluation-input cap as the categorizer (see
+        // MessageCategorizer.MAX_EVAL_BODY_LENGTH): the OTP/transaction/
+        // reminder parsers below are regex-driven too, so they must never see
+        // an unbounded body. Only evaluation is capped — the stored row keeps
+        // the full text.
+        val evalBody = body.take(MessageCategorizer.MAX_EVAL_BODY_LENGTH)
         val result = categorizer.categorize(sender, body, userRules, builtinRules)
         val extracts = result.extracted
 
         val otpCode =
             extracts["otp_code"]
-                ?: if (result.category == Category.OTP) otpParser.parse(body)?.code else null
+                ?: if (result.category == Category.OTP) otpParser.parse(evalBody)?.code else null
 
-        val parsedTx = transactionParser.parse(sender, body)
+        val parsedTx = transactionParser.parse(sender, evalBody)
         val transaction =
             when {
                 parsedTx != null -> mergeTransaction(parsedTx, extracts)
@@ -241,7 +247,7 @@ class MessageRepositoryImpl(
                 else -> null
             }
 
-        val parsedReminder = reminderParser.parse(sender, body)
+        val parsedReminder = reminderParser.parse(sender, evalBody)
         val reminder =
             when {
                 parsedReminder != null -> mergeReminder(parsedReminder, extracts)

@@ -35,17 +35,22 @@ class MessageCategorizer(
         userRules: List<RuleDefinition>,
         builtinRules: List<RuleDefinition>,
     ): CategorizationResult {
-        ruleEngine.evaluate(userRules, sender, body)?.let { return it }
-        ruleEngine.evaluate(builtinRules, sender, body)?.let { return it }
+        // Regex engines only ever see a bounded prefix of the body: a
+        // concatenated multipart SMS can be tens of thousands of characters,
+        // which turns even mildly backtracking patterns into a denial of
+        // service. The full body is still stored and displayed unchanged.
+        val evalBody = body.take(MAX_EVAL_BODY_LENGTH)
+        ruleEngine.evaluate(userRules, sender, evalBody)?.let { return it }
+        ruleEngine.evaluate(builtinRules, sender, evalBody)?.let { return it }
 
         senderIdLookup.lookup(sender)?.let { info ->
             return CategorizationResult(
                 category = info.category,
-                subCategory = contentSubCategory(sender, body),
+                subCategory = contentSubCategory(sender, evalBody),
             )
         }
 
-        contentFallback(sender, body)?.let { return it }
+        contentFallback(sender, evalBody)?.let { return it }
 
         if (contactLookup.isContact(sender)) {
             return CategorizationResult(category = Category.PERSONAL)
@@ -94,5 +99,15 @@ class MessageCategorizer(
     companion object {
         /** Key used for OTP codes in [CategorizationResult.extracted]. */
         const val EXTRACT_OTP_CODE = "otp_code"
+
+        /**
+         * Maximum number of characters of a message body that rule regexes
+         * and content parsers are evaluated against. 1000 characters is ample
+         * for transactional SMS (amount / account / OTP details arrive within
+         * the first couple of segments); longer bodies are attacker-controlled
+         * or promotional filler, and capping the evaluation input bounds the
+         * regex engine's worst case. The full body is always persisted.
+         */
+        const val MAX_EVAL_BODY_LENGTH = 1000
     }
 }
