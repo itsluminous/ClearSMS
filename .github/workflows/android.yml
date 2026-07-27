@@ -37,10 +37,21 @@ jobs:
             app/build/reports/
           retention-days: 7
 
-  apk:
-    name: Build APKs
+  release:
+    name: Build release APKs
     needs: check
     runs-on: ubuntu-latest
+    env:
+      # True only when all four signing secrets are configured. Forks and PRs
+      # from forks have no secrets, so their builds fall back to unsigned
+      # release APKs instead of failing.
+      HAS_SIGNING_SECRETS: >-
+        ${{
+          secrets.SIGNING_KEYSTORE_BASE64 != '' &&
+          secrets.SIGNING_KEYSTORE_PASSWORD != '' &&
+          secrets.SIGNING_KEY_ALIAS != '' &&
+          secrets.SIGNING_KEY_PASSWORD != ''
+        }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,31 +66,39 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      # The release APK is intentionally left UNSIGNED: this is an open-source
-      # project without a shared release keystore. Distributors (F-Droid, users
-      # building from source) sign with their own keys. The debug APK is signed
-      # with the CI runner's auto-generated debug keystore and is installable
-      # for testing.
-      - name: Assemble debug & release APKs
-        run: ./gradlew assembleDebug assembleRelease
+      - name: Decode release keystore
+        if: env.HAS_SIGNING_SECRETS == 'true'
+        run: printf '%s' "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore.jks"
 
-      - name: Upload debug APK
+      - name: Assemble release APKs
+        env:
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ "$HAS_SIGNING_SECRETS" = "true" ]; then
+            export SIGNING_KEYSTORE_FILE="$RUNNER_TEMP/keystore.jks"
+          fi
+          ./gradlew assembleRelease
+
+      - name: Verify APK signatures
+        if: env.HAS_SIGNING_SECRETS == 'true'
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          for apk in app/build/outputs/apk/release/*.apk; do
+            echo "==> $apk"
+            "$APKSIGNER" verify --print-certs "$apk"
+          done
+
+      - name: Upload release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: clearsms-debug
-          path: app/build/outputs/apk/debug/*.apk
-
-      - name: Upload release APK (unsigned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: clearsms-release-unsigned
+          name: clearsms-release
           path: app/build/outputs/apk/release/*.apk
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/release/*.apk
           generate_release_notes: true
