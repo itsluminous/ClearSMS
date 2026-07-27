@@ -105,6 +105,28 @@ Two ways to contribute:
    submissions are incorporated into the next release. There are no runtime rule
    downloads — the app stays fully offline.
 
+### Auditing rule coverage
+
+`scripts/audit_rule_coverage.py` replays the bundled rules and the sender-ID
+directory against a real SMS corpus and reports what would be categorized —
+useful for finding high-value gaps before authoring new rules:
+
+```bash
+# Pull the corpus straight from a connected device (adb required):
+python3 scripts/audit_rule_coverage.py --from-device
+
+# Or from a JSONL file with one {"sender": ..., "body": ...} object per line:
+python3 scripts/audit_rule_coverage.py corpus.jsonl --min-coverage 80
+```
+
+It prints total coverage, per-rule hit counts, and the unmatched messages
+grouped by sender and body shape (ranked by frequency). Output is redacted by
+default — digits are masked — but the corpus itself is private data: keep it
+outside the repository and never paste raw messages into rules or issues.
+Rules must contain only generic patterns and public brand/sender names.
+`--min-coverage` makes the exit status non-zero below a threshold, so the
+audit can gate CI once a reference corpus is available.
+
 ### Sender ID database
 
 The community-maintained sender ID directory lives at
