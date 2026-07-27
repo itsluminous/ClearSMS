@@ -16,7 +16,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,17 +36,21 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
@@ -63,10 +69,8 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.components.DeleteConfirmationDialog
-import app.clearsms.ui.components.LogoPack
 import app.clearsms.ui.components.displayName
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import app.clearsms.ui.components.otpPreviewFontSp
 
 private enum class SettingsDialog {
     THEME,
@@ -79,14 +83,27 @@ private enum class SettingsDialog {
     OTP_DELETE,
     OTP_SIZE,
     CLEAR_OTP,
-    LOGO_PACK,
     SIGNATURE,
     BLOCK_LIST,
     BACKUP_FREQUENCY,
     SORT_CONFIRM,
 }
 
-/** Settings root: every section from the product spec. */
+/**
+ * One settings row in the declarative list the screen renders and the
+ * search filters. [title] and [summary] carry the resolved user-visible
+ * strings so the search matches exactly what is on screen; [content] renders
+ * the row itself (a plain row, a toggle, an action, or the inline sort
+ * progress) with its behaviour unchanged.
+ */
+private class SettingsRowEntry(
+    val section: String,
+    val title: String,
+    val summary: String,
+    val content: @Composable () -> Unit,
+)
+
+/** Settings root: every section from the product spec, searchable from the top bar. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -101,6 +118,8 @@ fun SettingsScreen(
     val pendingOtpClear by viewModel.pendingOtpClear.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
 
     val backupDone = stringResource(R.string.settings_backup_done)
     val backupFailed = stringResource(R.string.settings_backup_failed)
@@ -114,24 +133,6 @@ fun SettingsScreen(
     val restoreLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) viewModel.restoreFrom(uri)
-        }
-
-    val logoIndex by LogoPack.index.collectAsStateWithLifecycle()
-    val logoScope = rememberCoroutineScope()
-    val logoImportedTemplate = stringResource(R.string.settings_logo_pack_imported)
-    LaunchedEffect(Unit) { LogoPack.ensureLoaded(context) }
-    val logoFolderLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri != null) LogoPack.setTreeUri(context, uri)
-        }
-    val logoZipLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) {
-                logoScope.launch(Dispatchers.IO) {
-                    val imported = LogoPack.importZip(context, uri)
-                    snackbarHostState.showSnackbar(String.format(logoImportedTemplate, imported))
-                }
-            }
         }
 
     LaunchedEffect(Unit) {
@@ -180,16 +181,86 @@ fun SettingsScreen(
         }
     }
 
+    val rows =
+        settingsRowEntries(
+            state = state,
+            viewModel = viewModel,
+            openDialog = { dialog = it },
+            onBackupNow = { backupLauncher.launch("clearsms-backup.json") },
+            onRestore = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
+            onManageRules = onManageRules,
+            onPermissions = onPermissions,
+            onPrivacyPolicy = onPrivacyPolicy,
+            onLicenses = onLicenses,
+        )
+
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(searchActive) {
+        if (searchActive) searchFocus.requestFocus()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = {
+                    if (searchActive) {
+                        TextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                            singleLine = true,
+                            colors =
+                                TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                ),
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                        )
+                    } else {
+                        Text(stringResource(R.string.settings_title))
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = {
+                            if (searchActive) {
+                                searchActive = false
+                                query = ""
+                            } else {
+                                onBack()
+                            }
+                        },
+                    ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
+                            contentDescription =
+                                if (searchActive) {
+                                    stringResource(R.string.settings_search_close)
+                                } else {
+                                    stringResource(R.string.action_back)
+                                },
                         )
+                    }
+                },
+                actions = {
+                    if (searchActive) {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = stringResource(R.string.settings_search_clear),
+                                )
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(
+                                Icons.Outlined.Search,
+                                contentDescription = stringResource(R.string.settings_search),
+                            )
+                        }
                     }
                 },
             )
@@ -206,227 +277,26 @@ fun SettingsScreen(
             if (state.busy) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
-
-            SectionHeader(stringResource(R.string.settings_section_blocking))
-            SettingRow(
-                title = stringResource(R.string.settings_block_list),
-                subtitle = stringResource(R.string.settings_block_list_summary, state.blockedSenders.size),
-                onClick = { dialog = SettingsDialog.BLOCK_LIST },
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_backup))
-            SettingRow(
-                title = stringResource(R.string.settings_backup_now),
-                subtitle = stringResource(R.string.settings_backup_now_summary),
-                onClick = { backupLauncher.launch("clearsms-backup.json") },
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_restore),
-                subtitle = stringResource(R.string.settings_restore_summary),
-                onClick = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_backup_frequency),
-                subtitle = backupFrequencyLabel(state.backupFrequency),
-                onClick = { dialog = SettingsDialog.BACKUP_FREQUENCY },
-            )
-            Text(
-                text = stringResource(R.string.settings_auto_backup_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_appearance))
-            SettingRow(
-                title = stringResource(R.string.settings_theme),
-                subtitle = themeLabel(state.theme),
-                onClick = { dialog = SettingsDialog.THEME },
-            )
-            ToggleRow(
-                title = stringResource(R.string.settings_dynamic_color),
-                subtitle = stringResource(R.string.settings_dynamic_color_summary),
-                checked = state.dynamicColor,
-                onToggle = viewModel::setDynamicColor,
-            )
-            ToggleRow(
-                title = stringResource(R.string.settings_show_rich_avatars),
-                subtitle =
-                    stringResource(
-                        if (state.showRichAvatars) {
-                            R.string.settings_show_rich_avatars_on
-                        } else {
-                            R.string.settings_show_rich_avatars_off
-                        },
-                    ),
-                checked = state.showRichAvatars,
-                onToggle = viewModel::setShowRichAvatars,
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_logo_pack),
-                subtitle =
-                    if (logoIndex.isEmpty()) {
-                        stringResource(R.string.settings_logo_pack_empty)
-                    } else {
-                        stringResource(R.string.settings_logo_pack_count, logoIndex.size)
-                    },
-                onClick = { dialog = SettingsDialog.LOGO_PACK },
-            )
-            ToggleRow(
-                title = stringResource(R.string.settings_show_transaction_details),
-                subtitle = stringResource(R.string.settings_show_transaction_details_summary),
-                checked = state.showTransactionDetails,
-                onToggle = viewModel::setShowTransactionDetails,
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_notification))
-            // TODO: deliveryReports is written here but not consumed yet — the
-            //  platform stage must read it in SmsSender to request delivery
-            //  status for outgoing messages.
-            ToggleRow(
-                title = stringResource(R.string.settings_delivery_reports),
-                subtitle = stringResource(R.string.settings_delivery_reports_summary),
-                checked = state.deliveryReports,
-                onToggle = viewModel::setDeliveryReports,
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_notification_actions),
-                subtitle = notificationActionsSummary(state.notificationActions),
-                onClick = { dialog = SettingsDialog.NOTIFICATION_ACTIONS },
-            )
-            ToggleRow(
-                title = stringResource(R.string.settings_transaction_notifications),
-                subtitle = stringResource(R.string.settings_transaction_notifications_summary),
-                checked = state.transactionNotifications,
-                onToggle = viewModel::setTransactionNotifications,
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_summary),
-                subtitle = summaryLabel(state.summaryFrequency),
-                onClick = { dialog = SettingsDialog.SUMMARY },
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_gestures))
-            SettingRow(
-                title = stringResource(R.string.settings_swipe_right),
-                subtitle = swipeActionLabel(state.swipeActionStart),
-                onClick = { dialog = SettingsDialog.SWIPE_START },
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_swipe_left),
-                subtitle = swipeActionLabel(state.swipeActionEnd),
-                onClick = { dialog = SettingsDialog.SWIPE_END },
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_startup))
-            SettingRow(
-                title = stringResource(R.string.settings_default_screen),
-                subtitle = destinationLabel(state.defaultDestination),
-                onClick = { dialog = SettingsDialog.DEFAULT_SCREEN },
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_default_inbox_filter),
-                subtitle = inboxFilterLabel(state.defaultInboxFilter),
-                onClick = { dialog = SettingsDialog.DEFAULT_FILTER },
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_sort))
-            val sort = state.sortProgress
-            if (sort != null) {
-                // Running: determinate inline progress with "x of y", re-trigger
-                // disabled (row is not clickable), and a cancel affordance.
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_sort_running)) },
-                    supportingContent = {
-                        Column {
-                            LinearProgressIndicator(
-                                progress = { if (sort.total > 0) sort.processed / sort.total.toFloat() else 0f },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_sort_progress, sort.processed, sort.total),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    trailingContent = {
-                        TextButton(onClick = viewModel::cancelSort) {
-                            Text(stringResource(R.string.action_cancel))
-                        }
-                    },
+            val effectiveQuery = if (searchActive) query else ""
+            val visible = filterSettingsRows(rows, effectiveQuery, { it.title }, { it.summary })
+            if (visible.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.settings_search_empty, query),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp),
                 )
             } else {
-                SettingRow(
-                    title = stringResource(R.string.settings_sort_again),
-                    subtitle = stringResource(R.string.settings_sort_again_summary),
-                    onClick = { dialog = SettingsDialog.SORT_CONFIRM },
-                )
+                // Matching rows keep their section header for context.
+                var lastSection: String? = null
+                visible.forEach { row ->
+                    if (row.section != lastSection) {
+                        lastSection = row.section
+                        SectionHeader(row.section)
+                    }
+                    row.content()
+                }
             }
-
-            SectionHeader(stringResource(R.string.settings_section_otp))
-            ToggleRow(
-                title = stringResource(R.string.settings_otp_auto_copy),
-                subtitle = stringResource(R.string.settings_otp_auto_copy_summary),
-                checked = state.otpAutoCopy,
-                onToggle = viewModel::setOtpAutoCopy,
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_otp_auto_delete),
-                subtitle = otpDeleteLabel(state.otpAutoDeletePolicy),
-                onClick = { dialog = SettingsDialog.OTP_DELETE },
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_otp_size),
-                subtitle = otpSizeLabel(state.otpDisplaySize),
-                onClick = { dialog = SettingsDialog.OTP_SIZE },
-            )
-            // One-shot ACTION, not a preference: the leading icon and the
-            // "runs now" copy keep it visually distinct from "Auto delete
-            // OTP" above, which is the recurring policy.
-            ActionRow(
-                icon = Icons.Outlined.DeleteSweep,
-                title = stringResource(R.string.settings_clear_otp),
-                subtitle = stringResource(R.string.settings_clear_otp_summary),
-                onClick = { dialog = SettingsDialog.CLEAR_OTP },
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_rules))
-            SettingRow(
-                title = stringResource(R.string.settings_manage_rules),
-                subtitle = stringResource(R.string.settings_manage_rules_summary),
-                onClick = onManageRules,
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_signature))
-            SettingRow(
-                title = stringResource(R.string.settings_signature),
-                subtitle =
-                    state.signature.ifBlank { stringResource(R.string.settings_signature_disabled) },
-                onClick = { dialog = SettingsDialog.SIGNATURE },
-            )
-
-            SectionHeader(stringResource(R.string.settings_section_about))
-            SettingRow(
-                title = stringResource(R.string.settings_version),
-                subtitle = appVersion(),
-                onClick = {},
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_permissions),
-                subtitle = stringResource(R.string.settings_permissions_summary),
-                onClick = onPermissions,
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_privacy_policy),
-                subtitle = stringResource(R.string.settings_privacy_policy_summary),
-                onClick = onPrivacyPolicy,
-            )
-            SettingRow(
-                title = stringResource(R.string.settings_licenses),
-                subtitle = stringResource(R.string.settings_licenses_summary),
-                onClick = onLicenses,
-            )
         }
     }
 
@@ -535,42 +405,6 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
-        SettingsDialog.LOGO_PACK ->
-            AlertDialog(
-                onDismissRequest = { dialog = null },
-                title = { Text(stringResource(R.string.settings_logo_pack)) },
-                text = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.settings_logo_pack_note),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        TextButton(
-                            onClick = {
-                                logoFolderLauncher.launch(null)
-                                dialog = null
-                            },
-                        ) { Text(stringResource(R.string.settings_logo_pack_choose_folder)) }
-                        TextButton(
-                            onClick = {
-                                logoZipLauncher.launch(arrayOf("application/zip"))
-                                dialog = null
-                            },
-                        ) { Text(stringResource(R.string.settings_logo_pack_import_zip)) }
-                        if (logoIndex.isNotEmpty()) {
-                            TextButton(
-                                onClick = {
-                                    LogoPack.clear(context)
-                                    dialog = null
-                                },
-                            ) { Text(stringResource(R.string.settings_logo_pack_remove)) }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { dialog = null }) { Text(stringResource(R.string.action_cancel)) }
-                },
-            )
         SettingsDialog.SIGNATURE ->
             SignatureDialog(
                 initial = state.signature,
@@ -629,6 +463,285 @@ fun SettingsScreen(
             onDismiss = viewModel::dismissClearOtp,
         )
     }
+}
+
+/**
+ * The full settings list as a declarative model: one entry per row, in
+ * section order, with the resolved title/summary the search filters on.
+ * Refactoring the previously inline rows into this list is what lets a pure
+ * function ([filterSettingsRows]) drive the search.
+ */
+@Composable
+private fun settingsRowEntries(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+    openDialog: (SettingsDialog) -> Unit,
+    onBackupNow: () -> Unit,
+    onRestore: () -> Unit,
+    onManageRules: () -> Unit,
+    onPermissions: () -> Unit,
+    onPrivacyPolicy: () -> Unit,
+    onLicenses: () -> Unit,
+): List<SettingsRowEntry> {
+    val sectionBlocking = stringResource(R.string.settings_section_blocking)
+    val sectionBackup = stringResource(R.string.settings_section_backup)
+    val sectionAppearance = stringResource(R.string.settings_section_appearance)
+    val sectionNotification = stringResource(R.string.settings_section_notification)
+    val sectionGestures = stringResource(R.string.settings_section_gestures)
+    val sectionStartup = stringResource(R.string.settings_section_startup)
+    val sectionSort = stringResource(R.string.settings_section_sort)
+    val sectionOtp = stringResource(R.string.settings_section_otp)
+    val sectionRules = stringResource(R.string.settings_section_rules)
+    val sectionSignature = stringResource(R.string.settings_section_signature)
+    val sectionAbout = stringResource(R.string.settings_section_about)
+
+    fun row(
+        section: String,
+        title: String,
+        summary: String,
+        onClick: () -> Unit,
+    ) = SettingsRowEntry(section, title, summary) {
+        SettingRow(title = title, subtitle = summary, onClick = onClick)
+    }
+
+    fun toggle(
+        section: String,
+        title: String,
+        summary: String,
+        checked: Boolean,
+        onToggle: (Boolean) -> Unit,
+    ) = SettingsRowEntry(section, title, summary) {
+        ToggleRow(title = title, subtitle = summary, checked = checked, onToggle = onToggle)
+    }
+
+    val sortTitle = stringResource(R.string.settings_sort_again)
+    val sortSummary = stringResource(R.string.settings_sort_again_summary)
+    val backupFrequencyTitle = stringResource(R.string.settings_backup_frequency)
+    val backupFrequencySummary = backupFrequencyLabel(state.backupFrequency)
+    val autoBackupNote = stringResource(R.string.settings_auto_backup_note)
+    val clearOtpTitle = stringResource(R.string.settings_clear_otp)
+    val clearOtpSummary = stringResource(R.string.settings_clear_otp_summary)
+
+    return listOf(
+        row(
+            section = sectionBlocking,
+            title = stringResource(R.string.settings_block_list),
+            summary = stringResource(R.string.settings_block_list_summary, state.blockedSenders.size),
+            onClick = { openDialog(SettingsDialog.BLOCK_LIST) },
+        ),
+        row(
+            section = sectionBackup,
+            title = stringResource(R.string.settings_backup_now),
+            summary = stringResource(R.string.settings_backup_now_summary),
+            onClick = onBackupNow,
+        ),
+        row(
+            section = sectionBackup,
+            title = stringResource(R.string.settings_restore),
+            summary = stringResource(R.string.settings_restore_summary),
+            onClick = onRestore,
+        ),
+        SettingsRowEntry(sectionBackup, backupFrequencyTitle, backupFrequencySummary) {
+            SettingRow(
+                title = backupFrequencyTitle,
+                subtitle = backupFrequencySummary,
+                onClick = { openDialog(SettingsDialog.BACKUP_FREQUENCY) },
+            )
+            Text(
+                text = autoBackupNote,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        },
+        row(
+            section = sectionAppearance,
+            title = stringResource(R.string.settings_theme),
+            summary = themeLabel(state.theme),
+            onClick = { openDialog(SettingsDialog.THEME) },
+        ),
+        toggle(
+            section = sectionAppearance,
+            title = stringResource(R.string.settings_dynamic_color),
+            summary = stringResource(R.string.settings_dynamic_color_summary),
+            checked = state.dynamicColor,
+            onToggle = viewModel::setDynamicColor,
+        ),
+        toggle(
+            section = sectionAppearance,
+            title = stringResource(R.string.settings_show_rich_avatars),
+            summary =
+                stringResource(
+                    if (state.showRichAvatars) {
+                        R.string.settings_show_rich_avatars_on
+                    } else {
+                        R.string.settings_show_rich_avatars_off
+                    },
+                ),
+            checked = state.showRichAvatars,
+            onToggle = viewModel::setShowRichAvatars,
+        ),
+        toggle(
+            section = sectionAppearance,
+            title = stringResource(R.string.settings_show_transaction_details),
+            summary = stringResource(R.string.settings_show_transaction_details_summary),
+            checked = state.showTransactionDetails,
+            onToggle = viewModel::setShowTransactionDetails,
+        ),
+        // TODO: deliveryReports is written here but not consumed yet — the
+        //  platform stage must read it in SmsSender to request delivery
+        //  status for outgoing messages.
+        toggle(
+            section = sectionNotification,
+            title = stringResource(R.string.settings_delivery_reports),
+            summary = stringResource(R.string.settings_delivery_reports_summary),
+            checked = state.deliveryReports,
+            onToggle = viewModel::setDeliveryReports,
+        ),
+        row(
+            section = sectionNotification,
+            title = stringResource(R.string.settings_notification_actions),
+            summary = notificationActionsSummary(state.notificationActions),
+            onClick = { openDialog(SettingsDialog.NOTIFICATION_ACTIONS) },
+        ),
+        toggle(
+            section = sectionNotification,
+            title = stringResource(R.string.settings_transaction_notifications),
+            summary = stringResource(R.string.settings_transaction_notifications_summary),
+            checked = state.transactionNotifications,
+            onToggle = viewModel::setTransactionNotifications,
+        ),
+        row(
+            section = sectionNotification,
+            title = stringResource(R.string.settings_summary),
+            summary = summaryLabel(state.summaryFrequency),
+            onClick = { openDialog(SettingsDialog.SUMMARY) },
+        ),
+        row(
+            section = sectionGestures,
+            title = stringResource(R.string.settings_swipe_right),
+            summary = swipeActionLabel(state.swipeActionStart),
+            onClick = { openDialog(SettingsDialog.SWIPE_START) },
+        ),
+        row(
+            section = sectionGestures,
+            title = stringResource(R.string.settings_swipe_left),
+            summary = swipeActionLabel(state.swipeActionEnd),
+            onClick = { openDialog(SettingsDialog.SWIPE_END) },
+        ),
+        row(
+            section = sectionStartup,
+            title = stringResource(R.string.settings_default_screen),
+            summary = destinationLabel(state.defaultDestination),
+            onClick = { openDialog(SettingsDialog.DEFAULT_SCREEN) },
+        ),
+        row(
+            section = sectionStartup,
+            title = stringResource(R.string.settings_default_inbox_filter),
+            summary = inboxFilterLabel(state.defaultInboxFilter),
+            onClick = { openDialog(SettingsDialog.DEFAULT_FILTER) },
+        ),
+        SettingsRowEntry(sectionSort, sortTitle, sortSummary) {
+            val sort = state.sortProgress
+            if (sort != null) {
+                // Running: determinate inline progress with "x of y", re-trigger
+                // disabled (row is not clickable), and a cancel affordance.
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_sort_running)) },
+                    supportingContent = {
+                        Column {
+                            LinearProgressIndicator(
+                                progress = { if (sort.total > 0) sort.processed / sort.total.toFloat() else 0f },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_sort_progress, sort.processed, sort.total),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    trailingContent = {
+                        TextButton(onClick = viewModel::cancelSort) {
+                            Text(stringResource(R.string.action_cancel))
+                        }
+                    },
+                )
+            } else {
+                SettingRow(
+                    title = sortTitle,
+                    subtitle = sortSummary,
+                    onClick = { openDialog(SettingsDialog.SORT_CONFIRM) },
+                )
+            }
+        },
+        toggle(
+            section = sectionOtp,
+            title = stringResource(R.string.settings_otp_auto_copy),
+            summary = stringResource(R.string.settings_otp_auto_copy_summary),
+            checked = state.otpAutoCopy,
+            onToggle = viewModel::setOtpAutoCopy,
+        ),
+        row(
+            section = sectionOtp,
+            title = stringResource(R.string.settings_otp_auto_delete),
+            summary = otpDeleteLabel(state.otpAutoDeletePolicy),
+            onClick = { openDialog(SettingsDialog.OTP_DELETE) },
+        ),
+        row(
+            section = sectionOtp,
+            title = stringResource(R.string.settings_otp_size),
+            summary = otpSizeLabel(state.otpDisplaySize),
+            onClick = { openDialog(SettingsDialog.OTP_SIZE) },
+        ),
+        // One-shot ACTION, not a preference: the leading icon and the
+        // "runs now" copy keep it visually distinct from "Auto delete
+        // OTP" above, which is the recurring policy.
+        SettingsRowEntry(sectionOtp, clearOtpTitle, clearOtpSummary) {
+            ActionRow(
+                icon = Icons.Outlined.DeleteSweep,
+                title = clearOtpTitle,
+                subtitle = clearOtpSummary,
+                onClick = { openDialog(SettingsDialog.CLEAR_OTP) },
+            )
+        },
+        row(
+            section = sectionRules,
+            title = stringResource(R.string.settings_manage_rules),
+            summary = stringResource(R.string.settings_manage_rules_summary),
+            onClick = onManageRules,
+        ),
+        row(
+            section = sectionSignature,
+            title = stringResource(R.string.settings_signature),
+            summary = state.signature.ifBlank { stringResource(R.string.settings_signature_disabled) },
+            onClick = { openDialog(SettingsDialog.SIGNATURE) },
+        ),
+        row(
+            section = sectionAbout,
+            title = stringResource(R.string.settings_version),
+            summary = appVersion(),
+            onClick = {},
+        ),
+        row(
+            section = sectionAbout,
+            title = stringResource(R.string.settings_permissions),
+            summary = stringResource(R.string.settings_permissions_summary),
+            onClick = onPermissions,
+        ),
+        row(
+            section = sectionAbout,
+            title = stringResource(R.string.settings_privacy_policy),
+            summary = stringResource(R.string.settings_privacy_policy_summary),
+            onClick = onPrivacyPolicy,
+        ),
+        row(
+            section = sectionAbout,
+            title = stringResource(R.string.settings_licenses),
+            summary = stringResource(R.string.settings_licenses_summary),
+            onClick = onLicenses,
+        ),
+    )
 }
 
 @Composable
@@ -866,7 +979,11 @@ private fun NotificationActionsDialog(
 
 private const val MAX_NOTIFICATION_ACTIONS = 3
 
-/** OTP size picker with a live preview of the digit size. */
+/**
+ * OTP size picker with a live preview of the digit size: exactly five
+ * options, Option 1 (smallest) to Option 5 (largest). Option 2 is the
+ * default — there is no separate "Default" entry.
+ */
 @Composable
 private fun OtpSizeDialog(
     selected: OtpDisplaySize,
@@ -897,7 +1014,7 @@ private fun OtpSizeDialog(
                             Text(
                                 text = "123456",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = otpPreviewSizeSp(size).sp,
+                                fontSize = otpPreviewFontSp(size).sp,
                             )
                         }
                     }
@@ -1063,20 +1180,11 @@ private fun otpDeleteLabel(policy: OtpAutoDeletePolicy): String =
 @Composable
 private fun otpSizeLabel(size: OtpDisplaySize): String =
     when (size) {
-        OtpDisplaySize.DEFAULT -> stringResource(R.string.otp_size_default)
-        OtpDisplaySize.OPTION_A -> stringResource(R.string.otp_size_a)
-        OtpDisplaySize.OPTION_B -> stringResource(R.string.otp_size_b)
-        OtpDisplaySize.OPTION_C -> stringResource(R.string.otp_size_c)
-        OtpDisplaySize.OPTION_D -> stringResource(R.string.otp_size_d)
-    }
-
-private fun otpPreviewSizeSp(size: OtpDisplaySize): Int =
-    when (size) {
-        OtpDisplaySize.DEFAULT -> 20
-        OtpDisplaySize.OPTION_A -> 16
-        OtpDisplaySize.OPTION_B -> 24
-        OtpDisplaySize.OPTION_C -> 30
-        OtpDisplaySize.OPTION_D -> 36
+        OtpDisplaySize.OPTION_1 -> stringResource(R.string.otp_size_1)
+        OtpDisplaySize.OPTION_2 -> stringResource(R.string.otp_size_2)
+        OtpDisplaySize.OPTION_3 -> stringResource(R.string.otp_size_3)
+        OtpDisplaySize.OPTION_4 -> stringResource(R.string.otp_size_4)
+        OtpDisplaySize.OPTION_5 -> stringResource(R.string.otp_size_5)
     }
 
 @Composable
