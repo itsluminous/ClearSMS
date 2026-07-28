@@ -30,6 +30,7 @@ import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.ReminderTypeClassifier
 import app.clearsms.domain.parser.SenderNameResolver
+import app.clearsms.domain.parser.TotalLimitStatement
 import app.clearsms.domain.parser.TransactionParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -415,6 +416,8 @@ class MessageRepositoryImpl(
         val delivery: ParsedDelivery? = null,
         /** Balance-only statement: refreshes the account, never a transaction. */
         val balanceStatement: BalanceStatement? = null,
+        /** Issuer-confirmed TOTAL limit: refreshes the card, never a transaction. */
+        val totalLimit: TotalLimitStatement? = null,
     )
 
     /** Runs categorizer + parsers and merges rule extracts with parser output. */
@@ -487,6 +490,11 @@ class MessageRepositoryImpl(
                 null
             }
 
+        // An issuer-confirmed total-limit statement ("changed from INR X to
+        // INR Y", "Your new limit is ...") refreshes the card's total so
+        // outstanding/utilization stay derivable without any manual entry.
+        val totalLimit = transactionParser.parseTotalLimit(sender, evalBody)
+
         val merged = LinkedHashMap<String, String>()
         transaction?.let { tx ->
             merged["amount"] = tx.amount.toString()
@@ -508,6 +516,11 @@ class MessageRepositoryImpl(
             merged["balance"] = statement.balance.toString()
             statement.accountLast4?.let { merged["account_last4"] = it }
             statement.bankName?.let { merged["bank"] = it }
+        }
+        totalLimit?.let { statement ->
+            merged["total_limit"] = statement.totalLimit.toString()
+            statement.accountLast4?.let { merged.putIfAbsent("account_last4", it) }
+            statement.bankName?.let { merged.putIfAbsent("bank", it) }
         }
         reminder?.let { rem ->
             rem.totalDue?.let { merged["total_due"] = it.toString() }
@@ -533,6 +546,7 @@ class MessageRepositoryImpl(
             reminder = reminder,
             delivery = delivery,
             balanceStatement = balanceStatement,
+            totalLimit = totalLimit,
         )
     }
 
@@ -595,6 +609,23 @@ class MessageRepositoryImpl(
                 )
             }
         }
+        // A confirmed total-limit statement updates the card's total limit —
+        // the sole source of the figure now that manual entry is gone. Same
+        // guardrails as balances: the message must name the card (last-4)
+        // and a plausible issuer.
+        enriched.totalLimit?.let { statement ->
+            val accountNumber = statement.accountLast4 ?: return@let
+            val canonicalBank = SenderNameResolver.canonicalize(statement.bankName).orEmpty()
+            if (!SenderNameResolver.isPlausibleIssuer(canonicalBank)) return@let
+            upsertAccountBalance(
+                accountNumber = accountNumber,
+                bankName = canonicalBank,
+                accountType = AccountType.CREDIT_CARD,
+                balance = null,
+                timestampMs = timestampMs,
+                totalLimit = statement.totalLimit,
+            )
+        }
         enriched.reminder?.let { reminder ->
             reminderDao.insert(
                 ReminderEntity(
@@ -652,6 +683,8 @@ class MessageRepositoryImpl(
         timestampMs: Long,
         /** Issuer-reported available credit limit; follows the same ordering rules as [balance]. */
         availableLimit: Double? = null,
+        /** Issuer-confirmed TOTAL credit limit; follows the same ordering rules as [balance]. */
+        totalLimit: Double? = null,
     ) {
         val existing = accountDao.find(accountNumber, bankName)
         if (existing == null) {
@@ -674,6 +707,12 @@ class MessageRepositoryImpl(
                             } else {
                                 blank.availableLimit
                             },
+                        creditLimit =
+                            if (timestampMs >= blank.lastUpdated) {
+                                totalLimit ?: blank.creditLimit
+                            } else {
+                                blank.creditLimit
+                            },
                         lastUpdated = maxOf(timestampMs, blank.lastUpdated),
                     ),
                 )
@@ -685,6 +724,7 @@ class MessageRepositoryImpl(
                         type = accountType,
                         lastKnownBalance = balance,
                         availableLimit = availableLimit,
+                        creditLimit = totalLimit,
                         lastUpdated = timestampMs,
                     ),
                 )
@@ -694,6 +734,7 @@ class MessageRepositoryImpl(
                 existing.copy(
                     lastKnownBalance = balance ?: existing.lastKnownBalance,
                     availableLimit = availableLimit ?: existing.availableLimit,
+                    creditLimit = totalLimit ?: existing.creditLimit,
                     lastUpdated = timestampMs,
                 ),
             )

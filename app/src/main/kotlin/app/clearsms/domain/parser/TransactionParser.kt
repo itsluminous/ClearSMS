@@ -106,6 +106,56 @@ class TransactionParser {
     }
 
     /**
+     * Parses a TOTAL credit-limit statement — the issuer confirming what the
+     * card's overall limit now is ("The credit limit for your ... Credit
+     * Card 1234X5678 has been changed from INR 100000 to INR 150000",
+     * "Credit Limit Increased! ... Your new limit is ₹150000", "Total
+     * Credit Limit: Rs.150000"). Only CONFIRMED statements qualify: limit
+     * increase OFFERS ("eligible for", "pre-approved", "can be increased
+     * to") describe money the user does not have yet and are rejected, as
+     * are loan/telecom "limit" messages (the body must mention a card).
+     */
+    fun parseTotalLimit(
+        sender: String,
+        body: String,
+    ): TotalLimitStatement? {
+        if (!CARD_CONTEXT_REGEX.containsMatchIn(body)) return null
+        if (LIMIT_OFFER_REGEX.containsMatchIn(body)) return null
+        val limit =
+            TOTAL_LIMIT_CHANGED_REGEX
+                .find(body)
+                ?.groupValues
+                ?.get(1)
+                ?: TOTAL_LIMIT_NEW_REGEX
+                    .find(body)
+                    ?.takeIf { !LAKH_SUFFIX_REGEX.containsMatchIn(body.substring(it.range.last + 1)) }
+                    ?.groupValues
+                    ?.get(1)
+                ?: TOTAL_LIMIT_STATED_REGEX
+                    .find(body)
+                    ?.groupValues
+                    ?.get(1)
+        val amount = limit?.toAmount() ?: return null
+        if (amount <= 0.0) return null
+        val resolvedBank = SenderNameResolver.bankNameFor(sender, body)
+        return TotalLimitStatement(
+            totalLimit = amount,
+            accountLast4 = extractCardTail(body),
+            bankName = resolvedBank?.takeIf { SenderNameResolver.isPlausibleIssuer(it, body) },
+        )
+    }
+
+    /**
+     * Masked-card tail for limit statements. The inline-masked shape
+     * "Credit Card 4375X9012" (BIN, mask char, tail — no separators) must
+     * yield the LAST digit group; the generic account regex would capture
+     * the BIN. Falls back to the shared tail extraction otherwise.
+     */
+    private fun extractCardTail(body: String): String? =
+        INLINE_MASKED_CARD_REGEX.find(body)?.groupValues?.get(1)
+            ?: extractAccountLast4(body)
+
+    /**
      * True for statement / bill notices ("Statement is sent to ...",
      * "E-statement ... has been mailed", "Statement is generated") — these
      * must never yield a transaction, from the parser OR from rule extracts.
@@ -329,6 +379,60 @@ class TransactionParser {
                     "(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
             )
 
+        // region total credit limit statements
+
+        /** Total-limit statements only make sense for cards, never loans/telecom. */
+        val CARD_CONTEXT_REGEX = Regex("(?i)\\bcard\\b")
+
+        /**
+         * Limit-increase OFFERS: money the user does not have yet. "eligible
+         * for a Credit Limit increase", "pre-approved ... Credit limit:
+         * Rs.X", "limit can be increased to Rs X" must never set the total.
+         */
+        val LIMIT_OFFER_REGEX =
+            Regex("(?i)\\b(?:eligible|pre-?approved|can\\s+be\\s+(?:increased|enhanced)|to\\s+avail|avail\\s+now|apply\\s+now)\\b")
+
+        /**
+         * "credit limit for your ... Card ... has been changed from INR X to
+         * INR Y" — the NEW total is the second amount (after "to").
+         */
+        val TOTAL_LIMIT_CHANGED_REGEX =
+            Regex(
+                "(?i)credit\\s+limit\\b[^\\n]{0,80}?\\bchanged\\s+from\\s+" +
+                    "(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?\\s+to\\s+" +
+                    "(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+            )
+
+        /**
+         * "Your new limit is ₹150000" after a processed enhancement. The
+         * currency marker tolerates "?" — a common mojibake of "₹" in real
+         * issuer SMS ("Your new limit is ?1500000").
+         */
+        val TOTAL_LIMIT_NEW_REGEX =
+            Regex("(?i)\\b(?:your\\s+)?new\\s+(?:credit\\s+)?limit\\s+is\\s*(?:INR|Rs\\.?|\\u20b9|\\?)\\s*([\\d,]+(?:\\.\\d{1,2})?)")
+
+        /**
+         * Direct statements of the total: "Total Credit Limit: Rs.150000",
+         * "Total Limit is INR 150000", "Sanctioned Limit of Rs 150000",
+         * "your limit of INR 150000".
+         */
+        val TOTAL_LIMIT_STATED_REGEX =
+            Regex(
+                "(?i)\\b(?:total\\s+(?:credit\\s+)?limit|sanctioned\\s+limit|your\\s+limit)\\s*" +
+                    "(?:is|:|of)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+            )
+
+        /** "Rs. XX lacs/lakhs" — a rounded marketing figure, never a card total. */
+        val LAKH_SUFFIX_REGEX = Regex("(?i)^\\s*(?:lacs?|lakhs?)\\b")
+
+        /**
+         * Inline-masked card number "4375X9012" / "437500XX9012": digits,
+         * mask characters, then the real 3-4 digit tail.
+         */
+        val INLINE_MASKED_CARD_REGEX = Regex("(?<!\\d)\\d{2,6}[Xx*]+(\\d{3,4})(?![\\dXx*])")
+
+        // endregion
+
         val DEBIT_KEYWORDS = Regex("(?i)\\b(?:debited|spent|paid|withdrawn|deducted|purchase(?:d)?|sent)\\b")
         val CREDIT_KEYWORDS = Regex("(?i)\\b(?:credited|received|deposited|refund(?:ed)?)\\b")
 
@@ -482,4 +586,17 @@ data class BalanceStatement(
     /** Plausible-issuer names only; null when the sender is not an issuer. */
     val bankName: String?,
     val accountType: AccountType,
+)
+
+/**
+ * An issuer's confirmed statement of a card's TOTAL credit limit ("changed
+ * from INR X to INR Y", "Your new limit is ₹Y"). State, not movement: it
+ * must never create a transaction, only refresh the card's total limit so
+ * outstanding and utilization stay derivable.
+ */
+data class TotalLimitStatement(
+    val totalLimit: Double,
+    val accountLast4: String?,
+    /** Plausible-issuer names only; null when the sender is not an issuer. */
+    val bankName: String?,
 )
