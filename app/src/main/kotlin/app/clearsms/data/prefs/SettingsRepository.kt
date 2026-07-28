@@ -41,8 +41,10 @@ interface SettingsRepository {
     /**
      * Privacy gate for the Finance tab: when false, balances (account
      * balances, card outstanding, the month summary) are masked until the
-     * user authenticates with the device screen lock. Default true so an
-     * upgrade never surprises anyone. Display-only — nothing sensitive is
+     * user authenticates with the device screen lock. Default FALSE —
+     * privacy-first: balances stay hidden until the user deliberately
+     * reveals them (users who never touched the toggle get the hidden
+     * default too). Display-only — nothing sensitive is
      * stored because of this flag.
      */
     val showBalance: Flow<Boolean>

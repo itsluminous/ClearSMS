@@ -68,7 +68,7 @@ class SettingsRepositoryImpl(
     }
 
     override val showBalance: Flow<Boolean> =
-        dataStore.data.map { it[KEY_SHOW_BALANCE] ?: true }
+        dataStore.data.map { it[KEY_SHOW_BALANCE] ?: false }
 
     override suspend fun setShowBalance(value: Boolean) {
         dataStore.edit { it[KEY_SHOW_BALANCE] = value }
@@ -194,7 +194,13 @@ class SettingsRepositoryImpl(
         /** Sentinel stored when the default inbox filter is All (null). */
         const val FILTER_ALL = "ALL"
 
+        /**
+         * Default trio: Mark read + Reply + Delete — exactly fills the
+         * platform's 3-action cap with the three most common triage moves
+         * (acknowledge, respond, discard). Share exists as an option but is
+         * OFF by default: forwarding message text is a deliberate opt-in.
+         */
         val DEFAULT_NOTIFICATION_ACTIONS =
-            setOf(NotificationAction.MARK_READ, NotificationAction.REPLY)
+            setOf(NotificationAction.MARK_READ, NotificationAction.REPLY, NotificationAction.DELETE)
     }
 }

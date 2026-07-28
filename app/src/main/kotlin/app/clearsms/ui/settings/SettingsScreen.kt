@@ -1138,6 +1138,7 @@ private fun notificationActionLabel(action: NotificationAction): String =
         NotificationAction.MARK_READ -> stringResource(R.string.action_mark_read)
         NotificationAction.DELETE -> stringResource(R.string.ui_action_delete)
         NotificationAction.REPLY -> stringResource(R.string.notification_action_reply)
+        NotificationAction.SHARE -> stringResource(R.string.notification_action_share)
         NotificationAction.COPY_OTP -> stringResource(R.string.action_copy_otp)
         NotificationAction.SHARE_OTP -> stringResource(R.string.notification_action_share_otp)
     }
