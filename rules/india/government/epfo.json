@@ -20,19 +20,135 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
-      "id": "epfo-claim-01",
-      "name": "EPFO EPF Claim Status",
-      "priority": 270,
+      "id": "epfo-passbook-contribution-01",
+      "name": "EPF Passbook Contribution Credited",
+      "priority": 275,
       "match": {
         "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
-        "body_pattern": "(?i)(?:claim|withdrawal)[\\s\\S]{0,60}?(?:settled|approved|received|under\\s+process)"
+        "body_pattern": "(?i)\\bpassbook\\s+balance\\s+against\\s+[A-Z]{2,6}[0-9*]{0,28}?(\\d{4})\\s+is\\s+Rs\\.?\\s*([\\d,]+)[\\s\\S]{0,20}?Contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "investment",
+        "extract": {
+          "account_last4": "$1",
+          "balance": "$2",
+          "amount": "$3",
+          "type": "debit",
+          "merchant": "EPF",
+          "bank": "EPFO"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-passbook-balance-01",
+      "name": "EPF Passbook Balance Notice",
+      "priority": 268,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\bpassbook\\s+balance\\s+against\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "investment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-interest-credited-01",
+      "name": "EPF Interest Credited",
+      "priority": 274,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\bPF\\s+interest\\s+of\\s+([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,20}?\\bcredited\\s+to\\s+your\\s+UAN\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "investment",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-claim-settled-01",
+      "name": "EPF Claim Settled",
+      "priority": 272,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\b(?:claim|withdrawal)\\b[\\s\\S]{0,50}?\\b(?:has\\s+been|is|stands)\\s+settled\\b"
       },
       "action": {
         "category": "important",
         "sub_category": "government"
       },
       "contributed_by": "clearsms",
-      "created_at": "2026-07-27T00:00:00Z"
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-claim-status-01",
+      "name": "EPF Claim Status Update",
+      "priority": 271,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\bClaim\\s+Id\\b[\\s\\S]{0,40}?\\b(?:is\\s+under\\s+process|has\\s+been\\s+received|is\\s+approved)\\b|\\b(?:claim|withdrawal)\\b[\\s\\S]{0,50}?\\bunder\\s+process\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-uan-activated-01",
+      "name": "EPFO UAN Activated",
+      "priority": 267,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\bUAN\\b[\\s\\S]{0,30}?\\b(?:is|has\\s+been)\\s+activated\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-uan-security-01",
+      "name": "EPFO UAN Credential Change Notice",
+      "priority": 266,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\bPassword\\s+for\\s+your\\s+UAN\\b[\\s\\S]{0,30}?\\bchanged\\b|\\bmobile\\s+no\\b[\\s\\S]{0,30}?\\blinked\\s+to\\s+the\\s+UAN\\b[\\s\\S]{0,80}?\\bchanged\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "epfo-enomination-01",
+      "name": "EPFO e-Nomination Pending",
+      "priority": 265,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)\\be-?nomination\\s+is\\s+pending\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     }
   ]
 }

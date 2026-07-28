@@ -72,6 +72,10 @@ object SenderNameResolver {
             // (identified by the PRAN tail), so Protean IS an issuer — the
             // user's NPS holdings deserve an account card like any deposit.
             Institution("Protean", listOf("PTNNPS", "PROTEA", "NSDLNP", "NSDLPN", "CRANPS"), listOf("PROTEAN")),
+            // EPFO passbook contributions are deposits into a real
+            // provident-fund account (keyed on the member-id tail), so like
+            // Protean/NPS the EPFO IS an issuer and gets an account card.
+            Institution("EPFO", listOf("EPFOHO"), listOf("EPFO")),
             // Non-bank issuers seen in real inboxes — better display names for
             // the sender-ID fallback path. Not issuers: a Flipkart refund goes
             // TO a bank account, an Airtel bill is charged FROM one.
