@@ -81,8 +81,6 @@
     <string name="finance_available_limit">Available limit</string>
     <string name="finance_no_limit_data">No limit data yet</string>
     <string name="finance_utilization">%1$d%% of limit used</string>
-    <string name="finance_set_card_limit">Set card limit</string>
-    <string name="finance_limit_label">Credit limit (₹)</string>
     <string name="finance_high_usage_alert">High credit usage detected — %1$d card(s) are above the safe 30% limit</string>
     <string name="finance_transaction">Transaction</string>
     <string name="finance_expand_section">Expand section</string>

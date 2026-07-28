@@ -21,13 +21,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,12 +42,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,7 +64,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -105,7 +100,6 @@ fun FinanceScreen(
     val showOlderAccounts by viewModel.showOlderAccounts.collectAsStateWithLifecycle()
     val showOlderCards by viewModel.showOlderCards.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    var limitDialogFor by remember { mutableStateOf<CreditCardItem?>(null) }
     var accountsCollapsed by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -209,7 +203,6 @@ fun FinanceScreen(
                         onToggleShowOlder = viewModel::toggleShowOlderCards,
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
-                        onSetLimit = { limitDialogFor = it },
                     )
                 FinanceTab.TRANSACTIONS ->
                     transactionsSection(
@@ -224,17 +217,6 @@ fun FinanceScreen(
                     )
             }
         }
-    }
-
-    limitDialogFor?.let { card ->
-        SetCardLimitDialog(
-            card = card,
-            onDismiss = { limitDialogFor = null },
-            onConfirm = { limit ->
-                viewModel.setCardLimit(card.account.id, limit)
-                limitDialogFor = null
-            },
-        )
     }
 }
 
@@ -448,7 +430,6 @@ private fun LazyListScope.creditCardsSection(
     onToggleShowOlder: () -> Unit,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
-    onSetLimit: (CreditCardItem) -> Unit,
 ) {
     if (state.creditCards.isEmpty() && state.staleCreditCards.isEmpty()) {
         emptySectionItem()
@@ -486,7 +467,6 @@ private fun LazyListScope.creditCardsSection(
             revealed = state.balancesRevealed,
             onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
             onOpenSource = { onOpenSource(card.account) },
-            onSetLimit = { onSetLimit(card) },
         )
     }
     if (state.staleCreditCards.isNotEmpty()) {
@@ -506,7 +486,6 @@ private fun LazyListScope.creditCardsSection(
                     revealed = state.balancesRevealed,
                     onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
                     onOpenSource = { onOpenSource(card.account) },
-                    onSetLimit = { onSetLimit(card) },
                 )
             }
         }
@@ -832,7 +811,6 @@ private fun CreditCardCard(
     revealed: Boolean,
     onOpen: () -> Unit,
     onOpenSource: () -> Unit,
-    onSetLimit: () -> Unit,
 ) {
     val figures = card.figures
     val barColor =
@@ -951,47 +929,6 @@ private fun CreditCardCard(
                     )
                 }
             }
-            Row {
-                TextButton(onClick = onSetLimit) {
-                    Text(stringResource(R.string.finance_set_card_limit))
-                }
-            }
         }
     }
-}
-
-@Composable
-private fun SetCardLimitDialog(
-    card: CreditCardItem,
-    onDismiss: () -> Unit,
-    onConfirm: (Double?) -> Unit,
-) {
-    var text by rememberSaveable {
-        mutableStateOf(
-            card.account.creditLimit
-                ?.toString()
-                .orEmpty(),
-        )
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.finance_set_card_limit)) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text(stringResource(R.string.finance_limit_label)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text.toDoubleOrNull()) }) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
 }

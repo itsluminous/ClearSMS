@@ -49,11 +49,6 @@ class FinanceRepositoryImpl(
     override fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>> =
         reminderDao.observePast(nowMs).map(ReminderDeduplication::dedupe)
 
-    override suspend fun setCardLimit(
-        accountId: Long,
-        limit: Double?,
-    ) = accountDao.setCreditLimit(accountId, limit)
-
     override suspend fun addNote(
         transactionId: Long,
         note: String?,

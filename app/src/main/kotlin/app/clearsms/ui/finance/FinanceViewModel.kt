@@ -241,11 +241,4 @@ class FinanceViewModel
 
         /** Re-masks immediately (eye tap while revealed); no auth needed to hide. */
         fun concealBalances() = balanceVisibility.conceal()
-
-        fun setCardLimit(
-            accountId: Long,
-            limit: Double?,
-        ) {
-            viewModelScope.launch(ioDispatcher) { financeRepository.setCardLimit(accountId, limit) }
-        }
     }

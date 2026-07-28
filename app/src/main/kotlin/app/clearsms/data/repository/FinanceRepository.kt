@@ -34,11 +34,6 @@ interface FinanceRepository {
 
     fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>>
 
-    suspend fun setCardLimit(
-        accountId: Long,
-        limit: Double?,
-    )
-
     suspend fun addNote(
         transactionId: Long,
         note: String?,

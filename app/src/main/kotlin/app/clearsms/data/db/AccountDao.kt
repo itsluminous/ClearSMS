@@ -38,12 +38,6 @@ interface AccountDao {
     @Update
     suspend fun update(account: AccountEntity)
 
-    @Query("UPDATE accounts SET creditLimit = :limit WHERE id = :accountId")
-    suspend fun setCreditLimit(
-        accountId: Long,
-        limit: Double?,
-    )
-
     @Query("DELETE FROM accounts")
     suspend fun deleteAll()
 }

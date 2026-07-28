@@ -41,7 +41,7 @@ object CreditCardFigures {
      * @param availableLimit issuer-reported available limit ("Avl Limit: INR ...").
      * @param lastKnownBalance legacy issuer-reported balance (treated as outstanding
      *   ONLY when no available limit exists — the semantics differ and must not mix).
-     * @param totalLimit the user-set (or issuer-derived) total credit limit.
+     * @param totalLimit the SMS-derived total credit limit (issuer limit-change statements).
      */
     fun compute(
         availableLimit: Double?,

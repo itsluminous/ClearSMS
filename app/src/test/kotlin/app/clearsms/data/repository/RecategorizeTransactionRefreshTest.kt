@@ -29,7 +29,7 @@ import org.robolectric.RobolectricTestRunner
  * "Sort inbox again" REFRESHES derived transaction rows in place: stale
  * titles from older parser/rule versions are rewritten, repeated runs never
  * duplicate rows or drift totals, user notes survive onto the re-derived
- * rows, accounts (and their user-set card limits) are never deleted, and
+ * rows, accounts (and their SMS-derived card limits) are never deleted, and
  * orphaned transaction rows from messages that no longer derive anything
  * disappear.
  */

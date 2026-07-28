@@ -213,11 +213,6 @@ private class FakeFinanceRepository(
 
     override fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>> = flowOf(past)
 
-    override suspend fun setCardLimit(
-        accountId: Long,
-        limit: Double?,
-    ) = Unit
-
     override suspend fun addNote(
         transactionId: Long,
         note: String?,

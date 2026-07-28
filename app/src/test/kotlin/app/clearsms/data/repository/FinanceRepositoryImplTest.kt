@@ -150,11 +150,6 @@ private class FakeAccountDao : AccountDao {
 
     override suspend fun update(account: AccountEntity) = Unit
 
-    override suspend fun setCreditLimit(
-        accountId: Long,
-        limit: Double?,
-    ) = Unit
-
     override suspend fun deleteAll() = Unit
 }
 

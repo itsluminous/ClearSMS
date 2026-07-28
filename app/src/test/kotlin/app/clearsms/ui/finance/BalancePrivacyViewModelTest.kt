@@ -167,11 +167,6 @@ private class EmptyFinanceRepository : FinanceRepository {
 
     override fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>> = MutableStateFlow(emptyList())
 
-    override suspend fun setCardLimit(
-        accountId: Long,
-        limit: Double?,
-    ) = Unit
-
     override suspend fun addNote(
         transactionId: Long,
         note: String?,
