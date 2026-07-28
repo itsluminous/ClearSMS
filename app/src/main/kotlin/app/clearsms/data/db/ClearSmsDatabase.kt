@@ -6,7 +6,10 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.clearsms.data.repository.TransactionDeduplication
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.domain.model.MerchantCategory
+import app.clearsms.domain.model.TransactionType
 import app.clearsms.domain.parser.DeliveryParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.SenderNameResolver
@@ -23,7 +26,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -61,6 +64,13 @@ import java.time.ZoneId
         // confident owner exists, and cleans up nameless (blank-bank)
         // account rows — see [ClearSmsDatabase.LinkTransactionsToAccounts].
         AutoMigration(from = 8, to = 9, spec = ClearSmsDatabase.LinkTransactionsToAccounts::class),
+        // v9 -> v10: adds the transactions.referenceNumber index (backs the
+        // ingestion-time duplicate lookup) and collapses transaction rows
+        // that record the SAME payment more than once — banks send a spend
+        // alert plus a later statement line for one transaction. Same
+        // two-tier identity the ingestion path now enforces — see
+        // [ClearSmsDatabase.CollapseDuplicateTransactions].
+        AutoMigration(from = 9, to = 10, spec = ClearSmsDatabase.CollapseDuplicateTransactions::class),
     ],
 )
 @TypeConverters(Converters::class)
@@ -449,6 +459,66 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                         arrayOf(owner.id, tail, bank),
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * One-time collapse of transaction rows recording the SAME payment
+     * (spend alert + later statement / "payment received" line). Applies
+     * the exact identity in
+     * [app.clearsms.data.repository.TransactionDeduplication]: reference
+     * matches at any time distance, near-duplicate alerts only inside the
+     * small window and only when no balance / merchant / account-link
+     * evidence contradicts. Survivors keep the richest fields and every
+     * user note; absorbed rows are deleted. New duplicates are prevented at
+     * ingestion from now on.
+     */
+    class CollapseDuplicateTransactions : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            val rows = mutableListOf<TransactionEntity>()
+            db
+                .query(
+                    "SELECT id, amount, type, merchantName, accountNumber, bankName, accountId, " +
+                        "timestamp, balance, referenceNumber, category, rawSmsId, note FROM transactions",
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        rows +=
+                            TransactionEntity(
+                                id = cursor.getLong(0),
+                                amount = cursor.getDouble(1),
+                                type = TransactionType.valueOf(cursor.getString(2)),
+                                merchantName = if (cursor.isNull(3)) null else cursor.getString(3),
+                                accountNumber = cursor.getString(4),
+                                bankName = cursor.getString(5),
+                                accountId = if (cursor.isNull(6)) null else cursor.getLong(6),
+                                timestamp = cursor.getLong(7),
+                                balance = if (cursor.isNull(8)) null else cursor.getDouble(8),
+                                referenceNumber = if (cursor.isNull(9)) null else cursor.getString(9),
+                                category = MerchantCategory.valueOf(cursor.getString(10)),
+                                rawSmsId = cursor.getLong(11),
+                                note = if (cursor.isNull(12)) null else cursor.getString(12),
+                            )
+                    }
+                }
+            val result = TransactionDeduplication.dedupe(rows)
+            for (survivor in result.updated) {
+                db.execSQL(
+                    "UPDATE transactions SET merchantName = ?, bankName = ?, accountId = ?, " +
+                        "balance = ?, referenceNumber = ?, note = ? WHERE id = ?",
+                    arrayOf(
+                        survivor.merchantName,
+                        survivor.bankName,
+                        survivor.accountId,
+                        survivor.balance,
+                        survivor.referenceNumber,
+                        survivor.note,
+                        survivor.id,
+                    ),
+                )
+            }
+            result.droppedIds.chunked(500).forEach { chunk ->
+                db.execSQL("DELETE FROM transactions WHERE id IN (${chunk.joinToString(",")})")
             }
         }
     }

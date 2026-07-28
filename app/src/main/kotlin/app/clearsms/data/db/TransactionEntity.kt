@@ -14,6 +14,7 @@ import app.clearsms.domain.model.TransactionType
         Index("rawSmsId"),
         Index("timestamp"),
         Index("accountId"),
+        Index("referenceNumber"),
     ],
 )
 data class TransactionEntity(

@@ -116,6 +116,32 @@ private class FakeTransactionDao(
 
     override suspend fun findByRawSmsId(rawSmsId: Long): TransactionEntity? = transactions.find { it.rawSmsId == rawSmsId }
 
+    override suspend fun findByReference(
+        normalizedReference: String,
+        accountNumber: String,
+    ): List<TransactionEntity> =
+        transactions.filter {
+            it.referenceNumber.equals(normalizedReference, ignoreCase = true) && it.accountNumber == accountNumber
+        }
+
+    override suspend fun findNearby(
+        amount: Double,
+        type: TransactionType,
+        accountNumber: String,
+        bankName: String,
+        fromTs: Long,
+        toTs: Long,
+    ): List<TransactionEntity> =
+        transactions.filter {
+            it.amount == amount &&
+                it.type == type &&
+                it.accountNumber == accountNumber &&
+                it.bankName == bankName &&
+                it.timestamp in fromTs..toTs
+        }
+
+    override suspend fun update(transaction: TransactionEntity) = Unit
+
     override suspend fun getAll(): List<TransactionEntity> = transactions
 
     override suspend fun insert(transaction: TransactionEntity): Long = transaction.id

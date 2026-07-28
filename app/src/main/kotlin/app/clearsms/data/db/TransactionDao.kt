@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
+import app.clearsms.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -74,6 +76,51 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE rawSmsId = :rawSmsId LIMIT 1")
     suspend fun findByRawSmsId(rawSmsId: Long): TransactionEntity?
+
+    /**
+     * Duplicate candidates by transaction reference (tier 1): rows whose
+     * reference matches case-insensitively on the same account last-4, at
+     * ANY time distance. Callers re-check the pair with
+     * [app.clearsms.data.repository.TransactionDeduplication] — this only
+     * narrows the scan.
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE referenceNumber IS NOT NULL
+          AND referenceNumber = :normalizedReference COLLATE NOCASE
+          AND accountNumber = :accountNumber
+        """,
+    )
+    suspend fun findByReference(
+        normalizedReference: String,
+        accountNumber: String,
+    ): List<TransactionEntity>
+
+    /**
+     * Duplicate candidates by proximity (tier 2): same amount, type and
+     * exact (last-4, bank) account inside a timestamp window. Callers
+     * re-check each pair against the dedup guards.
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE amount = :amount AND type = :type
+          AND accountNumber = :accountNumber AND bankName = :bankName
+          AND timestamp BETWEEN :fromTs AND :toTs
+        """,
+    )
+    suspend fun findNearby(
+        amount: Double,
+        type: TransactionType,
+        accountNumber: String,
+        bankName: String,
+        fromTs: Long,
+        toTs: Long,
+    ): List<TransactionEntity>
+
+    @Update
+    suspend fun update(transaction: TransactionEntity)
 
     @Query("SELECT * FROM transactions ORDER BY id ASC")
     suspend fun getAll(): List<TransactionEntity>

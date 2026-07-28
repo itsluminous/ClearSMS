@@ -584,7 +584,7 @@ class MessageRepositoryImpl(
                     bankName.isNotEmpty() -> upsertAccount(tx, accountNumber, bankName, timestampMs)
                     else -> soleAccountIdForTail(accountNumber, tx.accountType)
                 }
-            transactionDao.insert(
+            val candidate =
                 TransactionEntity(
                     amount = tx.amount,
                     type = tx.type,
@@ -598,8 +598,20 @@ class MessageRepositoryImpl(
                     category = tx.merchantCategory,
                     rawSmsId = messageId,
                     note = preservedNote,
-                ),
-            )
+                )
+            // Banks alert the same payment more than once (spend alert +
+            // statement line). When an existing row already records this
+            // payment — same reference on the same account, or a twin alert
+            // moments apart (see [TransactionDeduplication]) — the rows are
+            // collapsed instead of double-counting the money.
+            val duplicate = findExistingDuplicate(candidate)
+            if (duplicate != null) {
+                transactionDao.update(
+                    TransactionDeduplication.collapse(duplicate, candidate).copy(id = duplicate.id),
+                )
+            } else {
+                transactionDao.insert(candidate)
+            }
         }
         // Balance-only messages update the account WITHOUT fabricating a
         // transaction row. Gated hard: the message must name the account
@@ -670,6 +682,34 @@ class MessageRepositoryImpl(
                 ),
             )
         }
+    }
+
+    /**
+     * An already-persisted row recording the same payment as [candidate],
+     * or null. Candidates are narrowed by the DAO (same reference on the
+     * same account at any time distance, or same amount/type/account inside
+     * the tier-2 window) and each pairing is confirmed by
+     * [TransactionDeduplication], which applies the balance / merchant /
+     * account-link guards.
+     */
+    private suspend fun findExistingDuplicate(candidate: TransactionEntity): TransactionEntity? {
+        val normalizedRef = TransactionDeduplication.normalizedReference(candidate.referenceNumber)
+        val byReference =
+            if (normalizedRef != null) {
+                transactionDao.findByReference(normalizedRef, candidate.accountNumber)
+            } else {
+                emptyList()
+            }
+        val nearby =
+            transactionDao.findNearby(
+                amount = candidate.amount,
+                type = candidate.type,
+                accountNumber = candidate.accountNumber,
+                bankName = candidate.bankName,
+                fromTs = candidate.timestamp - TransactionDeduplication.NEAR_DUPLICATE_WINDOW_MS,
+                toTs = candidate.timestamp + TransactionDeduplication.NEAR_DUPLICATE_WINDOW_MS,
+            )
+        return (byReference + nearby).firstOrNull { TransactionDeduplication.isDuplicate(it, candidate) }
     }
 
     private suspend fun upsertAccount(

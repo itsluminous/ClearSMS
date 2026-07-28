@@ -522,7 +522,8 @@ class TransactionParser {
 
         val REFERENCE_REGEX =
             Regex(
-                "(?i)\\bref(?:erence)?\\s*(?:no|num|number|id)?\\.?\\s*[:.]?\\s*([A-Za-z0-9]{6,22})|\\b(?:txn|utr)\\s*(?:id|no)?\\.?\\s*[:.]?\\s*([A-Za-z0-9]{6,22})",
+                "(?i)\\bref(?:erence)?\\s*(?:no|num|number|id)?\\.?\\s*[:.]?\\s*((?=[A-Za-z0-9]*\\d)[A-Za-z0-9]{6,22})|" +
+                    "\\b(?:txn|utr)\\s*(?:id|no)?\\.?\\s*[:.]?\\s*((?=[A-Za-z0-9]*\\d)[A-Za-z0-9]{6,22})",
             )
 
         val MERCHANT_REGEX = Regex("(?i)\\b(?:to|at|towards)\\s+((?:[A-Za-z][A-Za-z0-9@._&'*-]*)(?:\\s+[A-Za-z0-9@._&'*-]+){0,3})")

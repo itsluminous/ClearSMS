@@ -35,8 +35,6 @@ class RecategorizeProgressTest {
     private lateinit var db: ClearSmsDatabase
     private lateinit var repository: MessageRepositoryImpl
 
-    private val debitBody =
-        "Rs.250.00 debited from A/c XX9805 to VPA merchant@okicici on 20-07-26. Ref No 020520123456. Avl Bal Rs.5,000.25 - ICICI Bank."
     private val debitSender = "VM-ICICIB"
 
     @Before
@@ -72,7 +70,14 @@ class RecategorizeProgressTest {
     private fun seed(count: Int) =
         runBlocking {
             repeat(count) { i ->
-                repository.insertIncoming(debitSender, debitBody, 1_000L + i)
+                // Genuinely DISTINCT transactions: unique amount and reference,
+                // and timestamps spaced well beyond the dedup window, so each
+                // message yields its own transaction row (this test validates
+                // re-sort idempotency, not deduplication).
+                val body =
+                    "Rs.${250 + i}.00 debited from A/c XX9805 to VPA merchant@okicici on 20-07-26. " +
+                        "Ref No 02052012345$i. Avl Bal Rs.5,000.25 - ICICI Bank."
+                repository.insertIncoming(debitSender, body, 1_000L + i * 200_000L)
             }
         }
 
