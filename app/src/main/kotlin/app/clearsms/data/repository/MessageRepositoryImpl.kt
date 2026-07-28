@@ -16,6 +16,7 @@ import app.clearsms.data.rules.toDefinition
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.ParsedDelivery
 import app.clearsms.domain.model.ParsedReminder
 import app.clearsms.domain.model.ParsedTransaction
@@ -433,8 +434,9 @@ class MessageRepositoryImpl(
                 // transaction, whether from the parser or from rule extracts.
                 // They stay reminders (see the reminder path below).
                 transactionParser.isStatementNotice(evalBody) -> null
-                parsedTx != null -> mergeTransaction(parsedTx, extracts)
-                result.subCategory == SubCategory.TRANSACTION -> transactionFromExtracts(extracts)
+                parsedTx != null -> mergeTransaction(parsedTx, extracts, result.subCategory)
+                result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
+                    transactionFromExtracts(extracts, result.subCategory)
                 else -> null
             }
 
@@ -482,6 +484,13 @@ class MessageRepositoryImpl(
         otpCode?.let { merged["otp_code"] = it }
         // Rule-extracted values win over parser heuristics for shared keys.
         merged.putAll(extracts)
+        // ...except the merchant: the transaction above already applied the
+        // rule-over-parser precedence WITH normalization, so re-stamp it —
+        // otherwise a raw rule capture ("XX6894- RD Installment-Jul 2026")
+        // would land in extractedDataJson and resurface in the UI.
+        transaction?.let { tx ->
+            tx.merchantName?.let { merged["merchant"] = it } ?: merged.remove("merchant")
+        }
 
         return Enriched(
             result = result,
@@ -500,36 +509,35 @@ class MessageRepositoryImpl(
         skipExistingTransactions: Boolean = false,
     ) {
         enriched.transaction?.let { tx ->
-            if (!skipExistingTransactions || transactionDao.findByRawSmsId(messageId) == null) {
-                val accountNumber = tx.accountLast4 ?: ""
-                val canonicalBank = SenderNameResolver.canonicalize(tx.bankName).orEmpty()
-                // Account-creation guardrail: an account/card row may only
-                // carry the name of a plausible financial institution or
-                // wallet. Merchant names, payment channels (CRED) and
-                // ecommerce brands (Flipkart) — including ones a rule extract
-                // re-injected — are stripped to a blank issuer, so the row
-                // stays claimable by the real bank instead of spawning a
-                // bogus "Flipkart bank account".
-                val bankName =
-                    if (SenderNameResolver.isPlausibleIssuer(canonicalBank)) canonicalBank else ""
-                if (accountNumber.isNotEmpty()) {
-                    upsertAccount(tx, accountNumber, bankName, timestampMs)
-                }
-                transactionDao.insert(
-                    TransactionEntity(
-                        amount = tx.amount,
-                        type = tx.type,
-                        merchantName = tx.merchantName,
-                        accountNumber = accountNumber,
-                        bankName = bankName,
-                        timestamp = timestampMs,
-                        balance = tx.balance,
-                        referenceNumber = tx.referenceNumber,
-                        category = tx.merchantCategory,
-                        rawSmsId = messageId,
-                    ),
-                )
+            if (skipExistingTransactions && transactionDao.findByRawSmsId(messageId) != null) return@let
+            val accountNumber = tx.accountLast4 ?: ""
+            val canonicalBank = SenderNameResolver.canonicalize(tx.bankName).orEmpty()
+            // Account-creation guardrail: an account/card row may only
+            // carry the name of a plausible financial institution or
+            // wallet. Merchant names, payment channels (CRED) and
+            // ecommerce brands (Flipkart) — including ones a rule extract
+            // re-injected — are stripped to a blank issuer, so the row
+            // stays claimable by the real bank instead of spawning a
+            // bogus "Flipkart bank account".
+            val bankName =
+                if (SenderNameResolver.isPlausibleIssuer(canonicalBank)) canonicalBank else ""
+            if (accountNumber.isNotEmpty()) {
+                upsertAccount(tx, accountNumber, bankName, timestampMs)
             }
+            transactionDao.insert(
+                TransactionEntity(
+                    amount = tx.amount,
+                    type = tx.type,
+                    merchantName = tx.merchantName,
+                    accountNumber = accountNumber,
+                    bankName = bankName,
+                    timestamp = timestampMs,
+                    balance = tx.balance,
+                    referenceNumber = tx.referenceNumber,
+                    category = tx.merchantCategory,
+                    rawSmsId = messageId,
+                ),
+            )
         }
         enriched.reminder?.let { reminder ->
             reminderDao.insert(
@@ -617,33 +625,66 @@ class MessageRepositoryImpl(
 
     private suspend fun isSenderBlocked(normalizedSender: String): Boolean = messageDao.isSenderBlocked(normalizedSender)
 
-    /** Overlays rule-extracted values onto the parser's transaction. */
+    /**
+     * Overlays rule-extracted values onto the parser's transaction.
+     *
+     * Merchant precedence: a rule-supplied merchant wins over the parser's
+     * heuristic — but only after [TransactionParser.normalizeMerchantCandidate]
+     * has cleaned it. A raw capture full of reference digits ("XX6894- RD
+     * Installment-Jul 2026") is normalized to its human descriptor, and a
+     * capture that is pure reference noise is rejected entirely, falling back
+     * to the parser's (already clean) title. This keeps a rule's precise
+     * capture from ever REGRESSING the title the parser would have produced.
+     */
     private fun mergeTransaction(
         parsed: ParsedTransaction,
         extracts: Map<String, String>,
+        subCategory: SubCategory?,
     ): ParsedTransaction =
         parsed.copy(
             amount = extracts["amount"]?.toAmount() ?: parsed.amount,
             type = extracts["type"]?.toTransactionType() ?: parsed.type,
-            merchantName = extracts["merchant"] ?: parsed.merchantName,
+            merchantName = extracts["merchant"]?.let { transactionParser.normalizeMerchantCandidate(it) } ?: parsed.merchantName,
             accountLast4 = extracts["account_last4"] ?: parsed.accountLast4,
             bankName = extracts["bank"] ?: parsed.bankName,
             balance = extracts["balance"]?.toAmount() ?: parsed.balance,
+            merchantCategory = subCategory.toMerchantCategory() ?: parsed.merchantCategory,
         )
 
-    /** Builds a transaction purely from rule extracts when the parser found none. */
-    private fun transactionFromExtracts(extracts: Map<String, String>): ParsedTransaction? {
+    /**
+     * Builds a transaction purely from rule extracts when the parser found
+     * none. Amount AND type extracts are mandatory, so balance-only rules
+     * (NPS investment-value statements, data-balance alerts) can never
+     * create a transaction.
+     */
+    private fun transactionFromExtracts(
+        extracts: Map<String, String>,
+        subCategory: SubCategory?,
+    ): ParsedTransaction? {
         val amount = extracts["amount"]?.toAmount() ?: return null
         val type = extracts["type"]?.toTransactionType() ?: return null
         return ParsedTransaction(
             amount = amount,
             type = type,
-            merchantName = extracts["merchant"],
+            merchantName = extracts["merchant"]?.let { transactionParser.normalizeMerchantCandidate(it) },
             accountLast4 = extracts["account_last4"],
             bankName = extracts["bank"],
             balance = extracts["balance"]?.toAmount(),
+            merchantCategory = subCategory.toMerchantCategory() ?: MerchantCategory.OTHER,
         )
     }
+
+    /**
+     * Spend category implied by the rule's sub-category: a recharge rule
+     * always yields a RECHARGE spend, an investment/mutual-fund rule an
+     * INVESTMENT spend — regardless of what the body-keyword heuristic says.
+     */
+    private fun SubCategory?.toMerchantCategory(): MerchantCategory? =
+        when (this) {
+            SubCategory.RECHARGE -> MerchantCategory.RECHARGE
+            SubCategory.INVESTMENT, SubCategory.MUTUAL_FUND -> MerchantCategory.INVESTMENT
+            else -> null
+        }
 
     private fun mergeReminder(
         parsed: ParsedReminder,
@@ -703,6 +744,22 @@ class MessageRepositoryImpl(
          * the commit, small enough that progress ticks and cancellation stay
          * responsive on a 14k-message inbox. */
         const val RECATEGORIZE_PAGE_SIZE = 200
+
+        /**
+         * Sub-categories whose rule extracts may derive a transaction on
+         * their own (no parser match needed): plain transactions, prepaid
+         * recharges, and investment/mutual-fund contributions — all real
+         * money movements the user asked to see in Finance. Amount + type
+         * extracts remain mandatory (see transactionFromExtracts), so
+         * balance-only rules under these sub-categories never create rows.
+         */
+        private val TRANSACTION_DERIVING_SUBCATEGORIES =
+            setOf(
+                SubCategory.TRANSACTION,
+                SubCategory.RECHARGE,
+                SubCategory.INVESTMENT,
+                SubCategory.MUTUAL_FUND,
+            )
     }
 }
 
