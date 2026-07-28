@@ -1,7 +1,9 @@
 package app.clearsms.ui.finance
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Wallet
@@ -85,7 +86,7 @@ import app.clearsms.ui.components.BalanceEyeButton
 import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
-import app.clearsms.ui.components.MaskedBalance
+import app.clearsms.ui.components.MaskedAmountText
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
@@ -125,8 +126,9 @@ fun FinanceScreen(
         scope.launch { openRef(viewModel.sourceMessageForAccount(account)) }
     }
 
-    // One session-wide reveal: tapping any eye authenticates once and
-    // reveals every gated balance on the screen.
+    // ONE screen-level reveal (top-bar eye): the gate is global — revealing
+    // one balance reveals them all — so per-row eyes were removed. Tapping
+    // it authenticates once and reveals every gated figure on the screen.
     val onToggleBalances =
         balanceToggleHandler(
             revealed = state.balancesRevealed,
@@ -140,6 +142,11 @@ fun FinanceScreen(
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.finance_title)) },
+                actions = {
+                    if (state.balanceGated) {
+                        BalanceEyeButton(revealed = state.balancesRevealed, onToggle = onToggleBalances)
+                    }
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -175,7 +182,6 @@ fun FinanceScreen(
                     onToggle = viewModel::toggleSummaryBreakdown,
                     gated = state.balanceGated,
                     revealed = state.balancesRevealed,
-                    onToggleBalances = onToggleBalances,
                 )
             }
             item(key = "pills") {
@@ -195,7 +201,6 @@ fun FinanceScreen(
                         onToggleCollapsed = { accountsCollapsed = !accountsCollapsed },
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
-                        onToggleBalances = onToggleBalances,
                     )
                 FinanceTab.CREDIT_CARDS ->
                     creditCardsSection(
@@ -205,7 +210,6 @@ fun FinanceScreen(
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
                         onSetLimit = { limitDialogFor = it },
-                        onToggleBalances = onToggleBalances,
                     )
                 FinanceTab.TRANSACTIONS ->
                     transactionsSection(
@@ -275,7 +279,6 @@ private fun LazyListScope.accountsSection(
     onToggleCollapsed: () -> Unit,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
-    onToggleBalances: () -> Unit,
 ) {
     if (state.bankAccounts.isEmpty() && state.staleBankAccounts.isEmpty()) {
         emptySectionItem()
@@ -295,7 +298,6 @@ private fun LazyListScope.accountsSection(
                 richAvatars = state.showRichAvatars,
                 gated = state.balanceGated,
                 revealed = state.balancesRevealed,
-                onToggleBalances = onToggleBalances,
                 onOpen = { onOpenAccount(account.accountNumber, account.bankName) },
                 onOpenSource = { onOpenSource(account) },
             )
@@ -315,7 +317,6 @@ private fun LazyListScope.accountsSection(
                         richAvatars = state.showRichAvatars,
                         gated = state.balanceGated,
                         revealed = state.balancesRevealed,
-                        onToggleBalances = onToggleBalances,
                         onOpen = { onOpenAccount(account.accountNumber, account.bankName) },
                         onOpenSource = { onOpenSource(account) },
                     )
@@ -325,42 +326,54 @@ private fun LazyListScope.accountsSection(
     }
 }
 
-/** One bank account / wallet row — shared by the active and older lists. */
+/**
+ * One bank account / wallet row — shared by the active and older lists.
+ *
+ * Layout contract: the trailing amount measures FIRST at its natural width
+ * (never squeezed), the name column takes the remaining width and wraps to
+ * at most [FinanceRowLayout.MAX_NAME_LINES] lines before ellipsizing. The
+ * per-row eye and open-in-new buttons are gone: revealing is screen-level
+ * (top-bar eye) and the whole card opens the account detail — the source
+ * message stays reachable via long-press and from the detail screen's rows.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BankAccountCard(
     account: AccountEntity,
     richAvatars: Boolean,
     gated: Boolean,
     revealed: Boolean,
-    onToggleBalances: () -> Unit,
     onOpen: () -> Unit,
     onOpenSource: () -> Unit,
 ) {
-    ElevatedCard(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(
-                    onClickLabel = stringResource(R.string.finance_open_account_detail),
-                ) { onOpen() },
-    ) {
-        ListItem(
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            leadingContent = {
-                SenderAvatar(
-                    name = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
-                    richAvatars = richAvatars,
-                    isKnownSender = account.bankName.isNotBlank(),
-                    glyph = accountGlyph(account.type),
-                )
-            },
-            headlineContent = {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .combinedClickable(
+                        onClickLabel = stringResource(R.string.finance_open_account_detail),
+                        onLongClickLabel = stringResource(R.string.finance_open_source_sms),
+                        onClick = onOpen,
+                        onLongClick = onOpenSource,
+                    ).padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SenderAvatar(
+                name = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
+                richAvatars = richAvatars,
+                isKnownSender = account.bankName.isNotBlank(),
+                glyph = accountGlyph(account.type),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
                     text = account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
                     style = MaterialTheme.typography.titleMedium,
+                    maxLines = FinanceRowLayout.MAX_NAME_LINES,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            },
-            supportingContent = {
                 Text(
                     text =
                         stringResource(R.string.finance_masked_account, account.accountNumber) + " · " +
@@ -368,33 +381,26 @@ private fun BankAccountCard(
                                 R.string.finance_updated,
                                 RelativeTime.format(account.lastUpdated),
                             ),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    account.lastKnownBalance?.let { balance ->
-                        MaskedBalance(
-                            amount = balance,
-                            kind = AmountKind.BALANCE,
-                            gated = gated,
-                            revealed = revealed,
-                            onToggle = onToggleBalances,
-                        )
-                    } ?: Text(
-                        text = "—",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    IconButton(onClick = onOpenSource) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.OpenInNew,
-                            contentDescription = stringResource(R.string.finance_open_source_sms),
-                        )
-                    }
-                }
-            },
-        )
+            }
+            Spacer(Modifier.width(12.dp))
+            account.lastKnownBalance?.let { balance ->
+                MaskedAmountText(
+                    amount = balance,
+                    kind = AmountKind.BALANCE,
+                    gated = gated,
+                    revealed = revealed,
+                )
+            } ?: Text(
+                text = "—",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -443,7 +449,6 @@ private fun LazyListScope.creditCardsSection(
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
     onSetLimit: (CreditCardItem) -> Unit,
-    onToggleBalances: () -> Unit,
 ) {
     if (state.creditCards.isEmpty() && state.staleCreditCards.isEmpty()) {
         emptySectionItem()
@@ -479,7 +484,6 @@ private fun LazyListScope.creditCardsSection(
             richAvatars = state.showRichAvatars,
             gated = state.balanceGated,
             revealed = state.balancesRevealed,
-            onToggleBalances = onToggleBalances,
             onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
             onOpenSource = { onOpenSource(card.account) },
             onSetLimit = { onSetLimit(card) },
@@ -500,7 +504,6 @@ private fun LazyListScope.creditCardsSection(
                     richAvatars = state.showRichAvatars,
                     gated = state.balanceGated,
                     revealed = state.balancesRevealed,
-                    onToggleBalances = onToggleBalances,
                     onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
                     onOpenSource = { onOpenSource(card.account) },
                     onSetLimit = { onSetLimit(card) },
@@ -675,7 +678,6 @@ private fun MonthSummaryCard(
     onToggle: () -> Unit,
     gated: Boolean,
     revealed: Boolean,
-    onToggleBalances: () -> Unit,
 ) {
     val amountColors = LocalSemanticAmountColors.current
     // The month net is a balance-like aggregate, so the privacy gate masks
@@ -721,9 +723,6 @@ private fun MonthSummaryCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.weight(1f),
                 )
-                if (gated) {
-                    BalanceEyeButton(revealed = revealed, onToggle = onToggleBalances)
-                }
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
@@ -816,31 +815,43 @@ private fun SummaryBreakdownRow(
     }
 }
 
+/**
+ * One credit card. The headline figure is the issuer-reported AVAILABLE
+ * LIMIT (see [CreditCardFigures.headline]) — never a fabricated ₹0 balance.
+ * When both the total limit and the available limit are known, outstanding
+ * (total − available) is shown as a secondary line and drives the
+ * utilization bar. Tap opens the account detail; long-press opens the
+ * source message (the open-source button was removed with the per-row eye).
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CreditCardCard(
     card: CreditCardItem,
     richAvatars: Boolean,
     gated: Boolean,
     revealed: Boolean,
-    onToggleBalances: () -> Unit,
     onOpen: () -> Unit,
     onOpenSource: () -> Unit,
     onSetLimit: () -> Unit,
 ) {
+    val figures = card.figures
     val barColor =
-        when (card.level) {
+        when (figures.level) {
             UtilizationLevel.NORMAL -> MaterialTheme.colorScheme.primary
             UtilizationLevel.WARNING -> MaterialTheme.colorScheme.tertiary
             UtilizationLevel.DANGER -> MaterialTheme.colorScheme.error
         }
-    ElevatedCard(
-        modifier =
-            Modifier.fillMaxWidth().clickable(
-                onClickLabel = stringResource(R.string.finance_open_account_detail),
-                onClick = onOpen,
-            ),
-    ) {
-        Column(Modifier.padding(16.dp)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClickLabel = stringResource(R.string.finance_open_account_detail),
+                    onLongClickLabel = stringResource(R.string.finance_open_source_sms),
+                    onClick = onOpen,
+                    onLongClick = onOpenSource,
+                ).padding(16.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SenderAvatar(
                     name = card.account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
@@ -848,11 +859,13 @@ private fun CreditCardCard(
                     isKnownSender = card.account.bankName.isNotBlank(),
                     glyph = accountGlyph(card.account.type),
                 )
-                Spacer(Modifier.padding(horizontal = 6.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = card.account.bankName.ifBlank { stringResource(R.string.finance_unknown_bank) },
                         style = MaterialTheme.typography.titleMedium,
+                        maxLines = FinanceRowLayout.MAX_NAME_LINES,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = stringResource(R.string.finance_masked_account, card.account.accountNumber),
@@ -860,26 +873,69 @@ private fun CreditCardCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                Spacer(Modifier.width(12.dp))
                 Column(horizontalAlignment = Alignment.End) {
+                    when (val headline = CreditCardFigures.headline(figures)) {
+                        is CardHeadline.AvailableLimit -> {
+                            Text(
+                                text = stringResource(R.string.finance_available_limit),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            MaskedAmountText(
+                                amount = headline.amount,
+                                kind = AmountKind.BALANCE,
+                                gated = gated,
+                                revealed = revealed,
+                            )
+                        }
+                        is CardHeadline.Outstanding -> {
+                            Text(
+                                text = stringResource(R.string.finance_outstanding),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            MaskedAmountText(
+                                amount = headline.amount,
+                                kind = AmountKind.BALANCE,
+                                gated = gated,
+                                revealed = revealed,
+                            )
+                        }
+                        CardHeadline.NoData ->
+                            Text(
+                                text = stringResource(R.string.finance_no_limit_data),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                    }
+                }
+            }
+            // Outstanding = total − available, only when derivable AND not
+            // already the headline (i.e. the available limit is known).
+            if (figures.availableLimit != null && figures.outstanding != null) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.finance_outstanding),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
                     )
-                    MaskedBalance(
-                        amount = card.outstanding,
+                    MaskedAmountText(
+                        amount = figures.outstanding,
                         kind = AmountKind.BALANCE,
                         gated = gated,
                         revealed = revealed,
-                        onToggle = onToggleBalances,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
-            AnimatedVisibility(visible = card.utilization != null) {
+            AnimatedVisibility(visible = figures.utilization != null) {
                 Column {
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(
-                        progress = { card.utilization ?: 0f },
+                        progress = { figures.utilization ?: 0f },
                         modifier = Modifier.fillMaxWidth(),
                         color = barColor,
                     )
@@ -888,7 +944,7 @@ private fun CreditCardCard(
                         text =
                             stringResource(
                                 R.string.finance_utilization,
-                                ((card.utilization ?: 0f) * 100).toInt(),
+                                ((figures.utilization ?: 0f) * 100).toInt(),
                             ),
                         style = MaterialTheme.typography.labelMedium,
                         color = barColor,
@@ -898,9 +954,6 @@ private fun CreditCardCard(
             Row {
                 TextButton(onClick = onSetLimit) {
                     Text(stringResource(R.string.finance_set_card_limit))
-                }
-                TextButton(onClick = onOpenSource) {
-                    Text(stringResource(R.string.finance_open_source_sms))
                 }
             }
         }

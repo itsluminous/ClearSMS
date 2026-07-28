@@ -78,6 +78,8 @@
     <string name="finance_updated">updated %1$s</string>
     <string name="finance_unknown_bank">Unknown bank</string>
     <string name="finance_outstanding">Outstanding</string>
+    <string name="finance_available_limit">Available limit</string>
+    <string name="finance_no_limit_data">No limit data yet</string>
     <string name="finance_utilization">%1$d%% of limit used</string>
     <string name="finance_set_card_limit">Set card limit</string>
     <string name="finance_limit_label">Credit limit (₹)</string>

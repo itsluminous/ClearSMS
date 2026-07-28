@@ -28,13 +28,10 @@ import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 
-/** One credit card with its derived utilization. */
+/** One credit card with its derived display figures (see [CreditCardFigures]). */
 data class CreditCardItem(
     val account: AccountEntity,
-    val outstanding: Double,
-    /** 0..1 fraction of the limit used; null when no limit is set. */
-    val utilization: Float?,
-    val level: UtilizationLevel,
+    val figures: CardFigures,
 )
 
 data class FinanceUiState(
@@ -172,13 +169,14 @@ class FinanceViewModel
                 accounts
                     .filter { it.type == AccountType.CREDIT_CARD }
                     .map { account ->
-                        val outstanding = account.lastKnownBalance ?: 0.0
-                        val fraction = Utilization.fraction(outstanding, account.creditLimit)
                         CreditCardItem(
                             account = account,
-                            outstanding = outstanding,
-                            utilization = fraction,
-                            level = fraction?.let(Utilization::level) ?: UtilizationLevel.NORMAL,
+                            figures =
+                                CreditCardFigures.compute(
+                                    availableLimit = account.availableLimit,
+                                    lastKnownBalance = account.lastKnownBalance,
+                                    totalLimit = account.creditLimit,
+                                ),
                         )
                     }
             val total = transactions.size
@@ -202,7 +200,7 @@ class FinanceViewModel
                 staleBankAccounts = accountSplit.stale,
                 creditCards = cardSplit.active,
                 staleCreditCards = cardSplit.stale,
-                cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),
+                cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.figures.utilization }),
                 latestTransactions = page,
                 rechargeTransactions =
                     transactions

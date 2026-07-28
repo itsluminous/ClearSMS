@@ -1,6 +1,5 @@
 package app.clearsms.ui.components
 
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -9,7 +8,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -34,53 +32,45 @@ object BalanceMask {
 }
 
 /**
- * A monetary balance behind the "Show balance" privacy gate.
+ * A monetary amount behind the "Show balance" privacy gate — display only,
+ * with NO inline eye. Revealing is a screen-level action (one eye in the
+ * top bar) because the gate is global: revealing one balance reveals them
+ * all, so a per-row control was pure noise stealing row width.
  *
- * - Not gated (setting ON): plain [AmountText], no eye — today's behaviour.
- * - Gated and hidden: [BalanceMask.MASK] plus an eye whose tap asks the
- *   caller to run device authentication. The masked text is removed from
+ * - Not gated (setting ON): plain [AmountText] — today's behaviour.
+ * - Gated and hidden: [BalanceMask.MASK]; the masked text is removed from
  *   the accessibility tree ([clearAndSetSemantics]) and replaced with a
  *   generic "Balance hidden" description, so TalkBack can never read a
  *   value that the screen does not show.
- * - Gated and revealed: the value plus an eye that re-conceals immediately
- *   (hiding needs no authentication).
- *
- * The eye is an [IconButton] — Material3 guarantees the 48dp minimum touch
- * target — and its contentDescription flips between "Show balance" and
- * "Hide balance" with state.
+ * - Gated and revealed: the value.
  */
 @Composable
-fun MaskedBalance(
+fun MaskedAmountText(
     amount: Double,
     kind: AmountKind,
     gated: Boolean,
     revealed: Boolean,
-    onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleMedium,
 ) {
-    if (!gated) {
+    if (!gated || revealed) {
         AmountText(amount = amount, kind = kind, modifier = modifier, style = style)
         return
     }
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-        if (revealed) {
-            AmountText(amount = amount, kind = kind, style = style)
-        } else {
-            val hiddenDescription = stringResource(R.string.balance_hidden)
-            Text(
-                text = BalanceMask.MASK,
-                style = style,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clearAndSetSemantics { contentDescription = hiddenDescription },
-            )
-        }
-        BalanceEyeButton(revealed = revealed, onToggle = onToggle)
-    }
+    val hiddenDescription = stringResource(R.string.balance_hidden)
+    Text(
+        text = BalanceMask.MASK,
+        style = style,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.clearAndSetSemantics { contentDescription = hiddenDescription },
+    )
 }
 
-/** The reveal/conceal eye, shared by [MaskedBalance] and bespoke layouts. */
+/**
+ * The reveal/conceal eye — ONE per screen (top bar / section header), never
+ * per row. An [IconButton] guarantees the 48dp minimum touch target.
+ */
 @Composable
 fun BalanceEyeButton(
     revealed: Boolean,
