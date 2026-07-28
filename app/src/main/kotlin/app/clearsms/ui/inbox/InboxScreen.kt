@@ -54,7 +54,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -177,11 +176,11 @@ fun InboxScreen(
             }
         },
     ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = viewModel::refresh,
-            modifier = Modifier.fillMaxSize().padding(padding),
-        ) {
+        // Deliberately no pull-to-refresh: the gesture triggered a full
+        // recategorization inline, which hung the UI on large inboxes.
+        // Re-sorting is available via Settings → Sort inbox again, which
+        // runs in a WorkManager worker with progress.
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             val emptyLoaded = items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0
             if (emptyLoaded && state.filter == InboxFilterState()) {
                 EmptyState(

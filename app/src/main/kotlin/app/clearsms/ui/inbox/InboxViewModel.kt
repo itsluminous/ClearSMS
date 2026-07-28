@@ -83,7 +83,6 @@ data class InboxUiState(
     val unreadCounts: Map<Category, Int> = emptyMap(),
     val totalUnread: Int = 0,
     val latestOtp: LatestOtp? = null,
-    val isRefreshing: Boolean = false,
     val richAvatars: Boolean = true,
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
     val swipeStart: SwipeAction = SwipeAction.ARCHIVE,
@@ -102,7 +101,6 @@ class InboxViewModel
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val filter = MutableStateFlow(InboxFilterState())
-        private val refreshing = MutableStateFlow(false)
 
         /** Bumped when contacts become available so rows re-resolve names. */
         private val contactsTick = MutableStateFlow(0)
@@ -181,16 +179,15 @@ class InboxViewModel
         val uiState: StateFlow<InboxUiState> =
             combine(
                 filter,
-                combine(messageRepository.observeUnreadCounts(), refreshing, ::Pair),
+                messageRepository.observeUnreadCounts(),
                 latestOtp,
                 chrome,
-            ) { currentFilter, (counts, isRefreshing), otp, chromeState ->
+            ) { currentFilter, counts, otp, chromeState ->
                 InboxUiState(
                     filter = currentFilter,
                     unreadCounts = counts.associate { it.category to it.count },
                     totalUnread = counts.sumOf { it.count },
                     latestOtp = otp,
-                    isRefreshing = isRefreshing,
                     richAvatars = chromeState.richAvatars,
                     otpDisplaySize = chromeState.otpDisplaySize,
                     swipeStart = chromeState.swipeStart,
@@ -221,16 +218,10 @@ class InboxViewModel
             contactsTick.update { it + 1 }
         }
 
-        fun refresh() {
-            viewModelScope.launch(ioDispatcher) {
-                refreshing.value = true
-                try {
-                    messageRepository.recategorizeAll()
-                } finally {
-                    refreshing.value = false
-                }
-            }
-        }
+        // Deliberately no refresh()/recategorize entry point here: the inbox
+        // pull-to-refresh gesture was removed because a full inline
+        // recategorization hung the UI. Settings → Sort inbox again runs the
+        // same recategorization in a WorkManager worker with progress.
 
         fun markRead(
             messageId: Long,
