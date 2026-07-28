@@ -99,11 +99,15 @@ class SmsReceiver : BroadcastReceiver() {
         when {
             entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(context, entity, selectedActions)
             entity.subCategory == SubCategory.SCAM -> messageNotifier.notifyScam(entity)
-            // Parsed transaction notification (opt-out via settings). When
+            // Parsed transaction/balance notification (opt-out via settings).
+            // Balance-only updates (BANK_ALERT with a parsed balance) ride
+            // the SAME transactionNotifications gate as transactions: they
+            // are one parsed-finance surface, and a second toggle would add
+            // a confusing third state for the same notification style. When
             // the setting is off — or the message has no renderable parsed
             // data (notify returns false) — control falls through to the
             // plain message notification below, i.e. today's behavior.
-            entity.subCategory == SubCategory.TRANSACTION &&
+            (entity.subCategory == SubCategory.TRANSACTION || entity.subCategory == SubCategory.BANK_ALERT) &&
                 settingsRepository.transactionNotifications.first() &&
                 transactionNotifier.notify(entity, selectedActions) -> Unit
             entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->

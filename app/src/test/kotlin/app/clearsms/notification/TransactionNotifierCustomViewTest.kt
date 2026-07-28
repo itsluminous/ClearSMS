@@ -110,4 +110,38 @@ class TransactionNotifierCustomViewTest {
             ),
         ).isNull()
     }
+
+    @Test
+    fun `balance-only statement builds a parsed notification with blue unsigned amount`() {
+        // The exact keys the ingestion pipeline writes for the reported HDFC
+        // "Available Bal in HDFC Bank A/c XX8709 ..." statement.
+        val notification =
+            notifier.buildNotification(
+                message("""{"balance":"40194.56","account_last4":"8709","bank":"HDFC Bank"}"""),
+                MessageNotifier.DEFAULT_SELECTED,
+            )
+        assertThat(notification).isNotNull()
+        assertThat(notification!!.color).isEqualTo(ContextCompat.getColor(context, R.color.amount_balance))
+        val title = notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString()
+        assertThat(title).isEqualTo("₹40,194.56")
+        assertThat(title).doesNotContain("+")
+        assertThat(title).doesNotContain("−")
+        // The custom parsed layouts are attached — same mechanism as
+        // transactions, no second notification style.
+        @Suppress("DEPRECATION")
+        assertThat(notification.contentView.layoutId).isEqualTo(R.layout.notification_transaction)
+        // Configurable action buttons keep working for balance updates.
+        assertThat(notification.actions).isNotEmpty()
+    }
+
+    @Test
+    fun `balance-only compact line leads with the balance update label`() {
+        val notification =
+            notifier.buildNotification(
+                message("""{"balance":"40194.56","account_last4":"8709","bank":"HDFC Bank"}"""),
+                MessageNotifier.DEFAULT_SELECTED,
+            )
+        val text = notification!!.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString()
+        assertThat(text).isEqualTo("Balance update · A/c 8709 · HDFC Bank")
+    }
 }
