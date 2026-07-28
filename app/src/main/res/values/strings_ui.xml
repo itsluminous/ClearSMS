@@ -242,8 +242,8 @@
     <string name="swipe_action_toggle_read">Toggle read</string>
     <string name="settings_section_sort">Sort</string>
     <string name="settings_sort_again">Sort inbox again</string>
-    <string name="settings_sort_again_summary">Re-run categorization on all messages</string>
-    <string name="settings_sort_confirm">All messages will be re-categorized using the current rules. This may take a moment.</string>
+    <string name="settings_sort_again_summary">Re-run categorization on all messages and refresh Finance and Alerts</string>
+    <string name="settings_sort_confirm">All messages will be re-categorized using the current rules, and Finance transactions and Alerts will be refreshed. Your notes and card limits are kept. This may take a moment.</string>
     <string name="settings_sort_go">Sort</string>
     <string name="settings_sort_done">Inbox sorted</string>
     <string name="settings_sort_running">Sorting inbox…</string>

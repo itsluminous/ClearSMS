@@ -277,13 +277,20 @@ class MessageRepositoryImpl(
                             extractedDataJson = encodeExtracted(enriched.extracted),
                         ),
                     )
-                    // Reminders are REFRESHED (deleted + re-derived) so existing rows
-                    // pick up parser fixes — amounts, labels, corrected types — and
-                    // stale reminders from messages the parser now rejects disappear.
-                    // Transactions keep the skip-existing guard: re-inserting them
-                    // would double finance totals.
+                    // Reminders AND transactions are REFRESHED (deleted + re-derived
+                    // inside this page transaction) so existing rows pick up parser
+                    // and rule fixes — corrected titles, amounts, categories — and
+                    // stale rows from messages that no longer derive anything
+                    // disappear. Delete-before-insert keeps the run idempotent (a
+                    // message never owns two transaction rows), and finance totals
+                    // stay intact because every surviving message re-derives the
+                    // same amounts. User-entered data survives: the transaction
+                    // note is carried onto the re-derived row, and account rows
+                    // (which hold user-set card limits) are upserted, never deleted.
                     reminderDao.deleteByRawSmsId(message.id)
-                    persistDerived(message.id, message.timestamp, enriched, skipExistingTransactions = true)
+                    val previousNote = transactionDao.findByRawSmsId(message.id)?.note
+                    transactionDao.deleteByRawSmsId(message.id)
+                    persistDerived(message.id, message.timestamp, enriched, preservedNote = previousNote)
                 }
             }
             processed += page.size
@@ -506,10 +513,13 @@ class MessageRepositoryImpl(
         messageId: Long,
         timestampMs: Long,
         enriched: Enriched,
-        skipExistingTransactions: Boolean = false,
+        /**
+         * User note from a previous derivation of the same message, carried
+         * onto the re-derived row by the re-sort refresh path.
+         */
+        preservedNote: String? = null,
     ) {
         enriched.transaction?.let { tx ->
-            if (skipExistingTransactions && transactionDao.findByRawSmsId(messageId) != null) return@let
             val accountNumber = tx.accountLast4 ?: ""
             val canonicalBank = SenderNameResolver.canonicalize(tx.bankName).orEmpty()
             // Account-creation guardrail: an account/card row may only
@@ -536,6 +546,7 @@ class MessageRepositoryImpl(
                     referenceNumber = tx.referenceNumber,
                     category = tx.merchantCategory,
                     rawSmsId = messageId,
+                    note = preservedNote,
                 ),
             )
         }
