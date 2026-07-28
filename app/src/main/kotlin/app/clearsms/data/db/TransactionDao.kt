@@ -15,32 +15,62 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC LIMIT :limit")
     fun observeLatest(limit: Int): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions WHERE accountNumber = :accountNumber ORDER BY timestamp DESC")
-    fun observeByAccount(accountNumber: String): Flow<List<TransactionEntity>>
+    /**
+     * Transactions belonging to ONE account: linked by [TransactionEntity.accountId],
+     * with an exact (accountNumber, bankName) fallback for unlinked legacy
+     * rows. Never matched on the last-4 alone — the same tail can exist at
+     * several banks.
+     */
+    @Query(
+        """
+        SELECT t.* FROM transactions t
+        WHERE t.accountId = (
+            SELECT a.id FROM accounts a
+            WHERE a.accountNumber = :accountNumber AND a.bankName = :bankName LIMIT 1
+        )
+        OR (t.accountId IS NULL AND t.accountNumber = :accountNumber AND t.bankName = :bankName)
+        ORDER BY t.timestamp DESC
+        """,
+    )
+    fun observeByAccount(
+        accountNumber: String,
+        bankName: String,
+    ): Flow<List<TransactionEntity>>
 
     /** Newest transactions for one account bounded by [limit] — account-detail "load more" page. */
-    @Query("SELECT * FROM transactions WHERE accountNumber = :accountNumber ORDER BY timestamp DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT t.* FROM transactions t
+        WHERE t.accountId = (
+            SELECT a.id FROM accounts a
+            WHERE a.accountNumber = :accountNumber AND a.bankName = :bankName LIMIT 1
+        )
+        OR (t.accountId IS NULL AND t.accountNumber = :accountNumber AND t.bankName = :bankName)
+        ORDER BY t.timestamp DESC LIMIT :limit
+        """,
+    )
     fun observeByAccountLimited(
         accountNumber: String,
+        bankName: String,
         limit: Int,
     ): Flow<List<TransactionEntity>>
 
-    /** Most recent transaction for an account+bank — the message behind the latest balance update. */
+    /** Most recent transaction for an account — the message behind the latest balance update. */
     @Query(
         """
-        SELECT * FROM transactions
-        WHERE accountNumber = :accountNumber AND bankName = :bankName
-        ORDER BY timestamp DESC LIMIT 1
+        SELECT t.* FROM transactions t
+        WHERE t.accountId = (
+            SELECT a.id FROM accounts a
+            WHERE a.accountNumber = :accountNumber AND a.bankName = :bankName LIMIT 1
+        )
+        OR (t.accountId IS NULL AND t.accountNumber = :accountNumber AND t.bankName = :bankName)
+        ORDER BY t.timestamp DESC LIMIT 1
         """,
     )
     suspend fun latestForAccount(
         accountNumber: String,
         bankName: String,
     ): TransactionEntity?
-
-    /** Fallback: most recent transaction matched on account number alone. */
-    @Query("SELECT * FROM transactions WHERE accountNumber = :accountNumber ORDER BY timestamp DESC LIMIT 1")
-    suspend fun latestForAccountNumber(accountNumber: String): TransactionEntity?
 
     @Query("SELECT * FROM transactions WHERE rawSmsId = :rawSmsId LIMIT 1")
     suspend fun findByRawSmsId(rawSmsId: Long): TransactionEntity?

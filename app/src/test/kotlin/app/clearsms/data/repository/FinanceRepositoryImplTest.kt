@@ -68,7 +68,7 @@ class FinanceRepositoryImplTest {
         }
 
     @Test
-    fun `latest transaction for account falls back to account number when bank does not match`() =
+    fun `latest transaction for account never falls back to the account number alone`() =
         runTest {
             val tx = transaction(id = 1, account = "1234", bank = "IDFC FIRST", timestamp = 5_000)
             val repository =
@@ -79,8 +79,9 @@ class FinanceRepositoryImplTest {
                 )
 
             assertThat(repository.latestTransactionForAccount("1234", "IDFC FIRST")).isEqualTo(tx)
-            // Bank spelled differently on the account row — still resolves via the account number.
-            assertThat(repository.latestTransactionForAccount("1234", "IDFC")).isEqualTo(tx)
+            // A last-4 is not an identity: another bank's account sharing
+            // the tail must NOT surface this bank's message.
+            assertThat(repository.latestTransactionForAccount("1234", "Some Other Bank")).isNull()
             assertThat(repository.latestTransactionForAccount("0000", "IDFC")).isNull()
         }
 }
@@ -92,24 +93,26 @@ private class FakeTransactionDao(
 
     override fun observeLatest(limit: Int): Flow<List<TransactionEntity>> = flowOf(transactions.take(limit))
 
-    override fun observeByAccount(accountNumber: String): Flow<List<TransactionEntity>> =
-        flowOf(transactions.filter { it.accountNumber == accountNumber })
+    private fun forAccount(
+        accountNumber: String,
+        bankName: String,
+    ) = transactions.filter { it.accountNumber == accountNumber && it.bankName == bankName }
+
+    override fun observeByAccount(
+        accountNumber: String,
+        bankName: String,
+    ): Flow<List<TransactionEntity>> = flowOf(forAccount(accountNumber, bankName))
 
     override fun observeByAccountLimited(
         accountNumber: String,
+        bankName: String,
         limit: Int,
-    ): Flow<List<TransactionEntity>> = flowOf(transactions.filter { it.accountNumber == accountNumber }.take(limit))
+    ): Flow<List<TransactionEntity>> = flowOf(forAccount(accountNumber, bankName).take(limit))
 
     override suspend fun latestForAccount(
         accountNumber: String,
         bankName: String,
-    ): TransactionEntity? =
-        transactions
-            .filter { it.accountNumber == accountNumber && it.bankName == bankName }
-            .maxByOrNull { it.timestamp }
-
-    override suspend fun latestForAccountNumber(accountNumber: String): TransactionEntity? =
-        transactions.filter { it.accountNumber == accountNumber }.maxByOrNull { it.timestamp }
+    ): TransactionEntity? = forAccount(accountNumber, bankName).maxByOrNull { it.timestamp }
 
     override suspend fun findByRawSmsId(rawSmsId: Long): TransactionEntity? = transactions.find { it.rawSmsId == rawSmsId }
 
@@ -141,6 +144,8 @@ private class FakeAccountDao : AccountDao {
         accountNumber: String,
         type: app.clearsms.domain.model.AccountType,
     ): AccountEntity? = null
+
+    override suspend fun findByNumber(accountNumber: String): List<AccountEntity> = emptyList()
 
     override suspend fun getAll(): List<AccountEntity> = emptyList()
 

@@ -13,6 +13,7 @@ import app.clearsms.domain.model.TransactionType
         Index("accountNumber"),
         Index("rawSmsId"),
         Index("timestamp"),
+        Index("accountId"),
     ],
 )
 data class TransactionEntity(
@@ -23,6 +24,15 @@ data class TransactionEntity(
     /** Last 4 digits of the source account or card. */
     val accountNumber: String,
     val bankName: String,
+    /**
+     * Row id of the owning [AccountEntity], resolved ONCE at ingestion by
+     * (canonical bank, last-4). Null when no confident owner exists — a
+     * last-4 alone is NOT an identity: the same tail can legitimately
+     * exist at several banks, and matching on it cross-contaminated
+     * account screens. Read paths key on this id and only fall back to
+     * the exact (accountNumber, bankName) pair, never the number alone.
+     */
+    val accountId: Long? = null,
     /** Transaction time as epoch milliseconds. */
     val timestamp: Long,
     /** Available balance after the transaction, when mentioned in the SMS. */

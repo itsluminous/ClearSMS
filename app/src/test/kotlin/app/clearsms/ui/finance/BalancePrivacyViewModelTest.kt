@@ -147,10 +147,14 @@ private class EmptyFinanceRepository : FinanceRepository {
 
     override fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 
-    override fun observeTransactionsByAccount(accountNumber: String): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
+    override fun observeTransactionsByAccount(
+        accountNumber: String,
+        bankName: String,
+    ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 
     override fun observeTransactionsByAccount(
         accountNumber: String,
+        bankName: String,
         limit: Int,
     ): Flow<List<TransactionEntity>> = MutableStateFlow(emptyList())
 

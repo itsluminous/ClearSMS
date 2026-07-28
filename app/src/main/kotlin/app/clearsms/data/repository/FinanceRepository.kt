@@ -12,11 +12,16 @@ interface FinanceRepository {
     /** Newest [limit] transactions — backs the growing "load more" list. */
     fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>>
 
-    fun observeTransactionsByAccount(accountNumber: String): Flow<List<TransactionEntity>>
+    /** Transactions of ONE account, identified by last-4 AND bank — never the number alone. */
+    fun observeTransactionsByAccount(
+        accountNumber: String,
+        bankName: String,
+    ): Flow<List<TransactionEntity>>
 
     /** Newest [limit] transactions for one account — account-detail "load more" list. */
     fun observeTransactionsByAccount(
         accountNumber: String,
+        bankName: String,
         limit: Int,
     ): Flow<List<TransactionEntity>>
 

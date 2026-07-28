@@ -24,20 +24,21 @@ class FinanceRepositoryImpl(
 
     override fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>> = transactionDao.observeLatest(limit)
 
-    override fun observeTransactionsByAccount(accountNumber: String): Flow<List<TransactionEntity>> =
-        transactionDao.observeByAccount(accountNumber)
+    override fun observeTransactionsByAccount(
+        accountNumber: String,
+        bankName: String,
+    ): Flow<List<TransactionEntity>> = transactionDao.observeByAccount(accountNumber, bankName)
 
     override fun observeTransactionsByAccount(
         accountNumber: String,
+        bankName: String,
         limit: Int,
-    ): Flow<List<TransactionEntity>> = transactionDao.observeByAccountLimited(accountNumber, limit)
+    ): Flow<List<TransactionEntity>> = transactionDao.observeByAccountLimited(accountNumber, bankName, limit)
 
     override suspend fun latestTransactionForAccount(
         accountNumber: String,
         bankName: String,
-    ): TransactionEntity? =
-        transactionDao.latestForAccount(accountNumber, bankName)
-            ?: transactionDao.latestForAccountNumber(accountNumber)
+    ): TransactionEntity? = transactionDao.latestForAccount(accountNumber, bankName)
 
     override fun observeAccounts(): Flow<List<AccountEntity>> = accountDao.observeAll()
 

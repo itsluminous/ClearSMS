@@ -184,7 +184,7 @@ class FinanceViewModel
             val total = transactions.size
             // Headline totals go through MonthSummary so self-transfers and
             // card-bill payments are not double counted (see its kdoc).
-            val monthTotals = MonthSummary.compute(monthTxs, MonthSummary.creditCardNumbers(accounts))
+            val monthTotals = MonthSummary.compute(monthTxs, MonthSummary.cardIdentity(accounts))
             val nowMs = System.currentTimeMillis()
             val accountSplit =
                 StaleAccounts.partition(

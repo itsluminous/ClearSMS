@@ -48,22 +48,41 @@ data class MonthTotals(
  * asset — and ordinary card spends (real expenditure at a merchant).
  */
 object MonthSummary {
-    /** Non-blank last-4 numbers of the known credit cards, for exclusion checks. */
-    fun creditCardNumbers(accounts: List<AccountEntity>): Set<String> =
-        accounts
-            .asSequence()
-            .filter { it.type == AccountType.CREDIT_CARD }
-            .map { it.accountNumber }
-            .filter { it.isNotBlank() }
-            .toSet()
+    /**
+     * Identity of the known credit cards for exclusion checks. Keyed by
+     * account row id (for linked transactions) plus the exact
+     * (last-4, bank) pair (for unlinked legacy rows) — never the last-4
+     * alone, which would misclassify a savings transaction whose tail a
+     * card at another bank happens to share.
+     */
+    data class CardIdentity(
+        val ids: Set<Long>,
+        val numberBankPairs: Set<Pair<String, String>>,
+    )
+
+    /** Card identity keys derived from the account list. */
+    fun cardIdentity(accounts: List<AccountEntity>): CardIdentity {
+        val cards = accounts.filter { it.type == AccountType.CREDIT_CARD }
+        return CardIdentity(
+            ids = cards.map { it.id }.toSet(),
+            numberBankPairs =
+                cards
+                    .asSequence()
+                    .filter { it.accountNumber.isNotBlank() }
+                    .map { it.accountNumber to it.bankName }
+                    .toSet(),
+        )
+    }
 
     /** True when [tx] must not contribute to the month's spend/income totals. */
     fun isExcluded(
         tx: TransactionEntity,
-        creditCardNumbers: Set<String>,
+        cards: CardIdentity,
     ): Boolean {
         if (tx.category == MerchantCategory.TRANSFER) return true
-        val onCard = tx.accountNumber.isNotBlank() && tx.accountNumber in creditCardNumbers
+        val onCard =
+            tx.accountId?.let { it in cards.ids }
+                ?: (tx.accountNumber.isNotBlank() && (tx.accountNumber to tx.bankName) in cards.numberBankPairs)
         if (!onCard) return false
         return when (tx.type) {
             TransactionType.CREDIT -> true
@@ -74,9 +93,9 @@ object MonthSummary {
     /** Totals over [monthTransactions] with the exclusion rules applied. */
     fun compute(
         monthTransactions: List<TransactionEntity>,
-        creditCardNumbers: Set<String>,
+        cards: CardIdentity,
     ): MonthTotals {
-        val (excluded, counted) = monthTransactions.partition { isExcluded(it, creditCardNumbers) }
+        val (excluded, counted) = monthTransactions.partition { isExcluded(it, cards) }
         val debits = counted.filter { it.type == TransactionType.DEBIT }
         val credits = counted.filter { it.type == TransactionType.CREDIT }
         val debitTotal = debits.sumOf { it.amount }

@@ -44,19 +44,39 @@ class MonthSummaryTest {
         type: AccountType,
     ) = AccountEntity(accountNumber = number, bankName = "Bank", type = type, lastUpdated = 0L)
 
-    private val cards = MonthSummary.creditCardNumbers(listOf(account("5106", AccountType.CREDIT_CARD)))
+    private val cards = MonthSummary.cardIdentity(listOf(account("5106", AccountType.CREDIT_CARD)))
 
     @Test
-    fun `credit card numbers ignore blanks and non-cards`() {
-        val numbers =
-            MonthSummary.creditCardNumbers(
+    fun `card identity ignores blanks and non-cards`() {
+        val identity =
+            MonthSummary.cardIdentity(
                 listOf(
                     account("5106", AccountType.CREDIT_CARD),
                     account("", AccountType.CREDIT_CARD),
                     account("8709", AccountType.SAVINGS),
                 ),
             )
-        assertThat(numbers).containsExactly("5106")
+        assertThat(identity.numberBankPairs).containsExactly("5106" to "Bank")
+    }
+
+    @Test
+    fun `savings transaction sharing a card's last-4 at another bank is never treated as on-card`() {
+        // Card *8709 at one bank, savings *8709 at another: the savings
+        // credit must stay counted as income, not excluded as a card credit.
+        val identity =
+            MonthSummary.cardIdentity(
+                listOf(
+                    AccountEntity(id = 1, accountNumber = "8709", bankName = "Card Bank", type = AccountType.CREDIT_CARD, lastUpdated = 0L),
+                    AccountEntity(id = 2, accountNumber = "8709", bankName = "Bank", type = AccountType.SAVINGS, lastUpdated = 0L),
+                ),
+            )
+        val savingsCredit = tx(75_000.0, TransactionType.CREDIT, account = "8709", merchant = null)
+        assertThat(MonthSummary.isExcluded(savingsCredit, identity)).isFalse()
+        // The same row LINKED to the card account is on-card and excluded.
+        assertThat(MonthSummary.isExcluded(savingsCredit.copy(accountId = 1), identity)).isTrue()
+        // Linked to the savings account: counted, even though a card at
+        // another bank shares the tail.
+        assertThat(MonthSummary.isExcluded(savingsCredit.copy(accountId = 2), identity)).isFalse()
     }
 
     @Test

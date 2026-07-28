@@ -19,6 +19,10 @@ interface AccountDao {
         bankName: String,
     ): AccountEntity?
 
+    /** Every account sharing a last-4 — a tail is NOT unique across banks. */
+    @Query("SELECT * FROM accounts WHERE accountNumber = :accountNumber")
+    suspend fun findByNumber(accountNumber: String): List<AccountEntity>
+
     /** Legacy row created before bank resolution existed — claimed on next write. */
     @Query("SELECT * FROM accounts WHERE accountNumber = :accountNumber AND bankName = '' AND type = :type LIMIT 1")
     suspend fun findBlankBank(

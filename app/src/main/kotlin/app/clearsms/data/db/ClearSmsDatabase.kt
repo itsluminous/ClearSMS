@@ -23,7 +23,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -54,6 +54,13 @@ import java.time.ZoneId
         // because a card's headroom is not a balance. Existing rows keep
         // their data and start with NULL until the next card SMS arrives.
         AutoMigration(from = 7, to = 8),
+        // v8 -> v9: adds transactions.accountId (nullable) — an explicit
+        // link to the owning account row, resolved at ingestion by
+        // (canonical bank, last-4) instead of re-matching string fields at
+        // read time. The spec backfills it, leaving it NULL when no
+        // confident owner exists, and cleans up nameless (blank-bank)
+        // account rows — see [ClearSmsDatabase.LinkTransactionsToAccounts].
+        AutoMigration(from = 8, to = 9, spec = ClearSmsDatabase.LinkTransactionsToAccounts::class),
     ],
 )
 @TypeConverters(Converters::class)
@@ -316,6 +323,134 @@ abstract class ClearSmsDatabase : RoomDatabase() {
         }
 
         private fun java.time.LocalDate.toEpochMs(): Long = atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    /**
+     * One-time repair for the "shared last-4" bugs (a tail like 8709 can
+     * legitimately exist at several banks):
+     *
+     * 1. Blank-bank account rows (created by an ingestion path that
+     *    blanked an implausible issuer but still inserted the account) are
+     *    merged into the named account with the same last-4 AND type when
+     *    exactly one exists, otherwise deleted. Their transactions are
+     *    re-pointed by the backfill below; user notes live on transaction
+     *    rows and are untouched.
+     * 2. Every transaction gains an [TransactionEntity.accountId] owner:
+     *    matched by (last-4, canonical bank); a transaction with a blank
+     *    bank attaches only when exactly ONE named bank holds that tail.
+     *    Anything ambiguous stays NULL — read paths then fall back to the
+     *    exact (accountNumber, bankName) pair, never the number alone.
+     */
+    class LinkTransactionsToAccounts : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            mergeOrDeleteBlankAccounts(db)
+            backfillAccountIds(db)
+        }
+
+        private class Row(
+            val id: Long,
+            val accountNumber: String,
+            val bankName: String,
+            val type: String,
+            val balance: Double?,
+            val availableLimit: Double?,
+            val creditLimit: Double?,
+            val lastUpdated: Long,
+        )
+
+        private fun loadAccounts(db: SupportSQLiteDatabase): List<Row> {
+            val rows = mutableListOf<Row>()
+            db
+                .query(
+                    "SELECT id, accountNumber, bankName, type, lastKnownBalance, availableLimit, creditLimit, lastUpdated FROM accounts",
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        rows +=
+                            Row(
+                                id = cursor.getLong(0),
+                                accountNumber = cursor.getString(1),
+                                bankName = cursor.getString(2),
+                                type = cursor.getString(3),
+                                balance = if (cursor.isNull(4)) null else cursor.getDouble(4),
+                                availableLimit = if (cursor.isNull(5)) null else cursor.getDouble(5),
+                                creditLimit = if (cursor.isNull(6)) null else cursor.getDouble(6),
+                                lastUpdated = cursor.getLong(7),
+                            )
+                    }
+                }
+            return rows
+        }
+
+        private fun mergeOrDeleteBlankAccounts(db: SupportSQLiteDatabase) {
+            val accounts = loadAccounts(db)
+            val named = accounts.filter { it.bankName.isNotBlank() }
+            for (blank in accounts.filter { it.bankName.isBlank() }) {
+                val candidates =
+                    named.filter { it.accountNumber == blank.accountNumber && it.type == blank.type }
+                val survivor = candidates.singleOrNull()
+                if (survivor != null) {
+                    // Merge: the named row keeps its own figures; the blank
+                    // row only ever fills gaps, and only when it is newer.
+                    val blankNewer = blank.lastUpdated > survivor.lastUpdated
+                    db.execSQL(
+                        "UPDATE accounts SET lastKnownBalance = ?, availableLimit = ?, creditLimit = ?, lastUpdated = ? WHERE id = ?",
+                        arrayOf(
+                            if (blankNewer) blank.balance ?: survivor.balance else survivor.balance,
+                            if (blankNewer) blank.availableLimit ?: survivor.availableLimit else survivor.availableLimit,
+                            if (blankNewer) blank.creditLimit ?: survivor.creditLimit else survivor.creditLimit,
+                            maxOf(blank.lastUpdated, survivor.lastUpdated),
+                            survivor.id,
+                        ),
+                    )
+                }
+                db.execSQL("DELETE FROM accounts WHERE id = ?", arrayOf(blank.id))
+            }
+        }
+
+        private fun backfillAccountIds(db: SupportSQLiteDatabase) {
+            val accounts = loadAccounts(db).filter { it.bankName.isNotBlank() }
+            // Exact (accountNumber, bankName) matches — set-based, covers
+            // the overwhelming majority of rows.
+            for (account in accounts) {
+                db.execSQL(
+                    "UPDATE transactions SET accountId = ? WHERE accountNumber = ? AND bankName = ?",
+                    arrayOf(account.id, account.accountNumber, account.bankName),
+                )
+            }
+            // Remaining rows: canonicalization variants and blank-bank
+            // transactions, resolved per distinct (accountNumber, bankName)
+            // pair. Groups keyed by canonical bank so "SBI" finds the row
+            // stored as "State Bank of India".
+            val byKey = accounts.groupBy { it.accountNumber to SenderNameResolver.canonicalize(it.bankName) }
+            val byTail = accounts.groupBy { it.accountNumber }
+            val pairs = mutableListOf<Pair<String, String>>()
+            db
+                .query(
+                    "SELECT DISTINCT accountNumber, bankName FROM transactions WHERE accountId IS NULL AND accountNumber != ''",
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        pairs += cursor.getString(0) to cursor.getString(1)
+                    }
+                }
+            for ((tail, bank) in pairs) {
+                val owner =
+                    if (bank.isNotBlank()) {
+                        byKey[tail to SenderNameResolver.canonicalize(bank)]?.singleOrNull()
+                    } else {
+                        // Bank unknown on the row: attach only when exactly
+                        // ONE named bank holds this tail.
+                        byTail[tail]
+                            ?.takeIf { rows -> rows.map { it.bankName }.distinct().size == 1 }
+                            ?.singleOrNull()
+                    }
+                if (owner != null) {
+                    db.execSQL(
+                        "UPDATE transactions SET accountId = ? WHERE accountId IS NULL AND accountNumber = ? AND bankName = ?",
+                        arrayOf(owner.id, tail, bank),
+                    )
+                }
+            }
+        }
     }
 
     companion object {

@@ -84,8 +84,8 @@ class AccountDetailViewModel
                 txLimit
                     .flatMapLatest { limit ->
                         combine(
-                            financeRepository.observeTransactionsByAccount(accountNumber),
-                            financeRepository.observeTransactionsByAccount(accountNumber, limit),
+                            financeRepository.observeTransactionsByAccount(accountNumber, bankName),
+                            financeRepository.observeTransactionsByAccount(accountNumber, bankName, limit),
                             filter,
                         ) { allTransactions, page, currentFilter ->
                             buildState(allTransactions, page, currentFilter)

@@ -142,8 +142,10 @@ class FinanceSummaryBannerTest {
                     tx(2, 1_000.0, TransactionType.CREDIT, thisMonth),
                     // Bank-side card-bill transfer — excluded:
                     tx(3, 700.0, TransactionType.DEBIT, thisMonth, category = MerchantCategory.TRANSFER),
-                    // Card-side "payment received" for the same rupees — excluded:
-                    tx(4, 700.0, TransactionType.CREDIT, thisMonth, account = "5106"),
+                    // Card-side "payment received" for the same rupees —
+                    // excluded because it carries the card's full identity
+                    // (last-4 AND bank), not the tail alone:
+                    tx(4, 700.0, TransactionType.CREDIT, thisMonth, account = "5106", bank = "Axis Bank"),
                 )
             val vm = viewModel()
             val job = launch { vm.uiState.collect {} }
@@ -164,13 +166,14 @@ class FinanceSummaryBannerTest {
         type: TransactionType,
         timestamp: Long,
         account: String = "1234",
+        bank: String = "Bank",
         category: MerchantCategory = MerchantCategory.OTHER,
     ) = TransactionEntity(
         id = id,
         amount = amount,
         type = type,
         accountNumber = account,
-        bankName = "Bank",
+        bankName = bank,
         timestamp = timestamp,
         category = category,
         rawSmsId = id,
@@ -185,10 +188,14 @@ private class FakeFinanceRepository : FinanceRepository {
 
     override fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>> = transactions
 
-    override fun observeTransactionsByAccount(accountNumber: String): Flow<List<TransactionEntity>> = transactions
+    override fun observeTransactionsByAccount(
+        accountNumber: String,
+        bankName: String,
+    ): Flow<List<TransactionEntity>> = transactions
 
     override fun observeTransactionsByAccount(
         accountNumber: String,
+        bankName: String,
         limit: Int,
     ): Flow<List<TransactionEntity>> = transactions
 
