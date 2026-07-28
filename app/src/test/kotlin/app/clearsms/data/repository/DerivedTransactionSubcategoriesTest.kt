@@ -81,7 +81,7 @@ class DerivedTransactionSubcategoriesTest {
             // tail identifies it and Protean (the NPS CRA) is its issuer.
             val account = db.accountDao().getAll().single()
             assertThat(account.accountNumber).isEqualTo("8227")
-            assertThat(account.bankName).isEqualTo("Protean")
+            assertThat(account.bankName).isEqualTo("Protean NPS")
         }
 
     @Test
