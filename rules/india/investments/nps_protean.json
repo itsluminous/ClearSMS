@@ -17,7 +17,7 @@
           "type": "debit",
           "merchant": "NPS",
           "account_last4": "$1",
-          "bank": "Protean"
+          "bank": "Protean NPS"
         }
       },
       "contributed_by": "clearsms",
@@ -29,11 +29,16 @@
       "priority": 318,
       "match": {
         "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
-        "body_pattern": "(?i)Investment\\s+value\\s+in\\s+Tier\\s+I{1,2}\\s+\\(PRAN[A-Za-z0-9x*]{1,12}\\)\\s+as\\s+on\\b"
+        "body_pattern": "(?i)Investment\\s+value\\s+in\\s+(?:NPS\\s+)?Tier\\s+I{1,2}\\s+\\(PRAN[\\s-]?[A-Za-zXx*]{0,10}?(\\d{3,4})\\)\\s+as\\s+on\\s+[0-9./-]{6,10}\\s+is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "informational",
-        "sub_category": "investment"
+        "sub_category": "investment",
+        "extract": {
+          "balance": "$2",
+          "account_last4": "$1",
+          "bank": "Protean NPS"
+        }
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-28T00:00:00Z"
@@ -53,7 +58,7 @@
           "amount": "$1",
           "type": "debit",
           "merchant": "NPS",
-          "bank": "Protean"
+          "bank": "Protean NPS"
         }
       },
       "contributed_by": "clearsms",

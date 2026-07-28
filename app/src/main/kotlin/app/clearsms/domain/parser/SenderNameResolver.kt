@@ -71,7 +71,10 @@ object SenderNameResolver {
             // Agency: an NPS contribution creates a real investment account
             // (identified by the PRAN tail), so Protean IS an issuer — the
             // user's NPS holdings deserve an account card like any deposit.
-            Institution("Protean", listOf("PTNNPS", "PROTEA", "NSDLNP", "NSDLPN", "CRANPS"), listOf("PROTEAN")),
+            // Displayed as "Protean NPS" so the account card says what it
+            // holds; the bare "PROTEAN" alias keeps older stored names
+            // canonicalizing to the same account.
+            Institution("Protean NPS", listOf("PTNNPS", "PROTEA", "NSDLNP", "NSDLPN", "CRANPS"), listOf("PROTEAN NPS", "PROTEAN")),
             // EPFO passbook contributions are deposits into a real
             // provident-fund account (keyed on the member-id tail), so like
             // Protean/NPS the EPFO IS an issuer and gets an account card.
@@ -81,6 +84,10 @@ object SenderNameResolver {
             // TO a bank account, an Airtel bill is charged FROM one.
             Institution("Flipkart", listOf("FLPKRT"), listOf("FLIPKART"), isIssuer = false),
             Institution("Airtel", listOf("AIRTEL", "AIRBIL", "AIRINF"), listOf("AIRTEL"), isIssuer = false),
+            // Sony LIV subscription confirmations arrive from LIVCNF; the
+            // friendly name keeps the Subscriptions view readable. An OTT
+            // service is never an account's home, so it is not an issuer.
+            Institution("Sony LIV", listOf("LIVCNF", "SONYLV"), listOf("SONY LIV", "SONYLIV"), isIssuer = false),
         )
 
     /** Aliases sorted longest-first so "Paytm Payments Bank" wins over "Paytm". */

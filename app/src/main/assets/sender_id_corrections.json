@@ -11,6 +11,11 @@
       "name": "Indian Railways",
       "category": "important",
       "sub": "travel"
+    },
+    "LIVCNF": {
+      "name": "Sony LIV",
+      "category": "promotional",
+      "sub": "entertainment"
     }
   }
 }

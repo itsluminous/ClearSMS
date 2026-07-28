@@ -939,7 +939,7 @@
     },
     {
       "key": "protean",
-      "name": "Protean (NPS)",
+      "name": "Protean NPS",
       "category": "INVESTMENT",
       "color": "#5A2D82",
       "monogram": "NP",
@@ -947,9 +947,11 @@
         "PTNNPS",
         "PROTEA",
         "NSDLNP",
+        "NSDLPN",
         "CRANPS"
       ],
       "aliases": [
+        "PROTEAN NPS",
         "PROTEAN",
         "NSDL",
         "NPS"
@@ -1051,6 +1053,21 @@
       "aliases": [
         "INDIAN RAILWAY",
         "INDIAN RAILWAYS"
+      ]
+    },
+    {
+      "key": "sonyliv",
+      "name": "Sony LIV",
+      "category": "OTHER",
+      "color": "#2E3192",
+      "monogram": "SL",
+      "senders": [
+        "LIVCNF",
+        "SONYLV"
+      ],
+      "aliases": [
+        "SONY LIV",
+        "SONYLIV"
       ]
     }
   ]

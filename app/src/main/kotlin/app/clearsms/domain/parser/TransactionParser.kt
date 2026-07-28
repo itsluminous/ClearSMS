@@ -24,6 +24,13 @@ class TransactionParser {
         // are scrubbed BEFORE parsing: what remains carries no completed
         // debit/credit verb and the message stays a reminder only.
         val effectiveBody = STATEMENT_NOTICE_REGEX.replace(body, " ")
+        // "Payment of INR X ... is due (on <date>)" announces a FUTURE
+        // obligation — a bill reminder, never a completed debit. The trailing
+        // "Ignore if paid" advisory carries a completed-tense verb ("paid")
+        // that satisfies the debit heuristics, so the whole notice is
+        // rejected up front; the reminder pipeline extracts the total /
+        // minimum due and due date instead.
+        if (BILL_DUE_NOTICE_REGEX.containsMatchIn(effectiveBody)) return null
         val type = detectType(effectiveBody) ?: return null
 
         val balanceMatch = BALANCE_REGEX.find(effectiveBody)
@@ -157,10 +164,13 @@ class TransactionParser {
 
     /**
      * True for statement / bill notices ("Statement is sent to ...",
-     * "E-statement ... has been mailed", "Statement is generated") — these
-     * must never yield a transaction, from the parser OR from rule extracts.
+     * "E-statement ... has been mailed", "Statement is generated") and for
+     * bill-due notices ("Payment of INR X ... is due on <date>") — these
+     * report money OWED, not money moved, so they must never yield a
+     * transaction, from the parser OR from rule extracts.
      */
-    fun isStatementNotice(body: String): Boolean = STATEMENT_NOTICE_REGEX.containsMatchIn(body)
+    fun isStatementNotice(body: String): Boolean =
+        STATEMENT_NOTICE_REGEX.containsMatchIn(body) || BILL_DUE_NOTICE_REGEX.containsMatchIn(body)
 
     /**
      * ISO currency code when the transaction amount is denominated in a
@@ -454,6 +464,17 @@ class TransactionParser {
                     "\\b(?:e-?)?statement\\s+of\\b[^\\n]{0,80}?\\bhas\\s+been\\s+(?:sent|mailed|e-?mailed)|" +
                     "\\b(?:e-?)?statement\\s+(?:is\\s+)?(?:now\\s+)?(?:available|ready)\\b",
             )
+
+        /**
+         * Bill-due notice: "Payment of INR 532.62 for <card/biller> is due
+         * on 04-04-26" — a payment the user still OWES. Same class as the
+         * statement notices above: never a transaction (its "Ignore if paid"
+         * tail would otherwise satisfy the debit heuristics). The bounded
+         * 100-char gap absorbs the card / biller description between the
+         * amount and "is due".
+         */
+        val BILL_DUE_NOTICE_REGEX =
+            Regex("(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b")
 
         val ACCOUNT_REGEX =
             Regex(
