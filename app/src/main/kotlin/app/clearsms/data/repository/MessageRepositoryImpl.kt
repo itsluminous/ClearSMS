@@ -14,6 +14,7 @@ import app.clearsms.data.rules.RuleDefinition
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.data.rules.toDefinition
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.MerchantCategory
@@ -23,6 +24,7 @@ import app.clearsms.domain.model.ParsedTransaction
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.domain.model.TransactionType
+import app.clearsms.domain.parser.BalanceStatement
 import app.clearsms.domain.parser.DeliveryParser
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
@@ -411,6 +413,8 @@ class MessageRepositoryImpl(
         val reminder: ParsedReminder?,
         /** Relative dates resolve against the message timestamp at persist time. */
         val delivery: ParsedDelivery? = null,
+        /** Balance-only statement: refreshes the account, never a transaction. */
+        val balanceStatement: BalanceStatement? = null,
     )
 
     /** Runs categorizer + parsers and merges rule extracts with parser output. */
@@ -469,6 +473,20 @@ class MessageRepositoryImpl(
                 // due date, e.g. a card statement.
             }?.takeIf { it.dueDate != null }
 
+        // A balance statement reports STATE, not movement: derived only when
+        // no transaction exists (a debit quoting "Avl Bal" keeps its balance
+        // as a secondary transaction field instead). Rule extracts win; the
+        // parser's statement shapes are the fallback. Requiring a
+        // balance-carrying extract set or a parser match keeps unrelated
+        // messages from ever refreshing an account.
+        val balanceStatement =
+            if (transaction == null) {
+                balanceFromExtracts(sender, evalBody, extracts)
+                    ?: transactionParser.parseBalanceStatement(sender, evalBody)
+            } else {
+                null
+            }
+
         val merged = LinkedHashMap<String, String>()
         transaction?.let { tx ->
             merged["amount"] = tx.amount.toString()
@@ -482,6 +500,13 @@ class MessageRepositoryImpl(
             // is never silently read as INR (the entity itself has no
             // currency column yet — this is the audit trail until it does).
             transactionParser.foreignCurrency(evalBody)?.let { merged["currency"] = it }
+        }
+        // Balance-only details feed the same "balance"/"account_last4"/"bank"
+        // keys the UI and the parsed notification already render blue.
+        balanceStatement?.let { statement ->
+            merged["balance"] = statement.balance.toString()
+            statement.accountLast4?.let { merged["account_last4"] = it }
+            statement.bankName?.let { merged["bank"] = it }
         }
         reminder?.let { rem ->
             rem.totalDue?.let { merged["total_due"] = it.toString() }
@@ -506,6 +531,7 @@ class MessageRepositoryImpl(
             transaction = transaction,
             reminder = reminder,
             delivery = delivery,
+            balanceStatement = balanceStatement,
         )
     }
 
@@ -550,6 +576,24 @@ class MessageRepositoryImpl(
                 ),
             )
         }
+        // Balance-only messages update the account WITHOUT fabricating a
+        // transaction row. Gated hard: the message must name the account
+        // (last-4) and a plausible issuer — a merchant or shortcode balance
+        // mention can never create or touch an account.
+        if (enriched.transaction == null) {
+            enriched.balanceStatement?.let { statement ->
+                val accountNumber = statement.accountLast4 ?: return@let
+                val canonicalBank = SenderNameResolver.canonicalize(statement.bankName).orEmpty()
+                if (!SenderNameResolver.isPlausibleIssuer(canonicalBank)) return@let
+                upsertAccountBalance(
+                    accountNumber = accountNumber,
+                    bankName = canonicalBank,
+                    accountType = statement.accountType,
+                    balance = statement.balance,
+                    timestampMs = timestampMs,
+                )
+            }
+        }
         enriched.reminder?.let { reminder ->
             reminderDao.insert(
                 ReminderEntity(
@@ -591,19 +635,33 @@ class MessageRepositoryImpl(
         accountNumber: String,
         bankName: String,
         timestampMs: Long,
+    ) = upsertAccountBalance(accountNumber, bankName, tx.accountType, tx.balance, timestampMs)
+
+    /**
+     * Creates or refreshes an account row from either a transaction or a
+     * balance-only statement — ONE mechanism, so the timestamp ordering
+     * (older messages never clobber a newer balance) and the blank-bank
+     * claim behave identically for both sources.
+     */
+    private suspend fun upsertAccountBalance(
+        accountNumber: String,
+        bankName: String,
+        accountType: AccountType,
+        balance: Double?,
+        timestampMs: Long,
     ) {
         val existing = accountDao.find(accountNumber, bankName)
         if (existing == null) {
             // A pre-resolution row of the same account carries a blank bank
             // name: claim and name it instead of spawning a duplicate card.
-            val blank = if (bankName.isNotEmpty()) accountDao.findBlankBank(accountNumber, tx.accountType) else null
+            val blank = if (bankName.isNotEmpty()) accountDao.findBlankBank(accountNumber, accountType) else null
             if (blank != null) {
                 accountDao.update(
                     blank.copy(
                         bankName = bankName,
                         lastKnownBalance =
                             if (timestampMs >= blank.lastUpdated) {
-                                tx.balance ?: blank.lastKnownBalance
+                                balance ?: blank.lastKnownBalance
                             } else {
                                 blank.lastKnownBalance
                             },
@@ -615,8 +673,8 @@ class MessageRepositoryImpl(
                     AccountEntity(
                         accountNumber = accountNumber,
                         bankName = bankName,
-                        type = tx.accountType,
-                        lastKnownBalance = tx.balance,
+                        type = accountType,
+                        lastKnownBalance = balance,
                         lastUpdated = timestampMs,
                     ),
                 )
@@ -624,11 +682,32 @@ class MessageRepositoryImpl(
         } else if (timestampMs >= existing.lastUpdated) {
             accountDao.update(
                 existing.copy(
-                    lastKnownBalance = tx.balance ?: existing.lastKnownBalance,
+                    lastKnownBalance = balance ?: existing.lastKnownBalance,
                     lastUpdated = timestampMs,
                 ),
             )
         }
+    }
+
+    /**
+     * Balance statement assembled from rule extracts (the "balance" key,
+     * plus optional account/bank). Only consulted for messages WITHOUT a
+     * transaction; the issuer must survive the plausible-issuer check or the
+     * bank stays null (and persistence then skips the account entirely).
+     */
+    private fun balanceFromExtracts(
+        sender: String,
+        evalBody: String,
+        extracts: Map<String, String>,
+    ): BalanceStatement? {
+        val balance = extracts["balance"]?.toAmount() ?: return null
+        val bank = extracts["bank"] ?: SenderNameResolver.bankNameFor(sender, evalBody)
+        return BalanceStatement(
+            balance = balance,
+            accountLast4 = extracts["account_last4"],
+            bankName = bank?.takeIf { SenderNameResolver.isPlausibleIssuer(it, evalBody) },
+            accountType = AccountType.SAVINGS,
+        )
     }
 
     private suspend fun definitions(source: String): List<RuleDefinition> =

@@ -69,6 +69,35 @@ class TransactionParser {
     }
 
     /**
+     * Parses a standalone balance statement ("Available Bal in HDFC Bank
+     * A/c XX8709 as on yesterday:27-JUL-26 is INR 40,194.56") — state
+     * reported, no money moved. Returns null whenever the body carries a
+     * real transaction: there the balance is a secondary field of the
+     * transaction, never a balance-only update. The bank survives only when
+     * it is a plausible issuer (the merchants-never-become-accounts
+     * guardrail), so a balance mention can never spawn a merchant account.
+     */
+    fun parseBalanceStatement(
+        sender: String,
+        body: String,
+    ): BalanceStatement? {
+        if (parse(sender, body) != null) return null
+        val balance =
+            STATEMENT_BALANCE_REGEX
+                .find(body)
+                ?.groupValues
+                ?.get(1)
+                ?.toAmount() ?: return null
+        val resolvedBank = SenderNameResolver.bankNameFor(sender, body)
+        return BalanceStatement(
+            balance = balance,
+            accountLast4 = extractAccountLast4(body),
+            bankName = resolvedBank?.takeIf { SenderNameResolver.isPlausibleIssuer(it, body) },
+            accountType = detectAccountType(body),
+        )
+    }
+
+    /**
      * True for statement / bill notices ("Statement is sent to ...",
      * "E-statement ... has been mailed", "Statement is generated") — these
      * must never yield a transaction, from the parser OR from rule extracts.
@@ -329,6 +358,25 @@ class TransactionParser {
                     "\\s*(?:is|:|=)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
             )
 
+        /**
+         * Balance-statement shapes for balance-ONLY messages (consulted only
+         * when no transaction parses): "Available Bal in <Bank> A/c XX####
+         * as on yesterday:<date> is INR <amt>", "Avl Bal: Rs X", "Available
+         * Balance is Rs X", "A/C Bal is INR X", "Bal as on <date>: Rs X" and
+         * "Yesterday's bal:INR X" (low-balance alerts). The bounded 60-char
+         * span absorbs an intervening bank name, masked account and date
+         * without unbounded scanning.
+         */
+        val STATEMENT_BALANCE_REGEX =
+            Regex(
+                "(?i)\\b(?:(?:avl|avbl|avail(?:able)?)\\.?\\s*bal(?:ance)?|" +
+                    "(?:a/c|acct|account)\\s+bal(?:ance)?|" +
+                    "bal(?:ance)?\\s+as\\s+on|" +
+                    "yesterday'?s\\s+bal(?:ance)?)\\b" +
+                    "[\\s\\S]{0,60}?" +
+                    "(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+            )
+
         val REFERENCE_REGEX =
             Regex(
                 "(?i)\\bref(?:erence)?\\s*(?:no|num|number|id)?\\.?\\s*[:.]?\\s*([A-Za-z0-9]{6,22})|\\b(?:txn|utr)\\s*(?:id|no)?\\.?\\s*[:.]?\\s*([A-Za-z0-9]{6,22})",
@@ -403,3 +451,17 @@ class TransactionParser {
             )
     }
 }
+
+/**
+ * A standalone account-balance statement: the reported balance plus the
+ * account it belongs to. Deliberately NOT a [ParsedTransaction] — no money
+ * moved, so it must never create a transaction row; it only refreshes the
+ * account's last known balance.
+ */
+data class BalanceStatement(
+    val balance: Double,
+    val accountLast4: String?,
+    /** Plausible-issuer names only; null when the sender is not an issuer. */
+    val bankName: String?,
+    val accountType: AccountType,
+)
