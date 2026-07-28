@@ -48,12 +48,32 @@ class CreditCardFiguresTest {
     }
 
     @Test
-    fun `available above the total clamps outstanding at zero`() {
-        // The user lowered the stored limit (or the issuer raised headroom):
-        // usage can never go negative.
+    fun `total equal to available yields UNKNOWN outstanding - never an asserted zero`() {
+        // Real-device pattern: a "your new limit is X" SMS stores the total
+        // while a payment alert stores the same X as available. total −
+        // available = 0 carries no spending information, so no Outstanding
+        // row, no utilization bar, no "0% of limit used" line.
+        val figures = CreditCardFigures.compute(availableLimit = 1_990_000.0, lastKnownBalance = null, totalLimit = 1_990_000.0)
+        assertThat(figures.outstanding).isNull()
+        assertThat(figures.utilization).isNull()
+        assertThat(CreditCardFigures.headline(figures)).isEqualTo(CardHeadline.AvailableLimit(1_990_000.0))
+    }
+
+    @Test
+    fun `available above the total is UNKNOWN too - usage never goes negative or fake-zero`() {
         val figures = CreditCardFigures.compute(availableLimit = 120_000.0, lastKnownBalance = null, totalLimit = 100_000.0)
+        assertThat(figures.outstanding).isNull()
+        assertThat(figures.utilization).isNull()
+    }
+
+    @Test
+    fun `issuer-reported zero balance is a KNOWN zero and may be shown`() {
+        // The legacy path is the issuer explicitly stating the outstanding
+        // figure; 0.0 there is asserted data (a paid-off card), not a
+        // derivation artifact — this is how known-zero differs from unknown.
+        val figures = CreditCardFigures.compute(availableLimit = null, lastKnownBalance = 0.0, totalLimit = null)
         assertThat(figures.outstanding).isEqualTo(0.0)
-        assertThat(figures.utilization).isEqualTo(0f)
+        assertThat(CreditCardFigures.headline(figures)).isEqualTo(CardHeadline.Outstanding(0.0))
     }
 
     @Test

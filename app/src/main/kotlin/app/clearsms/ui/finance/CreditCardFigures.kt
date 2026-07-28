@@ -12,7 +12,12 @@ package app.clearsms.ui.finance
 data class CardFigures(
     /** Issuer-reported available credit limit; null until a card SMS carries one. */
     val availableLimit: Double?,
-    /** Amount used: total − available when both known; legacy balance otherwise; null when underivable. */
+    /**
+     * Amount used: total − available when both known AND positive (a derived
+     * zero is indistinguishable from a same-figure artifact, so it reads as
+     * unknown); legacy issuer-reported balance otherwise (where an explicit
+     * 0.0 IS a known, paid-off zero); null when underivable.
+     */
     val outstanding: Double?,
     /** 0..1 fraction of the total limit used; null without both figures. */
     val utilization: Float?,
@@ -50,13 +55,21 @@ object CreditCardFigures {
     ): CardFigures {
         val outstanding =
             when {
-                // Outstanding = total − available; clamped at zero so a limit
-                // raised after the last SMS never shows negative usage.
+                // Outstanding = total − available, but ONLY when the result is
+                // positive. A derived zero (total ≤ available) is treated as
+                // UNKNOWN, not as ₹0: on real data the total and the available
+                // limit routinely come from the same figure (a "your new limit
+                // is X" statement stores the total while a payment alert stores
+                // the same X as available), so their difference carries no
+                // spending information — asserting "Outstanding ₹0" there is a
+                // lie. A KNOWN zero exists only on the legacy path below, where
+                // the issuer explicitly reported the outstanding figure itself.
                 availableLimit != null && totalLimit != null && totalLimit > 0.0 ->
-                    (totalLimit - availableLimit).coerceAtLeast(0.0)
+                    (totalLimit - availableLimit).takeIf { it > 0.0 }
                 // Available limit known but no total: outstanding is underivable.
                 availableLimit != null -> null
-                // Legacy rows: an issuer-reported balance is the outstanding.
+                // Legacy rows: an issuer-reported balance is the outstanding —
+                // a 0.0 here is issuer-asserted (a genuinely paid-off card).
                 else -> lastKnownBalance
             }
         val utilization = outstanding?.let { Utilization.fraction(it, totalLimit) }

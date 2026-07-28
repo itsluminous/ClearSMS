@@ -33,4 +33,19 @@ class UtilizationTest {
         val fractions = listOf(0.31f, 0.29f, null, 0.90f, 0.30f)
         assertThat(Utilization.countAboveSafeLimit(fractions)).isEqualTo(2)
     }
+
+    @Test
+    fun `high-usage banner counts only cards with a genuine utilization figure`() {
+        // Cards whose outstanding is unknown (total == available snapshots,
+        // no total limit, no data at all) contribute null and never inflate
+        // the banner.
+        val unknown = CreditCardFigures.compute(availableLimit = 100_000.0, lastKnownBalance = null, totalLimit = 100_000.0)
+        val noTotal = CreditCardFigures.compute(availableLimit = 50_000.0, lastKnownBalance = null, totalLimit = null)
+        val genuine = CreditCardFigures.compute(availableLimit = 10_000.0, lastKnownBalance = null, totalLimit = 100_000.0)
+        val counted =
+            Utilization.countAboveSafeLimit(
+                listOf(unknown.utilization, noTotal.utilization, genuine.utilization),
+            )
+        assertThat(counted).isEqualTo(1)
+    }
 }
