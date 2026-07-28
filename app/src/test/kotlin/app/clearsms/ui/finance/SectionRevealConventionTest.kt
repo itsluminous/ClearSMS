@@ -8,8 +8,9 @@ import java.io.File
  * Source-level invariants for the de-cramped Finance rows (in the spirit of
  * BalancePrivacyConventionTest):
  *
- * 1. The reveal eye is SCREEN-level — exactly one [BalanceEyeButton] per
- *    finance screen (in the top bar), never one per row. The reveal state
+ * 1. The reveal control is SCREEN-level — the labelled button in the
+ *    Finance summary card ([BalanceRevealCardButton]) and one top-bar eye
+ *    on the account detail — never one per row. The reveal state machine
  *    machine itself is unchanged (see BalancePrivacyViewModelTest); this
  *    pins that every row reads the same shared (gated, revealed) pair.
  * 2. No per-row open-in-new icon: the card itself navigates, and the source
@@ -25,11 +26,13 @@ class SectionRevealConventionTest {
     }
 
     @Test
-    fun `finance screen has exactly one screen-level eye and no per-row eyes`() {
+    fun `finance screen reveal moved into the summary card - no top-bar eye`() {
         val text = source("ui/finance/FinanceScreen.kt")
-        val eyes = Regex("BalanceEyeButton\\(").findAll(text).count()
-        assertWithMessage("FinanceScreen must host exactly ONE reveal eye (top bar)")
-            .that(eyes)
+        assertWithMessage("FinanceScreen must not host the bare top-bar eye any more")
+            .that(text)
+            .doesNotContain("BalanceEyeButton(")
+        assertWithMessage("the labelled reveal button lives in the summary card, exactly once")
+            .that(Regex("BalanceRevealCardButton\\(").findAll(text).count())
             .isEqualTo(1)
         assertWithMessage("rows must use the eye-free MaskedAmountText")
             .that(text)
@@ -42,6 +45,21 @@ class SectionRevealConventionTest {
         assertWithMessage("AccountDetailScreen must host exactly ONE reveal eye (top bar)")
             .that(Regex("BalanceEyeButton\\(").findAll(text).count())
             .isEqualTo(1)
+    }
+
+    @Test
+    fun `reveal button lives inside the summary card without breaking the expand tap`() {
+        val text = source("ui/finance/FinanceScreen.kt")
+        val card = text.substringAfter("private fun MonthSummaryCard")
+        assertWithMessage("the reveal button renders inside MonthSummaryCard")
+            .that(card)
+            .contains("BalanceRevealCardButton(")
+        assertWithMessage("the card's own expand tap (with its click label) must survive")
+            .that(card)
+            .contains(".clickable(onClickLabel = clickLabel, onClick = onToggle)")
+        assertWithMessage("the expand chevron must survive")
+            .that(card)
+            .contains("if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore")
     }
 
     @Test

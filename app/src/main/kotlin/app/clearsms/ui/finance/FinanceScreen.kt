@@ -77,8 +77,9 @@ import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
-import app.clearsms.ui.components.BalanceEyeButton
 import app.clearsms.ui.components.BalanceMask
+import app.clearsms.ui.components.BalanceRevealButton
+import app.clearsms.ui.components.BalanceRevealCardButton
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.MaskedAmountText
@@ -120,9 +121,10 @@ fun FinanceScreen(
         scope.launch { openRef(viewModel.sourceMessageForAccount(account)) }
     }
 
-    // ONE screen-level reveal (top-bar eye): the gate is global — revealing
-    // one balance reveals them all — so per-row eyes were removed. Tapping
-    // it authenticates once and reveals every gated figure on the screen.
+    // ONE screen-level reveal, now a labelled button INSIDE the summary card
+    // (the bare top-bar eye floated in empty app-bar space and was easy to
+    // miss). The gate is still global: authenticating once reveals every
+    // gated figure on the screen.
     val onToggleBalances =
         balanceToggleHandler(
             revealed = state.balancesRevealed,
@@ -136,11 +138,6 @@ fun FinanceScreen(
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.finance_title)) },
-                actions = {
-                    if (state.balanceGated) {
-                        BalanceEyeButton(revealed = state.balancesRevealed, onToggle = onToggleBalances)
-                    }
-                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -172,10 +169,13 @@ fun FinanceScreen(
                     txCount = state.monthTxCount,
                     debitCount = state.monthDebitCount,
                     creditCount = state.monthCreditCount,
+                    excludedCount = state.monthExcludedCount,
+                    excludedTotal = state.monthExcludedTotal,
                     expanded = summaryExpanded,
                     onToggle = viewModel::toggleSummaryBreakdown,
                     gated = state.balanceGated,
                     revealed = state.balancesRevealed,
+                    onToggleBalances = onToggleBalances,
                 )
             }
             item(key = "pills") {
@@ -644,6 +644,13 @@ private fun SectionHeader(
  * month-scoped filter — jumping there would show *latest* transactions, not
  * "this month" — and expanding in place leaves the persisted pill selection
  * untouched, so the banner never fights the pill row's own state.
+ *
+ * The totals exclude self-transfers and credit-card bill payments (see
+ * [MonthSummary]); the expanded breakdown says so, with the excluded sum.
+ *
+ * When balances are gated this card also hosts the labelled reveal button
+ * ([BalanceRevealCardButton]) right under the masked figure — the button
+ * consumes its own taps, so the card's expand tap and chevron are unaffected.
  */
 @Composable
 private fun MonthSummaryCard(
@@ -653,10 +660,13 @@ private fun MonthSummaryCard(
     txCount: Int,
     debitCount: Int,
     creditCount: Int,
+    excludedCount: Int,
+    excludedTotal: Double,
     expanded: Boolean,
     onToggle: () -> Unit,
     gated: Boolean,
     revealed: Boolean,
+    onToggleBalances: () -> Unit,
 ) {
     val amountColors = LocalSemanticAmountColors.current
     // The month net is a balance-like aggregate, so the privacy gate masks
@@ -723,6 +733,10 @@ private fun MonthSummaryCard(
                     style = MaterialTheme.typography.displaySmall,
                 )
             }
+            BalanceRevealCardButton(
+                state = BalanceRevealButton.state(gated = gated, revealed = revealed),
+                onToggle = onToggleBalances,
+            )
             Spacer(Modifier.height(8.dp))
             if (!expanded) {
                 val breakdown = stringResource(R.string.finance_month_breakdown, creditsText, debitsText)
@@ -766,6 +780,14 @@ private fun MonthSummaryCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
+                    if (excludedCount > 0) {
+                        val excludedText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(excludedTotal)
+                        Text(
+                            text = stringResource(R.string.finance_summary_excluded, excludedText, excludedCount),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                        )
+                    }
                 }
             }
         }
