@@ -54,6 +54,7 @@ fun SenderBrandMark(
     glyph: BrandGlyph,
     modifier: Modifier = Modifier,
     brand: Brand? = null,
+    size: Dp = AvatarDefaults.size,
 ) {
     val brandColor = brand?.let { parseBrandColor(it.color) }
     val background =
@@ -64,7 +65,6 @@ fun SenderBrandMark(
         }
     val monogram = brand?.monogram?.take(3)?.ifBlank { null } ?: initialsOf(name)
     val style = if (brand != null) AvatarStyle.BRAND else AvatarStyle.BRAND_MARK
-    val size = AvatarDefaults.sizeFor(style)
     val badgeGlyph = avatarBadgeGlyph(brand?.category, glyph)
     Box(modifier = modifier.size(size)) {
         Box(

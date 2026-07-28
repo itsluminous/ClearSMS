@@ -53,6 +53,7 @@ import app.clearsms.R
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.ui.common.CurrencyFormat
+import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.finance.reminderGlyph
@@ -247,12 +248,15 @@ private fun ReminderCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     // Same avatar chain as the inbox: bundled logo → brand
-                    // tile → category glyph → letter, gated by the setting.
+                    // tile → category glyph → letter, gated by the setting —
+                    // at the compact diameter so the logo sits level with
+                    // the card's label text instead of dominating the row.
                     SenderAvatar(
                         name = bank,
                         richAvatars = richAvatars,
                         isKnownSender = true,
                         glyph = reminderGlyph(reminder.type),
+                        size = AvatarDefaults.compactSize,
                     )
                 }
             }

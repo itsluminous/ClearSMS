@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
@@ -44,10 +45,11 @@ private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 33
  * it identifies the sender kind (bank / wallet / telecom / government…),
  * so turning off logos and photos must not hide it.
  *
- * Every variant clips to [AvatarDefaults.shape] at [AvatarDefaults.size] —
- * the diameter and shape are deliberately not parameters, so inbox rows, the
+ * Every variant clips to [AvatarDefaults.shape]; [size] must be one of the
+ * two sanctioned diameters ([AvatarDefaults.size] by default,
+ * [AvatarDefaults.compactSize] for dense card corners) so inbox rows, the
  * conversation header, search results, finance cards and alert cards all
- * render identical avatars.
+ * render the same avatar at a consistent scale.
  */
 @Composable
 fun SenderAvatar(
@@ -58,6 +60,7 @@ fun SenderAvatar(
     isKnownSender: Boolean = false,
     glyph: BrandGlyph = BrandGlyph.NONE,
     sender: String? = null,
+    size: Dp = AvatarDefaults.size,
 ) {
     val context = LocalContext.current
     val brand =
@@ -87,19 +90,19 @@ fun SenderAvatar(
         )
     when (style) {
         AvatarStyle.PHOTO ->
-            Box(modifier = modifier.size(AvatarDefaults.sizeFor(style))) {
+            Box(modifier = modifier.size(size)) {
                 SubcomposeAsyncImage(
                     model = photoUri,
                     contentDescription = stringResource(R.string.avatar_contact_photo),
                     // Center-crop: non-square photos fill the circle, never squashed.
                     contentScale = ContentScale.Crop,
-                    error = { PlainAvatar(name = name) },
+                    error = { PlainAvatar(name = name, size = size) },
                     modifier =
                         Modifier
-                            .size(AvatarDefaults.sizeFor(style))
+                            .size(size)
                             .clip(AvatarDefaults.shapeFor(style)),
                 )
-                GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = AvatarDefaults.sizeFor(style))
+                GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = size)
             }
         AvatarStyle.BUNDLED -> {
             // Decoded once per key on IO (BundledLogoCache); the brand tile
@@ -111,7 +114,7 @@ fun SenderAvatar(
             }
             val logo = bitmap
             if (logo != null) {
-                Box(modifier = modifier.size(AvatarDefaults.sizeFor(style))) {
+                Box(modifier = modifier.size(size)) {
                     Image(
                         bitmap = logo,
                         contentDescription = stringResource(R.string.avatar_sender_logo, name),
@@ -121,27 +124,27 @@ fun SenderAvatar(
                         contentScale = ContentScale.Fit,
                         modifier =
                             Modifier
-                                .size(AvatarDefaults.sizeFor(style))
+                                .size(size)
                                 .clip(AvatarDefaults.shapeFor(style))
                                 .background(Color.White)
                                 .padding(4.dp),
                     )
-                    GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = AvatarDefaults.sizeFor(style))
+                    GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = size)
                 }
             } else {
-                SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand)
+                SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand, size = size)
             }
         }
         AvatarStyle.BRAND ->
-            SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand)
+            SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand, size = size)
         AvatarStyle.BRAND_MARK ->
-            SenderBrandMark(name = name, glyph = glyph, modifier = modifier)
+            SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size)
         AvatarStyle.PLAIN ->
             // The category glyph is informational, so it stays visible even
             // with "Show logos and contact photos" off.
-            Box(modifier = modifier.size(AvatarDefaults.sizeFor(style))) {
-                PlainAvatar(name = name)
-                GlyphBadge(glyph = avatarBadgeGlyph(brandCategory = null, glyph = glyph), avatarSize = AvatarDefaults.sizeFor(style))
+            Box(modifier = modifier.size(size)) {
+                PlainAvatar(name = name, size = size)
+                GlyphBadge(glyph = avatarBadgeGlyph(brandCategory = null, glyph = glyph), avatarSize = size)
             }
     }
 }
@@ -154,6 +157,7 @@ fun SenderAvatar(
 private fun PlainAvatar(
     name: String,
     modifier: Modifier = Modifier,
+    size: Dp = AvatarDefaults.size,
 ) {
     val hue = AVATAR_HUES[abs(name.hashCode()) % AVATAR_HUES.size]
     val tone = Color.hsl(hue, 0.45f, 0.62f)
@@ -162,7 +166,7 @@ private fun PlainAvatar(
     Box(
         modifier =
             modifier
-                .size(AvatarDefaults.sizeFor(AvatarStyle.PLAIN))
+                .size(size)
                 .clip(AvatarDefaults.shapeFor(AvatarStyle.PLAIN))
                 .background(background),
         contentAlignment = Alignment.Center,
