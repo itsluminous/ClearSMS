@@ -40,6 +40,15 @@ class MessageCategorizer(
         // which turns even mildly backtracking patterns into a denial of
         // service. The full body is still stored and displayed unchanged.
         val evalBody = body.take(MAX_EVAL_BODY_LENGTH)
+        return enforceInvariants(sender, evalBody, rawCategorize(sender, evalBody, userRules, builtinRules))
+    }
+
+    private fun rawCategorize(
+        sender: String,
+        evalBody: String,
+        userRules: List<RuleDefinition>,
+        builtinRules: List<RuleDefinition>,
+    ): CategorizationResult {
         ruleEngine.evaluate(userRules, sender, evalBody)?.let { return it }
         ruleEngine.evaluate(builtinRules, sender, evalBody)?.let { return it }
 
@@ -57,6 +66,55 @@ class MessageCategorizer(
         }
 
         return CategorizationResult(category = Category.UNKNOWN)
+    }
+
+    /**
+     * Post-conditions applied to EVERY categorization result, regardless of
+     * which stage of the priority chain produced it:
+     *
+     * 1. An extractable OTP code always wins over PROMOTIONAL — a directory
+     *    entry or brand rule that files the sender as promotional must never
+     *    swallow a verification code.
+     * 2. An extracted transaction is never PROMOTIONAL: when the message is
+     *    tagged [SubCategory.TRANSACTION] or the transaction parser finds a
+     *    completed debit/credit, the message is promoted to IMPORTANT.
+     *
+     * Exceptions, deliberately narrow:
+     * - SCAM results stay put — a phishing message quoting an "OTP" or a
+     *   fake debit must not be promoted into the trusted categories.
+     * - UPI-mandate lifecycle notices (created / cancelled) carry an amount
+     *   but move no money; they are INFORMATIONAL, never a transaction.
+     */
+    private fun enforceInvariants(
+        sender: String,
+        evalBody: String,
+        result: CategorizationResult,
+    ): CategorizationResult {
+        if (result.category != Category.PROMOTIONAL) return result
+        if (result.subCategory == SubCategory.SCAM) return result
+
+        otpParser.parse(evalBody)?.let { otp ->
+            return result.copy(
+                category = Category.OTP,
+                subCategory = SubCategory.OTP,
+                extracted = result.extracted + (EXTRACT_OTP_CODE to otp.code),
+            )
+        }
+
+        if (MANDATE_NOTICE_REGEX.containsMatchIn(evalBody)) {
+            return result.copy(category = Category.INFORMATIONAL, subCategory = SubCategory.BANK_ALERT)
+        }
+
+        val hasTransaction =
+            result.subCategory == SubCategory.TRANSACTION ||
+                transactionParser.parse(sender, evalBody) != null
+        if (hasTransaction) {
+            return result.copy(
+                category = Category.IMPORTANT,
+                subCategory = result.subCategory ?: SubCategory.TRANSACTION,
+            )
+        }
+        return result
     }
 
     /** Content-based regex fallback for senders no rule or directory entry knows. */
@@ -99,6 +157,20 @@ class MessageCategorizer(
     companion object {
         /** Key used for OTP codes in [CategorizationResult.extracted]. */
         const val EXTRACT_OTP_CODE = "otp_code"
+
+        /**
+         * UPI Autopay / e-mandate lifecycle notices ("Mandate ... successfully
+         * created", "successfully cancelled the scheduled ... payment"). They
+         * quote the mandate's amount, but no money moved — the transaction
+         * invariant must never promote them, and they read as INFORMATIONAL.
+         * Spans are bounded ({0,60}) so the pattern cannot backtrack badly.
+         */
+        val MANDATE_NOTICE_REGEX =
+            Regex(
+                "(?i)\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:created|cancelled|revoked|modified)\\b|" +
+                    "\\bsuccessfully\\s+cancelled\\s+the\\s+scheduled\\b[\\s\\S]{0,60}?\\bpayment\\b|" +
+                    "\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:created|cancelled|revoked|modified)\\b",
+            )
 
         /**
          * Maximum number of characters of a message body that rule regexes
