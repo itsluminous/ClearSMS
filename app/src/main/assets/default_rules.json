@@ -5124,6 +5124,21 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "airtel-bill-nodue-01",
+      "name": "Airtel Bill Generated (nothing due)",
+      "priority": 251,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)\\bBill\\s+for\\s+your\\s+Airtel\\b[\\s\\S]{0,60}?\\bhas\\s+been\\s+generated\\s+and\\s+there\\s+is\\s+no\\s+payable\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "bill"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "axis-emi-01",
       "name": "Axis Bank EMI Reminder",
       "priority": 250,
@@ -5458,6 +5473,77 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "airtel-payment-received-01",
+      "name": "Airtel Payment Receipt",
+      "priority": 249,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)\\breceived\\s+a\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+your\\s+Airtel\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "airtel-bill-generated-01",
+      "name": "Airtel Bill Generated",
+      "priority": 248,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)\\bBill\\s+for\\s+your\\s+Airtel\\b[\\s\\S]{0,60}?\\bhas\\s+been\\s+generated\\b[\\s\\S]{0,20}?Amount\\s+to\\s+be\\s+paid:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "airtel-bill-details-01",
+      "name": "Airtel Bill Details / Total Due",
+      "priority": 247,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)\\bDetails\\s+of\\s+bill\\s+dated\\b[\\s\\S]{0,60}?Total\\s+Due:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "airtel-bill-due-02",
+      "name": "Airtel Bill Due For Payment (dated)",
+      "priority": 246,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)\\bbill\\s+dated\\b[\\s\\S]{0,50}?\\bis\\s+due\\s+for\\s+payment\\s+on\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "airtel-postpaid-payment-01",
       "name": "Airtel Postpaid Payment Applied",
       "priority": 245,
@@ -5511,6 +5597,24 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "airtel-bill-due-03",
+      "name": "Airtel Bill Due For Payment (amount)",
+      "priority": 243,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)\\bBill\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+due\\s+for\\s+payment\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "airtel-recharge-01",
