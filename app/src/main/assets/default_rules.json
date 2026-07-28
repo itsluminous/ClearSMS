@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "rules": [
     {
       "id": "generic-scam-01",
@@ -1514,7 +1514,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)PAYZAP",
-        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+from\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+from\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -1540,7 +1540,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)PAYZAP",
-        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -3687,6 +3687,57 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "sodexo-meal-load-01",
+      "name": "Sodexo Meal Card Load (Credit + Balance)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)SODEXO|PLUXEE",
+        "body_pattern": "(?i)Sodexo\\s+Card\\s+has\\s+been\\s+successfully\\s+loaded\\s+with\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+towards\\s+Meal\\s+A/c[\\s\\S]{0,40}?Meal\\s+A/c\\s+bal\\s+is\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "balance": "$2",
+          "type": "credit",
+          "bank": "Sodexo"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "sodexo-meal-spend-01",
+      "name": "Sodexo Meal Card Spend (Debit + Balance)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)SODEXO|PLUXEE",
+        "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+spent\\s+from\\s+your\\s+Meal\\s+A/c\\W{0,2}[Xx*]*(\\d{3,4})[\\s\\S]{0,80}?Meal\\s+A/c\\s+bal\\s+is\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "balance": "$3",
+          "type": "debit",
+          "bank": "Sodexo"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "flight-itinerary-status-01",
       "name": "Flight Itinerary Confirmed / Modified",
       "priority": 299,
@@ -3992,6 +4043,54 @@
       "action": {
         "category": "informational",
         "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "hdfc-balance-stmt-01",
+      "name": "HDFC Bank Balance Statement (Bank Named In Body)",
+      "priority": 285,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)(?:avl|avbl|available)\\s+bal(?:ance)?\\s+in\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{3,4})\\s+(?:as\\s+on\\s+|on\\s+)(?:yesterday\\s*:\\s*)?[0-9A-Za-z-]{6,11}\\s*:?\\s*(?:is\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "account_last4": "$1",
+          "balance": "$2",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "hdfc-low-balance-01",
+      "name": "HDFC Bank Low Balance Alert (Yesterday's Bal)",
+      "priority": 284,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)Bal\\s+in\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{3,4})\\s+has\\s+gone\\s+below[\\s\\S]{0,60}?bal\\s*:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "account_last4": "$1",
+          "balance": "$2",
+          "bank": "HDFC Bank"
+        }
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-28T00:00:00Z"
@@ -7177,7 +7276,7 @@
       "name": "Available Balance Update",
       "priority": 32,
       "match": {
-        "body_pattern": "(?i)av(?:l|ail(?:able)?)\\.?\\s+bal(?:ance)?[\\s\\S]{0,30}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+        "body_pattern": "(?i)av(?:l|bl|ail(?:able)?)\\.?\\s+bal(?:ance)?[\\s\\S]{0,60}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",
@@ -7188,6 +7287,23 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-balance-02",
+      "name": "Account Balance / Bal As On Update",
+      "priority": 32,
+      "match": {
+        "body_pattern": "(?i)\\b(?:(?:a/c|acct|account)\\s+bal(?:ance)?|bal(?:ance)?\\s+as\\s+on\\b[\\s\\S]{0,15}?)\\s*(?:is|:|=)\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "balance": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "generic-delivery-01",

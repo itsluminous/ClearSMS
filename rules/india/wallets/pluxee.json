@@ -87,6 +87,57 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sodexo-meal-load-01",
+      "name": "Sodexo Meal Card Load (Credit + Balance)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)SODEXO|PLUXEE",
+        "body_pattern": "(?i)Sodexo\\s+Card\\s+has\\s+been\\s+successfully\\s+loaded\\s+with\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+towards\\s+Meal\\s+A/c[\\s\\S]{0,40}?Meal\\s+A/c\\s+bal\\s+is\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "balance": "$2",
+          "type": "credit",
+          "bank": "Sodexo"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "sodexo-meal-spend-01",
+      "name": "Sodexo Meal Card Spend (Debit + Balance)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)SODEXO|PLUXEE",
+        "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+spent\\s+from\\s+your\\s+Meal\\s+A/c\\W{0,2}[Xx*]*(\\d{3,4})[\\s\\S]{0,80}?Meal\\s+A/c\\s+bal\\s+is\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_must_not_contain": [
+          "OTP",
+          "otp"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "balance": "$3",
+          "type": "debit",
+          "bank": "Sodexo"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     }
   ]
 }

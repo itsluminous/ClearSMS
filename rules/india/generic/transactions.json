@@ -150,7 +150,7 @@
       "name": "Available Balance Update",
       "priority": 32,
       "match": {
-        "body_pattern": "(?i)av(?:l|ail(?:able)?)\\.?\\s+bal(?:ance)?[\\s\\S]{0,30}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+        "body_pattern": "(?i)av(?:l|bl|ail(?:able)?)\\.?\\s+bal(?:ance)?[\\s\\S]{0,60}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
         "category": "important",
@@ -161,6 +161,23 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-balance-02",
+      "name": "Account Balance / Bal As On Update",
+      "priority": 32,
+      "match": {
+        "body_pattern": "(?i)\\b(?:(?:a/c|acct|account)\\s+bal(?:ance)?|bal(?:ance)?\\s+as\\s+on\\b[\\s\\S]{0,15}?)\\s*(?:is|:|=)\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "balance": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "generic-recharge-01",
