@@ -6,6 +6,11 @@
       "name": "India Post",
       "category": "important",
       "sub": "delivery"
+    },
+    "IRSMSA": {
+      "name": "Indian Railways",
+      "category": "important",
+      "sub": "travel"
     }
   }
 }

@@ -296,7 +296,8 @@
       "monogram": "A",
       "senders": [
         "AIRTEL",
-        "ARTLBB"
+        "ARTLBB",
+        "AIRBIL"
       ],
       "aliases": [
         "AIRTEL"
@@ -535,7 +536,8 @@
         "EPFOHO"
       ],
       "aliases": [
-        "EPFO"
+        "EPFO",
+        "EMPLOYEES PROVIDENT FUND ORGANIZATION"
       ]
     },
     {
@@ -634,7 +636,8 @@
         "ACTCRP"
       ],
       "aliases": [
-        "ACT FIBERNET"
+        "ACT FIBERNET",
+        "ATRIA CONVERGENCE"
       ]
     },
     {
@@ -965,6 +968,89 @@
       "aliases": [
         "NATIONAL STOCK EXCHANGE",
         "NSE"
+      ]
+    },
+    {
+      "key": "indigo",
+      "name": "IndiGo",
+      "category": "TRAVEL",
+      "color": "#001B94",
+      "monogram": "6E",
+      "senders": [
+        "INDIGO"
+      ],
+      "aliases": [
+        "INDIGO",
+        "INTERGLOBE AVIATION"
+      ]
+    },
+    {
+      "key": "spicejet",
+      "name": "SpiceJet",
+      "category": "TRAVEL",
+      "color": "#D42E12",
+      "monogram": "SG",
+      "senders": [
+        "SPICEJ"
+      ],
+      "aliases": [
+        "SPICEJET"
+      ]
+    },
+    {
+      "key": "akasaair",
+      "name": "Akasa Air",
+      "category": "TRAVEL",
+      "color": "#FF6D38",
+      "monogram": "QP",
+      "senders": [
+        "AKASAA"
+      ],
+      "aliases": [
+        "AKASA AIR",
+        "AKASA",
+        "SNV AVIATION"
+      ]
+    },
+    {
+      "key": "airindia",
+      "name": "Air India",
+      "category": "TRAVEL",
+      "color": "#DA0E29",
+      "monogram": "AI",
+      "senders": [
+        "AIRIND"
+      ],
+      "aliases": [
+        "AIR INDIA"
+      ]
+    },
+    {
+      "key": "vistara",
+      "name": "Vistara",
+      "category": "TRAVEL",
+      "color": "#4B1E5E",
+      "monogram": "UK",
+      "senders": [
+        "AIRVIS",
+        "VSTARA"
+      ],
+      "aliases": [
+        "VISTARA"
+      ]
+    },
+    {
+      "key": "indianrailways",
+      "name": "Indian Railways",
+      "category": "TRAVEL",
+      "color": "#213A8F",
+      "monogram": "IR",
+      "senders": [
+        "IRSMSA"
+      ],
+      "aliases": [
+        "INDIAN RAILWAY",
+        "INDIAN RAILWAYS"
       ]
     }
   ]
