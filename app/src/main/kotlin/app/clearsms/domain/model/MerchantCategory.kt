@@ -12,5 +12,8 @@ enum class MerchantCategory {
     UTILITY_BILL,
     INVESTMENT,
     TRANSFER,
+
+    /** Prepaid mobile / DTH / data top-ups. */
+    RECHARGE,
     OTHER,
 }

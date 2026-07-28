@@ -50,7 +50,7 @@ class DefaultRulesAssetTest {
 
     @Test
     fun `all action categories are known`() {
-        val known = setOf("important", "promotional", "personal", "otp", "unknown")
+        val known = setOf("important", "promotional", "informational", "personal", "otp", "unknown")
         for (rule in document().rules) {
             assertThat(known).contains(rule.action.category.lowercase())
         }

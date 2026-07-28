@@ -14,5 +14,11 @@ enum class SubCategory {
     SCAM,
     FIXED_DEPOSIT,
     MUTUAL_FUND,
+
+    /** Flight/train boarding, seat, gate and PNR notices. */
+    TRAVEL,
+
+    /** Appointment confirmations and queue/token numbers. */
+    APPOINTMENT,
     GENERAL,
 }

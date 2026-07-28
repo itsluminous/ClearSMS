@@ -138,6 +138,7 @@ class RuleEngine(
             when (value.lowercase()) {
                 "important" -> Category.IMPORTANT
                 "promotional" -> Category.PROMOTIONAL
+                "informational" -> Category.INFORMATIONAL
                 "personal" -> Category.PERSONAL
                 "otp" -> Category.OTP
                 else -> Category.UNKNOWN
@@ -159,6 +160,8 @@ class RuleEngine(
                 "scam" -> SubCategory.SCAM
                 "fixed_deposit" -> SubCategory.FIXED_DEPOSIT
                 "mutual_fund" -> SubCategory.MUTUAL_FUND
+                "travel" -> SubCategory.TRAVEL
+                "appointment" -> SubCategory.APPOINTMENT
                 else -> SubCategory.GENERAL
             }
     }
