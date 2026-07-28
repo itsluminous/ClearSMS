@@ -202,6 +202,9 @@ class TransactionAttributionFixesTest {
         assertThat(SenderNameResolver.isPlausibleIssuer("Paytm Payments Bank")).isTrue()
         // Uncurated but self-evidently a bank.
         assertThat(SenderNameResolver.isPlausibleIssuer("AUBANK")).isTrue()
+        // The NPS Central Recordkeeping Agency: the user's NPS holdings are a
+        // real account (identified by the PRAN tail), so Protean IS an issuer.
+        assertThat(SenderNameResolver.isPlausibleIssuer("Protean")).isTrue()
     }
 
     @Test

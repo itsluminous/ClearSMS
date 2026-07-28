@@ -67,6 +67,11 @@ object SenderNameResolver {
             Institution("PayZapp", listOf("PAYZAP"), listOf("PAYZAPP")),
             // Sodexo meal cards were rebranded to Pluxee; both ids are one wallet.
             Institution("Pluxee", listOf("PLUXEE", "SODEXO"), listOf("PLUXEE", "SODEXO")),
+            // Protean (formerly NSDL e-Gov) is the NPS Central Recordkeeping
+            // Agency: an NPS contribution creates a real investment account
+            // (identified by the PRAN tail), so Protean IS an issuer — the
+            // user's NPS holdings deserve an account card like any deposit.
+            Institution("Protean", listOf("PTNNPS", "PROTEA", "NSDLNP", "NSDLPN", "CRANPS"), listOf("PROTEAN")),
             // Non-bank issuers seen in real inboxes — better display names for
             // the sender-ID fallback path. Not issuers: a Flipkart refund goes
             // TO a bank account, an Airtel bill is charged FROM one.

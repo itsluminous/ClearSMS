@@ -226,8 +226,26 @@ class TransactionParser {
                 ?.groupValues
                 ?.get(1)
                 ?.trim() ?: return null
-        var descriptor = LEADING_REFERENCE_REGEX.replace(raw, "").trim()
-        descriptor = TRAILING_MONTH_YEAR_REGEX.replace(descriptor, "").trim().trimEnd('-', ',')
+        return normalizeMerchantCandidate(raw)
+    }
+
+    /**
+     * Normalizes a raw merchant/narration capture into a human title, or
+     * null when nothing presentable remains. Applied to EVERY rule-supplied
+     * merchant extract as well as the parser's own "Info:" narration, so a
+     * raw capture like "XXXXXXXXXX6894- RD Installment-Jul 2026" always
+     * becomes "RD Installment" — regardless of whether a bundled rule or the
+     * parser produced it. Clean names ("Uber", "HDFC Flexi Cap Fund") pass
+     * through unchanged.
+     */
+    fun normalizeMerchantCandidate(raw: String): String? {
+        var descriptor = LEADING_REFERENCE_REGEX.replace(raw.trim(), "").trim()
+        descriptor =
+            TRAILING_MONTH_YEAR_REGEX
+                .replace(descriptor, "")
+                .trim()
+                .trimEnd('-', ',', ':', ';')
+                .trim()
         if (descriptor.length < 2 || !descriptor.first().isLetter()) return null
         // A leftover long digit run means the field was a reference, not a
         // description — never surface that as a title.
@@ -353,7 +371,8 @@ class TransactionParser {
         val LEADING_REFERENCE_REGEX = Regex("^[Xx*]*\\d+\\s*-\\s*")
 
         /** Trailing "-Jul 2026" style period suffix on an Info descriptor. */
-        val TRAILING_MONTH_YEAR_REGEX = Regex("(?i)[-\\s]+[A-Za-z]{3,9}\\.?\\s*\\d{2,4}\\s*$")
+        val TRAILING_MONTH_YEAR_REGEX =
+            Regex("(?i)[-\\s]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]{0,6}\\.?\\s*\\d{2,4}\\s*$")
 
         /** Digit runs long enough to be a reference, not a description. */
         val LONG_DIGIT_RUN_REGEX = Regex("\\d{5,}")
@@ -377,6 +396,10 @@ class TransactionParser {
                 // RD/FD installments are deposit CONTRIBUTIONS, not purchases.
                 Regex("(?i)\\bsip\\b|mutual\\s*fund|zerodha|groww|\\brd\\s+instal?lment|\\bfd\\s+instal?lment|recurring\\s+deposit") to
                     MerchantCategory.INVESTMENT,
+                // NPS contributions are retirement investments; PRAN is the
+                // NPS account identifier and only appears in that context.
+                Regex("(?i)\\bnps\\b|\\bpran\\b") to MerchantCategory.INVESTMENT,
+                Regex("(?i)\\brecharged?\\b") to MerchantCategory.RECHARGE,
             )
     }
 }
