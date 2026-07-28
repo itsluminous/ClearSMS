@@ -9,7 +9,6 @@ import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.FinanceTab
-import app.clearsms.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,10 +37,13 @@ data class FinanceUiState(
     val monthNet: Double = 0.0,
     val monthDebits: Double = 0.0,
     val monthCredits: Double = 0.0,
-    /** Transactions dated inside the current month (all / debit / credit). */
+    /** Counted transactions inside the current month (all / debit / credit). */
     val monthTxCount: Int = 0,
     val monthDebitCount: Int = 0,
     val monthCreditCount: Int = 0,
+    /** Rows excluded from the totals (self-transfers, card-bill payments). */
+    val monthExcludedCount: Int = 0,
+    val monthExcludedTotal: Double = 0.0,
     val bankAccounts: List<AccountEntity> = emptyList(),
     /** Accounts with no update for over a year — behind "Show older". */
     val staleBankAccounts: List<AccountEntity> = emptyList(),
@@ -180,8 +182,9 @@ class FinanceViewModel
                         )
                     }
             val total = transactions.size
-            val monthDebitTxs = monthTxs.filter { it.type == TransactionType.DEBIT }
-            val monthCreditTxs = monthTxs.filter { it.type == TransactionType.CREDIT }
+            // Headline totals go through MonthSummary so self-transfers and
+            // card-bill payments are not double counted (see its kdoc).
+            val monthTotals = MonthSummary.compute(monthTxs, MonthSummary.creditCardNumbers(accounts))
             val nowMs = System.currentTimeMillis()
             val accountSplit =
                 StaleAccounts.partition(
@@ -190,12 +193,14 @@ class FinanceViewModel
                 ) { it.lastUpdated }
             val cardSplit = StaleAccounts.partition(items = cards, nowMs = nowMs) { it.account.lastUpdated }
             return FinanceUiState(
-                monthNet = MonthlyAggregation.net(monthTxs),
-                monthDebits = monthDebitTxs.sumOf { it.amount },
-                monthCredits = monthCreditTxs.sumOf { it.amount },
-                monthTxCount = monthTxs.size,
-                monthDebitCount = monthDebitTxs.size,
-                monthCreditCount = monthCreditTxs.size,
+                monthNet = monthTotals.net,
+                monthDebits = monthTotals.debits,
+                monthCredits = monthTotals.credits,
+                monthTxCount = monthTotals.txCount,
+                monthDebitCount = monthTotals.debitCount,
+                monthCreditCount = monthTotals.creditCount,
+                monthExcludedCount = monthTotals.excludedCount,
+                monthExcludedTotal = monthTotals.excludedTotal,
                 bankAccounts = accountSplit.active,
                 staleBankAccounts = accountSplit.stale,
                 creditCards = cardSplit.active,

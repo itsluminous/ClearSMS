@@ -5,8 +5,10 @@ import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
+import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -120,18 +122,57 @@ class FinanceSummaryBannerTest {
             job.cancel()
         }
 
+    @Test
+    fun `summary totals exclude self-transfers and card-bill payments but keep real activity`() =
+        runTest(dispatcher) {
+            val thisMonth = ZonedDateTime.now().toInstant().toEpochMilli()
+            finance.accounts.value =
+                listOf(
+                    AccountEntity(
+                        accountNumber = "5106",
+                        bankName = "Axis Bank",
+                        type = AccountType.CREDIT_CARD,
+                        lastUpdated = thisMonth,
+                    ),
+                )
+            finance.transactions.value =
+                listOf(
+                    // Real spend + income — counted:
+                    tx(1, 500.0, TransactionType.DEBIT, thisMonth),
+                    tx(2, 1_000.0, TransactionType.CREDIT, thisMonth),
+                    // Bank-side card-bill transfer — excluded:
+                    tx(3, 700.0, TransactionType.DEBIT, thisMonth, category = MerchantCategory.TRANSFER),
+                    // Card-side "payment received" for the same rupees — excluded:
+                    tx(4, 700.0, TransactionType.CREDIT, thisMonth, account = "5106"),
+                )
+            val vm = viewModel()
+            val job = launch { vm.uiState.collect {} }
+
+            val state = vm.uiState.value
+            assertThat(state.monthDebits).isEqualTo(500.0)
+            assertThat(state.monthCredits).isEqualTo(1_000.0)
+            assertThat(state.monthNet).isEqualTo(500.0)
+            assertThat(state.monthTxCount).isEqualTo(2)
+            assertThat(state.monthExcludedCount).isEqualTo(2)
+            assertThat(state.monthExcludedTotal).isEqualTo(1_400.0)
+            job.cancel()
+        }
+
     private fun tx(
         id: Long,
         amount: Double,
         type: TransactionType,
         timestamp: Long,
+        account: String = "1234",
+        category: MerchantCategory = MerchantCategory.OTHER,
     ) = TransactionEntity(
         id = id,
         amount = amount,
         type = type,
-        accountNumber = "1234",
+        accountNumber = account,
         bankName = "Bank",
         timestamp = timestamp,
+        category = category,
         rawSmsId = id,
     )
 }
