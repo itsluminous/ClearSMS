@@ -572,9 +572,18 @@ class MessageRepositoryImpl(
             // bogus "Flipkart bank account".
             val bankName =
                 if (SenderNameResolver.isPlausibleIssuer(canonicalBank)) canonicalBank else ""
-            if (accountNumber.isNotEmpty()) {
-                upsertAccount(tx, accountNumber, bankName, timestampMs)
-            }
+            // Resolve the owning account ONCE, here at ingestion. With a
+            // named issuer the account is upserted and its id used. With a
+            // blank issuer NO account is ever created: the transaction
+            // attaches to an existing account only when exactly one named
+            // bank holds that last-4, otherwise it stays unattached — a
+            // nameless account row is never the answer.
+            val accountId =
+                when {
+                    accountNumber.isEmpty() -> null
+                    bankName.isNotEmpty() -> upsertAccount(tx, accountNumber, bankName, timestampMs)
+                    else -> soleAccountIdForTail(accountNumber, tx.accountType)
+                }
             transactionDao.insert(
                 TransactionEntity(
                     amount = tx.amount,
@@ -582,6 +591,7 @@ class MessageRepositoryImpl(
                     merchantName = tx.merchantName,
                     accountNumber = accountNumber,
                     bankName = bankName,
+                    accountId = accountId,
                     timestamp = timestampMs,
                     balance = tx.balance,
                     referenceNumber = tx.referenceNumber,
@@ -667,13 +677,30 @@ class MessageRepositoryImpl(
         accountNumber: String,
         bankName: String,
         timestampMs: Long,
-    ) = upsertAccountBalance(accountNumber, bankName, tx.accountType, tx.balance, timestampMs, tx.availableLimit)
+    ): Long = upsertAccountBalance(accountNumber, bankName, tx.accountType, tx.balance, timestampMs, tx.availableLimit)
+
+    /**
+     * The account a bank-less transaction may attach to: exactly ONE named
+     * bank must hold this last-4 (preferring the row matching [accountType]
+     * when a bank has several). Null when no bank or several banks share
+     * the tail — attaching by number alone is how cross-bank contamination
+     * happened.
+     */
+    private suspend fun soleAccountIdForTail(
+        accountNumber: String,
+        accountType: AccountType,
+    ): Long? {
+        val named = accountDao.findByNumber(accountNumber).filter { it.bankName.isNotBlank() }
+        if (named.isEmpty() || named.map { it.bankName }.distinct().size > 1) return null
+        return (named.firstOrNull { it.type == accountType } ?: named.first()).id
+    }
 
     /**
      * Creates or refreshes an account row from either a transaction or a
      * balance-only statement — ONE mechanism, so the timestamp ordering
      * (older messages never clobber a newer balance) and the blank-bank
-     * claim behave identically for both sources.
+     * claim behave identically for both sources. Returns the row id of the
+     * created or updated account, so transactions link to it explicitly.
      */
     private suspend fun upsertAccountBalance(
         accountNumber: String,
@@ -685,7 +712,7 @@ class MessageRepositoryImpl(
         availableLimit: Double? = null,
         /** Issuer-confirmed TOTAL credit limit; follows the same ordering rules as [balance]. */
         totalLimit: Double? = null,
-    ) {
+    ): Long {
         val existing = accountDao.find(accountNumber, bankName)
         if (existing == null) {
             // A pre-resolution row of the same account carries a blank bank
@@ -716,20 +743,21 @@ class MessageRepositoryImpl(
                         lastUpdated = maxOf(timestampMs, blank.lastUpdated),
                     ),
                 )
-            } else {
-                accountDao.insert(
-                    AccountEntity(
-                        accountNumber = accountNumber,
-                        bankName = bankName,
-                        type = accountType,
-                        lastKnownBalance = balance,
-                        availableLimit = availableLimit,
-                        creditLimit = totalLimit,
-                        lastUpdated = timestampMs,
-                    ),
-                )
+                return blank.id
             }
-        } else if (timestampMs >= existing.lastUpdated) {
+            return accountDao.insert(
+                AccountEntity(
+                    accountNumber = accountNumber,
+                    bankName = bankName,
+                    type = accountType,
+                    lastKnownBalance = balance,
+                    availableLimit = availableLimit,
+                    creditLimit = totalLimit,
+                    lastUpdated = timestampMs,
+                ),
+            )
+        }
+        if (timestampMs >= existing.lastUpdated) {
             accountDao.update(
                 existing.copy(
                     lastKnownBalance = balance ?: existing.lastKnownBalance,
@@ -739,6 +767,7 @@ class MessageRepositoryImpl(
                 ),
             )
         }
+        return existing.id
     }
 
     /**

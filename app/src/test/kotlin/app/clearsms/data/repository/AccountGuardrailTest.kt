@@ -79,7 +79,7 @@ class AccountGuardrailTest {
         }
 
     @Test
-    fun `cred payment attaches to the card and creates no cred account`() =
+    fun `cred payment with no known card creates NO account and stays unattached`() =
         runBlocking {
             repository.insertIncoming(
                 "CREDCL",
@@ -87,19 +87,36 @@ class AccountGuardrailTest {
                     "and you have earned 20,847 CRED coins. Simply download the app to claim them, order id.",
                 1_000L,
             )
-            val accounts = db.accountDao().getAll()
-            assertThat(accounts.map { it.bankName }).doesNotContain("CRED")
-            // The payment lands on the card identified by its LAST-4, with the
-            // issuer left blank until a properly attributed message names it.
-            assertThat(accounts.single().accountNumber).isEqualTo("4001")
-            assertThat(accounts.single().bankName).isEmpty()
-            assertThat(
-                db
-                    .transactionDao()
-                    .getAll()
-                    .single()
-                    .accountNumber,
-            ).isEqualTo("4001")
+            // The issuer is unresolvable (CRED is a channel, not a bank) and
+            // no named account holds this tail: a nameless account row must
+            // NOT be invented. The transaction is kept but unattached.
+            assertThat(db.accountDao().getAll()).isEmpty()
+            val tx = db.transactionDao().getAll().single()
+            assertThat(tx.accountNumber).isEqualTo("4001")
+            assertThat(tx.accountId).isNull()
+        }
+
+    @Test
+    fun `cred payment attaches to the sole named card holding that last-4`() =
+        runBlocking {
+            // A properly attributed message names the card first.
+            repository.insertIncoming(
+                "ICICIB",
+                "INR 1,500.00 spent on ICICI Bank Card XX4001 on 30-May-2021 at Amazon. Avl Limit: INR 50,000.00.",
+                500L,
+            )
+            repository.insertIncoming(
+                "CREDCL",
+                "Payment of INR 20,846.56 was received for card number 4315-81XX-XXXX-4001 on 31-May-2021 " +
+                    "and you have earned 20,847 CRED coins. Simply download the app to claim them, order id.",
+                1_000L,
+            )
+            val account = db.accountDao().getAll().single()
+            assertThat(account.bankName).isEqualTo("ICICI Bank")
+            // Exactly one named bank holds *4001 — the payment attaches to it.
+            val payment = db.transactionDao().getAll().first { it.type.name == "CREDIT" }
+            assertThat(payment.accountId).isEqualTo(account.id)
+            assertThat(payment.bankName).isEmpty()
         }
 
     @Test
@@ -115,8 +132,9 @@ class AccountGuardrailTest {
             )
             val accounts = db.accountDao().getAll()
             assertThat(accounts.map { it.bankName }).doesNotContain("Flipkart")
-            assertThat(accounts.single().accountNumber).isEqualTo("709")
-            assertThat(accounts.single().bankName).isEmpty()
+            // No plausible issuer and no named account holding this tail:
+            // no account row of any kind may appear.
+            assertThat(accounts).isEmpty()
             assertThat(
                 db
                     .transactionDao()
