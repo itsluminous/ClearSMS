@@ -136,6 +136,13 @@ fun AccountDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    // Same screen-level reveal as the Finance dashboard: one
+                    // eye for every gated figure, never one per row.
+                    if (state.balanceGated) {
+                        BalanceEyeButton(revealed = state.balancesRevealed, onToggle = onToggleBalances)
+                    }
+                },
             )
         },
     ) { padding ->
@@ -217,7 +224,6 @@ fun AccountDetailScreen(
                         loadSms = { viewModel.smsBodyFor(tx.rawSmsId) },
                         balanceGated = state.balanceGated,
                         balancesRevealed = state.balancesRevealed,
-                        onToggleBalances = onToggleBalances,
                         onAddNote = { noteDialogFor = tx },
                         onOpenMessage = { openTransaction(tx) },
                     )
@@ -251,7 +257,6 @@ private fun TransactionRow(
     loadSms: suspend () -> String?,
     balanceGated: Boolean,
     balancesRevealed: Boolean,
-    onToggleBalances: () -> Unit,
     onAddNote: () -> Unit,
     onOpenMessage: () -> Unit,
 ) {
@@ -332,9 +337,6 @@ private fun TransactionRow(
                                         Modifier
                                     },
                             )
-                            if (balanceGated) {
-                                BalanceEyeButton(revealed = balancesRevealed, onToggle = onToggleBalances)
-                            }
                         }
                     }
                     tx.referenceNumber?.let {
