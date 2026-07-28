@@ -220,6 +220,14 @@ python3 scripts/build_sender_db.py \
 
 After editing the JSON, rebuild the `.db` and include both files in your PR.
 
+For small fixes to wrong upstream entries (e.g. a sender ID mapped to an
+unrelated business), you do not need to regenerate the large `.db` asset:
+add the corrected entry to
+[`rules/sender_ids/corrections.json`](rules/sender_ids/corrections.json)
+and copy it to `app/src/main/assets/sender_id_corrections.json` (a unit test
+keeps the two identical). Corrections are consulted before the bundled
+directory, so they always win for the same normalized sender ID.
+
 ### Brand identity table
 
 Sender avatars for well-known brands are drawn from a curated table at

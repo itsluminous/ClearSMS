@@ -7,6 +7,7 @@ import android.util.LruCache
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SenderInfo
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 
@@ -29,14 +30,27 @@ class SenderIdStore(
     /** Caches lookups; misses are cached as [MISS] to avoid repeated queries. */
     private val cache = LruCache<String, Any>(CACHE_SIZE)
 
+    /**
+     * Curated corrections consulted BEFORE the bundled directory. The
+     * community sender-ID data occasionally carries a wrong entry (a sender
+     * mapped to an unrelated business); shipping a fix would otherwise mean
+     * regenerating the multi-megabyte SQLite asset. This small JSON override
+     * layer (asset `sender_id_corrections.json`, master copy in
+     * `rules/sender_ids/corrections.json`) always wins over the bundled
+     * value for the same normalized sender ID.
+     */
+    private val corrections: Map<String, SenderInfo> by lazy { loadCorrections() }
+
     override fun lookup(senderId: String): SenderInfo? {
         val raw = senderId.trim().uppercase()
         if (raw.isEmpty()) return null
         cache.get(raw)?.let { cached ->
             return cached as? SenderInfo
         }
-        val db = openDatabase() ?: return null
-        val result = queryCandidates(db, candidatesFor(raw))
+        val candidates = candidatesFor(raw)
+        val result =
+            candidates.firstNotNullOfOrNull { corrections[it] }
+                ?: openDatabase()?.let { queryCandidates(it, candidates) }
         cache.put(raw, result ?: MISS)
         return result
     }
@@ -112,9 +126,42 @@ class SenderIdStore(
         return target
     }
 
+    /** Parses the bundled corrections asset; a missing/broken asset degrades to no overrides. */
+    private fun loadCorrections(): Map<String, SenderInfo> =
+        try {
+            val text =
+                context.assets
+                    .open(CORRECTIONS_ASSET)
+                    .bufferedReader()
+                    .use { it.readText() }
+            val entries = JSONObject(text).getJSONObject("corrections")
+            buildMap {
+                for (key in entries.keys()) {
+                    val entry = entries.getJSONObject(key)
+                    val category =
+                        when (entry.getString("category").lowercase()) {
+                            "important" -> Category.IMPORTANT
+                            else -> Category.PROMOTIONAL
+                        }
+                    put(
+                        key.uppercase(),
+                        SenderInfo(
+                            name = entry.getString("name"),
+                            category = category,
+                            sub = entry.optString("sub").takeIf { it.isNotEmpty() },
+                        ),
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Sender ID corrections unavailable", e)
+            emptyMap()
+        }
+
     private companion object {
         const val TAG = "SenderIdStore"
         const val ASSET_NAME = "sender_ids.db"
+        const val CORRECTIONS_ASSET = "sender_id_corrections.json"
         const val DB_FILE_NAME = "sender_ids.db"
         const val CACHE_SIZE = 512
         val PREFIX_REGEX = Regex("^[A-Z]{2}-")

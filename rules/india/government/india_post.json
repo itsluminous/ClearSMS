@@ -6,7 +6,7 @@
       "name": "India Post Article Tracking",
       "priority": 270,
       "match": {
-        "sender_pattern": "(?i)(?:INPOST|INDPOST|IPOST)",
+        "sender_pattern": "(?i)(?:INPOST|INDPOST|INDPST|IPOST|DOPIND)",
         "body_pattern": "(?i)article\\s+(?:no\\s*[.:]?\\s*)?[A-Z]{2}\\d{9}IN\\b"
       },
       "action": {

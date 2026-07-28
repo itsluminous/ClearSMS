@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "comment": "Curated corrections to the community sender-ID directory (india_sender_ids.json.gz). Entries here are consulted BEFORE the bundled sender_ids.db, so a bad upstream entry can be fixed without regenerating the large SQLite asset. Keys are sender IDs after TRAI normalization (VD-INDPST -> INDPST). Keep this file in sync with app/src/main/assets/sender_id_corrections.json (a unit test enforces it).",
+  "corrections": {
+    "INDPST": {
+      "name": "India Post",
+      "category": "important",
+      "sub": "delivery"
+    }
+  }
+}
