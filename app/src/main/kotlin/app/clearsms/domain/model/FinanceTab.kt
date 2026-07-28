@@ -5,4 +5,7 @@ enum class FinanceTab {
     ACCOUNTS,
     CREDIT_CARDS,
     TRANSACTIONS,
+
+    /** Prepaid recharge transactions only. */
+    RECHARGES,
 }

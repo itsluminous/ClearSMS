@@ -196,6 +196,11 @@ fun FinanceScreen(
                         onOpenTransaction = openTransaction,
                         onLoadMore = viewModel::loadMore,
                     )
+                FinanceTab.RECHARGES ->
+                    rechargesSection(
+                        state = state,
+                        onOpenTransaction = openTransaction,
+                    )
             }
         }
     }
@@ -242,6 +247,7 @@ private fun FinanceTab.displayName(): String =
         FinanceTab.ACCOUNTS -> stringResource(R.string.finance_accounts)
         FinanceTab.CREDIT_CARDS -> stringResource(R.string.finance_credit_cards)
         FinanceTab.TRANSACTIONS -> stringResource(R.string.finance_latest_transactions)
+        FinanceTab.RECHARGES -> stringResource(R.string.finance_recharges)
     }
 
 private fun LazyListScope.accountsSection(
@@ -474,37 +480,7 @@ private fun LazyListScope.transactionsSection(
         return
     }
     items(state.latestTransactions, key = { "tx_${it.id}" }) { tx ->
-        ListItem(
-            modifier =
-                Modifier.clickable(
-                    onClickLabel = stringResource(R.string.finance_open_source_sms),
-                ) { onOpenTransaction(tx) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-            leadingContent = {
-                SenderAvatar(
-                    name = financeTransactionAvatarName(tx.merchantName, tx.bankName),
-                    richAvatars = state.showRichAvatars,
-                    isKnownSender = tx.bankName.isNotBlank(),
-                    glyph = BrandGlyph.BANK,
-                )
-            },
-            headlineContent = {
-                Text(
-                    text = tx.merchantName ?: tx.bankName.ifBlank { stringResource(R.string.finance_transaction) },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            supportingContent = {
-                Text(
-                    text =
-                        listOfNotNull(tx.bankName.takeIf { it.isNotBlank() }, tx.accountNumber.takeIf { it.isNotBlank() })
-                            .joinToString(" · ") + "  " + RelativeTime.format(tx.timestamp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            trailingContent = { AmountText(amount = tx.amount, type = tx.type) },
-        )
+        TransactionRow(tx = tx, showRichAvatars = state.showRichAvatars, onOpenTransaction = onOpenTransaction)
     }
     item(key = "tx_load_more") {
         LoadMoreRow(
@@ -513,6 +489,59 @@ private fun LazyListScope.transactionsSection(
             onLoadMore = onLoadMore,
         )
     }
+}
+
+/** Prepaid recharges only — same row rendering as the transactions pill. */
+private fun LazyListScope.rechargesSection(
+    state: FinanceUiState,
+    onOpenTransaction: (TransactionEntity) -> Unit,
+) {
+    if (state.rechargeTransactions.isEmpty()) {
+        emptySectionItem()
+        return
+    }
+    items(state.rechargeTransactions, key = { "rc_${it.id}" }) { tx ->
+        TransactionRow(tx = tx, showRichAvatars = state.showRichAvatars, onOpenTransaction = onOpenTransaction)
+    }
+}
+
+@Composable
+private fun TransactionRow(
+    tx: TransactionEntity,
+    showRichAvatars: Boolean,
+    onOpenTransaction: (TransactionEntity) -> Unit,
+) {
+    ListItem(
+        modifier =
+            Modifier.clickable(
+                onClickLabel = stringResource(R.string.finance_open_source_sms),
+            ) { onOpenTransaction(tx) },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+        leadingContent = {
+            SenderAvatar(
+                name = financeTransactionAvatarName(tx.merchantName, tx.bankName),
+                richAvatars = showRichAvatars,
+                isKnownSender = tx.bankName.isNotBlank(),
+                glyph = BrandGlyph.BANK,
+            )
+        },
+        headlineContent = {
+            Text(
+                text = tx.merchantName ?: tx.bankName.ifBlank { stringResource(R.string.finance_transaction) },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        supportingContent = {
+            Text(
+                text =
+                    listOfNotNull(tx.bankName.takeIf { it.isNotBlank() }, tx.accountNumber.takeIf { it.isNotBlank() })
+                        .joinToString(" · ") + "  " + RelativeTime.format(tx.timestamp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingContent = { AmountText(amount = tx.amount, type = tx.type) },
+    )
 }
 
 /** "Load more" control, replaced by a subtle terminator once everything is loaded. */

@@ -21,14 +21,15 @@ object FinancePills {
         zone: ZoneId = ZoneId.systemDefault(),
     ): Map<FinanceTab, Int> {
         val cards = accounts.count { it.type == AccountType.CREDIT_CARD }
-        val monthTxCount =
-            transactions.count {
+        val monthTxs =
+            transactions.filter {
                 YearMonth.from(Instant.ofEpochMilli(it.timestamp).atZone(zone)) == month
             }
         return mapOf(
             FinanceTab.ACCOUNTS to (accounts.size - cards),
             FinanceTab.CREDIT_CARDS to cards,
-            FinanceTab.TRANSACTIONS to monthTxCount,
+            FinanceTab.TRANSACTIONS to monthTxs.size,
+            FinanceTab.RECHARGES to monthTxs.count(RechargeTransactions::isRecharge),
         )
     }
 }

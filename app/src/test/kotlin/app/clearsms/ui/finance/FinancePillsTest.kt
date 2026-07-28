@@ -4,6 +4,7 @@ import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.TransactionType
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -72,9 +73,22 @@ class FinancePillsTest {
     }
 
     @Test
+    fun `recharges pill counts only recharge transactions in the month`() {
+        val transactions =
+            listOf(
+                tx(2026, 7, 1).copy(category = MerchantCategory.RECHARGE),
+                tx(2026, 7, 5),
+                tx(2026, 6, 30).copy(category = MerchantCategory.RECHARGE),
+            )
+        val counts = FinancePills.counts(emptyList(), transactions, month, zone)
+        assertThat(counts[FinanceTab.RECHARGES]).isEqualTo(1)
+        assertThat(counts[FinanceTab.TRANSACTIONS]).isEqualTo(2)
+    }
+
+    @Test
     fun `empty inputs produce zero counts for every pill`() {
         val counts = FinancePills.counts(emptyList(), emptyList(), month, zone)
         assertThat(counts.keys).containsExactlyElementsIn(FinanceTab.entries)
-        assertThat(counts.values).containsExactly(0, 0, 0)
+        assertThat(counts.values).containsExactly(0, 0, 0, 0)
     }
 }

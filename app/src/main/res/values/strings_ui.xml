@@ -73,6 +73,7 @@
     <string name="finance_accounts">Accounts</string>
     <string name="finance_credit_cards">Credit cards</string>
     <string name="finance_latest_transactions">Latest transactions</string>
+    <string name="finance_recharges">Recharges</string>
     <string name="finance_masked_account">xx%1$s</string>
     <string name="finance_updated">updated %1$s</string>
     <string name="finance_unknown_bank">Unknown bank</string>

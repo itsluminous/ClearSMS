@@ -54,6 +54,8 @@ data class FinanceUiState(
     val cardsAboveSafeLimit: Int = 0,
     /** Bounded page of newest transactions — grows via "load more". */
     val latestTransactions: List<TransactionEntity> = emptyList(),
+    /** All prepaid-recharge transactions, newest first (Recharges pill). */
+    val rechargeTransactions: List<TransactionEntity> = emptyList(),
     /** True while more transactions exist beyond the current page. */
     val hasMoreTransactions: Boolean = false,
     /** True while the next requested page is still resolving. */
@@ -193,6 +195,10 @@ class FinanceViewModel
                 staleCreditCards = cardSplit.stale,
                 cardsAboveSafeLimit = Utilization.countAboveSafeLimit(cards.map { it.utilization }),
                 latestTransactions = page,
+                rechargeTransactions =
+                    transactions
+                        .filter(RechargeTransactions::isRecharge)
+                        .sortedByDescending { it.timestamp },
                 hasMoreTransactions = TransactionPaging.hasMore(shown = page.size, total = total),
                 isLoadingMore = false,
                 pillCounts = FinancePills.counts(accounts, transactions, currentMonth, zone),
