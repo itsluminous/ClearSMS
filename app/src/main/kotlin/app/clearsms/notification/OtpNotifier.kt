@@ -115,8 +115,10 @@ class OtpNotifier
                         MessageActionFactory
                             .build(context, message, notificationId(message.id), listOf(NotificationAction.MARK_READ))
                             .forEach(builder::addAction)
-                    // Planner never emits REPLY for OTP notifications.
+                    // Planner never emits REPLY or generic SHARE for OTP notifications
+                    // (OTP has its own SHARE_OTP action above).
                     NotificationAction.REPLY -> Unit
+                    NotificationAction.SHARE -> Unit
                 }
             }
             return builder.build()

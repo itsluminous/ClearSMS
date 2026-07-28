@@ -42,10 +42,41 @@ internal object MessageActionFactory {
                             broadcast(context, message, notificationId, MessageActionReceiver.ACTION_DELETE, requestOffset = 1),
                         ).build()
                 NotificationAction.REPLY -> replyAction(context, message, notificationId)
+                NotificationAction.SHARE -> shareAction(context, message)
                 // OTP-only actions are handled by OtpNotifier, never here.
                 NotificationAction.COPY_OTP, NotificationAction.SHARE_OTP -> null
             }
         }
+
+    /**
+     * Share forwards the message text via a standard ACTION_SEND chooser.
+     * The PendingIntent itself is [PendingIntent.FLAG_IMMUTABLE] like every
+     * non-reply action; only the chooser target the user picks receives the
+     * text.
+     */
+    private fun shareAction(
+        context: Context,
+        message: MessageEntity,
+    ): NotificationCompat.Action {
+        val send =
+            Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_TEXT, message.body)
+        val chooser =
+            Intent
+                .createChooser(send, context.getString(R.string.notification_action_share))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val pending =
+            PendingIntent.getActivity(
+                context,
+                requestCode(message.id, offset = 3),
+                chooser,
+                NotificationIntents.flags(),
+            )
+        return NotificationCompat.Action
+            .Builder(0, context.getString(R.string.notification_action_share), pending)
+            .build()
+    }
 
     private fun replyAction(
         context: Context,

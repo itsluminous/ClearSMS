@@ -257,6 +257,7 @@
     <string name="settings_default_inbox_filter">Default inbox filter</string>
     <string name="settings_filter_all">All</string>
     <string name="notification_action_reply">Reply</string>
+    <string name="notification_action_share">Share</string>
     <string name="notification_action_share_otp">Share OTP</string>
     <string name="swipe_action_none">Do nothing</string>
     <string name="swipe_action_toggle_read">Toggle read</string>

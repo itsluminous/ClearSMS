@@ -225,6 +225,13 @@ class TransactionNotifier
             private const val GROUP_KEY = "app.clearsms.TRANSACTIONS"
 
             /**
+             * Detail keys written only for bill/payment reminders. Their
+             * presence forces the informational blue/no-sign treatment —
+             * the notification twin of `isBillDetails` in the UI layer.
+             */
+            private val BILL_MARKER_KEYS = setOf("due_date", "total_due", "min_due")
+
+            /**
              * Fixed day/night color resource for a transaction kind — the
              * notification twin of [app.clearsms.ui.theme.SemanticAmountColors].
              */
@@ -239,11 +246,18 @@ class TransactionNotifier
             /**
              * Builds notification content from the message's extracted
              * detail map (keys written by the ingestion pipeline: "amount",
-             * "type", "merchant", "account_last4", "bank", "balance").
+             * "type", "merchant", "account_last4", "bank", "balance",
+             * "due_date", "total_due", "min_due").
              *
-             * Kind selection mirrors the UI: an amount with type debit /
-             * credit wins; otherwise a lone balance renders as a balance-only
-             * update; with neither there is nothing to show (null).
+             * Bill/reminder-derived amounts win first: any of the reminder
+             * keys ("due_date", "total_due", "min_due") marks the message as
+             * a bill notice, which is informational — no money moved — so it
+             * renders in the blue balance treatment with NO sign, never as a
+             * red debit (even when a parser also stamped a debit "type" on
+             * the same message). Otherwise kind selection mirrors the UI: an
+             * amount with type debit / credit wins; a lone balance renders as
+             * a balance-only update; with neither there is nothing to show
+             * (null).
              */
             fun buildContent(
                 details: Map<String, String>,
@@ -253,19 +267,30 @@ class TransactionNotifier
                 val amount = details["amount"]?.replace(",", "")?.toDoubleOrNull()
                 val type = details["type"]?.lowercase()
                 val balance = details["balance"]?.replace(",", "")?.toDoubleOrNull()
+                val billAmount =
+                    if (BILL_MARKER_KEYS.any { it in details }) {
+                        amount
+                            ?: details["total_due"]?.replace(",", "")?.toDoubleOrNull()
+                            ?: details["min_due"]?.replace(",", "")?.toDoubleOrNull()
+                            ?: balance
+                    } else {
+                        null
+                    }
 
                 val kind =
                     when {
+                        billAmount != null -> Content.Kind.BALANCE
                         amount != null && type == "debit" -> Content.Kind.DEBIT
                         amount != null && type == "credit" -> Content.Kind.CREDIT
                         balance != null -> Content.Kind.BALANCE
                         else -> return null
                     }
                 val title =
-                    when (kind) {
-                        Content.Kind.DEBIT -> "− ₹${grouped(amount!!)}"
-                        Content.Kind.CREDIT -> "+ ₹${grouped(amount!!)}"
-                        Content.Kind.BALANCE -> "₹${grouped(balance!!)}"
+                    when {
+                        billAmount != null -> "₹${grouped(billAmount)}"
+                        kind == Content.Kind.DEBIT -> "− ₹${grouped(amount!!)}"
+                        kind == Content.Kind.CREDIT -> "+ ₹${grouped(amount!!)}"
+                        else -> "₹${grouped(balance!!)}"
                     }
                 return Content(
                     kind = kind,
@@ -275,7 +300,10 @@ class TransactionNotifier
                             merchant = details["merchant"],
                             accountLast4 = details["account_last4"],
                             bank = details["bank"],
-                            balanceOnly = kind == Content.Kind.BALANCE,
+                            // A bill keeps its merchant/account/bank line; the
+                            // "Balance update" lead-in is only for true
+                            // balance-only statements.
+                            balanceOnly = billAmount == null && kind == Content.Kind.BALANCE,
                             balanceUpdateLabel = balanceUpdateLabel,
                             accountFormat = accountFormat,
                         ),

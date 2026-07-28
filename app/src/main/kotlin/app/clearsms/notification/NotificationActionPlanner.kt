@@ -31,7 +31,7 @@ object NotificationActionPlanner {
             .filter { it in selected }
             .filter {
                 when (it) {
-                    NotificationAction.MARK_READ, NotificationAction.DELETE -> true
+                    NotificationAction.MARK_READ, NotificationAction.DELETE, NotificationAction.SHARE -> true
                     NotificationAction.REPLY -> repliable
                     NotificationAction.COPY_OTP, NotificationAction.SHARE_OTP -> false
                 }
@@ -41,13 +41,18 @@ object NotificationActionPlanner {
      * Actions for an OTP notification. Copy is ALWAYS first and always
      * available regardless of the selection (it is the whole point of the
      * notification); the rest honor the user's selection. REPLY is skipped —
-     * OTP senders are one-way short codes.
+     * OTP senders are one-way short codes. SHARE is skipped too: OTP
+     * notifications already have the dedicated SHARE_OTP action, and two
+     * share buttons on one notification would be confusing.
      */
     fun forOtp(selected: Set<NotificationAction>): List<NotificationAction> =
         (
             listOf(NotificationAction.COPY_OTP) +
                 NotificationAction.entries.filter {
-                    it in selected && it != NotificationAction.COPY_OTP && it != NotificationAction.REPLY
+                    it in selected &&
+                        it != NotificationAction.COPY_OTP &&
+                        it != NotificationAction.REPLY &&
+                        it != NotificationAction.SHARE
                 }
         ).take(MAX_ACTIONS)
 
