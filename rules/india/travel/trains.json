@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "train-pnr-status-01",
+      "name": "Railway PNR Status Notice",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)IRSMSA",
+        "body_pattern": "(?i)\\bPNR[-: ]\\s*\\d{10}\\b[\\s\\S]{0,80}?\\b(?:Trn|Train)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "train-chart-prepared-01",
+      "name": "Railway Chart Prepared Notice",
+      "priority": 262,
+      "match": {
+        "body_pattern": "(?i)\\bchart\\s+prepared\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    }
+  ]
+}

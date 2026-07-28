@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "cibil-score-check-01",
+      "name": "Credit Score Access Notice",
+      "priority": 265,
+      "match": {
+        "body_pattern": "(?i)\\bCIBIL\\s+Score(?:\\s*&\\s*Report)?\\s+was\\s+(?:checked|accessed|viewed)\\s+by\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "hospital-token-01",
+      "name": "Hospital / Clinic Token Number",
+      "priority": 260,
+      "match": {
+        "body_pattern": "(?i)\\b[A-Z0-9]{1,10}\\s+is\\s+your\\s+token\\s+(?:number|no\\.?)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "appointment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "hospital-token-02",
+      "name": "Appointment Token Confirmed",
+      "priority": 260,
+      "match": {
+        "body_pattern": "(?i)\\byour\\s+token\\s+(?:number|no\\.?)\\s+[A-Z0-9]{1,10}\\b[\\s\\S]{0,80}?\\b(?:confirmed|OPD|walk-?in|hospital|clinic)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "appointment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    }
+  ]
+}

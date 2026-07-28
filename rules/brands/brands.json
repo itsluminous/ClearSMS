@@ -890,6 +890,82 @@
         "BAJAJ FINSERV",
         "BAJAJ FINANCE"
       ]
+    },
+    {
+      "key": "iciciprumf",
+      "name": "ICICI Prudential MF",
+      "category": "INVESTMENT",
+      "color": "#AE275F",
+      "monogram": "IP",
+      "senders": [
+        "IPRUMF"
+      ],
+      "aliases": [
+        "ICICI PRUDENTIAL MUTUAL FUND",
+        "ICICI PRU MF"
+      ]
+    },
+    {
+      "key": "hdfcmf",
+      "name": "HDFC Mutual Fund",
+      "category": "INVESTMENT",
+      "color": "#ED232A",
+      "monogram": "HM",
+      "senders": [
+        "HDFCMF"
+      ],
+      "aliases": [
+        "HDFC MUTUAL FUND",
+        "HDFC MF"
+      ]
+    },
+    {
+      "key": "canararobeco",
+      "name": "Canara Robeco MF",
+      "category": "INVESTMENT",
+      "color": "#00539F",
+      "monogram": "CR",
+      "senders": [
+        "CRMF",
+        "CNRBMF"
+      ],
+      "aliases": [
+        "CANARA ROBECO",
+        "CANARA ROBECO MUTUAL FUND"
+      ]
+    },
+    {
+      "key": "protean",
+      "name": "Protean (NPS)",
+      "category": "INVESTMENT",
+      "color": "#5A2D82",
+      "monogram": "NP",
+      "senders": [
+        "PTNNPS",
+        "PROTEA",
+        "NSDLNP",
+        "CRANPS"
+      ],
+      "aliases": [
+        "PROTEAN",
+        "NSDL",
+        "NPS"
+      ]
+    },
+    {
+      "key": "nse",
+      "name": "NSE",
+      "category": "INVESTMENT",
+      "color": "#1B2C6B",
+      "monogram": "NSE",
+      "senders": [
+        "NSESMS",
+        "NSETRA"
+      ],
+      "aliases": [
+        "NATIONAL STOCK EXCHANGE",
+        "NSE"
+      ]
     }
   ]
 }

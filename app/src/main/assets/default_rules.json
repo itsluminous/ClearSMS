@@ -373,6 +373,25 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "act-otp-01",
+      "name": "ACT Fibernet OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP|ACTGRP|ACTBRD)",
+        "body_pattern": "(?i)Your\\s+OTP\\s+is\\s*:?\\s*(\\d{4,8})\\b"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "digilocker-otp-01",
       "name": "DigiLocker Access OTP",
       "priority": 330,
@@ -1308,6 +1327,88 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "mf-sip-allotment-01",
+      "name": "MF SIP Units Allotted (dash-separated shape)",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "body_pattern": "(?i)SIP\\s*-\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+Folio\\s+\\S{1,20}\\s*-\\s*([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:\\s*-\\s*[A-Za-z][A-Za-z ]{0,30})?\\s*-\\s*[\\d.]{1,12}\\s+units\\s+allotted"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "mutual_fund",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "mf-sip-purchase-01",
+      "name": "MF SIP Purchase (amount-first, fund after Folio)",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "body_pattern": "(?i)SIP\\s+Purchase\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+Folio\\s+\\S{1,20}\\s+in\\s+([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:\\s*-\\s*[A-Za-z][A-Za-z ]{0,30})?\\s+for\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "mutual_fund",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "mf-sip-purchase-02",
+      "name": "MF SIP Purchase (fund-first, amount after fund)",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "body_pattern": "(?i)SIP\\s+Purchase\\s+in\\s+Folio\\s+\\S{1,20}\\s+under\\s+([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:[- ](?:DP|Dir(?:ect)?|Reg(?:ular)?|Growth|IDCW)[A-Za-z -]{0,20})?\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "mutual_fund",
+        "extract": {
+          "amount": "$2",
+          "merchant": "$1",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "nps-contribution-01",
+      "name": "NPS Contribution Units Credited",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
+        "body_pattern": "(?i)PRAN\\s+[A-Zx*]{0,8}(\\d{3,4})\\s*:\\s*Units\\s+for\\s+\\([A-Z]{3}-\\d{4}\\)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "investment",
+        "extract": {
+          "amount": "$2",
+          "type": "debit",
+          "merchant": "NPS",
+          "account_last4": "$1",
+          "bank": "Protean"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "paytm-wallet-paid-01",
       "name": "Paytm Wallet Payment To Merchant",
       "priority": 320,
@@ -1603,6 +1704,21 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "nps-balance-01",
+      "name": "NPS Investment Value Statement",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
+        "body_pattern": "(?i)Investment\\s+value\\s+in\\s+Tier\\s+I{1,2}\\s+\\(PRAN[A-Za-z0-9x*]{1,12}\\)\\s+as\\s+on\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "investment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "sbi-inb-debit-01",
       "name": "SBI Net Banking Transaction",
       "priority": 318,
@@ -1722,6 +1838,27 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "nps-contribution-credited-01",
+      "name": "NPS Contribution Credited (account shape)",
+      "priority": 316,
+      "match": {
+        "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
+        "body_pattern": "(?i)Contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+your\\s+NPS\\s+account"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "investment",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "NPS",
+          "bank": "Protean"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "sbi-debit-transfer-02",
@@ -2260,6 +2397,29 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "mf-purchase-generic-01",
+      "name": "MF Purchase Processed (fund-house catch-all)",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "body_pattern": "(?i)\\b(?:SIP|lumpsum|purchase)\\b[\\s\\S]{0,120}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,160}?\\b(?:units|NAV)\\b",
+        "body_must_not_contain": [
+          "redemption",
+          "redeem"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "mutual_fund",
+        "extract": {
+          "amount": "$1",
+          "type": "debit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "unity-fd-01",
       "name": "Unity SFB Fixed Deposit Created",
       "priority": 310,
@@ -2671,6 +2831,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flight-pnr-01",
+      "name": "Airline PNR / Check-in Notice",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:INDIGO|AKASAA|GOFRST|SPICEJ|AIRIND|AIRVIS|VSTARA)",
+        "body_pattern": "(?i)\\bPNR\\b[\\s\\S]{0,60}?\\b(?:flight|departure|web\\s*check-?in|boarding)\\b|\\bflight\\b[\\s\\S]{0,60}?\\bPNR\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "hdfc-credit-01",
@@ -3238,6 +3413,21 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "train-pnr-status-01",
+      "name": "Railway PNR Status Notice",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)IRSMSA",
+        "body_pattern": "(?i)\\bPNR[-: ]\\s*\\d{10}\\b[\\s\\S]{0,80}?\\b(?:Trn|Train)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "union-credit-01",
       "name": "Union Bank of India Credit Transaction",
       "priority": 300,
@@ -3688,6 +3878,34 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "upi-mandate-cancelled-01",
+      "name": "UPI Autopay Mandate / Scheduled Payment Cancelled",
+      "priority": 285,
+      "match": {
+        "body_pattern": "(?i)\\bsuccessfully\\s+cancelled\\s+the\\s+scheduled\\b[\\s\\S]{0,60}?\\bpayment\\b|\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:cancelled|revoked)\\b|\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:cancelled|revoked)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "upi-mandate-created-01",
+      "name": "UPI Autopay Mandate Created",
+      "priority": 285,
+      "match": {
+        "body_pattern": "(?i)\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:created|modified)\\b|\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:created|modified)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "axis-balance-01",
       "name": "Axis Bank Balance Alert",
       "priority": 280,
@@ -3902,6 +4120,34 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "nse-broker-balance-01",
+      "name": "Broker Fund/Securities Balance Statement",
+      "priority": 280,
+      "match": {
+        "body_pattern": "(?i)reported\\s+your\\s+Fund\\s+bal(?:ance)?\\b[\\s\\S]{0,80}?\\bSecurities\\s+bal(?:ance)?\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "investment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "nse-traded-value-01",
+      "name": "Exchange Traded Value Notice",
+      "priority": 280,
+      "match": {
+        "body_pattern": "(?i)\\byour\\s+traded\\s+value\\s+for\\s+\\d{1,2}-[A-Z]{3}-\\d{2,4}\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "investment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "paytm-bank-balance-01",
@@ -4230,6 +4476,62 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "cibil-score-check-01",
+      "name": "Credit Score Access Notice",
+      "priority": 265,
+      "match": {
+        "body_pattern": "(?i)\\bCIBIL\\s+Score(?:\\s*&\\s*Report)?\\s+was\\s+(?:checked|accessed|viewed)\\s+by\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "flight-seat-01",
+      "name": "Flight Seat Assignment",
+      "priority": 262,
+      "match": {
+        "body_pattern": "(?i)\\bassigned\\s+seat\\s+\\d{1,3}[A-Z]\\b[\\s\\S]{0,80}?\\bflight\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "train-chart-prepared-01",
+      "name": "Railway Chart Prepared Notice",
+      "priority": 262,
+      "match": {
+        "body_pattern": "(?i)\\bchart\\s+prepared\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "flight-boarding-01",
+      "name": "Flight Boarding / Gate Notice",
+      "priority": 261,
+      "match": {
+        "body_pattern": "(?i)\\bflight\\b[\\s\\S]{0,60}?\\b(?:boards\\s+at\\s+gate|gate\\s+closes|boarding\\s+(?:gate|at))\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
       "id": "axis-card-bill-01",
       "name": "Axis Bank Credit Card Bill Reminder",
       "priority": 260,
@@ -4338,6 +4640,34 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "hospital-token-01",
+      "name": "Hospital / Clinic Token Number",
+      "priority": 260,
+      "match": {
+        "body_pattern": "(?i)\\b[A-Z0-9]{1,10}\\s+is\\s+your\\s+token\\s+(?:number|no\\.?)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "appointment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "hospital-token-02",
+      "name": "Appointment Token Confirmed",
+      "priority": 260,
+      "match": {
+        "body_pattern": "(?i)\\byour\\s+token\\s+(?:number|no\\.?)\\s+[A-Z0-9]{1,10}\\b[\\s\\S]{0,80}?\\b(?:confirmed|OPD|walk-?in|hospital|clinic)\\b"
+      },
+      "action": {
+        "category": "informational",
+        "sub_category": "appointment"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "icici-card-bill-01",
@@ -4590,7 +4920,7 @@
       "name": "ACT Fibernet Bill",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP)",
+        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP|ACTGRP|ACTBRD)",
         "body_pattern": "(?i)bill\\s+for[\\s\\S]{0,30}?A/C[\\s\\S]{0,30}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
@@ -4924,7 +5254,7 @@
       "name": "ACT Fibernet Payment Receipt",
       "priority": 245,
       "match": {
-        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP)",
+        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP|ACTGRP|ACTBRD)",
         "body_pattern": "(?i)receipt\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
@@ -5049,7 +5379,7 @@
       "priority": 240,
       "match": {
         "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
-        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*success(?:ful)?\\b",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -5060,6 +5390,8 @@
         "sub_category": "recharge",
         "extract": {
           "amount": "$1",
+          "type": "debit",
+          "merchant": "Prepaid Recharge",
           "operator": "Vi"
         }
       },
@@ -6101,7 +6433,7 @@
       "name": "Generic OTP Extraction (keyword first)",
       "priority": 55,
       "match": {
-        "body_pattern": "(?i)(?:otp|code|password|pin)\\s*(?:is|:)?\\s*(\\d{4,8})"
+        "body_pattern": "(?i)(?:otp|code|password|pin)\\s*(?:is\\s*:?|:)?\\s*(\\d{4,8})"
       },
       "action": {
         "category": "otp",
@@ -6199,17 +6531,38 @@
       "name": "Generic Recharge Successful",
       "priority": 43,
       "match": {
-        "body_pattern": "(?i)recharge\\s+(?:of\\s+|done\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,40}?successful"
+        "body_pattern": "(?i)recharge\\s+(?:of\\s+|done\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,40}?\\bsuccess(?:ful(?:ly)?)?\\b"
       },
       "action": {
         "category": "important",
         "sub_category": "recharge",
         "extract": {
-          "amount": "$1"
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "Prepaid Recharge"
         }
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "generic-recharge-02",
+      "name": "Generic Recharge Done (amount-first)",
+      "priority": 43,
+      "match": {
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+recharged\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "merchant": "Prepaid Recharge"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-28T00:00:00Z"
     },
     {
       "id": "generic-refund-01",

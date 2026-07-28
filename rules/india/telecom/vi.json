@@ -7,7 +7,7 @@
       "priority": 240,
       "match": {
         "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
-        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
+        "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*success(?:ful)?\\b",
         "body_must_not_contain": [
           "OTP",
           "otp"
@@ -18,6 +18,8 @@
         "sub_category": "recharge",
         "extract": {
           "amount": "$1",
+          "type": "debit",
+          "merchant": "Prepaid Recharge",
           "operator": "Vi"
         }
       },

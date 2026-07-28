@@ -6,7 +6,7 @@
       "name": "Generic OTP Extraction (keyword first)",
       "priority": 55,
       "match": {
-        "body_pattern": "(?i)(?:otp|code|password|pin)\\s*(?:is|:)?\\s*(\\d{4,8})"
+        "body_pattern": "(?i)(?:otp|code|password|pin)\\s*(?:is\\s*:?|:)?\\s*(\\d{4,8})"
       },
       "action": {
         "category": "otp",
