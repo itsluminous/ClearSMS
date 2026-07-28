@@ -262,6 +262,7 @@ fun ConversationScreen(
                         item = item,
                         highlighted = item.id == highlightedItemId,
                         selected = selection.isSelected(item.id),
+                        showDetails = state.showTransactionDetails,
                         expanded = expandedId == item.id,
                         onClick = {
                             if (selection.active) {
@@ -450,6 +451,7 @@ private fun MessageBubble(
     item: ConversationItem,
     highlighted: Boolean,
     selected: Boolean,
+    showDetails: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     expanded: Boolean = false,
@@ -565,7 +567,9 @@ private fun MessageBubble(
             AnimatedVisibility(visible = expanded) {
                 Column(horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start) {
                     MessageMetadataLine(item)
-                    if (item.details.isNotEmpty()) ParsedDetailCard(details = item.details)
+                    if (DetailCardVisibility.shouldShow(item.details, showDetails)) {
+                        ParsedDetailCard(details = item.details)
+                    }
                 }
             }
         }

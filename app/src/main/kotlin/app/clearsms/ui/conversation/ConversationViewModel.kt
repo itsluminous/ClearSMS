@@ -98,6 +98,8 @@ data class ConversationUiState(
     val richAvatars: Boolean = true,
     /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
     val repliable: Boolean = false,
+    /** Mirrors Settings → Appearance → Show extracted message details. */
+    val showTransactionDetails: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -181,7 +183,8 @@ class ConversationViewModel
             combine(
                 flow { emit(messageRepository.firstInThread(threadId)) },
                 settings.showRichAvatars,
-            ) { first, richAvatars ->
+                settings.showTransactionDetails,
+            ) { first, richAvatars, showDetails ->
                 val display = first?.sender?.let { resolveDisplay(it) }
                 ConversationUiState(
                     title = display?.name.orEmpty(),
@@ -191,6 +194,7 @@ class ConversationViewModel
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
+                    showTransactionDetails = showDetails,
                     loaded = first != null,
                 )
             }.flowOn(ioDispatcher)
