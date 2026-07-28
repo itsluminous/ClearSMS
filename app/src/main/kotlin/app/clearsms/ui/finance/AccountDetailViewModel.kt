@@ -51,6 +51,10 @@ data class AccountDetailUiState(
     val isLoadingMore: Boolean = false,
     /** Mirrors Settings → Appearance → Show logos and contact photos. */
     val showRichAvatars: Boolean = true,
+    /** True when Settings → Privacy → Show balance is OFF (masking active). */
+    val balanceGated: Boolean = false,
+    /** True when balances may render: setting ON, or unlocked this session. */
+    val balancesRevealed: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -63,6 +67,7 @@ class AccountDetailViewModel
         private val financeRepository: FinanceRepository,
         settingsRepository: SettingsRepository,
         private val messageLookup: MessageLookup,
+        private val balanceVisibility: BalanceVisibility,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val accountNumber: String = checkNotNull(savedStateHandle["accountNumber"])
@@ -91,13 +96,23 @@ class AccountDetailViewModel
                     },
                 loadingMore,
                 settingsRepository.showRichAvatars,
-            ) { state, pending, richAvatars ->
+                settingsRepository.showBalance,
+                balanceVisibility.revealed,
+            ) { state, pending, richAvatars, showBalance, revealed ->
                 state.copy(
                     isLoadingMore = pending && state.hasMoreTransactions,
                     showRichAvatars = richAvatars,
+                    balanceGated = !showBalance,
+                    balancesRevealed = showBalance || revealed,
                 )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountDetailUiState())
+
+        /** Called only after a successful device-lock authentication. */
+        fun revealBalances() = balanceVisibility.reveal()
+
+        /** Re-masks immediately (eye tap while revealed); no auth needed to hide. */
+        fun concealBalances() = balanceVisibility.conceal()
 
         private fun buildState(
             allTransactions: List<TransactionEntity>,

@@ -218,8 +218,25 @@
     <string name="settings_show_rich_avatars">Show logos and contact photos</string>
     <string name="settings_show_rich_avatars_on">Contact photos and sender brand marks</string>
     <string name="settings_show_rich_avatars_off">Plain icon and monogram avatars</string>
-    <string name="settings_show_transaction_details">Show transaction details</string>
-    <string name="settings_show_transaction_details_summary">Show amounts and balances in message lists</string>
+    <string name="settings_show_transaction_details">Show extracted message details</string>
+    <string name="settings_show_transaction_details_summary">Show the parsed card (amount, merchant, account) when you tap a bank or OTP message in a conversation</string>
+
+    <!-- Privacy: Show balance gate -->
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="settings_show_balance">Show balance</string>
+    <string name="settings_show_balance_on">Balances are visible in the Finance tab</string>
+    <string name="settings_show_balance_off">Balances stay hidden until you unlock with your device screen lock</string>
+    <string name="balance_hidden">Balance hidden</string>
+    <string name="balance_reveal">Show balance</string>
+    <string name="balance_conceal">Hide balance</string>
+    <string name="balance_unlock_title">Unlock to show balances</string>
+    <string name="balance_unlock_subtitle">Use your screen lock — fingerprint, face, PIN, pattern or password</string>
+    <string name="balance_no_lock_title">No screen lock set</string>
+    <string name="balance_no_lock_text">Revealing hidden balances needs a device screen lock (PIN, pattern or password). Set one up in system settings, or turn “Show balance” back on to skip the lock.</string>
+    <string name="balance_no_lock_open_settings">Open security settings</string>
+    <string name="balance_unavailable_title">Can’t verify right now</string>
+    <string name="balance_unavailable_text">Device authentication is temporarily unavailable. Balances stay hidden — try again in a moment.</string>
+    <string name="action_ok">OK</string>
     <string name="settings_section_notification">Notifications</string>
     <string name="settings_delivery_reports">SMS delivery reports</string>
     <string name="settings_delivery_reports_summary">Confirm when sent messages are delivered</string>

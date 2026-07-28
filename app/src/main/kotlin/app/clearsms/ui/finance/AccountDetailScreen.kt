@@ -43,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +57,8 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.BalanceEyeButton
+import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
@@ -89,6 +93,13 @@ fun AccountDetailScreen(
             }
         }
     }
+
+    val onToggleBalances =
+        balanceToggleHandler(
+            revealed = state.balancesRevealed,
+            onReveal = viewModel::revealBalances,
+            onConceal = viewModel::concealBalances,
+        )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -204,6 +215,9 @@ fun AccountDetailScreen(
                     TransactionRow(
                         tx = tx,
                         loadSms = { viewModel.smsBodyFor(tx.rawSmsId) },
+                        balanceGated = state.balanceGated,
+                        balancesRevealed = state.balancesRevealed,
+                        onToggleBalances = onToggleBalances,
                         onAddNote = { noteDialogFor = tx },
                         onOpenMessage = { openTransaction(tx) },
                     )
@@ -235,6 +249,9 @@ fun AccountDetailScreen(
 private fun TransactionRow(
     tx: TransactionEntity,
     loadSms: suspend () -> String?,
+    balanceGated: Boolean,
+    balancesRevealed: Boolean,
+    onToggleBalances: () -> Unit,
     onAddNote: () -> Unit,
     onOpenMessage: () -> Unit,
 ) {
@@ -286,21 +303,39 @@ private fun TransactionRow(
                 Column {
                     Spacer(Modifier.height(8.dp))
                     tx.balance?.let {
-                        val balanceText = CurrencyFormat.rupees(it)
-                        val line = stringResource(R.string.account_balance_after, balanceText)
-                        val balanceColor = LocalSemanticAmountColors.current.balance
-                        Text(
-                            text =
-                                buildAnnotatedString {
-                                    append(line)
-                                    val at = line.indexOf(balanceText)
-                                    if (at >= 0) {
-                                        addStyle(SpanStyle(color = balanceColor), at, at + balanceText.length)
-                                    }
-                                },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        // "Balance after" is a real account balance, so the
+                        // privacy gate masks it like the Finance dashboard;
+                        // the transaction amount above stays visible.
+                        val masked = BalanceMask.isMasked(balanceGated, balancesRevealed)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val balanceText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(it)
+                            val line = stringResource(R.string.account_balance_after, balanceText)
+                            val balanceColor = LocalSemanticAmountColors.current.balance
+                            val hiddenDescription = stringResource(R.string.balance_hidden)
+                            Text(
+                                text =
+                                    buildAnnotatedString {
+                                        append(line)
+                                        if (!masked) {
+                                            val at = line.indexOf(balanceText)
+                                            if (at >= 0) {
+                                                addStyle(SpanStyle(color = balanceColor), at, at + balanceText.length)
+                                            }
+                                        }
+                                    },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier =
+                                    if (masked) {
+                                        Modifier.clearAndSetSemantics { contentDescription = hiddenDescription }
+                                    } else {
+                                        Modifier
+                                    },
+                            )
+                            if (balanceGated) {
+                                BalanceEyeButton(revealed = balancesRevealed, onToggle = onToggleBalances)
+                            }
+                        }
                     }
                     tx.referenceNumber?.let {
                         Text(
@@ -309,14 +344,19 @@ private fun TransactionRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    smsBody?.let { body ->
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = body,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    // The raw SMS body quotes the balance verbatim, so it
+                    // stays hidden while balances are masked — otherwise the
+                    // gate would be trivially bypassed by expanding a row.
+                    if (!BalanceMask.isMasked(balanceGated, balancesRevealed)) {
+                        smsBody?.let { body ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = body,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                     Row {
                         TextButton(onClick = onAddNote) {

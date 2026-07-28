@@ -490,6 +490,7 @@ private fun settingsRowEntries(
     val sectionBlocking = stringResource(R.string.settings_section_blocking)
     val sectionBackup = stringResource(R.string.settings_section_backup)
     val sectionAppearance = stringResource(R.string.settings_section_appearance)
+    val sectionPrivacy = stringResource(R.string.settings_section_privacy)
     val sectionNotification = stringResource(R.string.settings_section_notification)
     val sectionGestures = stringResource(R.string.settings_section_gestures)
     val sectionStartup = stringResource(R.string.settings_section_startup)
@@ -597,6 +598,24 @@ private fun settingsRowEntries(
             summary = stringResource(R.string.settings_show_transaction_details_summary),
             checked = state.showTransactionDetails,
             onToggle = viewModel::setShowTransactionDetails,
+        ),
+        // Privacy, not Appearance: hiding balances behind the device lock is
+        // a confidentiality control, not a cosmetic one — its own section
+        // also keeps it visually distinct from the extracted-details
+        // verbosity toggle above, which users previously conflated with it.
+        toggle(
+            section = sectionPrivacy,
+            title = stringResource(R.string.settings_show_balance),
+            summary =
+                stringResource(
+                    if (state.showBalance) {
+                        R.string.settings_show_balance_on
+                    } else {
+                        R.string.settings_show_balance_off
+                    },
+                ),
+            checked = state.showBalance,
+            onToggle = viewModel::setShowBalance,
         ),
         // TODO: deliveryReports is written here but not consumed yet — the
         //  platform stage must read it in SmsSender to request delivery

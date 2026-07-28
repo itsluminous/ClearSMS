@@ -21,6 +21,7 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
+import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.work.BackupWorker
 import app.clearsms.work.RecategorizeWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +44,8 @@ data class SettingsUiState(
     val dynamicColor: Boolean = true,
     val showTransactionDetails: Boolean = true,
     val showRichAvatars: Boolean = true,
+    /** Privacy gate: false masks Finance balances behind the device lock. */
+    val showBalance: Boolean = true,
     val deliveryReports: Boolean = false,
     val summaryFrequency: SummaryFrequency = SummaryFrequency.OFF,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
@@ -119,6 +122,7 @@ class SettingsViewModel
         private val messageRepository: MessageRepository,
         private val backupManager: BackupManager,
         private val workManager: WorkManager,
+        private val balanceVisibility: BalanceVisibility,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val busy = MutableStateFlow(false)
@@ -179,6 +183,7 @@ class SettingsViewModel
             val dynamicColor: Boolean,
             val showTransactionDetails: Boolean,
             val showRichAvatars: Boolean,
+            val showBalance: Boolean,
         )
 
         private data class NotificationState(
@@ -201,6 +206,7 @@ class SettingsViewModel
                 uiPrefs.dynamicColor,
                 settings.showTransactionDetails,
                 settings.showRichAvatars,
+                settings.showBalance,
                 ::AppearanceState,
             )
         private val notifications =
@@ -243,6 +249,7 @@ class SettingsViewModel
                     dynamicColor = appearanceState.dynamicColor,
                     showTransactionDetails = appearanceState.showTransactionDetails,
                     showRichAvatars = appearanceState.showRichAvatars,
+                    showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
                     summaryFrequency = notificationState.summaryFrequency,
                     notificationActions = notificationState.notificationActions,
@@ -269,6 +276,17 @@ class SettingsViewModel
         fun setShowTransactionDetails(value: Boolean) = launchIo { settings.setShowTransactionDetails(value) }
 
         fun setShowRichAvatars(value: Boolean) = launchIo { settings.setShowRichAvatars(value) }
+
+        /**
+         * Any write to the balance gate drops the session reveal first, so a
+         * previously unlocked session can never survive an OFF→ON→OFF cycle:
+         * turning the setting off re-masks immediately.
+         */
+        fun setShowBalance(value: Boolean) =
+            launchIo {
+                balanceVisibility.conceal()
+                settings.setShowBalance(value)
+            }
 
         fun setNotificationActions(value: Set<NotificationAction>) = launchIo { settings.setNotificationActions(value) }
 

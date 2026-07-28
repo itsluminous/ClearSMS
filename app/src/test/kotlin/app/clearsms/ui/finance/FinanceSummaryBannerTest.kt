@@ -58,6 +58,7 @@ class FinanceSummaryBannerTest {
             financeRepository = finance,
             settingsRepository = settings,
             messageLookup = { null },
+            balanceVisibility = BalanceVisibility(),
             ioDispatcher = dispatcher,
         )
 
@@ -200,6 +201,10 @@ private class FakeSettingsRepository : SettingsRepository {
     override val showTransactionDetails = MutableStateFlow(true)
 
     override suspend fun setShowTransactionDetails(value: Boolean) = Unit
+
+    override val showBalance = MutableStateFlow(true)
+
+    override suspend fun setShowBalance(value: Boolean) = Unit
 
     override val signature = MutableStateFlow("")
 

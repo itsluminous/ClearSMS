@@ -207,6 +207,11 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
 
+    // Device-lock gate for Settings → Privacy → Show balance. BIOMETRIC_WEAK
+    // or DEVICE_CREDENTIAL: fingerprint/face AND PIN/pattern/password all
+    // unlock — purely local, no new permissions.
+    implementation(libs.androidx.biometric)
+
     // Images + permissions. Coil renders contact photos from content:// URIs
     // (ui/components/SenderAvatar.kt) — it never performs network I/O in this
     // app: no http(s) URLs are ever loaded, so the transitively-included

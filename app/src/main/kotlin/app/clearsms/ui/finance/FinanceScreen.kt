@@ -81,8 +81,11 @@ import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.BalanceEyeButton
+import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.MaskedBalance
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
@@ -121,6 +124,15 @@ fun FinanceScreen(
     val openAccountSource: (AccountEntity) -> Unit = { account ->
         scope.launch { openRef(viewModel.sourceMessageForAccount(account)) }
     }
+
+    // One session-wide reveal: tapping any eye authenticates once and
+    // reveals every gated balance on the screen.
+    val onToggleBalances =
+        balanceToggleHandler(
+            revealed = state.balancesRevealed,
+            onReveal = viewModel::revealBalances,
+            onConceal = viewModel::concealBalances,
+        )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -161,6 +173,9 @@ fun FinanceScreen(
                     creditCount = state.monthCreditCount,
                     expanded = summaryExpanded,
                     onToggle = viewModel::toggleSummaryBreakdown,
+                    gated = state.balanceGated,
+                    revealed = state.balancesRevealed,
+                    onToggleBalances = onToggleBalances,
                 )
             }
             item(key = "pills") {
@@ -180,6 +195,7 @@ fun FinanceScreen(
                         onToggleCollapsed = { accountsCollapsed = !accountsCollapsed },
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
+                        onToggleBalances = onToggleBalances,
                     )
                 FinanceTab.CREDIT_CARDS ->
                     creditCardsSection(
@@ -189,6 +205,7 @@ fun FinanceScreen(
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
                         onSetLimit = { limitDialogFor = it },
+                        onToggleBalances = onToggleBalances,
                     )
                 FinanceTab.TRANSACTIONS ->
                     transactionsSection(
@@ -258,6 +275,7 @@ private fun LazyListScope.accountsSection(
     onToggleCollapsed: () -> Unit,
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
+    onToggleBalances: () -> Unit,
 ) {
     if (state.bankAccounts.isEmpty() && state.staleBankAccounts.isEmpty()) {
         emptySectionItem()
@@ -275,6 +293,9 @@ private fun LazyListScope.accountsSection(
             BankAccountCard(
                 account = account,
                 richAvatars = state.showRichAvatars,
+                gated = state.balanceGated,
+                revealed = state.balancesRevealed,
+                onToggleBalances = onToggleBalances,
                 onOpen = { onOpenAccount(account.accountNumber, account.bankName) },
                 onOpenSource = { onOpenSource(account) },
             )
@@ -292,6 +313,9 @@ private fun LazyListScope.accountsSection(
                     BankAccountCard(
                         account = account,
                         richAvatars = state.showRichAvatars,
+                        gated = state.balanceGated,
+                        revealed = state.balancesRevealed,
+                        onToggleBalances = onToggleBalances,
                         onOpen = { onOpenAccount(account.accountNumber, account.bankName) },
                         onOpenSource = { onOpenSource(account) },
                     )
@@ -306,6 +330,9 @@ private fun LazyListScope.accountsSection(
 private fun BankAccountCard(
     account: AccountEntity,
     richAvatars: Boolean,
+    gated: Boolean,
+    revealed: Boolean,
+    onToggleBalances: () -> Unit,
     onOpen: () -> Unit,
     onOpenSource: () -> Unit,
 ) {
@@ -347,7 +374,13 @@ private fun BankAccountCard(
             trailingContent = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     account.lastKnownBalance?.let { balance ->
-                        AmountText(amount = balance, kind = AmountKind.BALANCE)
+                        MaskedBalance(
+                            amount = balance,
+                            kind = AmountKind.BALANCE,
+                            gated = gated,
+                            revealed = revealed,
+                            onToggle = onToggleBalances,
+                        )
                     } ?: Text(
                         text = "—",
                         style = MaterialTheme.typography.titleMedium,
@@ -410,6 +443,7 @@ private fun LazyListScope.creditCardsSection(
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenSource: (AccountEntity) -> Unit,
     onSetLimit: (CreditCardItem) -> Unit,
+    onToggleBalances: () -> Unit,
 ) {
     if (state.creditCards.isEmpty() && state.staleCreditCards.isEmpty()) {
         emptySectionItem()
@@ -443,6 +477,9 @@ private fun LazyListScope.creditCardsSection(
         CreditCardCard(
             card = card,
             richAvatars = state.showRichAvatars,
+            gated = state.balanceGated,
+            revealed = state.balancesRevealed,
+            onToggleBalances = onToggleBalances,
             onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
             onOpenSource = { onOpenSource(card.account) },
             onSetLimit = { onSetLimit(card) },
@@ -461,6 +498,9 @@ private fun LazyListScope.creditCardsSection(
                 CreditCardCard(
                     card = card,
                     richAvatars = state.showRichAvatars,
+                    gated = state.balanceGated,
+                    revealed = state.balancesRevealed,
+                    onToggleBalances = onToggleBalances,
                     onOpen = { onOpenAccount(card.account.accountNumber, card.account.bankName) },
                     onOpenSource = { onOpenSource(card.account) },
                     onSetLimit = { onSetLimit(card) },
@@ -633,18 +673,29 @@ private fun MonthSummaryCard(
     creditCount: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
+    gated: Boolean,
+    revealed: Boolean,
+    onToggleBalances: () -> Unit,
 ) {
     val amountColors = LocalSemanticAmountColors.current
-    val creditsText = CurrencyFormat.rupees(credits)
-    val debitsText = CurrencyFormat.rupees(debits)
+    // The month net is a balance-like aggregate, so the privacy gate masks
+    // it (and its in/out breakdown) along with account balances. Transaction
+    // counts stay visible — they carry no amounts.
+    val masked = BalanceMask.isMasked(gated, revealed)
+    val creditsText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(credits)
+    val debitsText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(debits)
     val valueDescription =
-        stringResource(
-            R.string.finance_summary_value_desc,
-            CurrencyFormat.rupees(net),
-            creditsText,
-            debitsText,
-            txCount,
-        )
+        if (masked) {
+            stringResource(R.string.balance_hidden)
+        } else {
+            stringResource(
+                R.string.finance_summary_value_desc,
+                CurrencyFormat.rupees(net),
+                creditsText,
+                debitsText,
+                txCount,
+            )
+        }
     val clickLabel =
         stringResource(
             if (expanded) R.string.finance_summary_hide_breakdown else R.string.finance_summary_show_breakdown,
@@ -670,18 +721,30 @@ private fun MonthSummaryCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.weight(1f),
                 )
+                if (gated) {
+                    BalanceEyeButton(revealed = revealed, onToggle = onToggleBalances)
+                }
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
-            // Fixed semantic color: net outflow red, net inflow green.
-            AmountText(
-                amount = net,
-                kind = if (net < 0) AmountKind.DEBIT else AmountKind.CREDIT,
-                style = MaterialTheme.typography.displaySmall,
-            )
+            if (masked) {
+                Text(
+                    text = BalanceMask.MASK,
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            } else {
+                // Fixed semantic color: net outflow red, net inflow green.
+                AmountText(
+                    amount = net,
+                    kind = if (net < 0) AmountKind.DEBIT else AmountKind.CREDIT,
+                    style = MaterialTheme.typography.displaySmall,
+                )
+            }
             Spacer(Modifier.height(8.dp))
             if (!expanded) {
                 val breakdown = stringResource(R.string.finance_month_breakdown, creditsText, debitsText)
@@ -757,6 +820,9 @@ private fun SummaryBreakdownRow(
 private fun CreditCardCard(
     card: CreditCardItem,
     richAvatars: Boolean,
+    gated: Boolean,
+    revealed: Boolean,
+    onToggleBalances: () -> Unit,
     onOpen: () -> Unit,
     onOpenSource: () -> Unit,
     onSetLimit: () -> Unit,
@@ -800,7 +866,13 @@ private fun CreditCardCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    AmountText(amount = card.outstanding, kind = AmountKind.BALANCE)
+                    MaskedBalance(
+                        amount = card.outstanding,
+                        kind = AmountKind.BALANCE,
+                        gated = gated,
+                        revealed = revealed,
+                        onToggle = onToggleBalances,
+                    )
                 }
             }
             AnimatedVisibility(visible = card.utilization != null) {

@@ -33,9 +33,21 @@ interface SettingsRepository {
 
     suspend fun setSummaryFrequency(value: SummaryFrequency)
 
+    /** Show the parsed extraction card under tapped messages in a conversation. */
     val showTransactionDetails: Flow<Boolean>
 
     suspend fun setShowTransactionDetails(value: Boolean)
+
+    /**
+     * Privacy gate for the Finance tab: when false, balances (account
+     * balances, card outstanding, the month summary) are masked until the
+     * user authenticates with the device screen lock. Default true so an
+     * upgrade never surprises anyone. Display-only — nothing sensitive is
+     * stored because of this flag.
+     */
+    val showBalance: Flow<Boolean>
+
+    suspend fun setShowBalance(value: Boolean)
 
     val signature: Flow<String>
 

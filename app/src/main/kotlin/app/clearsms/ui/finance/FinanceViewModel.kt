@@ -64,6 +64,10 @@ data class FinanceUiState(
     val pillCounts: Map<FinanceTab, Int> = emptyMap(),
     /** Mirrors Settings → Appearance → Show logos and contact photos. */
     val showRichAvatars: Boolean = true,
+    /** True when Settings → Privacy → Show balance is OFF (masking active). */
+    val balanceGated: Boolean = false,
+    /** True when balances may render: setting ON, or unlocked this session. */
+    val balancesRevealed: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -75,6 +79,7 @@ class FinanceViewModel
         private val financeRepository: FinanceRepository,
         private val settingsRepository: SettingsRepository,
         private val messageLookup: MessageLookup,
+        private val balanceVisibility: BalanceVisibility,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         /** Persisted pill selection — restored across app restarts. */
@@ -137,13 +142,17 @@ class FinanceViewModel
                     },
                 loadingMore,
                 settingsRepository.showRichAvatars,
-            ) { state, pending, richAvatars ->
+                settingsRepository.showBalance,
+                balanceVisibility.revealed,
+            ) { state, pending, richAvatars, showBalance, revealed ->
                 state.copy(
                     isLoadingMore =
                         pending &&
                             state.hasMoreTransactions &&
                             state.latestTransactions.size < txLimit.value,
                     showRichAvatars = richAvatars,
+                    balanceGated = !showBalance,
+                    balancesRevealed = showBalance || revealed,
                 )
             }.flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())
@@ -228,6 +237,12 @@ class FinanceViewModel
         fun setTab(tab: FinanceTab) {
             viewModelScope.launch(ioDispatcher) { settingsRepository.setFinanceTab(tab) }
         }
+
+        /** Called only after a successful device-lock authentication. */
+        fun revealBalances() = balanceVisibility.reveal()
+
+        /** Re-masks immediately (eye tap while revealed); no auth needed to hide. */
+        fun concealBalances() = balanceVisibility.conceal()
 
         fun setCardLimit(
             accountId: Long,

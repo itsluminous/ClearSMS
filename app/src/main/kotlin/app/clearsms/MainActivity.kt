@@ -3,15 +3,21 @@ package app.clearsms
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.fragment.app.FragmentActivity
+import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.ui.navigation.ClearSmsApp
 import app.clearsms.work.WorkScheduler
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * Single-activity, edge-to-edge entry point.
+ *
+ * Extends [FragmentActivity] (itself a ComponentActivity, so Compose is
+ * unaffected) because `androidx.biometric.BiometricPrompt` — the device-lock
+ * gate behind Settings → Privacy → Show balance — requires a fragment host.
  *
  * Intent triage (see [IntentTriage]):
  * - ACTION_SEND / ACTION_SENDTO with sms:/smsto:/mms:/mmsto: URIs (default
@@ -22,7 +28,10 @@ import dagger.hilt.android.AndroidEntryPoint
  *   they reach the navigation controller.
  */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
+    @Inject
+    lateinit var balanceVisibility: BalanceVisibility
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -39,6 +48,15 @@ class MainActivity : ComponentActivity() {
                 onOnboarded = { WorkScheduler.scheduleAll(applicationContext) },
             )
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Reveal-lifetime rule: balances unlocked via the device-lock gate
+        // re-mask whenever the app leaves the foreground (recents, home,
+        // another app). A rotation is not "leaving", so configuration
+        // changes keep the reveal.
+        if (!isChangingConfigurations) balanceVisibility.conceal()
     }
 }
 

@@ -67,6 +67,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_SHOW_TRANSACTION_DETAILS] = value }
     }
 
+    override val showBalance: Flow<Boolean> =
+        dataStore.data.map { it[KEY_SHOW_BALANCE] ?: true }
+
+    override suspend fun setShowBalance(value: Boolean) {
+        dataStore.edit { it[KEY_SHOW_BALANCE] = value }
+    }
+
     override val signature: Flow<String> =
         dataStore.data.map { it[KEY_SIGNATURE].orEmpty() }
 
@@ -171,6 +178,7 @@ class SettingsRepositoryImpl(
         val KEY_OTP_DISPLAY_SIZE = stringPreferencesKey("otp_display_size")
         val KEY_SUMMARY_FREQUENCY = stringPreferencesKey("summary_frequency")
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
+        val KEY_SHOW_BALANCE = booleanPreferencesKey("show_balance")
         val KEY_SIGNATURE = stringPreferencesKey("signature")
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val KEY_SHOW_RICH_AVATARS = booleanPreferencesKey("show_rich_avatars")

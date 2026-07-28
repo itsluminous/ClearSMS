@@ -38,7 +38,15 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override val showTransactionDetails = MutableStateFlow(true)
 
-    override suspend fun setShowTransactionDetails(value: Boolean) = Unit
+    override suspend fun setShowTransactionDetails(value: Boolean) {
+        showTransactionDetails.value = value
+    }
+
+    override val showBalance = MutableStateFlow(true)
+
+    override suspend fun setShowBalance(value: Boolean) {
+        showBalance.value = value
+    }
 
     override val signature = MutableStateFlow("")
 
