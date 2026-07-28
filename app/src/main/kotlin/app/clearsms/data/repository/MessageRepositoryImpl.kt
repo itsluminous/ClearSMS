@@ -495,6 +495,7 @@ class MessageRepositoryImpl(
             tx.bankName?.let { merged["bank"] = it }
             tx.merchantName?.let { merged["merchant"] = it }
             tx.balance?.let { merged["balance"] = it.toString() }
+            tx.availableLimit?.let { merged["available_limit"] = it.toString() }
             tx.referenceNumber?.let { merged["reference"] = it }
             // A USD/EUR/... spend keeps its currency on record so the amount
             // is never silently read as INR (the entity itself has no
@@ -635,7 +636,7 @@ class MessageRepositoryImpl(
         accountNumber: String,
         bankName: String,
         timestampMs: Long,
-    ) = upsertAccountBalance(accountNumber, bankName, tx.accountType, tx.balance, timestampMs)
+    ) = upsertAccountBalance(accountNumber, bankName, tx.accountType, tx.balance, timestampMs, tx.availableLimit)
 
     /**
      * Creates or refreshes an account row from either a transaction or a
@@ -649,6 +650,8 @@ class MessageRepositoryImpl(
         accountType: AccountType,
         balance: Double?,
         timestampMs: Long,
+        /** Issuer-reported available credit limit; follows the same ordering rules as [balance]. */
+        availableLimit: Double? = null,
     ) {
         val existing = accountDao.find(accountNumber, bankName)
         if (existing == null) {
@@ -665,6 +668,12 @@ class MessageRepositoryImpl(
                             } else {
                                 blank.lastKnownBalance
                             },
+                        availableLimit =
+                            if (timestampMs >= blank.lastUpdated) {
+                                availableLimit ?: blank.availableLimit
+                            } else {
+                                blank.availableLimit
+                            },
                         lastUpdated = maxOf(timestampMs, blank.lastUpdated),
                     ),
                 )
@@ -675,6 +684,7 @@ class MessageRepositoryImpl(
                         bankName = bankName,
                         type = accountType,
                         lastKnownBalance = balance,
+                        availableLimit = availableLimit,
                         lastUpdated = timestampMs,
                     ),
                 )
@@ -683,6 +693,7 @@ class MessageRepositoryImpl(
             accountDao.update(
                 existing.copy(
                     lastKnownBalance = balance ?: existing.lastKnownBalance,
+                    availableLimit = availableLimit ?: existing.availableLimit,
                     lastUpdated = timestampMs,
                 ),
             )
@@ -738,6 +749,7 @@ class MessageRepositoryImpl(
             accountLast4 = extracts["account_last4"] ?: parsed.accountLast4,
             bankName = extracts["bank"] ?: parsed.bankName,
             balance = extracts["balance"]?.toAmount() ?: parsed.balance,
+            availableLimit = extracts["available_limit"]?.toAmount() ?: parsed.availableLimit,
             merchantCategory = subCategory.toMerchantCategory() ?: parsed.merchantCategory,
         )
 
@@ -760,6 +772,7 @@ class MessageRepositoryImpl(
             accountLast4 = extracts["account_last4"],
             bankName = extracts["bank"],
             balance = extracts["balance"]?.toAmount(),
+            availableLimit = extracts["available_limit"]?.toAmount(),
             merchantCategory = subCategory.toMerchantCategory() ?: MerchantCategory.OTHER,
         )
     }

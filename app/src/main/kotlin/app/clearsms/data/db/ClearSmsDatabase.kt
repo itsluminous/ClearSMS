@@ -23,7 +23,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -49,6 +49,11 @@ import java.time.ZoneId
         // system provider's sent box — see [BackfillMessageDirections]
         // (provided at build time because it reads the SMS provider).
         AutoMigration(from = 6, to = 7, spec = BackfillMessageDirections::class),
+        // v7 -> v8: adds accounts.availableLimit (nullable) — the issuer-
+        // reported available credit limit, kept apart from lastKnownBalance
+        // because a card's headroom is not a balance. Existing rows keep
+        // their data and start with NULL until the next card SMS arrives.
+        AutoMigration(from = 7, to = 8),
     ],
 )
 @TypeConverters(Converters::class)

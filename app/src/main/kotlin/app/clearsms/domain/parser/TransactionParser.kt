@@ -32,8 +32,15 @@ class TransactionParser {
         // Amounts inside the balance or an "Avl Limit/Lmt" phrase are state,
         // not the transaction; excluding them keeps "Avl Limit: INR 286368.5"
         // from becoming the amount of a foreign-currency card spend.
+        val availableLimitMatch = AVAILABLE_LIMIT_REGEX.findAll(effectiveBody).toList()
+        val availableLimit =
+            availableLimitMatch
+                .firstOrNull()
+                ?.groupValues
+                ?.get(1)
+                ?.toAmount()
         val excluded =
-            listOfNotNull(balanceMatch?.range) + AVAILABLE_LIMIT_REGEX.findAll(effectiveBody).map { it.range }
+            listOfNotNull(balanceMatch?.range) + availableLimitMatch.map { it.range }
         val domesticAmount =
             AMOUNT_REGEX
                 .findAll(effectiveBody)
@@ -59,6 +66,7 @@ class TransactionParser {
             accountLast4 = extractAccountLast4(effectiveBody),
             bankName = resolvedBank?.takeIf { bankIsIssuer },
             balance = balance,
+            availableLimit = availableLimit,
             referenceNumber =
                 REFERENCE_REGEX.find(effectiveBody)?.let { match ->
                     match.groupValues[1].ifEmpty { match.groupValues[2] }.ifEmpty { null }
@@ -307,9 +315,19 @@ class TransactionParser {
         val FOREIGN_AMOUNT_REGEX =
             Regex("(?i)\\b(?:spent|paid|debited)\\s+(USD|EUR|GBP|AED|SGD|AUD|CAD|CHF|JPY|NZD|HKD)\\s*([\\d,]+(?:\\.\\d{1,2})?)")
 
-        /** "Avl Limit: INR 286368.5" / "Avl Lmt INR 98,701.00" — credit headroom, not an amount. */
+        /**
+         * "Avl Limit: INR 286368.5" / "Avl Lmt INR 98,701.00" / "Available
+         * Credit Limit is Rs.40,000" — credit headroom, not an amount. The
+         * captured figure feeds [ParsedTransaction.availableLimit]; the
+         * matched span is also excluded from amount detection. Phrasings per
+         * the audited device corpora: avl/avbl/available, optional "credit",
+         * limit/lmt, optional ":"/"is".
+         */
         val AVAILABLE_LIMIT_REGEX =
-            Regex("(?i)av(?:l|bl|ailable)?\\.?\\s*(?:lmt|limit)\\s*:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?")
+            Regex(
+                "(?i)av(?:l|bl|ailable)?\\.?\\s*(?:credit\\s+)?(?:lmt|limit)\\s*:?\\s*(?:is\\s+)?" +
+                    "(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+            )
 
         val DEBIT_KEYWORDS = Regex("(?i)\\b(?:debited|spent|paid|withdrawn|deducted|purchase(?:d)?|sent)\\b")
         val CREDIT_KEYWORDS = Regex("(?i)\\b(?:credited|received|deposited|refund(?:ed)?)\\b")

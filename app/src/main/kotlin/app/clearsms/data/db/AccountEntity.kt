@@ -19,5 +19,12 @@ data class AccountEntity(
     val lastKnownBalance: Double? = null,
     /** User-configured credit limit; only meaningful for credit cards. */
     val creditLimit: Double? = null,
+    /**
+     * Available credit limit as last reported by the issuer ("Avl Limit:
+     * INR ..."). Deliberately separate from [lastKnownBalance]: a credit
+     * card's headroom is not a balance, and conflating the two made cards
+     * show a meaningless ₹0. Only meaningful for credit cards.
+     */
+    val availableLimit: Double? = null,
     val lastUpdated: Long,
 )

@@ -8,6 +8,8 @@ data class ParsedTransaction(
     val accountLast4: String? = null,
     val bankName: String? = null,
     val balance: Double? = null,
+    /** Issuer-reported available credit limit ("Avl Limit: INR ..."), for cards. */
+    val availableLimit: Double? = null,
     val referenceNumber: String? = null,
     val merchantCategory: MerchantCategory = MerchantCategory.OTHER,
     val accountType: AccountType = AccountType.SAVINGS,
