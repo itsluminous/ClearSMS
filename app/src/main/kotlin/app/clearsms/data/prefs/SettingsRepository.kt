@@ -100,15 +100,6 @@ interface SettingsRepository {
 
     suspend fun setTransactionNotifications(value: Boolean)
 
-    /**
-     * Notify for promotional messages. OFF by default — promos are the noisiest
-     * category, so they stay silent unless the user opts in (they can also
-     * block the "Promotions" channel from Android's notification settings).
-     */
-    val promotionalNotifications: Flow<Boolean>
-
-    suspend fun setPromotionalNotifications(value: Boolean)
-
     /** Backing plate drawn behind bundled sender logos. */
     val logoBackground: Flow<LogoBackground>
 

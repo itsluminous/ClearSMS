@@ -252,8 +252,6 @@
     <string name="settings_notification_actions_hint">Pick up to 3 — Android shows at most 3 buttons on a notification.</string>
     <string name="settings_transaction_notifications">Transaction notifications</string>
     <string name="settings_transaction_notifications_summary">Show the parsed amount instead of the raw message</string>
-    <string name="settings_promotional_notifications">Promotion notifications</string>
-    <string name="settings_promotional_notifications_summary">Notify for offers and marketing messages. Silent, and off by default.</string>
     <string name="settings_summary">Messages summary</string>
     <string name="settings_section_gestures">Gestures</string>
     <string name="settings_swipe_right">Swipe right action</string>

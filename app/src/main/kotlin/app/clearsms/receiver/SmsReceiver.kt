@@ -113,14 +113,15 @@ class SmsReceiver : BroadcastReceiver() {
                 transactionNotifier.notify(entity, selectedActions) -> Unit
             entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
                 messageNotifier.notify(entity, selectedActions)
-            // Promotions are opt-in (setting OFF by default) and ride their own
-            // LOW-importance "Promotions" channel, so they are silent even when
-            // enabled and can be blocked from Android's notification settings.
-            entity.category == Category.PROMOTIONAL &&
-                settingsRepository.promotionalNotifications.first() ->
+            // Promotions always post to their own "Promotions" channel, which
+            // is created BLOCKED (IMPORTANCE_NONE) — so nothing is shown until
+            // the user enables the category in Android's notification settings.
+            // Posting unconditionally is what makes that switch meaningful: an
+            // extra in-app gate would silently swallow them and the Android
+            // toggle would appear to do nothing.
+            entity.category == Category.PROMOTIONAL ->
                 messageNotifier.notify(entity, selectedActions, channelId = Channels.PROMOTIONS)
-            // Everything else (unknown, informational, promos when opted out)
-            // stays silent by design.
+            // Everything else (unknown, informational) stays silent by design.
             else -> Unit
         }
     }

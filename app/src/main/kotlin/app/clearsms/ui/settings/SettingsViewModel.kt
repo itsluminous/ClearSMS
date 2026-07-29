@@ -51,7 +51,6 @@ data class SettingsUiState(
     val summaryFrequency: SummaryFrequency = SummaryFrequency.OFF,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
-    val promotionalNotifications: Boolean = false,
     val logoBackground: LogoBackground = LogoBackground.WHITE,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
@@ -196,7 +195,6 @@ class SettingsViewModel
             val summaryFrequency: SummaryFrequency,
             val notificationActions: Set<NotificationAction>,
             val transactionNotifications: Boolean,
-            val promotionalNotifications: Boolean,
         )
 
         private data class GestureStartupState(
@@ -223,7 +221,6 @@ class SettingsViewModel
                 settings.summaryFrequency,
                 settings.notificationActions,
                 settings.transactionNotifications,
-                settings.promotionalNotifications,
                 ::NotificationState,
             )
         private val gestureStartup =
@@ -264,7 +261,6 @@ class SettingsViewModel
                     summaryFrequency = notificationState.summaryFrequency,
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
-                    promotionalNotifications = notificationState.promotionalNotifications,
                     swipeActionStart = gestures.swipeStart,
                     swipeActionEnd = gestures.swipeEnd,
                     defaultDestination = gestures.destination,
@@ -302,8 +298,6 @@ class SettingsViewModel
         fun setNotificationActions(value: Set<NotificationAction>) = launchIo { settings.setNotificationActions(value) }
 
         fun setTransactionNotifications(value: Boolean) = launchIo { settings.setTransactionNotifications(value) }
-
-        fun setPromotionalNotifications(value: Boolean) = launchIo { settings.setPromotionalNotifications(value) }
 
         fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
 

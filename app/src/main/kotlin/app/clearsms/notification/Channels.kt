@@ -11,7 +11,20 @@ import app.clearsms.R
 object Channels {
     const val OTP = "otp"
     const val MESSAGES = "messages"
-    const val PROMOTIONS = "promotions"
+
+    /**
+     * Promotions category id.
+     *
+     * Versioned on purpose: v0.5.2 shipped this channel as `promotions` with
+     * IMPORTANCE_LOW, which Android surfaces as ON. A channel's importance is
+     * user-owned once created — re-creating the same id with a lower importance
+     * is ignored — so the only way to actually ship "off by default" to devices
+     * that already have it is a NEW id. [LEGACY_PROMOTIONS] is deleted below so
+     * users aren't left with two Promotions entries in system settings.
+     */
+    const val PROMOTIONS = "promotions_v2"
+
+    private const val LEGACY_PROMOTIONS = "promotions"
     const val TRANSACTIONS = "transactions"
     const val SECURITY = "security"
     const val SUMMARY = "summary"
@@ -21,6 +34,11 @@ object Channels {
     fun ensureCreated(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        // Drop the v0.5.2 "promotions" channel, which was created enabled
+        // (IMPORTANCE_LOW). Its replacement below uses a new id so it can
+        // genuinely start blocked; deleting the old one avoids a duplicate,
+        // still-enabled Promotions entry in system settings.
+        manager.deleteNotificationChannel(LEGACY_PROMOTIONS)
         manager.createNotificationChannels(
             listOf(
                 // HIGH importance so OTPs show as heads-up notifications.
@@ -40,14 +58,18 @@ object Channels {
                     context.getString(R.string.channel_messages),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply { description = context.getString(R.string.channel_messages_desc) },
-                // Promotional messages are opt-in: the in-app setting is off by
-                // default, and this channel is LOW importance (silent, no
-                // heads-up) so even when enabled it never interrupts. Users can
-                // also block it from Android's own notification categories.
+                // Promotions are OFF by default and controlled solely from
+                // Android's notification settings for the app — there is no
+                // in-app toggle. IMPORTANCE_NONE creates the category in a
+                // blocked state, so it is visible (and switchable on) in system
+                // settings while showing nothing until the user asks for it.
+                // Importance is user-owned once created: this initial value
+                // only applies to installs that don't have the channel yet, and
+                // a user who enables it keeps it enabled across updates.
                 NotificationChannel(
                     PROMOTIONS,
                     context.getString(R.string.channel_promotions),
-                    NotificationManager.IMPORTANCE_LOW,
+                    NotificationManager.IMPORTANCE_NONE,
                 ).apply { description = context.getString(R.string.channel_promotions_desc) },
                 // DEFAULT (not HIGH) on purpose: parsed transaction alerts
                 // are informative, not urgent, and must not heads-up.

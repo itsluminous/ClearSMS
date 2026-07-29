@@ -659,13 +659,6 @@ private fun settingsRowEntries(
             checked = state.transactionNotifications,
             onToggle = viewModel::setTransactionNotifications,
         ),
-        toggle(
-            section = sectionNotification,
-            title = stringResource(R.string.settings_promotional_notifications),
-            summary = stringResource(R.string.settings_promotional_notifications_summary),
-            checked = state.promotionalNotifications,
-            onToggle = viewModel::setPromotionalNotifications,
-        ),
         row(
             section = sectionNotification,
             title = stringResource(R.string.settings_summary),
