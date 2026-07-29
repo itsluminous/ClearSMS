@@ -239,6 +239,16 @@ class ReminderParser {
         const val AMOUNT = "(?:INR|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?([\\d,]+(?:\\.\\d{1,2})?)"
 
         /**
+         * Amount with the currency symbol OPTIONAL — for phrasings where banks
+         * omit it after a very strong money anchor ("EMI DUE : 4131",
+         * "Due: 1162.3"). The trailing `(?![-/])` stops a date's day being read
+         * as the amount ("Due: 15-AUG-23" -> 15 is rejected), so this must only
+         * be used with an explicit money-context anchor, never bare.
+         */
+        const val AMOUNT_LOOSE =
+            "(?:INR|Rs\\.?|\\u20b9)?\\s*([\\d,]+(?:\\.\\d{1,2})?)(?![-/])"
+
+        /**
          * Due-context keywords anchored to a date. The keyword being merely
          * present somewhere in the body is NOT a signal — "due" and "expir"
          * match too much unrelated text.
@@ -363,6 +373,20 @@ class ReminderParser {
                 // gap is bounded and the currency must follow "is" directly,
                 // so an unrelated amount elsewhere in the body never binds.
                 "\\b(?:bill|statement)\\s+for\\s+[^\\n]{0,60}?\\bis\\s+$AMOUNT",
+                // "Amount Due" then the value (often on the next line):
+                // "Amount Due\nRs.4961 on HDFC Bank Credit Card 2863".
+                "\\bamount\\s+due\\s*:?\\s*$AMOUNT_LOOSE",
+                // "EMI DUE : 4131" — currency frequently omitted. Won't match
+                // "EMI Due date:" (no number follows the colon there).
+                "\\bEMI\\s+due\\s*:?\\s*$AMOUNT_LOOSE",
+                // Generic "Due: 1162.3" fallback. Colon REQUIRED (never matches
+                // "due on <date>"/"due by <date>"), the AMOUNT_LOOSE date-guard
+                // rejects "Due date: 15-AUG-23", and the lookbehinds stop it
+                // firing inside "amt due:" / "amount due:" / "min due:" /
+                // "total due:" (those are the specific total/min patterns above,
+                // so the minimum is never mis-read as the total). Last, so every
+                // more specific phrasing wins first.
+                "(?<!amt )(?<!min )(?<!amount )(?<!total )\\bdue\\s*:\\s*$AMOUNT_LOOSE",
             ).map { Regex("(?i)$it") }
 
         /** Minimum-due phrasings; kept alongside the total when both exist. */
