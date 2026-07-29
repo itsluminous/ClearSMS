@@ -42,9 +42,12 @@ class SectionRevealConventionTest {
     @Test
     fun `account detail has exactly one screen-level eye`() {
         val text = source("ui/finance/AccountDetailScreen.kt")
-        assertWithMessage("AccountDetailScreen must host exactly ONE reveal eye (top bar)")
+        // Account detail deliberately has NO reveal eye: its main content is the
+        // transaction list (never masked), and the few gated figures follow the
+        // app-wide reveal set on the Finance dashboard (shared session state).
+        assertWithMessage("AccountDetailScreen must not host its own reveal eye")
             .that(Regex("BalanceEyeButton\\(").findAll(text).count())
-            .isEqualTo(1)
+            .isEqualTo(0)
     }
 
     @Test

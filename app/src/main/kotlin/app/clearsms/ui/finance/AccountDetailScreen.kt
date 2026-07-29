@@ -57,7 +57,6 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
-import app.clearsms.ui.components.BalanceEyeButton
 import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
@@ -94,13 +93,6 @@ fun AccountDetailScreen(
         }
     }
 
-    val onToggleBalances =
-        balanceToggleHandler(
-            revealed = state.balancesRevealed,
-            onReveal = viewModel::revealBalances,
-            onConceal = viewModel::concealBalances,
-        )
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -136,13 +128,10 @@ fun AccountDetailScreen(
                         )
                     }
                 },
-                actions = {
-                    // Same screen-level reveal as the Finance dashboard: one
-                    // eye for every gated figure, never one per row.
-                    if (state.balanceGated) {
-                        BalanceEyeButton(revealed = state.balancesRevealed, onToggle = onToggleBalances)
-                    }
-                },
+                // No per-screen reveal eye here: the transaction list (individual
+                // amounts) is never masked, and the few gated figures follow the
+                // app-wide reveal set on the Finance dashboard (shared session
+                // state), so a toggle on this screen was redundant and confusing.
             )
         },
     ) { padding ->
