@@ -14,6 +14,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.notification.MessageNotifier
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SmsSender
@@ -125,11 +126,20 @@ class ConversationViewModel
         private val contactsSource: ContactsSource,
         private val smsSender: SmsSender,
         private val sentMessageWatcher: SentMessageWatcher,
+        private val messageNotifier: MessageNotifier,
         settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
+
+        init {
+            // Opening a conversation in-app clears that thread's message
+            // notification (the user has now seen it), the same as tapping the
+            // notification would. Only THIS thread's notification is cancelled;
+            // notifications for other conversations are left untouched.
+            messageNotifier.cancelThread(threadId)
+        }
 
         /**
          * Message to scroll to and briefly highlight, from search / Alerts /
