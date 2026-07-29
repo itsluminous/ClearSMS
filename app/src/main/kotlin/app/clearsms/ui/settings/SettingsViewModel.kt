@@ -12,6 +12,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -51,6 +52,7 @@ data class SettingsUiState(
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
     val promotionalNotifications: Boolean = false,
+    val logoBackground: LogoBackground = LogoBackground.WHITE,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
     val defaultDestination: StartDestination = StartDestination.INBOX,
@@ -185,6 +187,8 @@ class SettingsViewModel
             val showTransactionDetails: Boolean,
             val showRichAvatars: Boolean,
             val showBalance: Boolean,
+            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            val logoBackground: LogoBackground = LogoBackground.WHITE,
         )
 
         private data class NotificationState(
@@ -210,7 +214,9 @@ class SettingsViewModel
                 settings.showRichAvatars,
                 settings.showBalance,
                 ::AppearanceState,
-            )
+            ).combine(settings.logoBackground) { appearance, logoBackground ->
+                appearance.copy(logoBackground = logoBackground)
+            }
         private val notifications =
             combine(
                 uiPrefs.deliveryReports,
@@ -252,6 +258,7 @@ class SettingsViewModel
                     dynamicColor = appearanceState.dynamicColor,
                     showTransactionDetails = appearanceState.showTransactionDetails,
                     showRichAvatars = appearanceState.showRichAvatars,
+                    logoBackground = appearanceState.logoBackground,
                     showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
                     summaryFrequency = notificationState.summaryFrequency,
@@ -297,6 +304,8 @@ class SettingsViewModel
         fun setTransactionNotifications(value: Boolean) = launchIo { settings.setTransactionNotifications(value) }
 
         fun setPromotionalNotifications(value: Boolean) = launchIo { settings.setPromotionalNotifications(value) }
+
+        fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
 
         fun setSwipeActionStart(value: SwipeAction) = launchIo { settings.setSwipeActionStart(value) }
 

@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -166,6 +167,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_PROMOTIONAL_NOTIFICATIONS] = value }
     }
 
+    override val logoBackground: Flow<LogoBackground> =
+        dataStore.data.map { it[KEY_LOGO_BACKGROUND].toEnum(LogoBackground.WHITE) }
+
+    override suspend fun setLogoBackground(value: LogoBackground) {
+        dataStore.edit { it[KEY_LOGO_BACKGROUND] = value.name }
+    }
+
     override val handledOtpMessageId: Flow<Long> =
         dataStore.data.map { it[KEY_HANDLED_OTP_MESSAGE_ID] ?: 0L }
 
@@ -197,6 +205,7 @@ class SettingsRepositoryImpl(
         val KEY_FINANCE_TAB = stringPreferencesKey("finance_tab")
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
         val KEY_PROMOTIONAL_NOTIFICATIONS = booleanPreferencesKey("promotional_notifications")
+        val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
 
         /** Sentinel stored when the default inbox filter is All (null). */

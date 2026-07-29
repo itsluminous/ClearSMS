@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
@@ -53,6 +54,7 @@ class SettingsRepositoryImplTest {
                 .isEqualTo(setOf(NotificationAction.MARK_READ, NotificationAction.REPLY, NotificationAction.DELETE))
             assertThat(repo.showBalance.first()).isFalse()
             assertThat(repo.promotionalNotifications.first()).isFalse()
+            assertThat(repo.logoBackground.first()).isEqualTo(LogoBackground.WHITE)
             assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.ARCHIVE)
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.DELETE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.INBOX)

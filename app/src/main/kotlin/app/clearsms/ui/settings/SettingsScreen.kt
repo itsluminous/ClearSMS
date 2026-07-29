@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -74,6 +75,7 @@ import app.clearsms.ui.components.otpPreviewFontSp
 
 private enum class SettingsDialog {
     THEME,
+    LOGO_BACKGROUND,
     SUMMARY,
     NOTIFICATION_ACTIONS,
     SWIPE_START,
@@ -310,6 +312,17 @@ fun SettingsScreen(
                 selected = state.theme,
                 onSelect = {
                     viewModel.setTheme(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        SettingsDialog.LOGO_BACKGROUND ->
+            RadioDialog(
+                title = stringResource(R.string.settings_logo_background),
+                options = LogoBackground.entries.map { it to logoBackgroundLabel(it) },
+                selected = state.logoBackground,
+                onSelect = {
+                    viewModel.setLogoBackground(it)
                     dialog = null
                 },
                 onDismiss = { dialog = null },
@@ -565,6 +578,12 @@ private fun settingsRowEntries(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
         },
+        row(
+            section = sectionAppearance,
+            title = stringResource(R.string.settings_logo_background),
+            summary = logoBackgroundLabel(state.logoBackground),
+            onClick = { openDialog(SettingsDialog.LOGO_BACKGROUND) },
+        ),
         row(
             section = sectionAppearance,
             title = stringResource(R.string.settings_theme),
@@ -1180,6 +1199,16 @@ private fun destinationLabel(destination: StartDestination): String =
 
 @Composable
 private fun inboxFilterLabel(filter: Category?): String = filter?.displayName() ?: stringResource(R.string.settings_filter_all)
+
+@Composable
+private fun logoBackgroundLabel(value: LogoBackground): String =
+    stringResource(
+        when (value) {
+            LogoBackground.WHITE -> R.string.logo_background_white
+            LogoBackground.DYNAMIC -> R.string.logo_background_dynamic
+            LogoBackground.NONE -> R.string.logo_background_none
+        },
+    )
 
 @Composable
 private fun themeLabel(mode: ThemeMode): String =

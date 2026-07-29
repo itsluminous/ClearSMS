@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.ui.theme.ClearSmsTheme
 import coil.compose.SubcomposeAsyncImage
 import kotlin.math.abs
@@ -114,11 +115,21 @@ fun SenderAvatar(
             }
             val logo = bitmap
             if (logo != null) {
+                // The plate behind the artwork: brand-accurate white by default,
+                // a Material You tint, or none (transparent artwork sits on the
+                // row). Logos that ship with an opaque background baked into the
+                // image look the same either way — see LogoBackground.
+                val plate =
+                    when (LocalLogoBackground.current) {
+                        LogoBackground.WHITE -> Color.White
+                        LogoBackground.DYNAMIC -> MaterialTheme.colorScheme.surfaceVariant
+                        LogoBackground.NONE -> Color.Transparent
+                    }
                 Box(modifier = modifier.size(size)) {
                     Image(
                         bitmap = logo,
                         contentDescription = stringResource(R.string.avatar_sender_logo, name),
-                        // Fit inside a circular white plate: logos are shown whole
+                        // Fit inside the chosen backing plate: logos are shown whole
                         // (never cropped), and clipping to the shared circle means
                         // transparent-background artwork gets no box edges.
                         contentScale = ContentScale.Fit,
@@ -126,7 +137,7 @@ fun SenderAvatar(
                             Modifier
                                 .size(size)
                                 .clip(AvatarDefaults.shapeFor(style))
-                                .background(Color.White)
+                                .background(plate)
                                 .padding(4.dp),
                     )
                     GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = size)

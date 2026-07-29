@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ import androidx.navigation.navDeepLink
 import app.clearsms.R
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.ui.alerts.AlertsScreen
+import app.clearsms.ui.components.LocalLogoBackground
 import app.clearsms.ui.composemsg.ComposeMessageScreen
 import app.clearsms.ui.conversation.ConversationScreen
 import app.clearsms.ui.finance.AccountDetailScreen
@@ -65,16 +67,18 @@ fun ClearSmsApp(
 ) {
     val state by appViewModel.uiState.collectAsStateWithLifecycle()
     ClearSmsTheme(themeMode = state.themeMode, dynamicColor = state.dynamicColor) {
-        when (state.onboardingComplete) {
-            null -> Box(Modifier.fillMaxSize()) // settings still loading; avoid flashing a screen
-            false -> OnboardingScreen()
-            true -> {
-                LaunchedEffect(Unit) { onOnboarded() }
-                MainScaffold(
-                    initialRecipient = initialRecipient,
-                    initialBody = initialBody,
-                    startDestination = state.defaultDestination,
-                )
+        CompositionLocalProvider(LocalLogoBackground provides state.logoBackground) {
+            when (state.onboardingComplete) {
+                null -> Box(Modifier.fillMaxSize()) // settings still loading; avoid flashing a screen
+                false -> OnboardingScreen()
+                true -> {
+                    LaunchedEffect(Unit) { onOnboarded() }
+                    MainScaffold(
+                        initialRecipient = initialRecipient,
+                        initialBody = initialBody,
+                        startDestination = state.defaultDestination,
+                    )
+                }
             }
         }
     }

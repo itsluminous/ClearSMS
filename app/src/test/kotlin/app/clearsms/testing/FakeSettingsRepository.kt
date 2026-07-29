@@ -3,6 +3,7 @@ package app.clearsms.testing
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -95,6 +96,10 @@ open class FakeSettingsRepository : SettingsRepository {
     override val promotionalNotifications = MutableStateFlow(false)
 
     override suspend fun setPromotionalNotifications(value: Boolean) = Unit
+
+    override val logoBackground = MutableStateFlow(LogoBackground.WHITE)
+
+    override suspend fun setLogoBackground(value: LogoBackground) = Unit
 
     override val handledOtpMessageId = MutableStateFlow(0L)
 

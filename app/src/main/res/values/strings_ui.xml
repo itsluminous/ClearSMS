@@ -212,6 +212,10 @@
     <string name="settings_restore_failed_reason">Restore failed: %1$s</string>
     <string name="settings_auto_backup_note">Automatic backups are stored unencrypted in this app\'s private storage. Other apps cannot read them without root.</string>
     <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_logo_background">Logo background</string>
+    <string name="logo_background_white">White</string>
+    <string name="logo_background_dynamic">Match app colors</string>
+    <string name="logo_background_none">None</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_dynamic_color_summary">Use colors from your wallpaper (Android 12+)</string>

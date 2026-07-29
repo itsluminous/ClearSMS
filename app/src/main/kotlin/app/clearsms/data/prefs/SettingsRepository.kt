@@ -2,6 +2,7 @@ package app.clearsms.data.prefs
 
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -107,6 +108,11 @@ interface SettingsRepository {
     val promotionalNotifications: Flow<Boolean>
 
     suspend fun setPromotionalNotifications(value: Boolean)
+
+    /** Backing plate drawn behind bundled sender logos. */
+    val logoBackground: Flow<LogoBackground>
+
+    suspend fun setLogoBackground(value: LogoBackground)
 
     /**
      * Id of the newest OTP message the user has handled (copied or dismissed)
