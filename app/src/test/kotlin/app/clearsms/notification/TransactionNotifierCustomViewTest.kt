@@ -72,7 +72,7 @@ class TransactionNotifierCustomViewTest {
                 MessageNotifier.DEFAULT_SELECTED,
             )
         assertThat(notification!!.color)
-            .isEqualTo(ContextCompat.getColor(context, R.color.amount_debit))
+            .isEqualTo(ContextCompat.getColor(context, R.color.notif_amount_debit))
     }
 
     @Test
@@ -82,21 +82,21 @@ class TransactionNotifierCustomViewTest {
                 message("""{"amount":"5000.0","type":"credit"}"""),
                 MessageNotifier.DEFAULT_SELECTED,
             )
-        assertThat(credit!!.color).isEqualTo(ContextCompat.getColor(context, R.color.amount_credit))
+        assertThat(credit!!.color).isEqualTo(ContextCompat.getColor(context, R.color.notif_amount_credit))
 
         val balance =
             notifier.buildNotification(
                 message("""{"balance":"12430.0","bank":"HDFC Bank"}"""),
                 MessageNotifier.DEFAULT_SELECTED,
             )
-        assertThat(balance!!.color).isEqualTo(ContextCompat.getColor(context, R.color.amount_balance))
+        assertThat(balance!!.color).isEqualTo(ContextCompat.getColor(context, R.color.notif_amount_balance))
     }
 
     @Test
     fun `kind to color-resource mapping is exhaustive and distinct`() {
         val mapped = Content.Kind.entries.map(TransactionNotifier::amountColorRes)
         assertThat(mapped)
-            .containsExactly(R.color.amount_debit, R.color.amount_credit, R.color.amount_balance)
+            .containsExactly(R.color.notif_amount_debit, R.color.notif_amount_credit, R.color.notif_amount_balance)
             .inOrder()
     }
 
@@ -121,7 +121,7 @@ class TransactionNotifierCustomViewTest {
                 MessageNotifier.DEFAULT_SELECTED,
             )
         assertThat(notification).isNotNull()
-        assertThat(notification!!.color).isEqualTo(ContextCompat.getColor(context, R.color.amount_balance))
+        assertThat(notification!!.color).isEqualTo(ContextCompat.getColor(context, R.color.notif_amount_balance))
         val title = notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString()
         assertThat(title).isEqualTo("₹40,194.56")
         assertThat(title).doesNotContain("+")

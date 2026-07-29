@@ -2,7 +2,11 @@
 <resources>
     <!-- Dark variants of the fixed semantic amount colors (see
          values/colors.xml). Lightened tones that keep WCAG AA contrast on
-         the dark notification shade and app surfaces. -->
+         the app's dark surfaces.
+
+         NOTE: notif_amount_* are deliberately NOT overridden here — the
+         notification shade uses one mid-tone per kind in both themes, so the
+         amount reads the same whether the shade is light or dark. -->
     <color name="amount_debit">#FFFFB4AB</color>
     <color name="amount_credit">#FFA5D6A7</color>
     <color name="amount_balance">#FF90CAF9</color>

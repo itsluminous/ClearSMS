@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textAppearance="@style/TextAppearance.Compat.Notification.Line2"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification.Line2"
         tools:text="Swiggy · A/c 2863 · HDFC Bank" />
 
     <TextView
@@ -34,6 +34,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:textAppearance="@style/TextAppearance.Compat.Notification"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification"
         tools:text="Rs.1,299.00 debited from a/c **2863 on 27-07-26 to Swiggy. Avl bal Rs.12,430.00" />
 </LinearLayout>

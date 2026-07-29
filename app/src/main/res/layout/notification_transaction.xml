@@ -28,6 +28,6 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.Compat.Notification.Line2"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification.Line2"
         tools:text="Swiggy · A/c 2863 · HDFC Bank" />
 </LinearLayout>

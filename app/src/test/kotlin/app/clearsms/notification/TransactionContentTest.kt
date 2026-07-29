@@ -17,7 +17,7 @@ class TransactionContentTest {
         assertThat(content).isNotNull()
         assertThat(content!!.kind).isEqualTo(Content.Kind.DEBIT)
         assertThat(content.title).isEqualTo("− ₹1,299")
-        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.amount_debit)
+        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.notif_amount_debit)
     }
 
     @Test
@@ -30,7 +30,7 @@ class TransactionContentTest {
             )
         assertThat(content!!.kind).isEqualTo(Content.Kind.CREDIT)
         assertThat(content.title).isEqualTo("+ ₹5,000")
-        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.amount_credit)
+        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.notif_amount_credit)
     }
 
     @Test
@@ -43,7 +43,7 @@ class TransactionContentTest {
             )
         assertThat(content!!.kind).isEqualTo(Content.Kind.BALANCE)
         assertThat(content.title).isEqualTo("₹12,430")
-        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.amount_balance)
+        assertThat(TransactionNotifier.amountColorRes(content.kind)).isEqualTo(R.color.notif_amount_balance)
         assertThat(content.text).isEqualTo("Balance update · HDFC Bank")
     }
 

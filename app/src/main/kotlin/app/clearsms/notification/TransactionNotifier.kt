@@ -238,9 +238,9 @@ class TransactionNotifier
             @ColorRes
             fun amountColorRes(kind: Content.Kind): Int =
                 when (kind) {
-                    Content.Kind.DEBIT -> R.color.amount_debit
-                    Content.Kind.CREDIT -> R.color.amount_credit
-                    Content.Kind.BALANCE -> R.color.amount_balance
+                    Content.Kind.DEBIT -> R.color.notif_amount_debit
+                    Content.Kind.CREDIT -> R.color.notif_amount_credit
+                    Content.Kind.BALANCE -> R.color.notif_amount_balance
                 }
 
             /**
