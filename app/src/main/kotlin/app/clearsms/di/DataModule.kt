@@ -163,6 +163,7 @@ object DataModule {
             bundledRuleLoader = bundledRuleLoader,
             json = json,
             systemSmsDeleter = telephonyWriter,
+            systemSmsReadWriter = telephonyWriter,
         )
 
     @Provides

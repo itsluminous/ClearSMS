@@ -53,6 +53,7 @@ class MessageRepositoryImpl(
     private val deliveryParser: DeliveryParser = DeliveryParser(),
     /** Platform hook syncing deletions to the system SMS provider (null in tests). */
     private val systemSmsDeleter: SystemSmsDeleter? = null,
+    private val systemSmsReadWriter: SystemSmsReadWriter? = null,
     /** Page size for [recategorizeAll]; overridable so tests can hit batch boundaries. */
     private val recategorizePageSize: Int = RECATEGORIZE_PAGE_SIZE,
 ) : MessageRepository {
@@ -127,7 +128,10 @@ class MessageRepositoryImpl(
     override suspend fun markRead(
         messageId: Long,
         read: Boolean,
-    ) = messageDao.markRead(messageId, read)
+    ) {
+        messageDao.markRead(messageId, read)
+        syncReadToProvider(messageDao.systemSmsIdsFor(listOf(messageId)), read)
+    }
 
     override suspend fun delete(messageId: Long) = deleteMessages(listOf(messageId))
 
@@ -182,9 +186,14 @@ class MessageRepositoryImpl(
         read: Boolean,
     ) {
         if (ids.isEmpty()) return
-        database.withTransaction {
-            SqliteChunker.chunk(ids).forEach { messageDao.setReadForIds(it, read) }
-        }
+        val chunks = SqliteChunker.chunk(ids)
+        val systemIds =
+            database.withTransaction {
+                val collected = chunks.flatMap { messageDao.systemSmsIdsFor(it) }
+                chunks.forEach { messageDao.setReadForIds(it, read) }
+                collected
+            }
+        syncReadToProvider(systemIds, read)
     }
 
     override suspend fun setReadForThreads(
@@ -192,9 +201,29 @@ class MessageRepositoryImpl(
         read: Boolean,
     ) {
         if (threadIds.isEmpty()) return
-        database.withTransaction {
-            SqliteChunker.chunk(threadIds).forEach { messageDao.setReadForThreads(it, read) }
-        }
+        val chunks = SqliteChunker.chunk(threadIds)
+        val systemIds =
+            database.withTransaction {
+                val collected = chunks.flatMap { messageDao.systemSmsIdsForThreads(it) }
+                chunks.forEach { messageDao.setReadForThreads(it, read) }
+                collected
+            }
+        syncReadToProvider(systemIds, read)
+    }
+
+    /**
+     * Mirrors a read-state change into the system SMS provider so it survives
+     * re-import / reinstall and stays consistent with other SMS apps. No-ops
+     * off the default app (the writer guards that) or when nothing mapped to a
+     * provider row.
+     */
+    private fun syncReadToProvider(
+        systemIds: List<Long>,
+        read: Boolean,
+    ) {
+        val writer = systemSmsReadWriter ?: return
+        if (systemIds.isEmpty()) return
+        SqliteChunker.chunk(systemIds).forEach { writer.setReadBySystemIds(it, read) }
     }
 
     override suspend fun archiveThreads(

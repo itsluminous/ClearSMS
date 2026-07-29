@@ -7,6 +7,7 @@ import android.provider.Telephony
 import android.util.Log
 import app.clearsms.data.repository.SqliteChunker
 import app.clearsms.data.repository.SystemSmsDeleter
+import app.clearsms.data.repository.SystemSmsReadWriter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +25,8 @@ class TelephonyWriter
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-    ) : SystemSmsDeleter {
+    ) : SystemSmsDeleter,
+        SystemSmsReadWriter {
         /** Inserts a received message into the inbox. Returns the row uri, or null. */
         fun writeInbox(
             sender: String,
@@ -108,6 +110,39 @@ class TelephonyWriter
                     }
             }
             return deleted
+        }
+
+        /**
+         * Propagates read-state to the system SMS provider's `read` column by
+         * `_id`, in chunks below SQLite's variable limit. This is what makes a
+         * "mark read" survive reinstalls and stay in sync with other SMS apps:
+         * the provider is the shared source of truth, and the importer seeds
+         * each message's read-state from it. No-ops when Clear SMS is not the
+         * default app, and degrades to a logged warning on failure (the local
+         * Room update has already succeeded).
+         */
+        override fun setReadBySystemIds(
+            systemIds: List<Long>,
+            read: Boolean,
+        ) {
+            if (systemIds.isEmpty()) return
+            if (!DefaultSmsAppHelper.isDefaultSmsApp(context)) return
+            val values = ContentValues().apply { put(Telephony.Sms.READ, if (read) 1 else 0) }
+            for (chunk in SqliteChunker.chunk(systemIds)) {
+                try {
+                    val placeholders = chunk.joinToString(",") { "?" }
+                    context.contentResolver.update(
+                        Telephony.Sms.CONTENT_URI,
+                        values,
+                        "${Telephony.Sms._ID} IN ($placeholders)",
+                        chunk.map(Long::toString).toTypedArray(),
+                    )
+                } catch (e: SecurityException) {
+                    Log.w(TAG, "Not allowed to update read-state in the system SMS provider", e)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to update read-state in the system SMS provider", e)
+                }
+            }
         }
 
         private fun insert(
