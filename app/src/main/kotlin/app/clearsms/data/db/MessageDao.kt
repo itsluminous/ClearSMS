@@ -9,7 +9,12 @@ import androidx.room.Update
 import app.clearsms.domain.model.Category
 import kotlinx.coroutines.flow.Flow
 
-/** Unread message count for one category (projection for badge counters). */
+/**
+ * Count of unread CONVERSATIONS for one category (badge counter). A
+ * conversation counts as unread when its representative (latest) message is
+ * unread — the same basis the inbox unread filter uses — so the badge always
+ * equals the number of rows shown when that filter is applied.
+ */
 data class CategoryUnreadCount(
     val category: Category,
     val count: Int,
@@ -125,9 +130,12 @@ interface MessageDao {
 
     @Query(
         """
-        SELECT category, COUNT(*) AS count FROM messages
-        WHERE isRead = 0 AND isArchived = 0
-        GROUP BY category
+        SELECT m.category AS category, COUNT(*) AS count FROM messages m
+        INNER JOIN (
+            SELECT threadId, MAX(id) AS maxId FROM messages GROUP BY threadId
+        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        WHERE m.isRead = 0 AND m.isArchived = 0
+        GROUP BY m.category
         """,
     )
     fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>>
