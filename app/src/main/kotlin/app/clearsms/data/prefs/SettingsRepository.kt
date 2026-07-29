@@ -100,6 +100,15 @@ interface SettingsRepository {
     suspend fun setTransactionNotifications(value: Boolean)
 
     /**
+     * Notify for promotional messages. OFF by default — promos are the noisiest
+     * category, so they stay silent unless the user opts in (they can also
+     * block the "Promotions" channel from Android's notification settings).
+     */
+    val promotionalNotifications: Flow<Boolean>
+
+    suspend fun setPromotionalNotifications(value: Boolean)
+
+    /**
      * Id of the newest OTP message the user has handled (copied or dismissed)
      * from the inbox banner; 0 when none. Message ids are monotonically
      * increasing, so the banner hides this id and everything older forever —

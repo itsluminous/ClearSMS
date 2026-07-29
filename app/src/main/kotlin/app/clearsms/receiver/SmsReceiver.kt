@@ -13,6 +13,7 @@ import app.clearsms.di.ApplicationScope
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.SubCategory
+import app.clearsms.notification.Channels
 import app.clearsms.notification.MessageNotifier
 import app.clearsms.notification.OtpClipboard
 import app.clearsms.notification.OtpNotifier
@@ -112,7 +113,14 @@ class SmsReceiver : BroadcastReceiver() {
                 transactionNotifier.notify(entity, selectedActions) -> Unit
             entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
                 messageNotifier.notify(entity, selectedActions)
-            // Promotional and unknown messages stay silent by design.
+            // Promotions are opt-in (setting OFF by default) and ride their own
+            // LOW-importance "Promotions" channel, so they are silent even when
+            // enabled and can be blocked from Android's notification settings.
+            entity.category == Category.PROMOTIONAL &&
+                settingsRepository.promotionalNotifications.first() ->
+                messageNotifier.notify(entity, selectedActions, channelId = Channels.PROMOTIONS)
+            // Everything else (unknown, informational, promos when opted out)
+            // stays silent by design.
             else -> Unit
         }
     }

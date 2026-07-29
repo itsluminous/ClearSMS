@@ -11,6 +11,7 @@ import app.clearsms.R
 object Channels {
     const val OTP = "otp"
     const val MESSAGES = "messages"
+    const val PROMOTIONS = "promotions"
     const val TRANSACTIONS = "transactions"
     const val SECURITY = "security"
     const val SUMMARY = "summary"
@@ -39,6 +40,15 @@ object Channels {
                     context.getString(R.string.channel_messages),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply { description = context.getString(R.string.channel_messages_desc) },
+                // Promotional messages are opt-in: the in-app setting is off by
+                // default, and this channel is LOW importance (silent, no
+                // heads-up) so even when enabled it never interrupts. Users can
+                // also block it from Android's own notification categories.
+                NotificationChannel(
+                    PROMOTIONS,
+                    context.getString(R.string.channel_promotions),
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply { description = context.getString(R.string.channel_promotions_desc) },
                 // DEFAULT (not HIGH) on purpose: parsed transaction alerts
                 // are informative, not urgent, and must not heads-up.
                 NotificationChannel(

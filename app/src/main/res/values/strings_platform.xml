@@ -5,6 +5,8 @@
     <string name="channel_otp_desc">Heads-up notifications for one-time passwords</string>
     <string name="channel_messages">Messages</string>
     <string name="channel_messages_desc">Incoming personal and important messages</string>
+    <string name="channel_promotions">Promotions</string>
+    <string name="channel_promotions_desc">Offers and marketing messages (silent; off by default)</string>
     <string name="channel_security">Security warnings</string>
     <string name="channel_security_desc">Warnings about likely scam or fraud messages</string>
     <string name="channel_summary">Summaries and reminders</string>

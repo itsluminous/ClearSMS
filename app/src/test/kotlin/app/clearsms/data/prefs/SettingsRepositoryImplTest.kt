@@ -52,6 +52,7 @@ class SettingsRepositoryImplTest {
             assertThat(repo.notificationActions.first())
                 .isEqualTo(setOf(NotificationAction.MARK_READ, NotificationAction.REPLY, NotificationAction.DELETE))
             assertThat(repo.showBalance.first()).isFalse()
+            assertThat(repo.promotionalNotifications.first()).isFalse()
             assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.ARCHIVE)
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.DELETE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.INBOX)

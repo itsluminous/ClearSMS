@@ -48,6 +48,7 @@ class MessageNotifier
         fun notify(
             message: MessageEntity,
             selected: Set<NotificationAction> = DEFAULT_SELECTED,
+            channelId: String = Channels.MESSAGES,
         ) {
             Channels.ensureCreated(context)
             val resolved = senderResolver.resolve(message.sender)
@@ -70,7 +71,7 @@ class MessageNotifier
                 )
             val builder =
                 NotificationCompat
-                    .Builder(context, Channels.MESSAGES)
+                    .Builder(context, channelId)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(resolved.name)
                     .setContentText(message.body)
