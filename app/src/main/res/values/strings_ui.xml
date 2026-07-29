@@ -91,7 +91,6 @@
     <string name="finance_breakdown_received">Money received (%1$d)</string>
     <string name="finance_breakdown_spent">Money spent (%1$d)</string>
     <string name="finance_summary_tx_count">%1$d transactions this month</string>
-    <string name="finance_summary_excluded">Not counted: %1$s across %2$d self-transfers &amp; card-bill payments</string>
 
     <!-- Account detail -->
     <string name="account_monthly_chart">Monthly activity (last 6 months)</string>

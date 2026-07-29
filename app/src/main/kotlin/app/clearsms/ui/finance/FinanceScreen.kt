@@ -780,14 +780,6 @@ private fun MonthSummaryCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
-                    if (excludedCount > 0) {
-                        val excludedText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(excludedTotal)
-                        Text(
-                            text = stringResource(R.string.finance_summary_excluded, excludedText, excludedCount),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                        )
-                    }
                 }
             }
         }
