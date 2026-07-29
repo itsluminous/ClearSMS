@@ -1205,6 +1205,7 @@ private fun logoBackgroundLabel(value: LogoBackground): String =
     stringResource(
         when (value) {
             LogoBackground.WHITE -> R.string.logo_background_white
+            LogoBackground.DARK -> R.string.logo_background_dark
             LogoBackground.DYNAMIC -> R.string.logo_background_dynamic
             LogoBackground.NONE -> R.string.logo_background_none
         },

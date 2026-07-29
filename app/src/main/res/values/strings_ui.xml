@@ -214,6 +214,7 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_logo_background">Logo background</string>
     <string name="logo_background_white">White</string>
+    <string name="logo_background_dark">Dark</string>
     <string name="logo_background_dynamic">Match app colors</string>
     <string name="logo_background_none">None</string>
     <string name="settings_theme">Theme</string>

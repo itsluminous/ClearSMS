@@ -122,6 +122,9 @@ fun SenderAvatar(
                 val plate =
                     when (LocalLogoBackground.current) {
                         LogoBackground.WHITE -> Color.White
+                        // Not pure black: a near-black plate keeps a subtle edge
+                        // against true-black dark surfaces.
+                        LogoBackground.DARK -> Color(0xFF1C1B1F)
                         LogoBackground.DYNAMIC -> MaterialTheme.colorScheme.surfaceVariant
                         LogoBackground.NONE -> Color.Transparent
                     }

@@ -16,6 +16,9 @@ enum class LogoBackground {
     /** White plate — brand-accurate, always legible. The default. */
     WHITE,
 
+    /** Dark plate — blends into dark themes; keeps light marks readable. */
+    DARK,
+
     /** Material You tinted plate that follows the app's color scheme. */
     DYNAMIC,
 
