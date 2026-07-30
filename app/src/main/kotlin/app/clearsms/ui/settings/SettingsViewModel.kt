@@ -298,6 +298,18 @@ class SettingsViewModel
 
         fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
 
+        fun setInboxPillOrder(value: List<Category>) = launchIo { settings.setInboxPillOrder(value) }
+
+        fun setFinancePillOrder(value: List<FinanceTab>) = launchIo { settings.setFinancePillOrder(value) }
+
+        fun setAlertsPillOrder(value: List<AlertFilter>) = launchIo { settings.setAlertsPillOrder(value) }
+
+        fun resetInboxPillOrder() = setInboxPillOrder(Category.entries.toList())
+
+        fun resetFinancePillOrder() = setFinancePillOrder(FinanceTab.entries.toList())
+
+        fun resetAlertsPillOrder() = setAlertsPillOrder(AlertFilter.entries.toList())
+
         fun setSwipeActionStart(value: SwipeAction) = launchIo { settings.setSwipeActionStart(value) }
 
         fun setSwipeActionEnd(value: SwipeAction) = launchIo { settings.setSwipeActionEnd(value) }
@@ -320,12 +332,6 @@ class SettingsViewModel
         val alertsPillOrder: StateFlow<List<AlertFilter>> =
             settings.alertsPillOrder
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertFilter.entries.toList())
-
-        fun setInboxPillOrder(value: List<Category>) = launchIo { settings.setInboxPillOrder(value) }
-
-        fun setFinancePillOrder(value: List<FinanceTab>) = launchIo { settings.setFinancePillOrder(value) }
-
-        fun setAlertsPillOrder(value: List<AlertFilter>) = launchIo { settings.setAlertsPillOrder(value) }
 
         fun setOtpAutoCopy(value: Boolean) = launchIo { settings.setOtpAutoCopy(value) }
 

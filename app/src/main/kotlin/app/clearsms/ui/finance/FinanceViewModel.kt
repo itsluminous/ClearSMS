@@ -61,6 +61,8 @@ data class FinanceUiState(
     val isLoadingMore: Boolean = false,
     /** Badge counts per pill: accounts / cards / transactions this month. */
     val pillCounts: Map<FinanceTab, Int> = emptyMap(),
+    /** Pill order configured in Settings; empty means declaration order. */
+    val pillOrder: List<FinanceTab> = emptyList(),
     /** Mirrors Settings → Appearance → Show logos and contact photos. */
     val showRichAvatars: Boolean = true,
     /** True when Settings → Privacy → Show balance is OFF (masking active). */
@@ -154,6 +156,7 @@ class FinanceViewModel
                     balancesRevealed = showBalance || revealed,
                 )
             }.flowOn(ioDispatcher)
+                .combine(settingsRepository.financePillOrder) { state, order -> state.copy(pillOrder = order) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())
 
         private fun buildState(

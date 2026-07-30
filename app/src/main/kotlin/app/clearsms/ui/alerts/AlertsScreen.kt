@@ -58,6 +58,7 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.finance.reminderGlyph
 import app.clearsms.ui.navigation.SearchSettingsActions
+import app.clearsms.ui.navigation.orderedPills
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -122,7 +123,7 @@ fun AlertsScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(AlertFilter.entries.toList(), key = { it.name }) { option ->
+                    items(orderedPills(state.pillOrder, AlertFilter.entries.toList()), key = { it.name }) { option ->
                         val label = option.displayName()
                         val count = state.counts[option] ?: 0
                         val description =
@@ -351,7 +352,7 @@ private fun ReminderCard(
 }
 
 @Composable
-private fun AlertFilter.displayName(): String =
+internal fun AlertFilter.displayName(): String =
     when (this) {
         AlertFilter.ALL -> stringResource(R.string.alerts_filter_all)
         AlertFilter.CREDIT_CARDS -> stringResource(R.string.alerts_filter_credit_cards)

@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
@@ -67,13 +68,20 @@ import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.ui.alerts.AlertFilter
+import app.clearsms.ui.alerts.displayName
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.otpPreviewFontSp
+import app.clearsms.ui.finance.displayName
+import app.clearsms.ui.navigation.orderedPills
 
 private enum class SettingsDialog {
     THEME,
+    INBOX_PILL_ORDER,
+    FINANCE_PILL_ORDER,
+    ALERTS_PILL_ORDER,
     LOGO_BACKGROUND,
     NOTIFICATION_ACTIONS,
     SWIPE_START,
@@ -314,6 +322,57 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.INBOX_PILL_ORDER -> {
+            val order by viewModel.inboxPillOrder.collectAsStateWithLifecycle()
+            PillOrderDialog(
+                title = stringResource(R.string.settings_pill_order),
+                order = orderedPills(order, Category.entries.toList()),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setInboxPillOrder(it)
+                    dialog = null
+                },
+                onReset = {
+                    viewModel.resetInboxPillOrder()
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.FINANCE_PILL_ORDER -> {
+            val order by viewModel.financePillOrder.collectAsStateWithLifecycle()
+            PillOrderDialog(
+                title = stringResource(R.string.settings_pill_order),
+                order = orderedPills(order, FinanceTab.entries.toList()),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setFinancePillOrder(it)
+                    dialog = null
+                },
+                onReset = {
+                    viewModel.resetFinancePillOrder()
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.ALERTS_PILL_ORDER -> {
+            val order by viewModel.alertsPillOrder.collectAsStateWithLifecycle()
+            PillOrderDialog(
+                title = stringResource(R.string.settings_pill_order),
+                order = orderedPills(order, AlertFilter.entries.toList()),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setAlertsPillOrder(it)
+                    dialog = null
+                },
+                onReset = {
+                    viewModel.resetAlertsPillOrder()
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
         SettingsDialog.LOGO_BACKGROUND ->
             RadioDialog(
                 title = stringResource(R.string.settings_logo_background),
@@ -490,9 +549,10 @@ private fun settingsRowEntries(
     val sectionBlocking = stringResource(R.string.settings_section_blocking)
     val sectionBackup = stringResource(R.string.settings_section_backup)
     val sectionAppearance = stringResource(R.string.settings_section_appearance)
-    val sectionPrivacy = stringResource(R.string.settings_section_privacy)
     val sectionNotification = stringResource(R.string.settings_section_notification)
-    val sectionGestures = stringResource(R.string.settings_section_gestures)
+    val sectionInbox = stringResource(R.string.settings_section_inbox)
+    val sectionFinance = stringResource(R.string.settings_section_finance)
+    val sectionAlerts = stringResource(R.string.settings_section_alerts)
     val sectionStartup = stringResource(R.string.settings_section_startup)
     val sectionSort = stringResource(R.string.settings_section_sort)
     val sectionOtp = stringResource(R.string.settings_section_otp)
@@ -567,12 +627,6 @@ private fun settingsRowEntries(
         },
         row(
             section = sectionAppearance,
-            title = stringResource(R.string.settings_logo_background),
-            summary = logoBackgroundLabel(state.logoBackground),
-            onClick = { openDialog(SettingsDialog.LOGO_BACKGROUND) },
-        ),
-        row(
-            section = sectionAppearance,
             title = stringResource(R.string.settings_theme),
             summary = themeLabel(state.theme),
             onClick = { openDialog(SettingsDialog.THEME) },
@@ -598,6 +652,12 @@ private fun settingsRowEntries(
             checked = state.showRichAvatars,
             onToggle = viewModel::setShowRichAvatars,
         ),
+        row(
+            section = sectionAppearance,
+            title = stringResource(R.string.settings_logo_background),
+            summary = logoBackgroundLabel(state.logoBackground),
+            onClick = { openDialog(SettingsDialog.LOGO_BACKGROUND) },
+        ),
         toggle(
             section = sectionAppearance,
             title = stringResource(R.string.settings_show_transaction_details),
@@ -610,7 +670,7 @@ private fun settingsRowEntries(
         // also keeps it visually distinct from the extracted-details
         // verbosity toggle above, which users previously conflated with it.
         toggle(
-            section = sectionPrivacy,
+            section = sectionFinance,
             title = stringResource(R.string.settings_show_balance),
             summary =
                 stringResource(
@@ -647,13 +707,31 @@ private fun settingsRowEntries(
             onToggle = viewModel::setTransactionNotifications,
         ),
         row(
-            section = sectionGestures,
+            section = sectionInbox,
+            title = stringResource(R.string.settings_pill_order),
+            summary = stringResource(R.string.settings_pill_order_summary),
+            onClick = { openDialog(SettingsDialog.INBOX_PILL_ORDER) },
+        ),
+        row(
+            section = sectionFinance,
+            title = stringResource(R.string.settings_pill_order),
+            summary = stringResource(R.string.settings_pill_order_summary),
+            onClick = { openDialog(SettingsDialog.FINANCE_PILL_ORDER) },
+        ),
+        row(
+            section = sectionAlerts,
+            title = stringResource(R.string.settings_pill_order),
+            summary = stringResource(R.string.settings_pill_order_summary),
+            onClick = { openDialog(SettingsDialog.ALERTS_PILL_ORDER) },
+        ),
+        row(
+            section = sectionInbox,
             title = stringResource(R.string.settings_swipe_right),
             summary = swipeActionLabel(state.swipeActionStart),
             onClick = { openDialog(SettingsDialog.SWIPE_START) },
         ),
         row(
-            section = sectionGestures,
+            section = sectionInbox,
             title = stringResource(R.string.settings_swipe_left),
             summary = swipeActionLabel(state.swipeActionEnd),
             onClick = { openDialog(SettingsDialog.SWIPE_END) },
@@ -665,7 +743,7 @@ private fun settingsRowEntries(
             onClick = { openDialog(SettingsDialog.DEFAULT_SCREEN) },
         ),
         row(
-            section = sectionStartup,
+            section = sectionInbox,
             title = stringResource(R.string.settings_default_inbox_filter),
             summary = inboxFilterLabel(state.defaultInboxFilter),
             onClick = { openDialog(SettingsDialog.DEFAULT_FILTER) },

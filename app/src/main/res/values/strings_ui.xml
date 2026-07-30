@@ -211,6 +211,14 @@
     <string name="settings_restore_failed">That file is not a valid backup</string>
     <string name="settings_restore_failed_reason">Restore failed: %1$s</string>
     <string name="settings_auto_backup_note">Automatic backups are stored unencrypted in this app\'s private storage. Other apps cannot read them without root.</string>
+    <string name="settings_pill_order">Pill order</string>
+    <string name="settings_pill_order_summary">Reorder the filter chips on this screen</string>
+    <string name="pill_order_move_up">Move %1$s up</string>
+    <string name="pill_order_move_down">Move %1$s down</string>
+    <string name="pill_order_reset">Reset</string>
+    <string name="settings_section_inbox">Inbox</string>
+    <string name="settings_section_finance">Finance</string>
+    <string name="settings_section_alerts">Alerts</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_logo_background">Logo background</string>
     <string name="logo_background_white">White</string>
@@ -227,7 +235,6 @@
     <string name="settings_show_transaction_details_summary">Show the parsed card (amount, merchant, account) when you tap a bank or OTP message in a conversation</string>
 
     <!-- Privacy: Show balance gate -->
-    <string name="settings_section_privacy">Privacy</string>
     <string name="settings_show_balance">Show balance</string>
     <string name="settings_show_balance_on">Balances are visible in the Finance tab</string>
     <string name="settings_show_balance_off">Balances stay hidden until you unlock with your device screen lock</string>
@@ -252,7 +259,6 @@
     <string name="settings_notification_actions_hint">Pick up to 3 — Android shows at most 3 buttons on a notification.</string>
     <string name="settings_transaction_notifications">Transaction notifications</string>
     <string name="settings_transaction_notifications_summary">Show the parsed amount instead of the raw message</string>
-    <string name="settings_section_gestures">Gestures</string>
     <string name="settings_swipe_right">Swipe right action</string>
     <string name="settings_swipe_left">Swipe left action</string>
     <string name="settings_section_startup">Startup</string>

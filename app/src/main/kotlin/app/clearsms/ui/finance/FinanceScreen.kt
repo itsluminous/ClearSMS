@@ -85,6 +85,7 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.MaskedAmountText
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.navigation.SearchSettingsActions
+import app.clearsms.ui.navigation.orderedPills
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 
@@ -187,6 +188,7 @@ fun FinanceScreen(
                 FinancePillRow(
                     selected = selectedTab,
                     counts = state.pillCounts,
+                    pillOrder = state.pillOrder,
                     onSelect = viewModel::setTab,
                 )
             }
@@ -229,10 +231,11 @@ fun FinanceScreen(
 private fun FinancePillRow(
     selected: FinanceTab,
     counts: Map<FinanceTab, Int>,
+    pillOrder: List<FinanceTab>,
     onSelect: (FinanceTab) -> Unit,
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(FinanceTab.entries.toList(), key = { it.name }) { tab ->
+        items(orderedPills(pillOrder, FinanceTab.entries.toList()), key = { it.name }) { tab ->
             val count = counts[tab] ?: 0
             FilterChip(
                 selected = selected == tab,
@@ -250,7 +253,7 @@ private fun FinancePillRow(
 }
 
 @Composable
-private fun FinanceTab.displayName(): String =
+internal fun FinanceTab.displayName(): String =
     when (this) {
         FinanceTab.ACCOUNTS -> stringResource(R.string.finance_accounts)
         FinanceTab.CREDIT_CARDS -> stringResource(R.string.finance_credit_cards)

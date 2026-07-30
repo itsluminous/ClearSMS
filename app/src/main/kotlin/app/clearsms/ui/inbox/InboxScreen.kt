@@ -84,6 +84,7 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.navigation.SearchSettingsActions
+import app.clearsms.ui.navigation.orderedPills
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -211,6 +212,7 @@ fun InboxScreen(
                             filter = state.filter,
                             unreadCounts = state.unreadCounts,
                             totalUnread = state.totalUnread,
+                            pillOrder = state.pillOrder,
                             onSelectCategory = viewModel::selectCategory,
                             onToggleUnread = viewModel::toggleUnread,
                         )
@@ -386,6 +388,7 @@ private fun FilterChipRow(
     filter: InboxFilterState,
     unreadCounts: Map<Category, Int>,
     totalUnread: Int,
+    pillOrder: List<Category>,
     onSelectCategory: (Category) -> Unit,
     onToggleUnread: () -> Unit,
 ) {
@@ -407,7 +410,7 @@ private fun FilterChipRow(
                     },
             )
         }
-        items(Category.entries.toList(), key = { it.name }) { category ->
+        items(orderedPills(pillOrder, Category.entries.toList()), key = { it.name }) { category ->
             val count = unreadCounts[category] ?: 0
             FilterChip(
                 selected = filter.category == category,

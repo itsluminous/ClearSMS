@@ -30,6 +30,8 @@ data class AlertsUiState(
     val past: List<ReminderEntity> = emptyList(),
     /** Reminders (upcoming + past) per pill, for the count badges. */
     val counts: Map<AlertFilter, Int> = emptyMap(),
+    /** Pill order configured in Settings; empty means declaration order. */
+    val pillOrder: List<AlertFilter> = emptyList(),
     /** Past reminders section is collapsed by default; session-only state. */
     val pastExpanded: Boolean = false,
     /** Mirrors Settings → Appearance → Show logos and contact photos. */
@@ -80,7 +82,8 @@ class AlertsViewModel
                     showRichAvatars = richAvatars,
                     loaded = true,
                 )
-            }.flowOn(ioDispatcher)
+            }.combine(settingsRepository.alertsPillOrder) { state, order -> state.copy(pillOrder = order) }
+                .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertsUiState())
 
         fun setFilter(value: AlertFilter) {

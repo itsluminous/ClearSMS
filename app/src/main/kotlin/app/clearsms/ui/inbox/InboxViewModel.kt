@@ -81,6 +81,8 @@ data class LatestOtp(
 data class InboxUiState(
     val filter: InboxFilterState = InboxFilterState(),
     val unreadCounts: Map<Category, Int> = emptyMap(),
+    /** Pill order the user configured in Settings; empty means declaration order. */
+    val pillOrder: List<Category> = emptyList(),
     val totalUnread: Int = 0,
     val latestOtp: LatestOtp? = null,
     val richAvatars: Boolean = true,
@@ -166,6 +168,7 @@ class InboxViewModel
             val otpDisplaySize: OtpDisplaySize,
             val swipeStart: SwipeAction,
             val swipeEnd: SwipeAction,
+            val pillOrder: List<Category>,
         )
 
         private val chrome =
@@ -174,7 +177,8 @@ class InboxViewModel
                 settings.otpDisplaySize,
                 settings.swipeActionStart,
                 settings.swipeActionEnd,
-            ) { rich, otpSize, start, end -> Chrome(rich, otpSize, start, end) }
+                settings.inboxPillOrder,
+            ) { rich, otpSize, start, end, order -> Chrome(rich, otpSize, start, end, order) }
 
         val uiState: StateFlow<InboxUiState> =
             combine(
@@ -192,6 +196,7 @@ class InboxViewModel
                     otpDisplaySize = chromeState.otpDisplaySize,
                     swipeStart = chromeState.swipeStart,
                     swipeEnd = chromeState.swipeEnd,
+                    pillOrder = chromeState.pillOrder,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState())
 
