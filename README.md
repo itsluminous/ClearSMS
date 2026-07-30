@@ -116,8 +116,8 @@ attached, with auto-generated release notes.
 ## Contributing Rules
 
 Categorization rules live under [`rules/`](rules/) and are bundled into the APK at
-build time — every app update ships the latest community rules. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the JSON schema.
+build time — every app update ships the latest community rules. See [docs/adding-rules.md](docs/adding-rules.md) for a step-by-step
+walkthrough and [CONTRIBUTING.md](CONTRIBUTING.md) for the JSON schema.
 
 Two ways to contribute:
 

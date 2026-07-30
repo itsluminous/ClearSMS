@@ -6,6 +6,9 @@ how to classify a message and what to extract from it.
 
 ## Rule contribution workflow
 
+> New here? [docs/adding-rules.md](docs/adding-rules.md) walks through turning one
+> mis-categorized message into a shipped rule. This file is the reference.
+
 1. Fork the repo and add (or edit) a JSON file under
    `rules/<region>/<category>/` — for example `rules/india/banks/hdfc.json`.
 2. Validate your JSON (any JSON linter) and make sure regexes compile with Kotlin's
@@ -29,10 +32,10 @@ Each file is a document with a `version` and a list of `rules`:
       "name": "HDFC Bank Debit Transaction",
       "priority": 100,
       "match": {
-        "sender_pattern": ".*HDFC.*",
-        "body_pattern": "(?i).*debited.*INR\\s*([\\d,]+\\.?\\d*).*a\\/c\\s*\\w*(\\d{4}).*",
+        "sender_pattern": "(?i)HDFCBK",
+        "body_pattern": "debited[^\\n]{0,40}?INR\\s*([\\d,]+(?:\\.\\d{1,2})?)[^\\n]{0,40}?a/c\\s*[Xx*]*(\\d{4})",
         "body_must_contain": ["debited"],
-        "body_must_not_contain": ["OTP", "otp"]
+        "guards_none": ["otp_mention"]
       },
       "action": {
         "category": "important",
@@ -131,6 +134,17 @@ with a logged warning.
 - **One institution per file.** Add related rules (debit, credit, balance) to the same
   file, each with a unique `id`.
 - **Test your regex.** Verify against your sample messages before submitting.
+- **Write patterns that cannot hang the app.** Rule patterns run against every
+  incoming SMS, and shape matters more than length: a pattern wrapped in `.*`
+  once took **423 seconds** on a single long message here. Patterns are validated
+  at load and rejected (with a logged warning) if they break these rules:
+  - no leading/trailing `.*` or `[\s\S]*` — the engine already searches anywhere
+    in the body, so a wrapper adds nothing and is what caused that bug;
+  - no nested unbounded quantifiers (`(\d+)*`, `(\s*\w*)+`);
+  - bound the gaps between anchors: `[^\n]{0,40}?`, not `.*`;
+  - no variable-length lookbehind; `(?i)` is the only inline flag.
+- **Prefer `guards_none` over hand-rolled exclusions.** `guards_none: ["otp_mention"]`
+  beats `body_must_not_contain: ["OTP","otp"]` — the guard is maintained centrally.
 
 ## Sender ID database
 
