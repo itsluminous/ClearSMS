@@ -477,6 +477,9 @@ class MessageRepositoryImpl(
                 // transaction, whether from the parser or from rule extracts.
                 // They stay reminders (see the reminder path below).
                 transactionParser.isStatementNotice(evalBody) -> null
+                // FAILED payments moved no money: no transaction, whether
+                // from the parser (already null there) or from rule extracts.
+                transactionParser.isFailedPayment(evalBody) -> null
                 parsedTx != null -> mergeTransaction(parsedTx, extracts, result.subCategory)
                 result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
                     transactionFromExtracts(extracts, result.subCategory, sender, evalBody)

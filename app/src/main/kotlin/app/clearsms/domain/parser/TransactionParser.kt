@@ -17,6 +17,12 @@ class TransactionParser {
         sender: String,
         body: String,
     ): ParsedTransaction? {
+        // A FAILED payment moved no money. Its narration routinely carries
+        // completed-tense verbs ("done", "if debited") that satisfy the
+        // debit heuristics, so failure language rejects the whole message
+        // up front — no transaction row, ever. Refund credits arrive as
+        // their own later message and parse on their own.
+        if (isFailedPayment(body)) return null
         // A statement / bill notice ("Statement is sent...", "E-statement of
         // ... has been mailed") reports money OWED, not money moved. Its
         // verbs ("sent", "generated") and its "Total of Rs X ... is due"
@@ -173,6 +179,14 @@ class TransactionParser {
         STATEMENT_NOTICE_REGEX.containsMatchIn(body) || BILL_DUE_NOTICE_REGEX.containsMatchIn(body)
 
     /**
+     * True when the body reports a FAILED / declined / unsuccessful payment.
+     * No money moved, so such a message must never yield a transaction —
+     * from the parser OR from rule extracts. (If the amount was provisionally
+     * debited, the refund arrives as its own message and parses then.)
+     */
+    fun isFailedPayment(body: String): Boolean = FAILED_PAYMENT_REGEX.containsMatchIn(body)
+
+    /**
      * ISO currency code when the transaction amount is denominated in a
      * foreign currency ("Spent USD 40.95"); null for INR/₹/Rs bodies.
      * Callers persist this alongside the amount so a USD spend is never
@@ -203,14 +217,35 @@ class TransactionParser {
     private fun detectType(body: String): TransactionType? {
         val debitAt = firstCompletedMatch(body, DEBIT_KEYWORDS)
         val creditAt = firstCompletedMatch(body, CREDIT_KEYWORDS)
+        if (debitAt == null && creditAt == null) return verblessDebit(body)
         return when {
-            debitAt == null && creditAt == null -> null
             debitAt == null -> TransactionType.CREDIT
             creditAt == null -> TransactionType.DEBIT
             debitAt <= creditAt -> TransactionType.DEBIT
             else -> TransactionType.CREDIT
         }
     }
+
+    /**
+     * Two real notification shapes carry NO debit/credit verb at all:
+     *
+     * 1. The card-network template "Txn Rs.X / On <Bank> Card <n> / At
+     *    <merchant/VPA>". Issuers only send this shape for OUTGOING
+     *    authorizations — incoming money always announces itself with an
+     *    explicit verb ("credited", "refund", "payment received") — so a
+     *    verbless card Txn at a merchant is money out: DEBIT.
+     * 2. A biller confirming "payment of Rs.X ... successful/done/completed":
+     *    the user paid out. (Payments RECEIVED say "received", an explicit
+     *    credit verb, and never reach here.)
+     */
+    private fun verblessDebit(body: String): TransactionType? =
+        when {
+            CARD_TXN_HEADER_REGEX.containsMatchIn(body) &&
+                CREDIT_CARD_REGEX.containsMatchIn(body) &&
+                TXN_AT_MERCHANT_REGEX.containsMatchIn(body) -> TransactionType.DEBIT
+            PAYMENT_DONE_REGEX.containsMatchIn(body) -> TransactionType.DEBIT
+            else -> null
+        }
 
     /** First keyword match not preceded by future-tense "will/shall/would be". */
     private fun firstCompletedMatch(
@@ -253,6 +288,13 @@ class TransactionParser {
             // Never capture from a URL: "pay in advance now at https://..."
             // is a link, not a merchant.
             if (URL_START_REGEX.containsMatchIn(candidate)) continue
+            // "Click <url> to know the transaction status": a "to"/"at" that
+            // directly follows a link introduces an instruction, never a
+            // merchant. Guard both ways — a URL right before the preposition,
+            // and a candidate that starts with an instruction verb.
+            val precedingWindow = body.substring(maxOf(0, match.range.first - URL_LOOKBEHIND), match.range.first)
+            if (PRECEDING_URL_REGEX.containsMatchIn(precedingWindow)) continue
+            if (INSTRUCTION_START_REGEX.containsMatchIn(candidate)) continue
             candidate = candidate.removePrefix("VPA ").removePrefix("vpa ").trim()
             // Cut trailing narration like "on 12-07-26", "Ref 12345" or "via UPI".
             candidate =
@@ -270,13 +312,20 @@ class TransactionParser {
     }
 
     /**
-     * Merchant from its own line in the multi-line card-spend shape:
+     * Merchant from its own segment in the multi-line card-spend shape:
      * "Spent <CUR> <amt> / <Bank> Card no. XX#### / <timestamp> /
-     * <MERCHANT>" — no preposition ever precedes the merchant there. The
-     * line is stripped of card-network noise ("UBER * PEND" -> "Uber").
+     * <MERCHANT>" — no preposition ever precedes the merchant there.
+     * Segments are separated by newlines OR by a "/" adjacent to whitespace
+     * (both delivery formats exist in the wild); a slash embedded in a date
+     * or phone number ("12/07/26", "18002586161/SMS") never splits.
      */
     private fun standaloneMerchantLine(body: String): String? {
-        val lines = body.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val lines =
+            body
+                .lines()
+                .flatMap { it.split(SEGMENT_SPLIT_REGEX) }
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
         if (lines.size < 3) return null
         if (lines.none { SPENT_LINE_REGEX.containsMatchIn(it) }) return null
         if (lines.none { CARD_LINE_REGEX.containsMatchIn(it) }) return null
@@ -292,12 +341,28 @@ class TransactionParser {
     }
 
     /**
-     * Strips card-network noise from a merchant line: everything after the
-     * first "*" separator plus trailing status tokens (PEND / PENDING), then
-     * normalizes SHOUTING-CASE to a readable name ("UBER * PEND" -> "Uber").
+     * Cleans a card-network merchant line. The "*" separates the payment
+     * aggregator/processor prefix from what follows:
+     *
+     * - "PTM*ZOMATO" / "RAZ*Zomato": a REAL merchant follows the star. The
+     *   token is kept WHOLE, verbatim — the star is a separator, never a
+     *   truncation boundary. (The part after the star is the meaningful
+     *   merchant; the whole token is kept because it is what the statement
+     *   shows and what the user asked to see.)
+     * - "UBER * PEND": a STATUS tail (PEND/PENDING/POS/ECOM) follows the
+     *   star — noise, stripped; the merchant is the part before it,
+     *   normalized from SHOUTING-CASE ("UBER * PEND" -> "Uber").
      */
     private fun cleanCardNetworkNoise(line: String): String? {
-        var name = line.substringBefore('*').trim()
+        val trimmed = TRAILING_STATUS_REGEX.replace(line.trim(), "").trim().trimEnd('.', ',', '-')
+        val star = trimmed.indexOf('*')
+        if (star >= 0) {
+            val after = trimmed.substring(star + 1).trim()
+            if (after.any { it.isLetter() } && !STATUS_TOKEN_REGEX.matches(after)) {
+                return trimmed
+            }
+        }
+        var name = trimmed.substringBefore('*').trim()
         name = TRAILING_STATUS_REGEX.replace(name, "").trim().trimEnd('.', ',', '-')
         if (name.isEmpty() || name.none { it.isLetter() }) return null
         return if (name == name.uppercase()) {
@@ -446,6 +511,42 @@ class TransactionParser {
         val DEBIT_KEYWORDS = Regex("(?i)\\b(?:debited|spent|paid|withdrawn|deducted|purchase(?:d)?|sent)\\b")
         val CREDIT_KEYWORDS = Regex("(?i)\\b(?:credited|received|deposited|refund(?:ed)?)\\b")
 
+        /**
+         * Failure language: a payment that never happened. Anchored to
+         * payment nouns or explicit failure verbs so a success confirmation
+         * can never trip it.
+         */
+        val FAILED_PAYMENT_REGEX =
+            Regex(
+                "(?i)\\bhas\\s+failed\\b|" +
+                    "\\b(?:payment|transaction|txn|transfer|recharge)\\s+(?:has\\s+|was\\s+)?failed\\b|" +
+                    "\\bcould\\s+not\\s+be\\s+(?:processed|completed)\\b|" +
+                    "\\b(?:was\\s+)?declined\\b|" +
+                    "\\bunsuccessful\\b",
+            )
+
+        /**
+         * "Txn Rs.55.00" header of the verbless card-network template — the
+         * word "Txn" immediately followed by a currency amount at the start
+         * of the message or a line. "txn of Rs X" (OTP narration) has "of"
+         * in between and never matches.
+         */
+        val CARD_TXN_HEADER_REGEX = Regex("(?i)(?:^|\\n)\\s*txn\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]")
+
+        /** "At <merchant/VPA>" clause of the card-network Txn template. */
+        val TXN_AT_MERCHANT_REGEX = Regex("(?i)\\bat\\s+\\S")
+
+        /**
+         * "payment of Rs.X ... successful/done/completed": a biller
+         * confirming the user's outgoing payment. Bounded gap; failure
+         * language is rejected before this is ever consulted.
+         */
+        val PAYMENT_DONE_REGEX =
+            Regex(
+                "(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?" +
+                    "[^\\n]{0,80}?\\b(?:successful|completed|done)\\b",
+            )
+
         /** Future/conditional tense directly before a debit/credit keyword. */
         val FUTURE_TENSE_REGEX = Regex("(?i)\\b(?:will|shall|would)\\s+be\\s*$")
 
@@ -467,14 +568,17 @@ class TransactionParser {
 
         /**
          * Bill-due notice: "Payment of INR 532.62 for <card/biller> is due
-         * on 04-04-26" — a payment the user still OWES. Same class as the
-         * statement notices above: never a transaction (its "Ignore if paid"
-         * tail would otherwise satisfy the debit heuristics). The bounded
-         * 100-char gap absorbs the card / biller description between the
-         * amount and "is due".
+         * on 04-04-26" and "your <biller> bill of Rs.1178.82 for <id> is due
+         * on 10-Jun-26" — money the user still OWES. Same class as the
+         * statement notices above: never a transaction (the trailing "Ignore
+         * if already paid" advisory would otherwise satisfy the debit
+         * heuristics). The bounded 100-char gaps absorb the card / biller /
+         * consumer-id description between the amount and "is due".
          */
         val BILL_DUE_NOTICE_REGEX =
-            Regex("(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b")
+            Regex(
+                "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b",
+            )
 
         val ACCOUNT_REGEX =
             Regex(
@@ -523,7 +627,7 @@ class TransactionParser {
         val REFERENCE_REGEX =
             Regex(
                 "(?i)\\bref(?:erence)?\\s*(?:no|num|number|id)?\\.?\\s*[:.]?\\s*((?=[A-Za-z0-9]*\\d)[A-Za-z0-9]{6,22})|" +
-                    "\\b(?:txn|utr)\\s*(?:id|no)?\\.?\\s*[:.]?\\s*((?=[A-Za-z0-9]*\\d)[A-Za-z0-9]{6,22})",
+                    "\\b(?:txn|utr|upi)\\s*(?:id|no|ref)?\\.?\\s*[:.]?\\s*((?=[A-Za-z0-9]*\\d)[A-Za-z0-9]{6,22})",
             )
 
         val MERCHANT_REGEX = Regex("(?i)\\b(?:to|at|towards)\\s+((?:[A-Za-z][A-Za-z0-9@._&'*-]*)(?:\\s+[A-Za-z0-9@._&'*-]+){0,3})")
@@ -532,10 +636,23 @@ class TransactionParser {
         val URL_START_REGEX = Regex("(?i)^(?:https?\\b|www\\.)")
 
         /** Words that end a merchant name and start trailing narration. */
-        val MERCHANT_STOP_REGEX = Regex("(?i)\\s+(?:on|via|using|from|ref|refno|txn|utr|avl|avbl|info|not\\b|dt|is|was)\\b.*")
+        val MERCHANT_STOP_REGEX = Regex("(?i)\\s+(?:on|via|using|from|by|ref|refno|txn|utr|avl|avbl|info|not\\b|dt|is|was)\\b.*")
 
         /** Candidates starting with these are account transfers, not merchants. */
         val NON_MERCHANT_START_REGEX = Regex("(?i)^(?:your|ur|the|a/c|ac\\b|acct|account|bank|no\\b)")
+
+        /**
+         * Instruction verbs: "to know the transaction status", "to avoid
+         * late fees" — link/call-to-action phrasing, never a merchant.
+         */
+        val INSTRUCTION_START_REGEX =
+            Regex("(?i)^(?:know|check|view|track|see|get|download|install|update|complete|continue|avoid|claim|apply|visit|click|login)\\b")
+
+        /** A URL directly before the merchant preposition ("Click <url> to ..."). */
+        val PRECEDING_URL_REGEX = Regex("(?i)(?:https?://\\S+|www\\.\\S+|\\b[a-z0-9][a-z0-9.-]*\\.[a-z]{2,6}/\\S*)\\s*$")
+
+        /** Chars of context inspected for [PRECEDING_URL_REGEX]. */
+        const val URL_LOOKBEHIND = 80
 
         // region standalone merchant line (multi-line card-spend shape)
 
@@ -553,6 +670,16 @@ class TransactionParser {
 
         /** Trailing card-network status tokens on a merchant line. */
         val TRAILING_STATUS_REGEX = Regex("(?i)\\s+(?:PEND(?:ING)?|POS|ECOM)\\s*$")
+
+        /** A bare status token — noise after "*", never a merchant. */
+        val STATUS_TOKEN_REGEX = Regex("(?i)^(?:PEND(?:ING)?|POS|ECOM|AUTH|RATE)$")
+
+        /**
+         * Segment separator of the card-spend template: a "/" with
+         * whitespace on at least one side. Dates ("12/07/26") and helpline
+         * fragments ("18002586161/SMS") keep their slashes.
+         */
+        val SEGMENT_SPLIT_REGEX = Regex("\\s+/\\s*|\\s*/\\s+")
 
         // endregion
 
