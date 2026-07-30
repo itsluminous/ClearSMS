@@ -23,7 +23,7 @@ class SenderInstitutionGenerationTest {
     @Test
     fun `generation yields the same institutions the deleted constant table had`() {
         val institutions = SenderNameResolver.parseInstitutions(repoFile("rules/brands/brands.json").readText())
-        assertThat(institutions).hasSize(28)
+        assertThat(institutions).hasSize(29)
 
         val byName = institutions.associateBy { it.name }
         // Spot-check the entries the old constants pinned, including every
@@ -55,7 +55,7 @@ class SenderInstitutionGenerationTest {
         val issuers = institutions.filter { it.isIssuer }.map { it.name }
         val nonIssuers = institutions.filterNot { it.isIssuer }.map { it.name }
         assertThat(nonIssuers).containsExactly("CRED", "Flipkart", "Airtel", "Jio", "Vi", "BSNL", "Sony LIV")
-        assertThat(issuers).hasSize(21)
+        assertThat(issuers).hasSize(22)
     }
 
     @Test

@@ -173,6 +173,8 @@ private class FakeAccountDao : AccountDao {
 
     override suspend fun findByNumber(accountNumber: String): List<AccountEntity> = emptyList()
 
+    override suspend fun findByBank(bankName: String): List<AccountEntity> = emptyList()
+
     override suspend fun getAll(): List<AccountEntity> = emptyList()
 
     override suspend fun insert(account: AccountEntity): Long = account.id
