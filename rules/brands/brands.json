@@ -262,6 +262,23 @@
       "is_issuer": true
     },
     {
+      "key": "scapia",
+      "name": "Scapia",
+      "category": "CARD",
+      "color": "#6C4BF4",
+      "monogram": "S",
+      "senders": [
+        "FEDSCP"
+      ],
+      "aliases": [
+        "SCAPIA FEDERAL",
+        "FEDERAL SCAPIA",
+        "SCAPIA"
+      ],
+      "is_issuer": true,
+      "issuer_name": "Scapia Federal"
+    },
+    {
       "key": "citi",
       "name": "Citi",
       "category": "BANK",

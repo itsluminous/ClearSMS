@@ -16,6 +16,11 @@
       "name": "Sony LIV",
       "category": "promotional",
       "sub": "entertainment"
+    },
+    "FEDSCP": {
+      "name": "Scapia",
+      "category": "important",
+      "sub": "bank"
     }
   }
 }
