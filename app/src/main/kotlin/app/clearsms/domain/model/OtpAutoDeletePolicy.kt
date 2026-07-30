@@ -6,4 +6,6 @@ enum class OtpAutoDeletePolicy {
     HOURS_24,
     DAYS_3,
     DAYS_7,
+    MONTH_1,
+    MONTHS_3,
 }

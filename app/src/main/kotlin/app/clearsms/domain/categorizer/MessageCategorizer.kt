@@ -40,8 +40,24 @@ class MessageCategorizer(
         // which turns even mildly backtracking patterns into a denial of
         // service. The full body is still stored and displayed unchanged.
         val evalBody = body.take(MAX_EVAL_BODY_LENGTH)
-        return enforceInvariants(sender, evalBody, rawCategorize(sender, evalBody, userRules, builtinRules))
+        return normalizeInformational(
+            enforceInvariants(sender, evalBody, rawCategorize(sender, evalBody, userRules, builtinRules)),
+        )
     }
+
+    /**
+     * Final post-condition: no result ever leaves the categorizer as
+     * [Category.INFORMATIONAL]. The Informational pill was removed — those
+     * notices (travel/PNR, appointment tokens, credit-score checks,
+     * broker/exchange statements, UPI-mandate lifecycle) are IMPORTANT now,
+     * keeping their sub-category so downstream meaning is unchanged. This also
+     * normalizes bundled or user rules whose action still says
+     * `category: informational` without touching the rule documents, and it
+     * runs LAST so the mandate carve-out in [enforceInvariants] keeps blocking
+     * the transaction promotion before the fold happens.
+     */
+    private fun normalizeInformational(result: CategorizationResult): CategorizationResult =
+        if (result.category == Category.INFORMATIONAL) result.copy(category = Category.IMPORTANT) else result
 
     private fun rawCategorize(
         sender: String,
@@ -83,7 +99,8 @@ class MessageCategorizer(
      * - SCAM results stay put — a phishing message quoting an "OTP" or a
      *   fake debit must not be promoted into the trusted categories.
      * - UPI-mandate lifecycle notices (created / cancelled) carry an amount
-     *   but move no money; they are INFORMATIONAL, never a transaction.
+     *   but move no money; they must never be promoted AS a transaction. They
+     *   surface as IMPORTANT bank alerts via [normalizeInformational].
      */
     private fun enforceInvariants(
         sender: String,
@@ -162,7 +179,8 @@ class MessageCategorizer(
          * UPI Autopay / e-mandate lifecycle notices ("Mandate ... successfully
          * created", "successfully cancelled the scheduled ... payment"). They
          * quote the mandate's amount, but no money moved — the transaction
-         * invariant must never promote them, and they read as INFORMATIONAL.
+         * invariant must never promote them, and they surface as IMPORTANT
+         * bank alerts after [normalizeInformational].
          * Spans are bounded ({0,60}) so the pattern cannot backtrack badly.
          */
         val MANDATE_NOTICE_REGEX =

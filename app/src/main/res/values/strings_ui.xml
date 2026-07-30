@@ -252,7 +252,6 @@
     <string name="settings_notification_actions_hint">Pick up to 3 — Android shows at most 3 buttons on a notification.</string>
     <string name="settings_transaction_notifications">Transaction notifications</string>
     <string name="settings_transaction_notifications_summary">Show the parsed amount instead of the raw message</string>
-    <string name="settings_summary">Messages summary</string>
     <string name="settings_section_gestures">Gestures</string>
     <string name="settings_swipe_right">Swipe right action</string>
     <string name="settings_swipe_left">Swipe left action</string>
@@ -314,9 +313,11 @@
     <string name="theme_system">System default</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="summary_off">Don\'t notify</string>
-    <string name="summary_daily">Daily</string>
-    <string name="summary_weekly">Weekly</string>
+    <string name="frequency_off">Off</string>
+    <string name="frequency_daily">Daily</string>
+    <string name="frequency_weekly">Weekly</string>
+    <string name="otp_delete_1m">After 1 month</string>
+    <string name="otp_delete_3m">After 3 months</string>
     <string name="otp_delete_never">Never</string>
     <string name="otp_delete_24h">After 24 hours</string>
     <string name="otp_delete_3d">After 3 days</string>

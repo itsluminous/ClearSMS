@@ -14,9 +14,9 @@ import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
-import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.ui.alerts.AlertFilter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -52,13 +52,6 @@ class SettingsRepositoryImpl(
 
     override suspend fun setOtpDisplaySize(value: OtpDisplaySize) {
         dataStore.edit { it[KEY_OTP_DISPLAY_SIZE] = value.name }
-    }
-
-    override val summaryFrequency: Flow<SummaryFrequency> =
-        dataStore.data.map { it[KEY_SUMMARY_FREQUENCY].toEnum(SummaryFrequency.OFF) }
-
-    override suspend fun setSummaryFrequency(value: SummaryFrequency) {
-        dataStore.edit { it[KEY_SUMMARY_FREQUENCY] = value.name }
     }
 
     override val showTransactionDetails: Flow<Boolean> =
@@ -161,7 +154,7 @@ class SettingsRepositoryImpl(
     }
 
     override val logoBackground: Flow<LogoBackground> =
-        dataStore.data.map { it[KEY_LOGO_BACKGROUND].toEnum(LogoBackground.WHITE) }
+        dataStore.data.map { it[KEY_LOGO_BACKGROUND].toEnum(LogoBackground.NONE) }
 
     override suspend fun setLogoBackground(value: LogoBackground) {
         dataStore.edit { it[KEY_LOGO_BACKGROUND] = value.name }
@@ -174,17 +167,56 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_HANDLED_OTP_MESSAGE_ID] = value }
     }
 
+    override val inboxPillOrder: Flow<List<Category>> =
+        dataStore.data.map { it[KEY_INBOX_PILL_ORDER].toEnumOrder() }
+
+    override suspend fun setInboxPillOrder(value: List<Category>) {
+        dataStore.edit { it[KEY_INBOX_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val financePillOrder: Flow<List<FinanceTab>> =
+        dataStore.data.map { it[KEY_FINANCE_PILL_ORDER].toEnumOrder() }
+
+    override suspend fun setFinancePillOrder(value: List<FinanceTab>) {
+        dataStore.edit { it[KEY_FINANCE_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val alertsPillOrder: Flow<List<AlertFilter>> =
+        dataStore.data.map { it[KEY_ALERTS_PILL_ORDER].toEnumOrder() }
+
+    override suspend fun setAlertsPillOrder(value: List<AlertFilter>) {
+        dataStore.edit { it[KEY_ALERTS_PILL_ORDER] = value.toStoredOrder() }
+    }
+
     private inline fun <reified T : Enum<T>> String?.toEnum(default: T): T =
         this?.let { name ->
             enumValues<T>().firstOrNull { it.name == name }
         } ?: default
+
+    /**
+     * Decodes a delimited list of enum names into a complete pill order:
+     * unknown names are dropped, duplicates collapse to the first mention,
+     * and every enum entry missing from the stored value is appended in
+     * declaration order — a future pill can therefore never be hidden by a
+     * stale stored order. Null (nothing stored) yields declaration order.
+     */
+    private inline fun <reified T : Enum<T>> String?.toEnumOrder(): List<T> {
+        val stored =
+            this
+                ?.split(ORDER_DELIMITER)
+                ?.mapNotNull { name -> enumValues<T>().firstOrNull { it.name == name } }
+                ?.distinct()
+                .orEmpty()
+        return stored + enumValues<T>().filter { it !in stored }
+    }
+
+    private fun List<Enum<*>>.toStoredOrder(): String = joinToString(ORDER_DELIMITER) { it.name }
 
     private companion object {
         val KEY_THEME = stringPreferencesKey("theme")
         val KEY_OTP_AUTO_COPY = booleanPreferencesKey("otp_auto_copy")
         val KEY_OTP_AUTO_DELETE = stringPreferencesKey("otp_auto_delete_policy")
         val KEY_OTP_DISPLAY_SIZE = stringPreferencesKey("otp_display_size")
-        val KEY_SUMMARY_FREQUENCY = stringPreferencesKey("summary_frequency")
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
         val KEY_SHOW_BALANCE = booleanPreferencesKey("show_balance")
         val KEY_SIGNATURE = stringPreferencesKey("signature")
@@ -199,6 +231,12 @@ class SettingsRepositoryImpl(
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
         val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
+        val KEY_INBOX_PILL_ORDER = stringPreferencesKey("inbox_pill_order")
+        val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
+        val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
+
+        /** Separator for the stored pill-order enum name lists. */
+        const val ORDER_DELIMITER = ","
 
         /** Sentinel stored when the default inbox filter is All (null). */
         const val FILTER_ALL = "ALL"

@@ -62,7 +62,7 @@ class CategorizerInvariantsTest {
     }
 
     @Test
-    fun `upi mandate creation is informational despite carrying an amount`() {
+    fun `upi mandate creation is important despite carrying an amount`() {
         val result =
             categorizer(promoDirectory).categorize(
                 sender = "TATANU",
@@ -72,12 +72,12 @@ class CategorizerInvariantsTest {
                 userRules = emptyList(),
                 builtinRules = emptyList(),
             )
-        assertThat(result.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result.category).isEqualTo(Category.IMPORTANT)
         assertThat(result.subCategory).isEqualTo(SubCategory.BANK_ALERT)
     }
 
     @Test
-    fun `upi mandate cancellation is informational and never a transaction`() {
+    fun `upi mandate cancellation is important and never a transaction`() {
         val result =
             categorizer(promoDirectory).categorize(
                 sender = "TATANU",
@@ -87,7 +87,7 @@ class CategorizerInvariantsTest {
                 userRules = emptyList(),
                 builtinRules = emptyList(),
             )
-        assertThat(result.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result.category).isEqualTo(Category.IMPORTANT)
         assertThat(result.subCategory).isNotEqualTo(SubCategory.TRANSACTION)
     }
 
@@ -157,7 +157,7 @@ class CategorizerInvariantsTest {
     }
 
     @Test
-    fun `informational results are untouched by the invariants`() {
+    fun `former informational results now surface as important`() {
         val informationalRule =
             RuleDefinition(
                 id = "info-rule",
@@ -173,7 +173,7 @@ class CategorizerInvariantsTest {
                 userRules = emptyList(),
                 builtinRules = listOf(informationalRule),
             )
-        assertThat(result.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result.category).isEqualTo(Category.IMPORTANT)
         assertThat(result.subCategory).isEqualTo(SubCategory.INVESTMENT)
     }
 }

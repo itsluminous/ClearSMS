@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Periodically deletes OTP messages older than the user's retention policy
- * (REQUIREMENTS §4.3: 24 hours / 3 days / 7 days / never).
+ * (24 hours / 3 days / 7 days / 1 month / 3 months / never).
  */
 @HiltWorker
 class OtpAutoDeleteWorker
@@ -52,6 +52,8 @@ class OtpAutoDeleteWorker
                     OtpAutoDeletePolicy.HOURS_24 -> nowMs - TimeUnit.HOURS.toMillis(24)
                     OtpAutoDeletePolicy.DAYS_3 -> nowMs - TimeUnit.DAYS.toMillis(3)
                     OtpAutoDeletePolicy.DAYS_7 -> nowMs - TimeUnit.DAYS.toMillis(7)
+                    OtpAutoDeletePolicy.MONTH_1 -> nowMs - TimeUnit.DAYS.toMillis(30)
+                    OtpAutoDeletePolicy.MONTHS_3 -> nowMs - TimeUnit.DAYS.toMillis(90)
                 }
         }
     }

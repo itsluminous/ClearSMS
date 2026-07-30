@@ -14,10 +14,10 @@ import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
-import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.domain.model.TransactionType
+import app.clearsms.ui.alerts.AlertFilter
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -238,10 +238,6 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setOtpDisplaySize(value: OtpDisplaySize) = Unit
 
-    override val summaryFrequency = MutableStateFlow(SummaryFrequency.OFF)
-
-    override suspend fun setSummaryFrequency(value: SummaryFrequency) = Unit
-
     override val showTransactionDetails = MutableStateFlow(true)
 
     override suspend fun setShowTransactionDetails(value: Boolean) = Unit
@@ -295,6 +291,18 @@ private class FakeSettingsRepository : SettingsRepository {
     override val logoBackground = MutableStateFlow(LogoBackground.WHITE)
 
     override suspend fun setLogoBackground(value: LogoBackground) = Unit
+
+    override val inboxPillOrder = MutableStateFlow(Category.entries.toList())
+
+    override suspend fun setInboxPillOrder(value: List<Category>) = Unit
+
+    override val financePillOrder = MutableStateFlow(FinanceTab.entries.toList())
+
+    override suspend fun setFinancePillOrder(value: List<FinanceTab>) = Unit
+
+    override val alertsPillOrder = MutableStateFlow(AlertFilter.entries.toList())
+
+    override suspend fun setAlertsPillOrder(value: List<AlertFilter>) = Unit
 
     override val handledOtpMessageId = MutableStateFlow(0L)
 

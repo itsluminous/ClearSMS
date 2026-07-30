@@ -9,8 +9,8 @@
     <string name="channel_promotions_desc">Offers and marketing messages. Off by default — turn this category on to receive them.</string>
     <string name="channel_security">Security warnings</string>
     <string name="channel_security_desc">Warnings about likely scam or fraud messages</string>
-    <string name="channel_summary">Summaries and reminders</string>
-    <string name="channel_summary_desc">Daily digests and bill payment reminders</string>
+    <string name="channel_summary">Reminders</string>
+    <string name="channel_summary_desc">Bill payment reminders</string>
     <string name="channel_transactions">Transactions</string>
     <string name="channel_transactions_desc">Parsed debit, credit and balance updates from bank messages</string>
     <string name="channel_sync">Message import</string>
@@ -42,11 +42,6 @@
     <string name="mms_placeholder_sender">MMS</string>
     <string name="mms_placeholder_body">Multimedia message received. Open your previous messaging app to view it — MMS download is not supported yet.</string>
 
-    <!-- Summary digest -->
-    <string name="summary_title">Your message summary</string>
-    <string name="summary_money_line">Spent ₹%1$.2f · Received ₹%2$.2f</string>
-    <string name="summary_otp_line">%1$d OTPs received</string>
-    <string name="summary_unread_line">%1$d unread important messages</string>
 
     <!-- Bill reminders -->
     <string name="bill_due_title">Bill due tomorrow</string>

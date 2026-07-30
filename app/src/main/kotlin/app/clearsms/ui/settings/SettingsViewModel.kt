@@ -12,14 +12,15 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
-import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.ui.finance.BalanceVisibility
@@ -48,10 +49,9 @@ data class SettingsUiState(
     /** Privacy gate: false masks Finance balances behind the device lock. */
     val showBalance: Boolean = true,
     val deliveryReports: Boolean = false,
-    val summaryFrequency: SummaryFrequency = SummaryFrequency.OFF,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
-    val logoBackground: LogoBackground = LogoBackground.WHITE,
+    val logoBackground: LogoBackground = LogoBackground.NONE,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
     val defaultDestination: StartDestination = StartDestination.INBOX,
@@ -187,12 +187,11 @@ class SettingsViewModel
             val showRichAvatars: Boolean,
             val showBalance: Boolean,
             /** Filled by the second combine stage (combine() maxes out at 5 flows). */
-            val logoBackground: LogoBackground = LogoBackground.WHITE,
+            val logoBackground: LogoBackground = LogoBackground.NONE,
         )
 
         private data class NotificationState(
             val deliveryReports: Boolean,
-            val summaryFrequency: SummaryFrequency,
             val notificationActions: Set<NotificationAction>,
             val transactionNotifications: Boolean,
         )
@@ -218,7 +217,6 @@ class SettingsViewModel
         private val notifications =
             combine(
                 uiPrefs.deliveryReports,
-                settings.summaryFrequency,
                 settings.notificationActions,
                 settings.transactionNotifications,
                 ::NotificationState,
@@ -258,7 +256,6 @@ class SettingsViewModel
                     logoBackground = appearanceState.logoBackground,
                     showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
-                    summaryFrequency = notificationState.summaryFrequency,
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
                     swipeActionStart = gestures.swipeStart,
@@ -311,7 +308,24 @@ class SettingsViewModel
 
         fun setDeliveryReports(value: Boolean) = launchIo { uiPrefs.setDeliveryReports(value) }
 
-        fun setSummaryFrequency(value: SummaryFrequency) = launchIo { settings.setSummaryFrequency(value) }
+        /** Current pill order per screen, for the reorder dialogs. */
+        val inboxPillOrder: StateFlow<List<Category>> =
+            settings.inboxPillOrder
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Category.entries.toList())
+
+        val financePillOrder: StateFlow<List<FinanceTab>> =
+            settings.financePillOrder
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.entries.toList())
+
+        val alertsPillOrder: StateFlow<List<AlertFilter>> =
+            settings.alertsPillOrder
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertFilter.entries.toList())
+
+        fun setInboxPillOrder(value: List<Category>) = launchIo { settings.setInboxPillOrder(value) }
+
+        fun setFinancePillOrder(value: List<FinanceTab>) = launchIo { settings.setFinancePillOrder(value) }
+
+        fun setAlertsPillOrder(value: List<AlertFilter>) = launchIo { settings.setAlertsPillOrder(value) }
 
         fun setOtpAutoCopy(value: Boolean) = launchIo { settings.setOtpAutoCopy(value) }
 

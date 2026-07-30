@@ -65,7 +65,6 @@ import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
-import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.common.BackupFrequency
@@ -76,7 +75,6 @@ import app.clearsms.ui.components.otpPreviewFontSp
 private enum class SettingsDialog {
     THEME,
     LOGO_BACKGROUND,
-    SUMMARY,
     NOTIFICATION_ACTIONS,
     SWIPE_START,
     SWIPE_END,
@@ -323,17 +321,6 @@ fun SettingsScreen(
                 selected = state.logoBackground,
                 onSelect = {
                     viewModel.setLogoBackground(it)
-                    dialog = null
-                },
-                onDismiss = { dialog = null },
-            )
-        SettingsDialog.SUMMARY ->
-            RadioDialog(
-                title = stringResource(R.string.settings_summary),
-                options = SummaryFrequency.entries.map { it to summaryLabel(it) },
-                selected = state.summaryFrequency,
-                onSelect = {
-                    viewModel.setSummaryFrequency(it)
                     dialog = null
                 },
                 onDismiss = { dialog = null },
@@ -658,12 +645,6 @@ private fun settingsRowEntries(
             summary = stringResource(R.string.settings_transaction_notifications_summary),
             checked = state.transactionNotifications,
             onToggle = viewModel::setTransactionNotifications,
-        ),
-        row(
-            section = sectionNotification,
-            title = stringResource(R.string.settings_summary),
-            summary = summaryLabel(state.summaryFrequency),
-            onClick = { openDialog(SettingsDialog.SUMMARY) },
         ),
         row(
             section = sectionGestures,
@@ -1213,19 +1194,11 @@ private fun themeLabel(mode: ThemeMode): String =
     }
 
 @Composable
-private fun summaryLabel(frequency: SummaryFrequency): String =
-    when (frequency) {
-        SummaryFrequency.OFF -> stringResource(R.string.summary_off)
-        SummaryFrequency.DAILY -> stringResource(R.string.summary_daily)
-        SummaryFrequency.WEEKLY -> stringResource(R.string.summary_weekly)
-    }
-
-@Composable
 private fun backupFrequencyLabel(frequency: BackupFrequency): String =
     when (frequency) {
-        BackupFrequency.OFF -> stringResource(R.string.summary_off)
-        BackupFrequency.DAILY -> stringResource(R.string.summary_daily)
-        BackupFrequency.WEEKLY -> stringResource(R.string.summary_weekly)
+        BackupFrequency.OFF -> stringResource(R.string.frequency_off)
+        BackupFrequency.DAILY -> stringResource(R.string.frequency_daily)
+        BackupFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
     }
 
 @Composable
@@ -1235,6 +1208,8 @@ private fun otpDeleteLabel(policy: OtpAutoDeletePolicy): String =
         OtpAutoDeletePolicy.HOURS_24 -> stringResource(R.string.otp_delete_24h)
         OtpAutoDeletePolicy.DAYS_3 -> stringResource(R.string.otp_delete_3d)
         OtpAutoDeletePolicy.DAYS_7 -> stringResource(R.string.otp_delete_7d)
+        OtpAutoDeletePolicy.MONTH_1 -> stringResource(R.string.otp_delete_1m)
+        OtpAutoDeletePolicy.MONTHS_3 -> stringResource(R.string.otp_delete_3m)
     }
 
 @Composable

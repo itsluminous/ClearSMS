@@ -7,9 +7,9 @@ import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
-import app.clearsms.domain.model.SummaryFrequency
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.ui.alerts.AlertFilter
 import kotlinx.coroutines.flow.Flow
 
 /** User settings backed by Preferences DataStore. */
@@ -29,10 +29,6 @@ interface SettingsRepository {
     val otpDisplaySize: Flow<OtpDisplaySize>
 
     suspend fun setOtpDisplaySize(value: OtpDisplaySize)
-
-    val summaryFrequency: Flow<SummaryFrequency>
-
-    suspend fun setSummaryFrequency(value: SummaryFrequency)
 
     /** Show the parsed extraction card under tapped messages in a conversation. */
     val showTransactionDetails: Flow<Boolean>
@@ -115,4 +111,29 @@ interface SettingsRepository {
     val handledOtpMessageId: Flow<Long>
 
     suspend fun setHandledOtpMessageId(value: Long)
+
+    /**
+     * User-chosen order of the Inbox category pills. Always emits every
+     * [Category] exactly once: unknown stored names are dropped and entries
+     * missing from the stored list are appended in declaration order, so a
+     * pill added in a future version can never disappear. Default is the
+     * enum's declaration order.
+     */
+    val inboxPillOrder: Flow<List<Category>>
+
+    suspend fun setInboxPillOrder(value: List<Category>)
+
+    /** User-chosen order of the Finance pills; same guarantees as [inboxPillOrder]. */
+    val financePillOrder: Flow<List<FinanceTab>>
+
+    suspend fun setFinancePillOrder(value: List<FinanceTab>)
+
+    /**
+     * User-chosen order of the Alerts filter pills; same guarantees as
+     * [inboxPillOrder]. Persisted as enum names, so [AlertFilter] staying in
+     * the ui layer costs nothing at the storage level.
+     */
+    val alertsPillOrder: Flow<List<AlertFilter>>
+
+    suspend fun setAlertsPillOrder(value: List<AlertFilter>)
 }

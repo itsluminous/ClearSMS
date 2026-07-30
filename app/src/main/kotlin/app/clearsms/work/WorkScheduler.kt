@@ -19,11 +19,6 @@ object WorkScheduler {
             PeriodicWorkRequestBuilder<OtpAutoDeleteWorker>(6, TimeUnit.HOURS).build(),
         )
         workManager.enqueueUniquePeriodicWork(
-            DailySummaryWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<DailySummaryWorker>(24, TimeUnit.HOURS).build(),
-        )
-        workManager.enqueueUniquePeriodicWork(
             BackupWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS).build(),
