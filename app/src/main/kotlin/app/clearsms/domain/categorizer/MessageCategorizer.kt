@@ -177,21 +177,6 @@ class MessageCategorizer(
         const val EXTRACT_OTP_CODE = "otp_code"
 
         /**
-         * UPI Autopay / e-mandate lifecycle notices ("Mandate ... successfully
-         * created", "successfully cancelled the scheduled ... payment"). They
-         * quote the mandate's amount, but no money moved — the transaction
-         * invariant must never promote them, and they surface as IMPORTANT
-         * bank alerts after [normalizeInformational].
-         * Spans are bounded ({0,60}) so the pattern cannot backtrack badly.
-         */
-        val MANDATE_NOTICE_REGEX =
-            Regex(
-                "(?i)\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:created|cancelled|revoked|modified)\\b|" +
-                    "\\bsuccessfully\\s+cancelled\\s+the\\s+scheduled\\b[\\s\\S]{0,60}?\\bpayment\\b|" +
-                    "\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:created|cancelled|revoked|modified)\\b",
-            )
-
-        /**
          * Maximum number of characters of a message body that rule regexes
          * and content parsers are evaluated against. 1000 characters is ample
          * for transactional SMS (amount / account / OTP details arrive within

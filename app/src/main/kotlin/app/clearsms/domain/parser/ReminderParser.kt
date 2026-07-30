@@ -281,52 +281,6 @@ class ReminderParser {
 
         val DUE_WORD_REGEX = Regex("(?i)\\bdue\\b")
 
-        /**
-         * Completed / settled / reversed events. These describe money that
-         * already moved (or is coming back), so they must never become
-         * reminders — reimbursement claims, thank-you-for-payment texts and
-         * payment confirmations were the bulk of the junk in Alerts.
-         */
-        val SETTLED_REGEX =
-            Regex(
-                "(?i)payment\\s+(?:of\\s+\\S{0,20}\\s*)?(?:received|successful|processed)|" +
-                    "\\breceived\\s+(?:your\\s+)?payment|" +
-                    "successfully\\s+(?:paid|processed|credited|received)|" +
-                    "\\bpaid\\s+successfully|" +
-                    // "Thank You for an online payment of Rs.X ..." — article,
-                    // "online" and trailing words are all optional.
-                    "thank\\s+you\\s+for\\s+(?:an?\\s+|your\\s+)?(?:online\\s+)?(?:payment|paying)|" +
-                    // A payment amount tied to a transaction reference is a
-                    // completed transaction, not a bill.
-                    "payment\\s+of\\s+$AMOUNT[^\\n]{0,80}?(?:transaction\\s+ref|txn\\s+ref|\\bUTR\\b)|" +
-                    "payment\\s+of\\s+$AMOUNT[^\\n]{0,60}?\\bwas\\s+(?:received|made)|" +
-                    "has\\s+been\\s+(?:paid|received|credited|processed|settled|reimbursed|refunded)|" +
-                    "\\breimburse(?:d|ment)\\b|\\brefund(?:ed)?\\b|\\bsettled\\b|" +
-                    "\\bclaim\\s+(?:of|amount|no\\.?|number|id)\\b|" +
-                    "\\bdebited\\b|\\bcredited\\b",
-            )
-
-        /**
-         * Investment / upsell sales-pitch language. A payment ask embedded in
-         * a marketing pitch ("investment in ULIPs can reap benefits...") is
-         * an upsell, not a payment obligation — it must never become a
-         * reminder even when the body also carries a premium and a date.
-         */
-        val MARKETING_PITCH_REGEX =
-            Regex(
-                "(?i)\\breap\\s+benefits?\\b|\\brising\\s+(?:capital\\s+|stock\\s+)?markets?\\b|" +
-                    "\\bwealth\\s+creation\\b|\\bmarket[-\\s]linked\\s+returns?\\b|" +
-                    "\\bgrow\\s+your\\s+(?:money|wealth|savings)\\b|\\bwhy\\s+invest\\b|" +
-                    "\\bbest\\s+time\\s+to\\s+invest\\b|\\binvest\\s+today\\b|\\bstart\\s+investing\\b",
-            )
-
-        /**
-         * Voucher / coupon / gift-card grants. Their expiry date is a benefit
-         * lapsing, not money the user owes — e.g. quarterly lounge vouchers
-         * "from <X> Credit Card" used to land in the credit-card bucket.
-         */
-        val VOUCHER_REGEX = Regex("(?i)\\bvouchers?\\b|\\bcoupons?\\b|\\bgift\\s*card\\b|\\bpromo\\s+code\\b")
-
         /** DD-MM-YY or DD/MM/YYYY style dates. */
         val NUMERIC_DATE_REGEX = Regex("(?<!\\d)(\\d{1,2})[-/](\\d{1,2})[-/](\\d{2}(?:\\d{2})?)(?!\\d)")
 

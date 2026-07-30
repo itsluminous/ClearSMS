@@ -460,14 +460,6 @@ class TransactionParser {
         val CARD_CONTEXT_REGEX = Regex("(?i)\\bcard\\b")
 
         /**
-         * Limit-increase OFFERS: money the user does not have yet. "eligible
-         * for a Credit Limit increase", "pre-approved ... Credit limit:
-         * Rs.X", "limit can be increased to Rs X" must never set the total.
-         */
-        val LIMIT_OFFER_REGEX =
-            Regex("(?i)\\b(?:eligible|pre-?approved|can\\s+be\\s+(?:increased|enhanced)|to\\s+avail|avail\\s+now|apply\\s+now)\\b")
-
-        /**
          * "credit limit for your ... Card ... has been changed from INR X to
          * INR Y" — the NEW total is the second amount (after "to").
          */
@@ -512,20 +504,6 @@ class TransactionParser {
         val CREDIT_KEYWORDS = Regex("(?i)\\b(?:credited|received|deposited|refund(?:ed)?)\\b")
 
         /**
-         * Failure language: a payment that never happened. Anchored to
-         * payment nouns or explicit failure verbs so a success confirmation
-         * can never trip it.
-         */
-        val FAILED_PAYMENT_REGEX =
-            Regex(
-                "(?i)\\bhas\\s+failed\\b|" +
-                    "\\b(?:payment|transaction|txn|transfer|recharge)\\s+(?:has\\s+|was\\s+)?failed\\b|" +
-                    "\\bcould\\s+not\\s+be\\s+(?:processed|completed)\\b|" +
-                    "\\b(?:was\\s+)?declined\\b|" +
-                    "\\bunsuccessful\\b",
-            )
-
-        /**
          * "Txn Rs.55.00" header of the verbless card-network template — the
          * word "Txn" immediately followed by a currency amount at the start
          * of the message or a line. "txn of Rs X" (OTP narration) has "of"
@@ -547,38 +525,8 @@ class TransactionParser {
                     "[^\\n]{0,80}?\\b(?:successful|completed|done)\\b",
             )
 
-        /** Future/conditional tense directly before a debit/credit keyword. */
-        val FUTURE_TENSE_REGEX = Regex("(?i)\\b(?:will|shall|would)\\s+be\\s*$")
-
         /** How far back to look for the future-tense phrase ("will be auto-"). */
         const val FUTURE_LOOKBEHIND = 20
-
-        /**
-         * Statement / bill notices: the statement's own delivery verbs
-         * ("sent", "generated", "mailed") must never count as transaction
-         * verbs. Matched spans are scrubbed before parsing.
-         */
-        val STATEMENT_NOTICE_REGEX =
-            Regex(
-                "(?i)\\b(?:e-?)?statement\\s+(?:is|has\\s+been|was)\\s+" +
-                    "(?:sent|generated|mailed|e-?mailed|dispatched)|" +
-                    "\\b(?:e-?)?statement\\s+of\\b[^\\n]{0,80}?\\bhas\\s+been\\s+(?:sent|mailed|e-?mailed)|" +
-                    "\\b(?:e-?)?statement\\s+(?:is\\s+)?(?:now\\s+)?(?:available|ready)\\b",
-            )
-
-        /**
-         * Bill-due notice: "Payment of INR 532.62 for <card/biller> is due
-         * on 04-04-26" and "your <biller> bill of Rs.1178.82 for <id> is due
-         * on 10-Jun-26" — money the user still OWES. Same class as the
-         * statement notices above: never a transaction (the trailing "Ignore
-         * if already paid" advisory would otherwise satisfy the debit
-         * heuristics). The bounded 100-char gaps absorb the card / biller /
-         * consumer-id description between the amount and "is due".
-         */
-        val BILL_DUE_NOTICE_REGEX =
-            Regex(
-                "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b",
-            )
 
         val ACCOUNT_REGEX =
             Regex(
@@ -640,13 +588,6 @@ class TransactionParser {
 
         /** Candidates starting with these are account transfers, not merchants. */
         val NON_MERCHANT_START_REGEX = Regex("(?i)^(?:your|ur|the|a/c|ac\\b|acct|account|bank|no\\b)")
-
-        /**
-         * Instruction verbs: "to know the transaction status", "to avoid
-         * late fees" — link/call-to-action phrasing, never a merchant.
-         */
-        val INSTRUCTION_START_REGEX =
-            Regex("(?i)^(?:know|check|view|track|see|get|download|install|update|complete|continue|avoid|claim|apply|visit|click|login)\\b")
 
         /** A URL directly before the merchant preposition ("Click <url> to ..."). */
         val PRECEDING_URL_REGEX = Regex("(?i)(?:https?://\\S+|www\\.\\S+|\\b[a-z0-9][a-z0-9.-]*\\.[a-z]{2,6}/\\S*)\\s*$")

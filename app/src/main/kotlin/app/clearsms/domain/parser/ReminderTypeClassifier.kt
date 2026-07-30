@@ -166,14 +166,6 @@ class ReminderTypeClassifier {
         val INSURER_NAME_REGEX: Regex get() = ParserTables.billers.insurerNameRegex
 
         /**
-         * "premium" as a PRODUCT TIER — "<Brand> Premium subscription/plan"
-         * ("LIV Premium subscription", "YouTube Premium plan"). Suppresses
-         * premium-based insurance evidence.
-         */
-        val TIER_PREMIUM_REGEX =
-            Regex("(?i)\\b[\\w&+.]+\\s+premium\\s+(?:subscription|plan|membership|pack|account|is\\s+now\\s+active)\\b")
-
-        /**
          * A generated / itemized bill. The trailing alternative covers the
          * "a payment of Rs X is due on <date> for your <product>" biller
          * shape; the amount must sit directly before "is due" so credit-card
