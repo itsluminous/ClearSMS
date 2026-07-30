@@ -84,6 +84,11 @@ object SenderNameResolver {
             // TO a bank account, an Airtel bill is charged FROM one.
             Institution("Flipkart", listOf("FLPKRT"), listOf("FLIPKART"), isIssuer = false),
             Institution("Airtel", listOf("AIRTEL", "AIRBIL", "AIRINF"), listOf("AIRTEL"), isIssuer = false),
+            // The other telecoms, so their recharge and bill rows are titled by
+            // brand rather than falling back to a generic phrase.
+            Institution("Jio", listOf("JIOSMS", "RJIOSM", "JIOFBR", "JIOBB", "JIO"), listOf("RELIANCE JIO", "JIO"), isIssuer = false),
+            Institution("Vi", listOf("VICARE", "VIDEA", "VODAFO", "IDEAMN"), listOf("VODAFONE IDEA", "VODAFONE"), isIssuer = false),
+            Institution("BSNL", listOf("BSNLMB", "BSNLOF", "BSNL"), listOf("BSNL"), isIssuer = false),
             // Sony LIV subscription confirmations arrive from LIVCNF; the
             // friendly name keeps the Subscriptions view readable. An OTT
             // service is never an account's home, so it is not an issuer.
@@ -118,6 +123,26 @@ object SenderNameResolver {
         matchAlias(normalized)?.let { return it.name }
         // 3. Last resort: the normalized sender ID itself.
         return normalized.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * The sender's KNOWN brand name, or null when nothing recognises it.
+     *
+     * Same lookup as [bankNameFor] minus its last-resort fallback to the raw
+     * sender id: callers that use the result as a user-visible title (a recharge
+     * or bill payment where the biller is the counterparty) must not end up
+     * showing "RCHRGE".
+     */
+    fun brandNameFor(
+        senderId: String,
+        body: String = "",
+    ): String? {
+        matchBodyInstitution(body)?.let { return it.name }
+        val normalized = normalizeSender(senderId)
+        INSTITUTIONS
+            .firstOrNull { inst -> inst.senderKeys.any { normalized.contains(it) } }
+            ?.let { return it.name }
+        return matchAlias(normalized)?.name
     }
 
     /**

@@ -479,7 +479,7 @@ class MessageRepositoryImpl(
                 transactionParser.isStatementNotice(evalBody) -> null
                 parsedTx != null -> mergeTransaction(parsedTx, extracts, result.subCategory)
                 result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
-                    transactionFromExtracts(extracts, result.subCategory)
+                    transactionFromExtracts(extracts, result.subCategory, sender, evalBody)
                 else -> null
             }
 
@@ -901,13 +901,25 @@ class MessageRepositoryImpl(
     private fun transactionFromExtracts(
         extracts: Map<String, String>,
         subCategory: SubCategory?,
+        sender: String,
+        body: String,
     ): ParsedTransaction? {
         val amount = extracts["amount"]?.toAmount() ?: return null
         val type = extracts["type"]?.toTransactionType() ?: return null
         return ParsedTransaction(
             amount = amount,
             type = type,
-            merchantName = extracts["merchant"]?.let { transactionParser.normalizeMerchantCandidate(it) },
+            // A recharge / bill payment / top-up has no third-party merchant —
+            // the biller IS the sender — so the title falls back to the resolved
+            // sender brand ("Airtel") rather than a generic phrase. A merchant
+            // named in the body still wins. It goes in the MERCHANT slot, not
+            // bankName, so the account-creation guardrail is untouched.
+            merchantName =
+                extracts["merchant"]?.let { transactionParser.normalizeMerchantCandidate(it) }
+                    ?: extracts["operator"]
+                    ?: subCategory
+                        ?.takeIf { it in BILLER_BRANDED_SUBCATEGORIES }
+                        ?.let { SenderNameResolver.brandNameFor(sender, body) },
             accountLast4 = extracts["account_last4"],
             bankName = extracts["bank"],
             balance = extracts["balance"]?.toAmount(),
@@ -1001,6 +1013,17 @@ class MessageRepositoryImpl(
                 SubCategory.RECHARGE,
                 SubCategory.INVESTMENT,
                 SubCategory.MUTUAL_FUND,
+            )
+
+        /**
+         * Sub-categories where the BILLER is the counterparty, so a transaction
+         * with no merchant in its body is titled with the resolved sender brand
+         * ("Airtel") instead of a generic phrase.
+         */
+        private val BILLER_BRANDED_SUBCATEGORIES =
+            setOf(
+                SubCategory.RECHARGE,
+                SubCategory.BILL,
             )
     }
 }

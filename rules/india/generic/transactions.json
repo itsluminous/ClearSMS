@@ -191,8 +191,7 @@
         "sub_category": "recharge",
         "extract": {
           "amount": "$1",
-          "type": "debit",
-          "merchant": "Prepaid Recharge"
+          "type": "debit"
         }
       },
       "contributed_by": "clearsms",
@@ -210,8 +209,7 @@
         "sub_category": "recharge",
         "extract": {
           "amount": "$1",
-          "type": "debit",
-          "merchant": "Prepaid Recharge"
+          "type": "debit"
         }
       },
       "contributed_by": "clearsms",

@@ -158,7 +158,9 @@ class DerivedTransactionSubcategoriesTest {
             val tx = db.transactionDao().getAll().single()
             assertThat(tx.amount).isEqualTo(1198.0)
             assertThat(tx.type).isEqualTo(TransactionType.DEBIT)
-            assertThat(tx.merchantName).isEqualTo("Prepaid Recharge")
+            // An unresolved sender id is never used as a title, so the row
+            // carries no merchant and the UI keeps its generic wording.
+            assertThat(tx.merchantName).isNull()
             assertThat(tx.category).isEqualTo(MerchantCategory.RECHARGE)
             // Recharges carry no account tail — no account row may appear.
             assertThat(db.accountDao().getAll()).isEmpty()
