@@ -101,7 +101,7 @@ object GuardLibrary {
         for (regex in patterns) {
             if (regex.containsMatchIn(text)) {
                 // Attribution, id only — message content never reaches logs.
-                LOG.fine { "guard $id hit" }
+                LOG.fine("guard $id hit")
                 return true
             }
             if (nanoTime() - start > budgetNanos) {
