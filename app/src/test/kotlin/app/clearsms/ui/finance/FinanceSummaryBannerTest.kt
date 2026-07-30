@@ -36,7 +36,7 @@ import java.time.ZonedDateTime
 /**
  * The finance summary banner's click behaviour: tapping toggles the inline
  * breakdown, and — because expansion is a disclosure, not a navigation — the
- * persisted pill selection is never disturbed.
+ * pill selection (and the stored default filter) is never disturbed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FinanceSummaryBannerTest {
@@ -78,9 +78,9 @@ class FinanceSummaryBannerTest {
     }
 
     @Test
-    fun `expanding the banner never changes the persisted pill selection`() =
+    fun `expanding the banner never changes the pill selection or the stored default`() =
         runTest(dispatcher) {
-            settings.financeTabFlow.value = FinanceTab.CREDIT_CARDS
+            settings.defaultFinanceFilterFlow.value = FinanceTab.CREDIT_CARDS
             val vm = viewModel()
             val tabs = mutableListOf<FinanceTab>()
             val job = launch { vm.selectedTab.collect { tabs += it } }
@@ -89,8 +89,8 @@ class FinanceSummaryBannerTest {
             vm.toggleSummaryBreakdown()
 
             assertThat(vm.selectedTab.value).isEqualTo(FinanceTab.CREDIT_CARDS)
-            // The DataStore-backed tab was never written to either.
-            assertThat(settings.financeTabFlow.value).isEqualTo(FinanceTab.CREDIT_CARDS)
+            // The stored default filter was never written to either.
+            assertThat(settings.defaultFinanceFilterFlow.value).isEqualTo(FinanceTab.CREDIT_CARDS)
             // Beyond the stateIn default settling to the persisted value, the
             // toggles caused no further tab emissions.
             assertThat(tabs.distinct()).containsExactly(FinanceTab.ACCOUNTS, FinanceTab.CREDIT_CARDS).inOrder()
@@ -220,7 +220,7 @@ private class FakeFinanceRepository : FinanceRepository {
 }
 
 private class FakeSettingsRepository : SettingsRepository {
-    val financeTabFlow = MutableStateFlow(FinanceTab.ACCOUNTS)
+    val defaultFinanceFilterFlow = MutableStateFlow(FinanceTab.ACCOUNTS)
 
     override val theme = MutableStateFlow(ThemeMode.SYSTEM)
 
@@ -278,10 +278,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setDefaultInboxFilter(value: Category?) = Unit
 
-    override val financeTab: Flow<FinanceTab> = financeTabFlow
+    override val defaultFinanceFilter: Flow<FinanceTab> = defaultFinanceFilterFlow
 
-    override suspend fun setFinanceTab(value: FinanceTab) {
-        financeTabFlow.value = value
+    override suspend fun setDefaultFinanceFilter(value: FinanceTab) {
+        defaultFinanceFilterFlow.value = value
     }
 
     override val transactionNotifications = MutableStateFlow(true)

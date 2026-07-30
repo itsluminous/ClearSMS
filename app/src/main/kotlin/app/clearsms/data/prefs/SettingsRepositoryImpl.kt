@@ -139,11 +139,11 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_DEFAULT_INBOX_FILTER] = value?.name ?: FILTER_ALL }
     }
 
-    override val financeTab: Flow<FinanceTab> =
-        dataStore.data.map { it[KEY_FINANCE_TAB].toEnum(FinanceTab.ACCOUNTS) }
+    override val defaultFinanceFilter: Flow<FinanceTab> =
+        dataStore.data.map { it[KEY_DEFAULT_FINANCE_FILTER].toEnum(FinanceTab.ACCOUNTS) }
 
-    override suspend fun setFinanceTab(value: FinanceTab) {
-        dataStore.edit { it[KEY_FINANCE_TAB] = value.name }
+    override suspend fun setDefaultFinanceFilter(value: FinanceTab) {
+        dataStore.edit { it[KEY_DEFAULT_FINANCE_FILTER] = value.name }
     }
 
     override val transactionNotifications: Flow<Boolean> =
@@ -227,7 +227,7 @@ class SettingsRepositoryImpl(
         val KEY_SWIPE_ACTION_END = stringPreferencesKey("swipe_action_end")
         val KEY_DEFAULT_DESTINATION = stringPreferencesKey("default_destination")
         val KEY_DEFAULT_INBOX_FILTER = stringPreferencesKey("default_inbox_filter")
-        val KEY_FINANCE_TAB = stringPreferencesKey("finance_tab")
+        val KEY_DEFAULT_FINANCE_FILTER = stringPreferencesKey("default_finance_filter")
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
         val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")

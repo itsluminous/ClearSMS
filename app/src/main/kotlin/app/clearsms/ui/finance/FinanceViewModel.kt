@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.YearMonth
@@ -83,10 +82,17 @@ class FinanceViewModel
         private val balanceVisibility: BalanceVisibility,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
-        /** Persisted pill selection — restored across app restarts. */
+        /**
+         * Pill selection for this session. Opens on the user's chosen
+         * default (Settings → Finance → Default Finance filter); a pill tap
+         * overrides it for the current session only, so browsing the pills
+         * never rewrites the deliberately chosen default.
+         */
+        private val tabOverride = MutableStateFlow<FinanceTab?>(null)
         val selectedTab: StateFlow<FinanceTab> =
-            settingsRepository.financeTab
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.ACCOUNTS)
+            combine(settingsRepository.defaultFinanceFilter, tabOverride) { default, override ->
+                override ?: default
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.ACCOUNTS)
 
         /** Growing LIMIT for the latest-transactions page. */
         private val txLimit = MutableStateFlow(TransactionPaging.PAGE_SIZE)
@@ -241,7 +247,7 @@ class FinanceViewModel
             }
 
         fun setTab(tab: FinanceTab) {
-            viewModelScope.launch(ioDispatcher) { settingsRepository.setFinanceTab(tab) }
+            tabOverride.value = tab
         }
 
         /** Called only after a successful device-lock authentication. */

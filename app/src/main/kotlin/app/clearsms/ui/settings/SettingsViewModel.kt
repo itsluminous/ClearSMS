@@ -56,6 +56,7 @@ data class SettingsUiState(
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
     val defaultDestination: StartDestination = StartDestination.INBOX,
     val defaultInboxFilter: Category? = Category.IMPORTANT,
+    val defaultFinanceFilter: FinanceTab = FinanceTab.ACCOUNTS,
     val otpAutoCopy: Boolean = true,
     val otpAutoDeletePolicy: OtpAutoDeletePolicy = OtpAutoDeletePolicy.NEVER,
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
@@ -201,6 +202,7 @@ class SettingsViewModel
             val swipeEnd: SwipeAction,
             val destination: StartDestination,
             val inboxFilter: Category?,
+            val financeFilter: FinanceTab,
         )
 
         private val appearance =
@@ -227,6 +229,7 @@ class SettingsViewModel
                 settings.swipeActionEnd,
                 settings.defaultDestination,
                 settings.defaultInboxFilter,
+                settings.defaultFinanceFilter,
                 ::GestureStartupState,
             )
         private val otp =
@@ -262,6 +265,7 @@ class SettingsViewModel
                     swipeActionEnd = gestures.swipeEnd,
                     defaultDestination = gestures.destination,
                     defaultInboxFilter = gestures.inboxFilter,
+                    defaultFinanceFilter = gestures.financeFilter,
                     otpAutoCopy = autoCopy,
                     otpAutoDeletePolicy = autoDelete,
                     otpDisplaySize = size,
@@ -317,6 +321,8 @@ class SettingsViewModel
         fun setDefaultDestination(value: StartDestination) = launchIo { settings.setDefaultDestination(value) }
 
         fun setDefaultInboxFilter(value: Category?) = launchIo { settings.setDefaultInboxFilter(value) }
+
+        fun setDefaultFinanceFilter(value: FinanceTab) = launchIo { settings.setDefaultFinanceFilter(value) }
 
         fun setDeliveryReports(value: Boolean) = launchIo { uiPrefs.setDeliveryReports(value) }
 

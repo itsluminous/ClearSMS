@@ -58,7 +58,7 @@ class SettingsRepositoryImplTest {
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.DELETE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.INBOX)
             assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.IMPORTANT)
-            assertThat(repo.financeTab.first()).isEqualTo(FinanceTab.ACCOUNTS)
+            assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.ACCOUNTS)
             assertThat(repo.transactionNotifications.first()).isTrue()
         }
 
@@ -132,11 +132,11 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
-    fun `financeTab round trips`() =
+    fun `defaultFinanceFilter round trips`() =
         runBlocking {
             val repo = repository()
-            repo.setFinanceTab(FinanceTab.TRANSACTIONS)
-            assertThat(repo.financeTab.first()).isEqualTo(FinanceTab.TRANSACTIONS)
+            repo.setDefaultFinanceFilter(FinanceTab.TRANSACTIONS)
+            assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.TRANSACTIONS)
         }
 
     @Test
@@ -156,13 +156,13 @@ class SettingsRepositoryImplTest {
                 prefs[stringPreferencesKey("swipe_action_end")] = ""
                 prefs[stringPreferencesKey("default_destination")] = "inbox"
                 prefs[stringPreferencesKey("default_inbox_filter")] = "NOT_A_CATEGORY"
-                prefs[stringPreferencesKey("finance_tab")] = "42"
+                prefs[stringPreferencesKey("default_finance_filter")] = "42"
             }
             assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.ARCHIVE)
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.DELETE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.INBOX)
             assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.IMPORTANT)
-            assertThat(repo.financeTab.first()).isEqualTo(FinanceTab.ACCOUNTS)
+            assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.ACCOUNTS)
         }
 
     @Test

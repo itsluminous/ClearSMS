@@ -79,10 +79,10 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setDefaultInboxFilter(value: Category?) = Unit
 
-    override val financeTab = MutableStateFlow(FinanceTab.ACCOUNTS)
+    override val defaultFinanceFilter = MutableStateFlow(FinanceTab.ACCOUNTS)
 
-    override suspend fun setFinanceTab(value: FinanceTab) {
-        financeTab.value = value
+    override suspend fun setDefaultFinanceFilter(value: FinanceTab) {
+        defaultFinanceFilter.value = value
     }
 
     override val transactionNotifications = MutableStateFlow(true)

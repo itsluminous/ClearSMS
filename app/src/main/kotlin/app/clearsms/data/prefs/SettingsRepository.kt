@@ -86,10 +86,15 @@ interface SettingsRepository {
 
     suspend fun setDefaultInboxFilter(value: Category?)
 
-    /** Last Finance pill the user selected (persisted UI state, not shown in Settings). */
-    val financeTab: Flow<FinanceTab>
+    /**
+     * Finance pill the Finance screen opens on (Settings → Finance →
+     * Default Finance filter). A deliberate user choice, distinct from
+     * remembered UI state: tapping a pill on the Finance screen changes the
+     * session's tab only and never writes this back.
+     */
+    val defaultFinanceFilter: Flow<FinanceTab>
 
-    suspend fun setFinanceTab(value: FinanceTab)
+    suspend fun setDefaultFinanceFilter(value: FinanceTab)
 
     /** Show a parsed amount in transaction notifications instead of the raw message. */
     val transactionNotifications: Flow<Boolean>
