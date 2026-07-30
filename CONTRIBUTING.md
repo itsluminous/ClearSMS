@@ -110,6 +110,35 @@ python3 scripts/build_sender_db.py \
 
 Commit both the JSON and the regenerated `.db` in your PR.
 
+## Parser lookup tables
+
+Beyond the message rules, the parsers consult small community-editable lookup
+tables under [`rules/tables/`](rules/tables/). Each master file is mirrored at
+`app/src/main/assets/tables/` (a unit test keeps the two identical — edit the
+`rules/tables/` master and copy it over):
+
+| File | Feeds | Contents |
+| --- | --- | --- |
+| `merchant_categories.json` | spend categories in Finance | merchant-keyword regex → category (`FOOD`, `SHOPPING`, …), first match wins |
+| `couriers.json` | delivery alerts | courier/merchant name keys (substring-matched against sender ids and bodies) and brand registered domains (matched against URL hostnames only) |
+| `billers.json` | reminder type classification | known biller sender ids (literals, regex-escaped by the app), insurer name patterns, and bill-domain word patterns |
+
+The app assembles any regexes from these tables in code, so keep entries
+simple: literal ids where the field says literal, and for pattern fields flat
+case-insensitive fragments with word boundaries — never nested quantifiers,
+never unbounded `.*` spans. Only public brand, courier, insurer, and biller
+names belong here; scoring, thresholds and arbitration stay in Kotlin.
+
+The brand identity table (`rules/brands/brands.json`, see the README) also
+carries the financial-institution data used to name accounts: entries with an
+`is_issuer` field are institutions, and the optional `issuer_name`,
+`issuer_senders`, and `issuer_aliases` fields override the brand's display
+values where the account-naming view differs from the avatar view (for
+example, SBI Card messages belong to the State Bank of India account while
+keeping their own avatar). `is_issuer: true` means the entry can own an
+account or card (banks, wallets, provident funds); `false` marks brands that
+appear in money messages only as merchants or payment channels.
+
 ## Code contributions
 
 - Kotlin official style, enforced by ktlint (`./gradlew ktlintCheck`, auto-fix with
