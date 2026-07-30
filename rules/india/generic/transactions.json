@@ -7,9 +7,8 @@
       "priority": 41,
       "match": {
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:debited|spent|paid|withdrawn|deducted)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -30,9 +29,8 @@
       "priority": 40,
       "match": {
         "body_pattern": "(?i)(?:debited|withdrawn|deducted)\\s+(?:by|for|with)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -52,9 +50,8 @@
       "priority": 39,
       "match": {
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,60}?(?:credited|received|deposited)\\b[\\s\\S]{0,80}?(?:a/c|acct|account|card)\\s*(?:no\\.?\\s*)?(?:ending\\s*)?[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -75,9 +72,8 @@
       "priority": 38,
       "match": {
         "body_pattern": "(?i)(?:credited|deposited)\\s+(?:with|by)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

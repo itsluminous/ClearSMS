@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)AIRTEL",
         "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*successful",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

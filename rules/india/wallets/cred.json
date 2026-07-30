@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)CRED",
         "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+received\\s+for\\s+your\\s+([A-Za-z ]{2,20}?)\\s+credit\\s+card\\b[\\s\\S]{0,90}?CRED\\s+coins",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

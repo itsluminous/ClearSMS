@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)sent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+HDFC\\s+Bank\\s+A/C\\s+[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -33,9 +32,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+[Xx*]*(\\d{3,4})[\\s\\S]{0,80}?to\\s+VPA\\s+(\\S+)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -59,9 +57,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:is\\s+)?(?:credited|deposited)\\s+to\\s+(?:your\\s+)?(?:HDFC\\s+Bank\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -84,9 +81,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -108,9 +104,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:avl|avbl|available)\\s+bal(?:ance)?\\s+in\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{3,4})\\s+(?:as\\s+on\\s+|on\\s+)(?:yesterday\\s*:\\s*)?[0-9A-Za-z-]{6,11}\\s*:?\\s*(?:is\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -132,9 +127,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)Bal\\s+in\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{3,4})\\s+has\\s+gone\\s+below[\\s\\S]{0,60}?bal\\s*:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -198,9 +192,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)available\\s+bal(?:ance)?\\s+in\\s+a/c\\s+[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+on\\s+[0-9A-Za-z-]{5,12}\\s*:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -222,9 +215,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:deducted\\s+from|debited\\s+to)\\s+HDFC\\s+Bank\\s+A/C\\s+No\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b\\s+towards\\s+([^,\\n]{1,45})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -248,9 +240,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:HDFC\\s+Bank\\s+)?(?:A/c\\s+)?[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+on\\s+\\S{5,12}\\.\\s*Info:?\\s*([^.\\n]{1,50})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -274,9 +265,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:HDFC\\s+Bank\\s+)?a/c\\s+[Xx*]*(\\d{1,4})\\s+on\\s+[\\d/-]{4,10}\\s+to\\s+a/c\\b[\\s\\S]{0,30}?UPI\\s+Ref",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -299,9 +289,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+HDFC\\s+Bank\\s+(?:A/c\\s+)?[Xx*\\d]{0,10}?(\\d{4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -324,9 +313,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+debited\\s+from\\s+A/c\\s+[Xx*\\d]{0,10}?(\\d{4})\\b[\\s\\S]{0,60}?via\\s+HDFC\\s+Bank\\s+NetBanking",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -349,9 +337,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+HDFC\\s+Bank\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+at\\s+(\\S[^\\n]{0,39}?)\\s+on\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -375,9 +362,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)withdrawn\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:from|on)\\s+HDFC\\s+Bank\\s+(?:debit\\s+)?card\\s+[Xx*]*(\\d{1,4})\\s+at\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -400,9 +386,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)deducted\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+from:?\\s*HDFC\\s+Bank\\s+A/c\\s+[Xx*\\d]{0,10}?(\\d{4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -425,9 +410,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:deposited|received)\\s+(?:in|to)\\s+(?:HDFC\\s+Bank\\s+)?A/[Cc]\\s+(?:No\\.?\\s*)?[Xx*\\d]{0,16}?(\\d{2,4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -450,9 +434,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:vide\\s+Ref#?\\s*\\S{1,20}\\s+)?(?:received\\s+towards|was\\s+credited\\s+to)\\s+your\\s+(?:HDFC\\s+Bank\\s+)?(?:credit\\s+)?card\\s+ending\\s+[Xx*]*(\\d{2,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -475,9 +458,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)A/c\\s+[Xx*\\d]{0,10}?(\\d{2,4})\\b\\s+credited\\s+with\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -500,9 +482,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)your\\s+([A-Za-z][^.\\n]{0,40}?)\\s+bill\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[\\s\\S]{0,40}?processed\\s+successfully",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -627,9 +608,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)money\\s+received\\s*-\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+your\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{1,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -652,9 +632,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)you'?ve\\s+spent\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(?:HDFC\\s+Bank\\s+)?credit\\s+card\\s+[Xx*]*(\\d{1,4})\\s+at\\s+(\\S[^\\n]{0,39}?)\\s+on\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -678,9 +657,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)auto\\s+payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\b[\\s\\S]{0,40}?is\\s+debited\\s+from\\s+Account\\s+ending\\s+[Xx*\\d]{0,16}?(\\d{1,4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -704,9 +682,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)A/c\\s+[Xx*]*(\\d{1,4})\\s+(?:has\\s+been\\s+)?debited\\s+(?:for\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -747,9 +724,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+on\\s+your\\s+credit\\s+card\\s+ending\\s+[Xx*]*(\\d{2,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -772,9 +748,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{2,4})\\s+has\\s+been\\s+debited\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+[^\\n]{0,20}?via\\s+Debit\\s+Mandate\\s+for\\s+(\\S{1,45})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -798,9 +773,8 @@
       "match": {
         "sender_pattern": "(?i)HDFC",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+in\\s+HDFC\\s+Bank\\s+A/C\\s+No\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b\\s+via\\s+ACH\\s+credit\\s+Mode\\s+from\\s+([^\\n.]{1,45})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

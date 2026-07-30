@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
         "body_pattern": "(?i)recharge\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*(?:is|was)?\\s*success(?:ful)?\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

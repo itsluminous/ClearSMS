@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*\\d]*(\\d{3,4})\\s+(?:is\\s+)?debited\\s+(?:(?:for|with)\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -33,9 +32,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*\\d]*(\\d{3,4})\\s+(?:is\\s+|has\\s+been\\s+)?credited\\s*(?::\\s*|\\s+with\\s+(?:salary\\s+of\\s+)?)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -58,9 +56,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -124,9 +121,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+(?:using|on)\\s+ICICI\\s+Bank\\s+Card\\s+[Xx*]*(\\d{2,4})\\s+on\\s+\\S{5,12}\\s+(?:on|at)\\s+([^\\n]{1,40}?)\\.?\\s+Avl\\s+L",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -150,9 +146,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+debited\\s+on\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})[\\s\\S]{0,30}?Info:\\s*([^.\\n]{1,40})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -198,9 +193,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+received\\s+(?:towards|on)\\s+(?:your\\s+)?ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -348,9 +342,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)Acct\\s+[Xx*]*(\\d{3,4})\\s+is\\s+credited\\s+with\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\s+from\\s+([^\\n.]{1,40}?)\\.\\s*UPI:?\\s*(\\d{6,14})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -375,9 +368,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+ICICI\\s+Bank\\s+Savings\\s+Acc(?:oun)?t?\\s+[Xx*]*(\\d{3,4})\\s+on\\s+\\S{5,12}\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\s+UPI\\s+Mandate",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -401,9 +393,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*]*(\\d{3,4})\\s+debited\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\s+Info\\s*:?\\s*([^\\n]{1,40}?)\\.{1,2}\\s*Avl\\s+Bal\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -428,9 +419,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)ICICI\\s+Bank\\s+Acc(?:oun)?t?\\s+[Xx*]*(\\d{3,4})\\s+credited\\s*:?\\s*Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\.?\\s*Info\\s+([^\\n]{1,40}?)\\.\\s*Available\\s+Balance\\s+is\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -455,9 +445,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)ICICI\\s+Bank\\s+SAVINGS\\s+Account\\s+[Xx*\\d]*(\\d{3,4})\\s+will\\s+be\\s+debited\\s+for\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(\\S{5,12})\\s+towards\\s+([^\\n.]{1,45})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -481,9 +470,8 @@
       "match": {
         "sender_pattern": "(?i)ICICI",
         "body_pattern": "(?i)Your\\s+account\\s+has\\s+been\\s+successfully\\s+debited\\s+with\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S{5,12}\\s+towards\\s+([^\\n]{1,40}?)\\s+for\\s+UPI\\s+Mandate",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

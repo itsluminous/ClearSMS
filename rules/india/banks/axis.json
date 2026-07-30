@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)AXIS",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -33,9 +32,8 @@
       "match": {
         "sender_pattern": "(?i)AXIS",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -58,9 +56,8 @@
       "match": {
         "sender_pattern": "(?i)AXIS",
         "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -124,9 +121,8 @@
       "match": {
         "sender_pattern": "(?i)AXIS",
         "body_pattern": "(?i)cashback\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+[A-Za-z ]{0,30}credit\\s+card\\s+[Xx*]*(\\d{2,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -149,9 +145,8 @@
       "match": {
         "sender_pattern": "(?i)AXIS",
         "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+received\\s+towards\\s+your\\s+Axis\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{2,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

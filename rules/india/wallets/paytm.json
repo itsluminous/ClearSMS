@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)(?:IPAYTM|PYTMB|PAYTM)",
         "body_pattern": "(?i)paid\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+to\\s+([^\\n]{1,40}?)\\s+(?:with\\s+Paytm\\s+Ref|from\\s+Paytm\\s+(?:Balance|Payments\\s+Bank\\s+Wallet)|on\\s+[A-Z][a-z]{2}\\s+\\d)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

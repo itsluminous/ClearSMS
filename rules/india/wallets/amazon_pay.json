@@ -43,9 +43,8 @@
       "priority": 298,
       "match": {
         "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+using\\s+Apay\\s+balance\\s+(?:is\\s+)?successful",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

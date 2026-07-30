@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)CITI",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+card\\s+[Xx*]*(\\d{4})\\s+on\\s+[0-9A-Za-z-]{6,12}\\s+at\\s+([^.\\n]{1,40}?)\\.\\s*Limit\\s+available",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -56,9 +55,8 @@
       "match": {
         "sender_pattern": "(?i)CITI",
         "body_pattern": "(?i)thanks\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+via\\s+[A-Za-z]{2,6}\\s+for\\s+card\\s+no\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -81,9 +79,8 @@
       "match": {
         "sender_pattern": "(?i)CITI",
         "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+for\\s+your\\s+credit\\s+card\\s+no\\.?\\s*[Xx*\\d]{0,16}?(\\d{4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -106,9 +103,8 @@
       "match": {
         "sender_pattern": "(?i)CITI",
         "body_pattern": "(?i)credit\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+(?:on|from)\\b[\\s\\S]{0,60}?card\\s+(?:ending\\s+)?[Xx*\\d]{0,16}?(\\d{4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

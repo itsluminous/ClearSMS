@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)UNTYBA",
         "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+your\\s+A/c\\s+no\\s+[Xx*\\d]*?(\\d{3,4})\\s+for\\s+NEFT\\s+transaction[\\s\\S]{0,40}?NEFT\\s+Ref\\s+no-?\\s*(\\d{6,16})\\s*Avl\\s+Bal\\s*:?\\s*Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -35,9 +34,8 @@
       "match": {
         "sender_pattern": "(?i)UNTYBA",
         "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?a/c\\s+(?:no\\s+)?[Xx*\\d]*?(\\d{3,4})\\s+on\\s+\\S{5,12}\\.?\\s*Avl\\s+Bal\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -61,9 +59,8 @@
       "match": {
         "sender_pattern": "(?i)UNTYBA",
         "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:your\\s+)?a/c\\s+(?:no\\s+)?[Xx*\\d]*?(\\d{3,4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -86,9 +83,8 @@
       "match": {
         "sender_pattern": "(?i)UNTYBA",
         "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+(?:your\\s+)?a/c\\s+(?:no\\s+)?[Xx*\\d]*?(\\d{3,4})\\b",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

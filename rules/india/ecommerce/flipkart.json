@@ -41,9 +41,8 @@
       "match": {
         "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+Flipkart\\s+Gift\\s+Card\\s+\\d{6,20}\\s+for\\s+Order",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {

@@ -8,9 +8,8 @@
       "match": {
         "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -33,9 +32,8 @@
       "match": {
         "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+(?:to|in)\\s+(?:your\\s+)?a/c\\s+[Xx*]*(\\d{3,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -58,9 +56,8 @@
       "match": {
         "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
         "body_pattern": "(?i)(?:avl|available)\\s+bal(?:ance)?\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s+(?:no\\.?\\s*)?[Xx*]*(\\d{3,4})[\\s\\S]{0,60}?is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -124,9 +121,8 @@
       "match": {
         "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+your\\s+IDFC\\s+FIRST\\s+Bank\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{2,4})\\s+at\\s+([^\\n]{1,40}?)\\s+(?:on|at)\\s+\\d",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
@@ -171,9 +167,8 @@
       "match": {
         "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
         "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+was\\s+received\\s+for\\s+your\\s+IDFC\\s+FIRST\\s+Bank\\s+Credit\\s+Card\\s+ending\\s+[Xx*]*(\\d{2,4})",
-        "body_must_not_contain": [
-          "OTP",
-          "otp"
+        "guards_none": [
+          "otp_mention"
         ]
       },
       "action": {
