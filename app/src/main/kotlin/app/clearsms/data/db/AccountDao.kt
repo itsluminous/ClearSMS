@@ -23,6 +23,10 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE accountNumber = :accountNumber")
     suspend fun findByNumber(accountNumber: String): List<AccountEntity>
 
+    /** Every account of one issuer — consulted for digit-less card spends. */
+    @Query("SELECT * FROM accounts WHERE bankName = :bankName")
+    suspend fun findByBank(bankName: String): List<AccountEntity>
+
     /** Legacy row created before bank resolution existed — claimed on next write. */
     @Query("SELECT * FROM accounts WHERE accountNumber = :accountNumber AND bankName = '' AND type = :type LIMIT 1")
     suspend fun findBlankBank(

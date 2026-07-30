@@ -614,10 +614,13 @@ class MessageRepositoryImpl(
             // blank issuer NO account is ever created: the transaction
             // attaches to an existing account only when exactly one named
             // bank holds that last-4, otherwise it stays unattached — a
-            // nameless account row is never the answer.
+            // nameless account row is never the answer. The one exception
+            // to "no last-4, no account" is a curated standalone CARD
+            // product (see issuerKeyedCardAccountId): its spend SMS carry
+            // no digits at all, yet the issuer identifies the card exactly.
             val accountId =
                 when {
-                    accountNumber.isEmpty() -> null
+                    accountNumber.isEmpty() -> issuerKeyedCardAccountId(tx, bankName, timestampMs)
                     bankName.isNotEmpty() -> upsertAccount(tx, accountNumber, bankName, timestampMs)
                     else -> soleAccountIdForTail(accountNumber, tx.accountType)
                 }
@@ -770,6 +773,64 @@ class MessageRepositoryImpl(
         val named = accountDao.findByNumber(accountNumber).filter { it.bankName.isNotBlank() }
         if (named.isEmpty() || named.map { it.bankName }.distinct().size > 1) return null
         return (named.firstOrNull { it.type == accountType } ?: named.first()).id
+    }
+
+    /**
+     * The account for a card spend whose SMS carries NO account digits at
+     * all — the shape co-branded card products (Scapia Federal) actually
+     * send: "txn ... on your Scapia Federal Visa credit card was
+     * successful", never a last-4.
+     *
+     * The rule, deliberately narrow:
+     *  - the resolved issuer must be a curated standalone CARD product
+     *    ([SenderNameResolver.isCardProductIssuer]) and the body must read
+     *    as a card ([AccountType.CREDIT_CARD]) — a digit-less SAVINGS debit
+     *    stays unattached exactly as before;
+     *  - when the issuer already has exactly ONE card account (a template
+     *    change later adds a last-4, say), the spend attaches to it;
+     *  - when it has none, ONE card account is created under a stable
+     *    synthetic key ([SenderNameResolver.syntheticAccountKey]) — the
+     *    issuer alone identifies the card, and the user's spends belong on
+     *    a card, not in an unattached limbo;
+     *  - several cards of the same issuer are ambiguous: unattached (null).
+     *
+     * Known failure mode: if the issuer later starts quoting a real last-4,
+     * the first such message creates a second (digit-keyed) card next to
+     * the synthetic one and history splits between them. Accepted: the
+     * attach-to-sole-existing branch handles the reverse (and far likelier)
+     * order, and merchants still can never become accounts — the issuer
+     * must survive the curated card-product check.
+     */
+    private suspend fun issuerKeyedCardAccountId(
+        tx: ParsedTransaction,
+        bankName: String,
+        timestampMs: Long,
+    ): Long? {
+        if (bankName.isEmpty()) return null
+        if (tx.accountType != AccountType.CREDIT_CARD) return null
+        if (!SenderNameResolver.isCardProductIssuer(bankName)) return null
+        val cards = accountDao.findByBank(bankName).filter { it.type == AccountType.CREDIT_CARD }
+        return when {
+            cards.size > 1 -> null
+            cards.size == 1 ->
+                upsertAccountBalance(
+                    accountNumber = cards.single().accountNumber,
+                    bankName = bankName,
+                    accountType = AccountType.CREDIT_CARD,
+                    balance = tx.balance,
+                    timestampMs = timestampMs,
+                    availableLimit = tx.availableLimit,
+                )
+            else ->
+                upsertAccountBalance(
+                    accountNumber = SenderNameResolver.syntheticAccountKey(bankName),
+                    bankName = bankName,
+                    accountType = AccountType.CREDIT_CARD,
+                    balance = tx.balance,
+                    timestampMs = timestampMs,
+                    availableLimit = tx.availableLimit,
+                )
+        }
     }
 
     /**
@@ -934,6 +995,10 @@ class MessageRepositoryImpl(
             balance = typed.amount("balance"),
             availableLimit = typed.amount("available_limit"),
             merchantCategory = subCategory.toMerchantCategory() ?: MerchantCategory.OTHER,
+            // The body's own wording decides the account kind — a rule-matched
+            // card spend ("on your ... credit card was successful") must land
+            // on the card, never on a phantom savings account.
+            accountType = transactionParser.accountTypeOf(body),
         )
     }
 

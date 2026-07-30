@@ -260,6 +260,14 @@ class TransactionParser {
             }?.range
             ?.first
 
+    /**
+     * Account type implied by the body's own wording ("credit card",
+     * "wallet") — shared with rule-derived transactions, so a rule that
+     * matches a card spend the parser's verbs miss still lands on the
+     * card, not on a phantom savings account.
+     */
+    fun accountTypeOf(body: String): AccountType = detectAccountType(body)
+
     private fun detectAccountType(body: String): AccountType =
         when {
             // Money spent FROM a wallet ("from Reimbursement Wallet linked to

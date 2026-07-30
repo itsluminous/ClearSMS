@@ -366,11 +366,13 @@ private fun BankAccountCard(
                 )
                 Text(
                     text =
-                        stringResource(R.string.finance_masked_account, account.accountNumber) + " · " +
+                        listOfNotNull(
+                            maskedAccountLabel(account.accountNumber),
                             stringResource(
                                 R.string.finance_updated,
                                 RelativeTime.format(account.lastUpdated),
                             ),
+                        ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -867,11 +869,13 @@ private fun CreditCardCard(
                         maxLines = FinanceRowLayout.MAX_NAME_LINES,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = stringResource(R.string.finance_masked_account, card.account.accountNumber),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    maskedAccountLabel(card.account.accountNumber)?.let { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(horizontalAlignment = Alignment.End) {
