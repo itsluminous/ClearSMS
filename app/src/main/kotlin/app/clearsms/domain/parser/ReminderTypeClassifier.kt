@@ -159,14 +159,11 @@ class ReminderTypeClassifier {
 
         /**
          * Widely-known insurer brand names (public names only) — corroborating
-         * evidence, never sufficient alone.
+         * evidence, never sufficient alone. The name patterns live in
+         * `rules/tables/billers.json` (community-editable); the regex is
+         * assembled in code as a flat case-insensitive alternation.
          */
-        val INSURER_NAME_REGEX =
-            Regex(
-                "(?i)\\bLIC\\b|ICICI\\s*Pru|HDFC\\s+(?:Life|Ergo)|SBI\\s+Life|Max\\s+Life|Bajaj\\s+Allianz|" +
-                    "Tata\\s+AIA|\\bABSLI\\b|Aditya\\s+Birla\\s+Sun\\s+Life|Star\\s+Health|Niva\\s+Bupa|" +
-                    "New\\s+India\\s+Assurance|ICICI\\s+Lombard|PNB\\s+MetLife|Kotak\\s+Life|Canara\\s+HSBC",
-            )
+        val INSURER_NAME_REGEX: Regex get() = ParserTables.billers.insurerNameRegex
 
         /**
          * "premium" as a PRODUCT TIER — "<Brand> Premium subscription/plan"
@@ -190,13 +187,12 @@ class ReminderTypeClassifier {
                     "payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,.]+\\s+is\\s+due\\b[^\\n]{0,60}?\\bfor\\s+your\\b",
             )
 
-        /** Recognized bill domains (utility / telecom / broadband / DTH / ...). */
-        val BILL_DOMAIN_REGEX =
-            Regex(
-                "(?i)electricity|\\bpower\\s+bill|water\\s+bill|\\bgas\\b|broadband|internet\\s+bill|" +
-                    "landline|postpaid|\\bDTH\\b|\\bd2h\\b|\\brent\\b|property\\s+tax|\\btax\\b|" +
-                    "maintenance\\s+(?:bill|fee|charge)|\\bfee\\b|\\bfees\\b|utility\\s+bill|municipal",
-            )
+        /**
+         * Recognized bill domains (utility / telecom / broadband / DTH / ...).
+         * The domain word patterns live in `rules/tables/billers.json`
+         * (community-editable); the regex is assembled in code.
+         */
+        val BILL_DOMAIN_REGEX: Regex get() = ParserTables.billers.billDomainRegex
 
         /** A literal bill mention — only meaningful from a known biller sender. */
         val BILL_WORD_REGEX = Regex("(?i)\\bbill\\b")
@@ -204,13 +200,11 @@ class ReminderTypeClassifier {
         /**
          * Utility / telecom / broadband biller sender ids whose "your bill"
          * messages are trusted even without a domain keyword in the body.
+         * The id list lives in `rules/tables/billers.json`
+         * (community-editable); each id is regex-escaped and the alternation
+         * assembled in code.
          */
-        val KNOWN_BILLER_SENDER_REGEX =
-            Regex(
-                "(?i)ACTGRP|ACTFBN|ACTBBN|ACTBBD|ACTCOR|ACTCRP|AIRBIL|AIRTEL|JIOFBR|JIOBB|BSNL|VICARE|" +
-                    "BSES|BESCOM|MSEDCL|TNEB|TSSPD|APSPDC|KSEB|PSPCL|UPPCL|WBSEDC|CESC|" +
-                    "ADANI|TATAPW|TPDDL|TORRNT|IGL|MGL|MAHGAS|GAIL|HPCL|BPCL|IOCL",
-            )
+        val KNOWN_BILLER_SENDER_REGEX: Regex get() = ParserTables.billers.knownBillerSenderRegex
 
         /** OTT / membership products that renew. */
         val SUBSCRIPTION_WORD_REGEX = Regex("(?i)\\bsubscription\\b|\\bmembership\\b|auto[-\\s]?renew")
