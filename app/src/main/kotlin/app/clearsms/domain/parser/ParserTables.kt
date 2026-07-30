@@ -40,6 +40,11 @@ object ParserTables {
         parseBillers(readResource("billers.json"))
     }
 
+    /** Per-type reminder evidence rows for [ReminderTypeClassifier]. */
+    val reminderEvidence: ReminderEvidenceTable by lazy {
+        parseReminderEvidence(readResource("reminder_evidence.json"))
+    }
+
     /** Bundled table text, or null (with a warning) when the resource is missing. */
     internal fun readResource(name: String): String? =
         try {
@@ -85,6 +90,96 @@ object ParserTables {
                 insurerNameRegex = assembleAlternation(table.insurerNamePatterns),
                 billDomainRegex = assembleAlternation(table.billDomainPatterns),
             )
+        }
+
+    /**
+     * Parses the reminder evidence table. Rows are validated with the guard
+     * library's load-time ReDoS rules ([GuardLibrary.validate]) — pattern
+     * content in this table runs against every candidate reminder body, so
+     * an unsafe or invalid row is skipped with a warning, never fatal.
+     * `table_ref` / `sender_table_ref` values resolve against the assembled
+     * [billers] regexes; unknown refs, unknown guard ids and rows with no
+     * condition at all are skipped likewise.
+     */
+    internal fun parseReminderEvidence(json: String?): ReminderEvidenceTable =
+        parseOrEmpty("reminder_evidence.json", json, ReminderEvidenceTable.EMPTY) { text ->
+            val table = FORMAT.decodeFromString<ReminderEvidenceJson>(text)
+            val types =
+                table.types.associate { entry ->
+                    entry.type to
+                        TypeEvidence(
+                            evidence = entry.evidence.mapNotNull { evidenceRow(entry.type, it) },
+                            support = entry.support.mapNotNull { evidenceRow(entry.type, it) },
+                        )
+                }
+            val fallback =
+                table.fallbackPattern
+                    ?.takeIf { validatedRegex("fallback", it) != null }
+                    ?.let(::Regex) ?: NEVER_MATCH
+            ReminderEvidenceTable(types, fallback)
+        }
+
+    private fun evidenceRow(
+        type: String,
+        row: EvidenceRowJson,
+    ): EvidenceRow? {
+        val bodyRegex =
+            when {
+                row.pattern != null -> validatedRegex(type, row.pattern) ?: return null
+                row.tableRef != null -> tableRef(type, row.tableRef) ?: return null
+                else -> null
+            }
+        val senderRegex =
+            when {
+                row.senderTableRef != null -> tableRef(type, row.senderTableRef) ?: return null
+                else -> null
+            }
+        if (bodyRegex == null && senderRegex == null) {
+            warn("reminder_evidence.json", "$type: row with no condition skipped")
+            return null
+        }
+        val guard =
+            row.notIfGuard?.let { name ->
+                GuardId.entries.firstOrNull { it.id == name } ?: run {
+                    warn("reminder_evidence.json", "$type: unknown guard '$name'; row skipped")
+                    return null
+                }
+            }
+        return EvidenceRow(
+            bodyRegex = bodyRegex,
+            senderRegex = senderRegex,
+            score = row.score,
+            notIfGuard = guard,
+            onlyIfNoOtherEvidence = row.onlyIfNoOtherEvidence,
+        )
+    }
+
+    /** Compiles [pattern] after the guard library's ReDoS validation. */
+    private fun validatedRegex(
+        context: String,
+        pattern: String,
+    ): Regex? {
+        GuardLibrary.validate(pattern)?.let { reason ->
+            warn("reminder_evidence.json", "$context: pattern rejected ($reason)")
+            return null
+        }
+        return runCatching { Regex(pattern) }
+            .onFailure { warn("reminder_evidence.json", "$context: pattern does not compile") }
+            .getOrNull()
+    }
+
+    private fun tableRef(
+        type: String,
+        ref: String,
+    ): Regex? =
+        when (ref) {
+            "insurer_names" -> billers.insurerNameRegex
+            "bill_domains" -> billers.billDomainRegex
+            "known_biller_senders" -> billers.knownBillerSenderRegex
+            else -> {
+                warn("reminder_evidence.json", "$type: unknown table ref '$ref'; row skipped")
+                null
+            }
         }
 
     /**
@@ -165,6 +260,29 @@ object ParserTables {
         @SerialName("insurer_name_patterns") val insurerNamePatterns: List<String> = emptyList(),
         @SerialName("bill_domain_patterns") val billDomainPatterns: List<String> = emptyList(),
     )
+
+    @Serializable
+    private data class ReminderEvidenceJson(
+        val types: List<TypeEvidenceJson> = emptyList(),
+        @SerialName("fallback_pattern") val fallbackPattern: String? = null,
+    )
+
+    @Serializable
+    private data class TypeEvidenceJson(
+        val type: String,
+        val evidence: List<EvidenceRowJson> = emptyList(),
+        val support: List<EvidenceRowJson> = emptyList(),
+    )
+
+    @Serializable
+    private data class EvidenceRowJson(
+        val pattern: String? = null,
+        @SerialName("table_ref") val tableRef: String? = null,
+        @SerialName("sender_table_ref") val senderTableRef: String? = null,
+        val score: Int = 0,
+        @SerialName("not_if_guard") val notIfGuard: String? = null,
+        @SerialName("only_if_no_other_evidence") val onlyIfNoOtherEvidence: Boolean = false,
+    )
 }
 
 /**
@@ -193,5 +311,52 @@ class BillerTable(
 ) {
     companion object {
         val EMPTY = BillerTable(ParserTables.NEVER_MATCH, ParserTables.NEVER_MATCH, ParserTables.NEVER_MATCH)
+    }
+}
+
+/**
+ * Reminder-type evidence rows loaded from `tables/reminder_evidence.json`.
+ * Pattern content and weights live in the data; the scoring algorithm —
+ * threshold, tie-break order, bill-disqualifies-subscription — stays in
+ * [ReminderTypeClassifier]. An empty table (malformed/missing asset) makes
+ * every type score zero, so classification degrades to the fallback.
+ */
+class ReminderEvidenceTable(
+    val types: Map<String, TypeEvidence>,
+    /** Generic dated-instalment fallback used only when no type scores. */
+    val fallback: Regex,
+) {
+    companion object {
+        val EMPTY = ReminderEvidenceTable(emptyMap(), ParserTables.NEVER_MATCH)
+    }
+}
+
+/** One type's rows: cumulative [evidence], then corroborating [support]. */
+class TypeEvidence(
+    val evidence: List<EvidenceRow>,
+    val support: List<EvidenceRow>,
+)
+
+/**
+ * One scored condition. Matches when every regex present matches its
+ * target ([bodyRegex] against the body, [senderRegex] against the sender)
+ * and [notIfGuard] — when set — does NOT match the body.
+ */
+class EvidenceRow(
+    val bodyRegex: Regex?,
+    val senderRegex: Regex?,
+    val score: Int,
+    val notIfGuard: GuardId?,
+    /** Counts only when no earlier evidence row of the same type matched. */
+    val onlyIfNoOtherEvidence: Boolean,
+) {
+    fun matches(
+        sender: String,
+        body: String,
+    ): Boolean {
+        if (notIfGuard != null && GuardLibrary.matches(notIfGuard, body)) return false
+        if (bodyRegex != null && !bodyRegex.containsMatchIn(body)) return false
+        if (senderRegex != null && !senderRegex.containsMatchIn(sender)) return false
+        return true
     }
 }

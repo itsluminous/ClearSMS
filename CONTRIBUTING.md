@@ -157,6 +157,7 @@ tables under [`rules/tables/`](rules/tables/). Each master file is mirrored at
 | `merchant_categories.json` | spend categories in Finance | merchant-keyword regex → category (`FOOD`, `SHOPPING`, …), first match wins |
 | `couriers.json` | delivery alerts | courier/merchant name keys (substring-matched against sender ids and bodies) and brand registered domains (matched against URL hostnames only) |
 | `billers.json` | reminder type classification | known biller sender ids (literals, regex-escaped by the app), insurer name patterns, and bill-domain word patterns |
+| `reminder_evidence.json` | reminder type classification | per-type scored evidence rows: `pattern` (body regex), `table_ref`/`sender_table_ref` (reuse of the `billers.json` regexes), `score`, optional `not_if_guard` (a guard id whose match suppresses the row) and `only_if_no_other_evidence`; `support` rows corroborate but can never classify alone. The threshold, tie-break order and bill-disqualifies-subscription arbitration stay in Kotlin — see the file's inline description |
 
 The app assembles any regexes from these tables in code, so keep entries
 simple: literal ids where the field says literal, and for pattern fields flat

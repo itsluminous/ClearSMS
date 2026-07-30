@@ -1,0 +1,106 @@
+{
+  "version": "1.0",
+  "description": "Evidence table for reminder TYPE classification. Each type accumulates a score from its 'evidence' rows (evaluated in order; a row with 'only_if_no_other_evidence' counts only when no earlier evidence row of the same type matched); 'support' rows are corroboration that is added only when at least one evidence row matched — support can never reach the threshold alone. A row matches when its 'pattern' (a case-insensitive-by-(?i) regex FRAGMENT run against the body) and/or its 'sender_table_ref'/'table_ref' regex match; 'table_ref'/'sender_table_ref' reference the assembled regexes from tables/billers.json ('insurer_names', 'bill_domains', 'known_biller_senders') so brand lists live in one place. 'not_if_guard' names a guard from guards.json whose match suppresses the row (e.g. product-tier 'Premium' never counts as an insurance premium). The SCORING ALGORITHM — the threshold (3), the tie-break order (credit card, deposit, EMI, insurance, bill, subscription), and bill-evidence disqualifying subscription — stays in code (ReminderTypeClassifier); only pattern content and weights live here. Keep patterns simple: word boundaries, bounded gaps like [^\\n]{0,60}?, never nested quantifiers; patterns are ReDoS-validated at load and invalid rows are skipped.",
+  "types": [
+    {
+      "type": "CREDIT_CARD",
+      "evidence": [
+        {
+          "pattern": "(?i)credit\\s*card|card\\s+(?:bill|statement|ending)|(?:mini\\s+)?statement\\s+for\\s+(?:your\\s+)?card\\b",
+          "score": 3
+        }
+      ],
+      "support": [
+        {
+          "pattern": "(?i)\\b(?:e-?)?statement\\b|total\\s+(?:amt|amount)?\\s*due|min(?:imum)?\\s+(?:amt|amount)?\\s*due|cardmember",
+          "score": 1
+        }
+      ]
+    },
+    {
+      "type": "DEPOSIT",
+      "evidence": [
+        {
+          "pattern": "(?i)recurring\\s+deposit|fixed\\s+deposit|\\bRD\\b[^\\n]{0,60}?instal?l?ment|instal?l?ment[^\\n]{0,60}?\\bRD\\b|\\bSIP\\b[^\\n]{0,60}?(?:due|instal)",
+          "score": 3
+        }
+      ]
+    },
+    {
+      "type": "EMI",
+      "evidence": [
+        {
+          "pattern": "(?i)\\bEMI\\b|loan\\s+instal?lment",
+          "score": 3
+        }
+      ]
+    },
+    {
+      "type": "INSURANCE",
+      "evidence": [
+        {
+          "pattern": "(?i)\\bpolicy\\s*(?:no\\.?|number)\\b",
+          "score": 3
+        },
+        {
+          "pattern": "(?i)premium\\s+(?:due|amount)\\b|premium\\s+of\\s+(?:INR|Rs\\.?|\u20b9)|renewal\\s+premium|premium\\s+(?:will\\s+be\\s+|shall\\s+be\\s+)?(?:deducted|charged)|auto\\s*[- ]?debit\\s+premium",
+          "score": 3,
+          "not_if_guard": "tier_premium"
+        },
+        {
+          "pattern": "(?i)\\binsurance\\b|\\binsurer\\b|life\\s+cover\\b|\\bpolicy\\s+premium\\b",
+          "score": 3
+        }
+      ],
+      "support": [
+        {
+          "table_ref": "insurer_names",
+          "score": 2
+        }
+      ]
+    },
+    {
+      "type": "BILL",
+      "evidence": [
+        {
+          "pattern": "(?i)\\bbill\\s+(?:for|dated|of|no\\.?)\\b|bill\\s+(?:has\\s+been\\s+)?generated|amount\\s+to\\s+be\\s+paid|\\bbill\\s+amount\\b|payment\\s+of\\s+(?:INR|Rs\\.?|\u20b9)\\s*[\\d,.]+\\s+is\\s+due\\b[^\\n]{0,60}?\\bfor\\s+your\\b",
+          "score": 3
+        },
+        {
+          "table_ref": "bill_domains",
+          "score": 3
+        },
+        {
+          "pattern": "(?i)\\bbill\\b",
+          "sender_table_ref": "known_biller_senders",
+          "score": 3,
+          "only_if_no_other_evidence": true
+        }
+      ],
+      "support": [
+        {
+          "sender_table_ref": "known_biller_senders",
+          "score": 1
+        }
+      ]
+    },
+    {
+      "type": "SUBSCRIPTION",
+      "evidence": [
+        {
+          "pattern": "(?i)\\bsubscription\\b|\\bmembership\\b|auto[-\\s]?renew",
+          "score": 3
+        },
+        {
+          "pattern": "(?i)\\bplan\\b",
+          "score": 2
+        },
+        {
+          "pattern": "(?i)\\brenew(?:al|s|ed)?\\b",
+          "score": 2
+        }
+      ]
+    }
+  ],
+  "fallback_pattern": "(?i)instal?lment"
+}
