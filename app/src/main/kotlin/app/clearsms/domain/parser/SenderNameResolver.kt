@@ -10,11 +10,18 @@ import java.util.logging.Logger
  * message bodies.
  *
  * Resolution chain (first hit wins):
- * 1. an institution named in the BODY (that is the account's bank even when
- *    the SMS arrives via an aggregator like a card-payment app),
+ * 1. an institution the BODY names as the ACCOUNT'S OWN bank — next to the
+ *    account or card ("in HDFC Bank A/c xx8709", "your Axis Bank credit
+ *    card"). This is the account's bank even when the SMS arrives via an
+ *    aggregator like a card-payment app. A bank named in remittance
+ *    NARRATION ("For IMPS -Federal bank- 616715401395", "NEFT-<bank>-",
+ *    "via <bank>") is the COUNTERPARTY's bank and never counts,
  * 2. the sender ID matched against the institution table generated from
  *    `rules/brands/brands.json` (entries carrying an `is_issuer` field),
- * 3. the normalized sender ID itself — an account should never be nameless;
+ * 3. a bank the body merely MENTIONS outside any account context (a
+ *    "- Federal Bank" signature) — weaker than the sender, so an HDFC
+ *    sender naming another bank in passing stays HDFC,
+ * 4. the normalized sender ID itself — an account should never be nameless;
  *    showing "VD-Pluxee" as "PLUXEE" beats showing "Unknown bank".
  *
  * Every returned name is CANONICAL: "SBI" and "State Bank of India" resolve
@@ -36,6 +43,14 @@ object SenderNameResolver {
          * merchants or conduits, never as the account's home.
          */
         val isIssuer: Boolean = true,
+        /**
+         * Whether the issuer is a standalone CARD product (brands.json
+         * `category == "CARD"`): a co-branded card like Scapia Federal whose
+         * transaction SMS may legitimately carry no account digits at all.
+         * Only such issuers may own an issuer-keyed (digit-less) card
+         * account — see the account-identity rules at the ingestion site.
+         */
+        val isCardProduct: Boolean = false,
     )
 
     /**
@@ -81,6 +96,7 @@ object SenderNameResolver {
                         senderKeys = brand.issuerSenders ?: brand.senders,
                         aliases = brand.issuerAliases ?: brand.aliases,
                         isIssuer = isIssuer,
+                        isCardProduct = brand.category == "CARD",
                     )
                 }
         } catch (e: Exception) {
@@ -105,6 +121,7 @@ object SenderNameResolver {
     @Serializable
     private data class BrandJson(
         val name: String,
+        val category: String? = null,
         val senders: List<String> = emptyList(),
         val aliases: List<String> = emptyList(),
         @SerialName("is_issuer") val isIssuer: Boolean? = null,
@@ -131,16 +148,20 @@ object SenderNameResolver {
         senderId: String,
         body: String = "",
     ): String? {
-        // 1. Institution named in the body — the account's bank even when the
+        val bodyMatch = matchBodyInstitution(body)
+        // 1. The bank the body names as the ACCOUNT'S OWN — even when the
         //    SMS comes from an aggregator (card-payment apps, wallets).
-        matchBodyInstitution(body)?.let { return it.name }
+        bodyMatch.own?.let { return it.name }
         // 2. The sender ID against the curated table.
         val normalized = normalizeSender(senderId)
         INSTITUTIONS
             .firstOrNull { inst -> inst.senderKeys.any { normalized.contains(it) } }
             ?.let { return it.name }
         matchAlias(normalized)?.let { return it.name }
-        // 3. Last resort: the normalized sender ID itself.
+        // 3. A bank mentioned outside any account context (a signature like
+        //    "- Federal Bank") — weaker than the sender by design.
+        bodyMatch.mentioned?.let { return it.name }
+        // 4. Last resort: the normalized sender ID itself.
         return normalized.takeIf { it.isNotBlank() }
     }
 
@@ -156,13 +177,35 @@ object SenderNameResolver {
         senderId: String,
         body: String = "",
     ): String? {
-        matchBodyInstitution(body)?.let { return it.name }
+        val bodyMatch = matchBodyInstitution(body)
+        bodyMatch.own?.let { return it.name }
         val normalized = normalizeSender(senderId)
         INSTITUTIONS
             .firstOrNull { inst -> inst.senderKeys.any { normalized.contains(it) } }
             ?.let { return it.name }
-        return matchAlias(normalized)?.name
+        matchAlias(normalized)?.let { return it.name }
+        return bodyMatch.mentioned?.name
     }
+
+    /**
+     * Whether [name] resolves to a curated issuer that is a standalone CARD
+     * product (a co-branded card like Scapia Federal). Only such issuers may
+     * own an issuer-keyed, digit-less card account.
+     */
+    fun isCardProductIssuer(name: String?): Boolean {
+        val trimmed = name?.trim().orEmpty()
+        if (trimmed.isEmpty()) return false
+        val inst = matchAlias(trimmed.uppercase()) ?: return false
+        return inst.isIssuer && inst.isCardProduct
+    }
+
+    /**
+     * Stable synthetic account key for an issuer-keyed card account (a card
+     * product whose SMS carries no digits): the canonical issuer name with
+     * everything but letters and digits stripped, uppercased. Deliberately
+     * non-numeric so it can never collide with a real last-4.
+     */
+    fun syntheticAccountKey(bankName: String): String = bankName.uppercase().filter { it.isLetterOrDigit() }
 
     /**
      * The single account-creation guardrail: whether [name] can plausibly
@@ -203,22 +246,74 @@ object SenderNameResolver {
     }
 
     /**
-     * An institution named in the body counts only in an ACCOUNT context —
-     * "your Axis Bank credit card", "HDFC Bank A/c", "Pluxee ... wallet" —
-     * so a merchant/VPA mention ("paid to paytm@upi") never re-labels the
-     * account. Aliases containing "BANK" are self-evidently account context.
+     * The body's institution evidence, split by strength.
+     *
+     * [own] is the account's OWN institution: an alias in an ACCOUNT context
+     * — "your Axis Bank credit card", "in HDFC Bank A/c xx8709", "Pluxee ...
+     * wallet". Two refinements keep that honest:
+     *  - an alias in a MERCHANT/VPA position ("at FLIPKART", "to VPA
+     *    credcc@yesbank", "For IMPS -Federal bank-") is the counterparty and
+     *    is discarded outright, whatever follows it — a UPI narration
+     *    quoting "credit card bill" after "@yesbank" must not make Yes Bank
+     *    the account's bank;
+     *  - softer lead-ins ("via <bank>", "from <bank>", "to <bank>") discard
+     *    the alias only when NO account context follows — "debited from
+     *    HDFC Bank A/c xx8709" is the user's own account;
+     *  - a context word that is itself part of ANOTHER institution's name
+     *    does not count ("For SONYLIV ... Via: HDFC Bank" must not read
+     *    "Bank" as Sony LIV's account context).
+     *
+     * [mentioned] is a self-evident bank name outside any account context
+     * (a "- Federal Bank" signature): kept as a fallback BELOW the sender,
+     * so a known sender naming another bank in passing keeps the account.
      */
-    private fun matchBodyInstitution(body: String): Institution? {
-        if (body.isEmpty()) return null
+    private class BodyInstitutions(
+        val own: Institution?,
+        val mentioned: Institution?,
+    )
+
+    private fun matchBodyInstitution(body: String): BodyInstitutions {
+        if (body.isEmpty()) return NO_BODY_INSTITUTIONS
         val upper = body.uppercase()
-        for ((regex, institution) in aliasIndex) {
-            val match = regex.find(upper) ?: continue
-            if (regex.pattern.contains("BANK")) return institution
-            val trailing = upper.substring(match.range.last + 1, minOf(upper.length, match.range.last + 1 + 32))
-            if (ACCOUNT_CONTEXT_REGEX.containsMatchIn(trailing)) return institution
+        val allMatches =
+            aliasIndex.flatMap { (regex, institution) ->
+                regex.findAll(upper).map { Triple(it.range, institution, regex.pattern.contains("BANK")) }
+            }
+        var mentioned: Institution? = null
+        for ((range, institution, isBankAlias) in allMatches) {
+            val preceding = upper.substring(maxOf(0, range.first - NARRATION_LOOKBEHIND), range.first)
+            if (HARD_NARRATION_REGEX.containsMatchIn(preceding)) continue
+            if (hasOwnAccountContext(upper, range, institution, allMatches)) {
+                return BodyInstitutions(own = institution, mentioned = mentioned)
+            }
+            if (SOFT_NARRATION_REGEX.containsMatchIn(preceding)) continue
+            if (isBankAlias && mentioned == null) mentioned = institution
         }
-        return null
+        return BodyInstitutions(own = null, mentioned = mentioned)
     }
+
+    /**
+     * Whether an ACCOUNT-context word follows the alias match at [range] —
+     * ignoring context words that sit inside a DIFFERENT institution's own
+     * alias match (another bank's name is never this alias's account).
+     */
+    private fun hasOwnAccountContext(
+        upper: String,
+        range: IntRange,
+        institution: Institution,
+        allMatches: List<Triple<IntRange, Institution, Boolean>>,
+    ): Boolean {
+        val windowStart = range.last + 1
+        val trailing = upper.substring(windowStart, minOf(upper.length, windowStart + 32))
+        return ACCOUNT_CONTEXT_REGEX.findAll(trailing).any { context ->
+            val absolute = (windowStart + context.range.first)..(windowStart + context.range.last)
+            allMatches.none { (otherRange, other, _) ->
+                other !== institution && absolute.first <= otherRange.last && absolute.last >= otherRange.first
+            }
+        }
+    }
+
+    private val NO_BODY_INSTITUTIONS = BodyInstitutions(own = null, mentioned = null)
 
     /**
      * Maps a stored institution name (possibly a variant like "SBI" or
@@ -240,6 +335,27 @@ object SenderNameResolver {
     /** Words after a body alias that mark it as the ACCOUNT's institution. */
     private val ACCOUNT_CONTEXT_REGEX =
         Regex("\\b(?:BANK|CARD|A/C|AC|ACCT|ACCOUNT|WALLET|RD|FD|POLICY|CREDIT|DEBIT)\\b")
+
+    /**
+     * Hard counterparty lead-ins directly before a body alias: remittance
+     * rails ("For IMPS -Federal bank-", "NEFT-<bank>-"), a VPA handle
+     * ("@yesbank"), or a merchant position ("at FLIPKART"). The alias is
+     * the counterparty regardless of what follows. Anchored to the end of
+     * the short preceding window; runs against uppercased text.
+     */
+    private val HARD_NARRATION_REGEX =
+        Regex("(?:\\b(?:IMPS|NEFT|RTGS|ACH|ECS|NACH|UPI)\\b[\\s/:.-]{0,4}|\\bAT\\s{1,4}|@)$")
+
+    /**
+     * Soft lead-ins ("via <bank>", "from <bank>", "to <bank>") that yield
+     * only when NO account context follows — "debited from HDFC Bank A/c
+     * xx8709" is the user's own account, "via Federal Bank UPI" is a rail.
+     */
+    private val SOFT_NARRATION_REGEX =
+        Regex("(?:\\bVIA\\b[\\s:]{0,4}|\\b(?:FROM|TO)\\s{1,4})$")
+
+    /** Chars of context inspected for the narration regexes. */
+    private const val NARRATION_LOOKBEHIND = 16
 
     /**
      * Strips the TRAI route prefix ("VM-", "AD-", ...) and route suffix
