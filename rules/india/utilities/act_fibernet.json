@@ -20,6 +20,25 @@
       "created_at": "2026-07-27T00:00:00Z"
     },
     {
+      "id": "act-bill-due-01",
+      "name": "ACT Fibernet Broadband Bill Due",
+      "priority": 252,
+      "match": {
+        "sender_pattern": "(?i)(?:ACTFBN|ACTCORP|ACTGRP|ACTBRD|AIRBIL|AIRTEL)",
+        "body_pattern": "(?i)ACT\\s+Fibernet\\s+Broadband\\s+bill\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[^\\n]{0,60}?\\bis\\s+due\\s+on\\s+(\\d{1,2}-[A-Za-z]{3}-\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "due_date": "$2"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-07-30T00:00:00Z"
+    },
+    {
       "id": "act-receipt-01",
       "name": "ACT Fibernet Payment Receipt",
       "priority": 245,
