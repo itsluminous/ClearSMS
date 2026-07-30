@@ -32,7 +32,7 @@
         "body_pattern": "(?i)Investment\\s+value\\s+in\\s+(?:NPS\\s+)?Tier\\s+I{1,2}\\s+\\(PRAN[\\s-]?[A-Za-zXx*]{0,10}?(\\d{3,4})\\)\\s+as\\s+on\\s+[0-9./-]{6,10}\\s+is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "investment",
         "extract": {
           "balance": "$2",

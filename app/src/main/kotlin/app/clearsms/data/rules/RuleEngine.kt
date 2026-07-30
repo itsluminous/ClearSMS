@@ -138,7 +138,8 @@ class RuleEngine(
             when (value.lowercase()) {
                 "important" -> Category.IMPORTANT
                 "promotional" -> Category.PROMOTIONAL
-                "informational" -> Category.INFORMATIONAL
+                // Legacy rule value: informational notices are IMPORTANT (no separate pill).
+                "informational" -> Category.IMPORTANT
                 "personal" -> Category.PERSONAL
                 "otp" -> Category.OTP
                 else -> Category.UNKNOWN

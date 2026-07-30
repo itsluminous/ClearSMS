@@ -38,7 +38,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("CIBIL", "Your CIBIL Score & Report was checked by FEDERAL BANK ECN:12345 on 2026-06-15. -CIBIL")
         assertThat(result?.matchedRuleId).isEqualTo("cibil-score-check-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -46,7 +46,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("AKASAA", "Hi, you've been assigned seat 12D for your upcoming Akasa Air flight. Have a pleasant journey.")
         assertThat(result?.matchedRuleId).isEqualTo("flight-seat-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.TRAVEL)
     }
 
@@ -55,7 +55,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("SAKRAH", "NEROW 005 is your token number for Walk-In, please wait for your turn. -SAKRA WORLD HOSPITAL")
         assertThat(result?.matchedRuleId).isEqualTo("hospital-token-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.APPOINTMENT)
     }
 
@@ -64,7 +64,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("NSESMS", "Dear CTWXXXXX2R, Your traded value for 29-JUN-26 CM Rs 12050.88 combined. -National Stock Exchange")
         assertThat(result?.matchedRuleId).isEqualTo("nse-traded-value-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
         assertThat(result?.extracted).doesNotContainKey("amount")
     }
@@ -74,7 +74,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("NSETRA", "BROKER LTD on 26-07-26 reported your Fund bal Rs.512.00 & Securities bal 12 - NSE")
         assertThat(result?.matchedRuleId).isEqualTo("nse-broker-balance-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -82,7 +82,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("IRSMSA", "PNR-1234567890 Trn:12345 Frm ABC to DEF Cls:3A P1-B2,34 Chart Prepared")
         assertThat(result?.matchedRuleId).isEqualTo("train-pnr-status-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.TRAVEL)
     }
 
@@ -95,7 +95,7 @@ class TaxonomyRulesTest {
                     "Amazon India from 06/07/26 to 06/07/31 for Rs 1499.00, Your UMN is abc@okhdfc - Team Tata Neu.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("upi-mandate-created-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.extracted).doesNotContainKey("amount")
     }
 
@@ -108,7 +108,7 @@ class TaxonomyRulesTest {
                     "MAX Rs. 1499.00 towards Amazon India. - Team Tata Neu",
             )
         assertThat(result?.matchedRuleId).isEqualTo("upi-mandate-cancelled-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     // endregion
@@ -187,7 +187,7 @@ class TaxonomyRulesTest {
         val result =
             evaluate("PTNNPS", "Investment value in Tier I (PRANXX8227) as on 30.06.2026 is Rs 10,51,328.93. -Protean")
         assertThat(result?.matchedRuleId).isEqualTo("nps-balance-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.extracted).doesNotContainKey("amount")
         assertThat(result?.extracted).doesNotContainKey("type")
     }

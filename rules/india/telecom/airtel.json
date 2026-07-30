@@ -226,7 +226,7 @@
         "body_pattern": "(?i)\\bBill\\s+for\\s+your\\s+Airtel\\b[\\s\\S]{0,60}?\\bhas\\s+been\\s+generated\\s+and\\s+there\\s+is\\s+no\\s+payable\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "bill"
       },
       "contributed_by": "clearsms",

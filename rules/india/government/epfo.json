@@ -51,7 +51,7 @@
         "body_pattern": "(?i)\\bpassbook\\s+balance\\s+against\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "investment"
       },
       "contributed_by": "clearsms",
@@ -99,7 +99,7 @@
         "body_pattern": "(?i)\\bClaim\\s+Id\\b[\\s\\S]{0,40}?\\b(?:is\\s+under\\s+process|has\\s+been\\s+received|is\\s+approved)\\b|\\b(?:claim|withdrawal)\\b[\\s\\S]{0,50}?\\bunder\\s+process\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "government"
       },
       "contributed_by": "clearsms",
@@ -114,7 +114,7 @@
         "body_pattern": "(?i)\\bUAN\\b[\\s\\S]{0,30}?\\b(?:is|has\\s+been)\\s+activated\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "government"
       },
       "contributed_by": "clearsms",
@@ -129,7 +129,7 @@
         "body_pattern": "(?i)\\bPassword\\s+for\\s+your\\s+UAN\\b[\\s\\S]{0,30}?\\bchanged\\b|\\bmobile\\s+no\\b[\\s\\S]{0,30}?\\blinked\\s+to\\s+the\\s+UAN\\b[\\s\\S]{0,80}?\\bchanged\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "government"
       },
       "contributed_by": "clearsms",
@@ -144,7 +144,7 @@
         "body_pattern": "(?i)\\be-?nomination\\s+is\\s+pending\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "government"
       },
       "contributed_by": "clearsms",

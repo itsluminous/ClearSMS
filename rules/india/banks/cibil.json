@@ -9,7 +9,7 @@
         "body_pattern": "(?i)\\bCIBIL\\s+Score(?:\\s*&\\s*Report)?\\s+was\\s+(?:checked|accessed|viewed)\\s+by\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "general"
       },
       "contributed_by": "clearsms",

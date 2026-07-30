@@ -10,7 +10,7 @@
         "body_pattern": "(?i)\\bPNR[-: ]\\s*\\d{10}\\b[\\s\\S]{0,80}?\\b(?:Trn|Train)\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "travel"
       },
       "contributed_by": "clearsms",
@@ -24,7 +24,7 @@
         "body_pattern": "(?i)\\bchart\\s+prepared\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "travel"
       },
       "contributed_by": "clearsms",
@@ -38,7 +38,7 @@
         "body_pattern": "(?i)\\btrain\\s+is\\s+running\\s+late\\s+by\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "travel"
       },
       "contributed_by": "clearsms",
@@ -53,7 +53,7 @@
         "body_pattern": "(?i)\\btr(?:ain|n)\\b[\\s\\S]{0,60}?\\bhas\\s+been\\s+cancelled\\s+due\\s+to\\s+unavoidable\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "travel"
       },
       "contributed_by": "clearsms",
@@ -67,7 +67,7 @@
         "body_pattern": "(?i)\\bRailMadad\\s+Reference\\s+N(?:o|umber)\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "general"
       },
       "contributed_by": "clearsms",

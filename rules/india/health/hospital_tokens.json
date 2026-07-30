@@ -9,7 +9,7 @@
         "body_pattern": "(?i)\\b[A-Z0-9]{1,10}\\s+is\\s+your\\s+token\\s+(?:number|no\\.?)\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "appointment"
       },
       "contributed_by": "clearsms",
@@ -23,7 +23,7 @@
         "body_pattern": "(?i)\\byour\\s+token\\s+(?:number|no\\.?)\\s+[A-Z0-9]{1,10}\\b[\\s\\S]{0,80}?\\b(?:confirmed|OPD|walk-?in|hospital|clinic)\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "appointment"
       },
       "contributed_by": "clearsms",

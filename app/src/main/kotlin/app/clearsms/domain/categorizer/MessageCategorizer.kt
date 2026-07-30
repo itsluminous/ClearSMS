@@ -47,7 +47,7 @@ class MessageCategorizer(
 
     /**
      * Final post-condition: no result ever leaves the categorizer as
-     * [Category.INFORMATIONAL]. The Informational pill was removed — those
+     * [Category.IMPORTANT] with their sub-category preserved — there is no
      * notices (travel/PNR, appointment tokens, credit-score checks,
      * broker/exchange statements, UPI-mandate lifecycle) are IMPORTANT now,
      * keeping their sub-category so downstream meaning is unchanged. This also
@@ -56,8 +56,7 @@ class MessageCategorizer(
      * runs LAST so the mandate carve-out in [enforceInvariants] keeps blocking
      * the transaction promotion before the fold happens.
      */
-    private fun normalizeInformational(result: CategorizationResult): CategorizationResult =
-        if (result.category == Category.INFORMATIONAL) result.copy(category = Category.IMPORTANT) else result
+    private fun normalizeInformational(result: CategorizationResult): CategorizationResult = result
 
     private fun rawCategorize(
         sender: String,
@@ -119,7 +118,7 @@ class MessageCategorizer(
         }
 
         if (MANDATE_NOTICE_REGEX.containsMatchIn(evalBody)) {
-            return result.copy(category = Category.INFORMATIONAL, subCategory = SubCategory.BANK_ALERT)
+            return result.copy(category = Category.IMPORTANT, subCategory = SubCategory.BANK_ALERT)
         }
 
         val hasTransaction =

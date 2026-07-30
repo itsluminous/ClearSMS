@@ -9,7 +9,7 @@
         "body_pattern": "(?i)\\byour\\s+traded\\s+value\\s+for\\s+\\d{1,2}-[A-Z]{3}-\\d{2,4}\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "investment"
       },
       "contributed_by": "clearsms",
@@ -23,7 +23,7 @@
         "body_pattern": "(?i)reported\\s+your\\s+Fund\\s+bal(?:ance)?\\b[\\s\\S]{0,80}?\\bSecurities\\s+bal(?:ance)?\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "investment"
       },
       "contributed_by": "clearsms",

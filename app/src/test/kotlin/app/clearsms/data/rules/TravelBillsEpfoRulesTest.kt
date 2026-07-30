@@ -43,7 +43,7 @@ class TravelBillsEpfoRulesTest {
                     "10 Jun 26, from PAT to BLR(T1), 6E2345 at 10:30 hrs.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("flight-booking-pnr-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.TRAVEL)
         assertThat(result?.extracted).containsEntry("pnr", "ZXCHRQ")
     }
@@ -76,7 +76,7 @@ class TravelBillsEpfoRulesTest {
                     "0915-1200 HRS. For a hassle-free airport experience, please web check-in.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("flight-itinerary-pnr-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.extracted).containsEntry("pnr", "HQBRXE")
     }
 
@@ -100,7 +100,7 @@ class TravelBillsEpfoRulesTest {
                 "Hi Prakash, your checked-in baggage for Akasa Air flight QP 1234 will arrive on Belt no. 12.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("flight-baggage-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -124,7 +124,7 @@ class TravelBillsEpfoRulesTest {
                     "is rescheduled and will now depart on (13Nov'26) due to operational reasons.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("flight-reschedule-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -172,7 +172,7 @@ class TravelBillsEpfoRulesTest {
                     "It is likely to make up. Please check exact status from NTES.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("train-running-late-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.TRAVEL)
     }
 
@@ -185,7 +185,7 @@ class TravelBillsEpfoRulesTest {
                     "Inconvenience caused to passengers is deeply regretted.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("train-cancelled-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -197,7 +197,7 @@ class TravelBillsEpfoRulesTest {
                     "You can track your concern online.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("railmadad-ref-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -234,7 +234,7 @@ class TravelBillsEpfoRulesTest {
                     "generated and there is no payable amount this cycle.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("airtel-bill-nodue-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -325,7 +325,7 @@ class TravelBillsEpfoRulesTest {
                 "Dear Member, your passbook balance against TNMAS00123456789001234 is Rs. 92,150/- as on date.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("epfo-passbook-balance-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -350,7 +350,7 @@ class TravelBillsEpfoRulesTest {
                 "Dear Sir/Madam, your Claim Id PYKRP123456789012 is under process and will be settled shortly. - EPFO",
             )
         assertThat(result?.matchedRuleId).isEqualTo("epfo-claim-status-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.GOVERNMENT)
     }
 
@@ -370,7 +370,7 @@ class TravelBillsEpfoRulesTest {
         val result =
             evaluate("EPFOHO", "Dear Member, your UAN 100123456789 has been activated successfully on the portal.")
         assertThat(result?.matchedRuleId).isEqualTo("epfo-uan-activated-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test
@@ -382,7 +382,7 @@ class TravelBillsEpfoRulesTest {
                     "If not done by you, then change password immediately.",
             )
         assertThat(result?.matchedRuleId).isEqualTo("epfo-uan-security-01")
-        assertThat(result?.category).isEqualTo(Category.INFORMATIONAL)
+        assertThat(result?.category).isEqualTo(Category.IMPORTANT)
     }
 
     @Test

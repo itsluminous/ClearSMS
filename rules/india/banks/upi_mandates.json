@@ -9,7 +9,7 @@
         "body_pattern": "(?i)\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:created|modified)\\b|\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:created|modified)\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "bank_alert"
       },
       "contributed_by": "clearsms",
@@ -23,7 +23,7 @@
         "body_pattern": "(?i)\\bsuccessfully\\s+cancelled\\s+the\\s+scheduled\\b[\\s\\S]{0,60}?\\bpayment\\b|\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:cancelled|revoked)\\b|\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:cancelled|revoked)\\b"
       },
       "action": {
-        "category": "informational",
+        "category": "important",
         "sub_category": "bank_alert"
       },
       "contributed_by": "clearsms",

@@ -18,7 +18,6 @@ fun Category.displayName(): String =
     when (this) {
         Category.IMPORTANT -> "Important"
         Category.PROMOTIONAL -> "Promotional"
-        Category.INFORMATIONAL -> "Informational"
         Category.PERSONAL -> "Personal"
         Category.UNKNOWN -> "Unknown"
         Category.OTP -> "OTP"

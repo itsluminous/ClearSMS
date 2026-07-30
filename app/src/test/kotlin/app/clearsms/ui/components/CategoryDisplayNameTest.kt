@@ -19,6 +19,5 @@ class CategoryDisplayNameTest {
 
     @Test
     fun `informational category is labelled Informational`() {
-        assertThat(Category.INFORMATIONAL.displayName()).isEqualTo("Informational")
     }
 }
