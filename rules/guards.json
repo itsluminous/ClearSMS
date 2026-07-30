@@ -1,0 +1,114 @@
+{
+  "version": "1.0",
+  "guards": [
+    {
+      "id": "statement_notice",
+      "description": "Statement delivery notices ('Statement is sent', 'E-statement has been mailed', 'statement is now available') — money OWED, not moved. The parser scrubs matched spans before transaction detection and vetoes rule-extract transactions.",
+      "patterns": [
+        "(?i)\\b(?:e-?)?statement\\s+(?:is|has\\s+been|was)\\s+(?:sent|generated|mailed|e-?mailed|dispatched)",
+        "(?i)\\b(?:e-?)?statement\\s+of\\b[^\\n]{0,80}?\\bhas\\s+been\\s+(?:sent|mailed|e-?mailed)",
+        "(?i)\\b(?:e-?)?statement\\s+(?:is\\s+)?(?:now\\s+)?(?:available|ready)\\b"
+      ]
+    },
+    {
+      "id": "bill_due_notice",
+      "description": "Bill-due notices ('Payment of INR X ... is due on <date>') — a FUTURE obligation, never a completed debit. Rejects the transaction outright; the reminder pipeline handles the message instead.",
+      "patterns": [
+        "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b"
+      ]
+    },
+    {
+      "id": "failed_payment",
+      "description": "Failed / declined / unsuccessful payment language. No money moved, so such a message must never yield a transaction — from the parser or from rule extracts.",
+      "patterns": [
+        "(?i)\\bhas\\s+failed\\b",
+        "(?i)\\b(?:payment|transaction|txn|transfer|recharge)\\s+(?:has\\s+|was\\s+)?failed\\b",
+        "(?i)\\bcould\\s+not\\s+be\\s+(?:processed|completed)\\b",
+        "(?i)\\b(?:was\\s+)?declined\\b",
+        "(?i)\\bunsuccessful\\b"
+      ]
+    },
+    {
+      "id": "settled_payment",
+      "description": "Completed / settled / reversed events (payments received, thank-you-for-payment confirmations, refunds, reimbursement claims, debit/credit confirmations). Money already moved (or is coming back) — never a reminder.",
+      "patterns": [
+        "(?i)payment\\s+(?:of\\s+\\S{0,20}\\s*)?(?:received|successful|processed)",
+        "(?i)\\breceived\\s+(?:your\\s+)?payment",
+        "(?i)successfully\\s+(?:paid|processed|credited|received)",
+        "(?i)\\bpaid\\s+successfully",
+        "(?i)thank\\s+you\\s+for\\s+(?:an?\\s+|your\\s+)?(?:online\\s+)?(?:payment|paying)",
+        "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,80}?(?:transaction\\s+ref|txn\\s+ref|\\bUTR\\b)",
+        "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,60}?\\bwas\\s+(?:received|made)",
+        "(?i)has\\s+been\\s+(?:paid|received|credited|processed|settled|reimbursed|refunded)",
+        "(?i)\\breimburse(?:d|ment)\\b",
+        "(?i)\\brefund(?:ed)?\\b",
+        "(?i)\\bsettled\\b",
+        "(?i)\\bclaim\\s+(?:of|amount|no\\.?|number|id)\\b",
+        "(?i)\\bdebited\\b",
+        "(?i)\\bcredited\\b"
+      ]
+    },
+    {
+      "id": "marketing_pitch",
+      "description": "Investment / upsell sales-pitch language. A payment ask embedded in a pitch ('investment in ULIPs can reap benefits') is an upsell, not an obligation — never a reminder even with a premium and a date in the body.",
+      "patterns": [
+        "(?i)\\breap\\s+benefits?\\b",
+        "(?i)\\brising\\s+(?:capital\\s+|stock\\s+)?markets?\\b",
+        "(?i)\\bwealth\\s+creation\\b",
+        "(?i)\\bmarket[-\\s]linked\\s+returns?\\b",
+        "(?i)\\bgrow\\s+your\\s+(?:money|wealth|savings)\\b",
+        "(?i)\\bwhy\\s+invest\\b",
+        "(?i)\\bbest\\s+time\\s+to\\s+invest\\b",
+        "(?i)\\binvest\\s+today\\b",
+        "(?i)\\bstart\\s+investing\\b"
+      ]
+    },
+    {
+      "id": "voucher",
+      "description": "Voucher / coupon / gift-card grants. Their expiry date is a benefit lapsing, not money the user owes — never a reminder.",
+      "patterns": [
+        "(?i)\\bvouchers?\\b",
+        "(?i)\\bcoupons?\\b",
+        "(?i)\\bgift\\s*card\\b",
+        "(?i)\\bpromo\\s+code\\b"
+      ]
+    },
+    {
+      "id": "mandate_notice",
+      "description": "UPI Autopay / e-mandate lifecycle notices ('Mandate ... successfully created/cancelled'). They quote the mandate's amount but no money moved — never promoted as a transaction; surfaced as an IMPORTANT bank alert.",
+      "patterns": [
+        "(?i)\\bmandate\\b[\\s\\S]{0,60}?\\bsuccessfully\\s+(?:created|cancelled|revoked|modified)\\b",
+        "(?i)\\bsuccessfully\\s+cancelled\\s+the\\s+scheduled\\b[\\s\\S]{0,60}?\\bpayment\\b",
+        "(?i)\\bmandate\\s+(?:has\\s+been|is|was)\\s+(?:created|cancelled|revoked|modified)\\b"
+      ]
+    },
+    {
+      "id": "limit_offer",
+      "description": "Credit-limit increase OFFERS ('eligible for', 'pre-approved', 'can be increased to') — money the user does not have yet. Must never set a card's total limit.",
+      "patterns": [
+        "(?i)\\b(?:eligible|pre-?approved|can\\s+be\\s+(?:increased|enhanced)|to\\s+avail|avail\\s+now|apply\\s+now)\\b"
+      ]
+    },
+    {
+      "id": "tier_premium",
+      "description": "'Premium' as a PRODUCT TIER ('<Brand> Premium subscription/plan') rather than an insurance premium. Suppresses premium-based insurance evidence in reminder typing.",
+      "patterns": [
+        "(?i)\\b[\\w&+.]+\\s+premium\\s+(?:subscription|plan|membership|pack|account|is\\s+now\\s+active)\\b"
+      ]
+    },
+    {
+      "id": "future_tense",
+      "description": "Future / conditional tense directly before a debit/credit keyword ('will be deducted') — money that has NOT moved yet. Consulted against the short window preceding a keyword match, hence the trailing anchor.",
+      "patterns": [
+        "(?i)\\b(?:will|shall|would)\\s+be\\s*$"
+      ]
+    },
+    {
+      "id": "instruction_start",
+      "description": "Instruction verbs starting a would-be merchant capture ('to know the transaction status', 'to avoid late fees') — link / call-to-action phrasing, never a merchant name. Anchored to the start of the candidate.",
+      "patterns": [
+        "(?i)^(?:know|check|view|track|see|get|download|install|update|complete|continue|avoid|claim|apply|visit|click|login)\\b"
+      ]
+    }
+  ]
+}

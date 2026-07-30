@@ -139,6 +139,38 @@ keeping their own avatar). `is_issuer: true` means the entry can own an
 account or card (banks, wallets, provident funds); `false` marks brands that
 appear in money messages only as merchants or payment channels.
 
+## Guard library
+
+The parsers also consult a library of named **guards** — negative knowledge
+like "this phrasing means a *failed* payment" or "this is a statement notice,
+not a debit" — whose patterns live in [`rules/guards.json`](rules/guards.json)
+(mirrored at `app/src/main/assets/guards/guards.json`; a unit test keeps the
+two identical — edit the `rules/` master and copy it over). Each entry:
+
+```json
+{
+  "id": "failed_payment",
+  "description": "Failed / declined payments — never a transaction.",
+  "patterns": ["(?i)\\bhas\\s+failed\\b", "(?i)\\bunsuccessful\\b"]
+}
+```
+
+- `id` — stable identifier; the app binds each id to a fixed semantic
+  (scrub / reject / suppress) in code. Adding a new id has no effect until
+  code consults it, and removing one only disables that veto.
+- `patterns` — standalone regexes; the guard fires when ANY pattern matches.
+  Prefix `(?i)` for case-insensitivity.
+
+Because guards run against every incoming message, patterns are validated at
+load and unsafe ones are skipped (with a logged warning): keep each pattern
+under 512 characters, never start or end it with `.*`/`[\s\S]*`, never nest
+unbounded quantifiers (`(a+)+`), never use a variable-length lookbehind.
+Bounded spans like `[^\n]{0,80}?` are the right way to bridge words.
+
+What a guard *means* — where it is consulted and what happens when it fires —
+stays in Kotlin. Editing `guards.json` can fix a false positive (a new
+statement phrasing leaking into transactions) but cannot change semantics.
+
 ## Code contributions
 
 - Kotlin official style, enforced by ktlint (`./gradlew ktlintCheck`, auto-fix with

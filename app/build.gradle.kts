@@ -125,6 +125,9 @@ android {
             // (identity enforced by a unit test); `rules/brands/` is the
             // community master of brands.json, packaged directly.
             resources.srcDir("src/main/assets/tables")
+            // Named guard patterns, same arrangement: `assets/guards/`
+            // mirrors `rules/guards.json` (identity enforced by a unit test).
+            resources.srcDir("src/main/assets/guards")
             resources.srcDir("$rootDir/rules/brands")
         }
         getByName("debug") {
