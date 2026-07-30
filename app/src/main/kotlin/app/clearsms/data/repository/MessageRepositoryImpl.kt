@@ -17,6 +17,7 @@ import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.ExtractedValue
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.ParsedDelivery
 import app.clearsms.domain.model.ParsedReminder
@@ -24,6 +25,10 @@ import app.clearsms.domain.model.ParsedTransaction
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.domain.model.TransactionType
+import app.clearsms.domain.model.amount
+import app.clearsms.domain.model.date
+import app.clearsms.domain.model.merchant
+import app.clearsms.domain.model.transactionType
 import app.clearsms.domain.parser.BalanceStatement
 import app.clearsms.domain.parser.DeliveryParser
 import app.clearsms.domain.parser.OtpParser
@@ -480,9 +485,9 @@ class MessageRepositoryImpl(
                 // FAILED payments moved no money: no transaction, whether
                 // from the parser (already null there) or from rule extracts.
                 transactionParser.isFailedPayment(evalBody) -> null
-                parsedTx != null -> mergeTransaction(parsedTx, extracts, result.subCategory)
+                parsedTx != null -> mergeTransaction(parsedTx, result.typed, result.subCategory)
                 result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
-                    transactionFromExtracts(extracts, result.subCategory, sender, evalBody)
+                    transactionFromExtracts(extracts, result.typed, result.subCategory, sender, evalBody)
                 else -> null
             }
 
@@ -499,8 +504,8 @@ class MessageRepositoryImpl(
         val parsedReminder = if (delivery == null) reminderParser.parse(sender, evalBody) else null
         val reminder =
             when {
-                parsedReminder != null -> mergeReminder(parsedReminder, extracts)
-                result.subCategory == SubCategory.BILL -> reminderFromExtracts(sender, evalBody, extracts)
+                parsedReminder != null -> mergeReminder(parsedReminder, result.typed)
+                result.subCategory == SubCategory.BILL -> reminderFromExtracts(sender, evalBody, extracts, result.typed)
                 else -> null
                 // A reminder without a due date is not actionable; this also
                 // keeps transaction confirmations (SubCategory.TRANSACTION)
@@ -516,7 +521,7 @@ class MessageRepositoryImpl(
         // messages from ever refreshing an account.
         val balanceStatement =
             if (transaction == null) {
-                balanceFromExtracts(sender, evalBody, extracts)
+                balanceFromExtracts(sender, evalBody, extracts, result.typed)
                     ?: transactionParser.parseBalanceStatement(sender, evalBody)
             } else {
                 null
@@ -852,8 +857,9 @@ class MessageRepositoryImpl(
         sender: String,
         evalBody: String,
         extracts: Map<String, String>,
+        typed: Map<String, ExtractedValue>,
     ): BalanceStatement? {
-        val balance = extracts["balance"]?.toAmount() ?: return null
+        val balance = typed.amount("balance") ?: return null
         val bank = extracts["bank"] ?: SenderNameResolver.bankNameFor(sender, evalBody)
         return BalanceStatement(
             balance = balance,
@@ -871,27 +877,26 @@ class MessageRepositoryImpl(
     /**
      * Overlays rule-extracted values onto the parser's transaction.
      *
-     * Merchant precedence: a rule-supplied merchant wins over the parser's
-     * heuristic — but only after [TransactionParser.normalizeMerchantCandidate]
-     * has cleaned it. A raw capture full of reference digits ("XX6894- RD
-     * Installment-Jul 2026") is normalized to its human descriptor, and a
-     * capture that is pure reference noise is rejected entirely, falling back
-     * to the parser's (already clean) title. This keeps a rule's precise
-     * capture from ever REGRESSING the title the parser would have produced.
+     * The engine already resolved each extract to its typed value — amounts
+     * parsed, the merchant normalized (see [ExtractedValue]) — so this is a
+     * pure precedence merge: a typed rule value wins over the parser's
+     * heuristic. A merchant capture that was pure reference noise normalized
+     * to null and falls back to the parser's (already clean) title, keeping
+     * a rule's precise capture from ever REGRESSING it.
      */
     private fun mergeTransaction(
         parsed: ParsedTransaction,
-        extracts: Map<String, String>,
+        typed: Map<String, ExtractedValue>,
         subCategory: SubCategory?,
     ): ParsedTransaction =
         parsed.copy(
-            amount = extracts["amount"]?.toAmount() ?: parsed.amount,
-            type = extracts["type"]?.toTransactionType() ?: parsed.type,
-            merchantName = extracts["merchant"]?.let { transactionParser.normalizeMerchantCandidate(it) } ?: parsed.merchantName,
-            accountLast4 = extracts["account_last4"] ?: parsed.accountLast4,
-            bankName = extracts["bank"] ?: parsed.bankName,
-            balance = extracts["balance"]?.toAmount() ?: parsed.balance,
-            availableLimit = extracts["available_limit"]?.toAmount() ?: parsed.availableLimit,
+            amount = typed.amount("amount") ?: parsed.amount,
+            type = typed.transactionType("type") ?: parsed.type,
+            merchantName = typed.merchant("merchant") ?: parsed.merchantName,
+            accountLast4 = (typed["account_last4"] as? ExtractedValue.Text)?.raw ?: parsed.accountLast4,
+            bankName = (typed["bank"] as? ExtractedValue.Text)?.raw ?: parsed.bankName,
+            balance = typed.amount("balance") ?: parsed.balance,
+            availableLimit = typed.amount("available_limit") ?: parsed.availableLimit,
             merchantCategory = subCategory.toMerchantCategory() ?: parsed.merchantCategory,
         )
 
@@ -903,12 +908,13 @@ class MessageRepositoryImpl(
      */
     private fun transactionFromExtracts(
         extracts: Map<String, String>,
+        typed: Map<String, ExtractedValue>,
         subCategory: SubCategory?,
         sender: String,
         body: String,
     ): ParsedTransaction? {
-        val amount = extracts["amount"]?.toAmount() ?: return null
-        val type = extracts["type"]?.toTransactionType() ?: return null
+        val amount = typed.amount("amount") ?: return null
+        val type = typed.transactionType("type") ?: return null
         return ParsedTransaction(
             amount = amount,
             type = type,
@@ -918,15 +924,15 @@ class MessageRepositoryImpl(
             // named in the body still wins. It goes in the MERCHANT slot, not
             // bankName, so the account-creation guardrail is untouched.
             merchantName =
-                extracts["merchant"]?.let { transactionParser.normalizeMerchantCandidate(it) }
+                typed.merchant("merchant")
                     ?: extracts["operator"]
                     ?: subCategory
                         ?.takeIf { it in BILLER_BRANDED_SUBCATEGORIES }
                         ?.let { SenderNameResolver.brandNameFor(sender, body) },
             accountLast4 = extracts["account_last4"],
             bankName = extracts["bank"],
-            balance = extracts["balance"]?.toAmount(),
-            availableLimit = extracts["available_limit"]?.toAmount(),
+            balance = typed.amount("balance"),
+            availableLimit = typed.amount("available_limit"),
             merchantCategory = subCategory.toMerchantCategory() ?: MerchantCategory.OTHER,
         )
     }
@@ -945,32 +951,33 @@ class MessageRepositoryImpl(
 
     private fun mergeReminder(
         parsed: ParsedReminder,
-        extracts: Map<String, String>,
+        typed: Map<String, ExtractedValue>,
     ): ParsedReminder =
         parsed.copy(
-            dueDate = extracts["due_date"]?.let { reminderParser.parseDate(it) } ?: parsed.dueDate,
-            totalDue = extracts["total_due"]?.toAmount() ?: parsed.totalDue,
-            minDue = extracts["min_due"]?.toAmount() ?: parsed.minDue,
-            accountLast4 = extracts["account_last4"] ?: parsed.accountLast4,
-            bankName = extracts["bank"] ?: parsed.bankName,
+            dueDate = typed.date("due_date") ?: parsed.dueDate,
+            totalDue = typed.amount("total_due") ?: parsed.totalDue,
+            minDue = typed.amount("min_due") ?: parsed.minDue,
+            accountLast4 = (typed["account_last4"] as? ExtractedValue.Text)?.raw ?: parsed.accountLast4,
+            bankName = (typed["bank"] as? ExtractedValue.Text)?.raw ?: parsed.bankName,
         )
 
     private fun reminderFromExtracts(
         sender: String,
         evalBody: String,
         extracts: Map<String, String>,
+        typed: Map<String, ExtractedValue>,
     ): ParsedReminder? {
         // Undated candidates are not actionable reminders — an amount alone
         // (e.g. a reimbursement-claim SMS) must not become an Alerts card.
-        val dueDate = extracts["due_date"]?.let { reminderParser.parseDate(it) } ?: return null
+        val dueDate = typed.date("due_date") ?: return null
         return ParsedReminder(
             // A rule only says "this is a bill-like reminder"; the TYPE still
             // comes from the body's evidence (a card mini-statement matched
             // by a bill rule is a credit-card bill, not a generic bill).
             type = reminderTypeClassifier.classify(sender, evalBody) ?: ReminderType.OTHER,
             dueDate = dueDate,
-            totalDue = extracts["total_due"]?.toAmount(),
-            minDue = extracts["min_due"]?.toAmount() ?: extracts["amount"]?.toAmount(),
+            totalDue = typed.amount("total_due"),
+            minDue = typed.amount("min_due") ?: typed.amount("amount"),
             accountLast4 = extracts["account_last4"],
             bankName = extracts["bank"],
         )
@@ -981,15 +988,6 @@ class MessageRepositoryImpl(
             null
         } else {
             json.encodeToString(MapSerializer(String.serializer(), String.serializer()), extracted)
-        }
-
-    private fun String.toAmount(): Double? = replace(",", "").toDoubleOrNull()
-
-    private fun String.toTransactionType(): TransactionType? =
-        when (lowercase()) {
-            "debit" -> TransactionType.DEBIT
-            "credit" -> TransactionType.CREDIT
-            else -> null
         }
 
     private fun LocalDate.toEpochMs(): Long = atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
