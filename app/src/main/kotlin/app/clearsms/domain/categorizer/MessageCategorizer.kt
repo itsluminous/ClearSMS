@@ -5,6 +5,8 @@ import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SubCategory
+import app.clearsms.domain.parser.GuardId
+import app.clearsms.domain.parser.GuardLibrary
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.ScamDetector
@@ -117,7 +119,7 @@ class MessageCategorizer(
             )
         }
 
-        if (MANDATE_NOTICE_REGEX.containsMatchIn(evalBody)) {
+        if (GuardLibrary.matches(GuardId.MANDATE_NOTICE, evalBody)) {
             return result.copy(category = Category.IMPORTANT, subCategory = SubCategory.BANK_ALERT)
         }
 

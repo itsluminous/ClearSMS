@@ -29,14 +29,14 @@ class TransactionParser {
         // amounts satisfy the transaction heuristics, so the notice phrases
         // are scrubbed BEFORE parsing: what remains carries no completed
         // debit/credit verb and the message stays a reminder only.
-        val effectiveBody = STATEMENT_NOTICE_REGEX.replace(body, " ")
+        val effectiveBody = GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body)
         // "Payment of INR X ... is due (on <date>)" announces a FUTURE
         // obligation — a bill reminder, never a completed debit. The trailing
         // "Ignore if paid" advisory carries a completed-tense verb ("paid")
         // that satisfies the debit heuristics, so the whole notice is
         // rejected up front; the reminder pipeline extracts the total /
         // minimum due and due date instead.
-        if (BILL_DUE_NOTICE_REGEX.containsMatchIn(effectiveBody)) return null
+        if (GuardLibrary.matches(GuardId.BILL_DUE_NOTICE, effectiveBody)) return null
         val type = detectType(effectiveBody) ?: return null
 
         val balanceMatch = BALANCE_REGEX.find(effectiveBody)
@@ -133,7 +133,7 @@ class TransactionParser {
         body: String,
     ): TotalLimitStatement? {
         if (!CARD_CONTEXT_REGEX.containsMatchIn(body)) return null
-        if (LIMIT_OFFER_REGEX.containsMatchIn(body)) return null
+        if (GuardLibrary.matches(GuardId.LIMIT_OFFER, body)) return null
         val limit =
             TOTAL_LIMIT_CHANGED_REGEX
                 .find(body)
@@ -176,7 +176,7 @@ class TransactionParser {
      * transaction, from the parser OR from rule extracts.
      */
     fun isStatementNotice(body: String): Boolean =
-        STATEMENT_NOTICE_REGEX.containsMatchIn(body) || BILL_DUE_NOTICE_REGEX.containsMatchIn(body)
+        GuardLibrary.matches(GuardId.STATEMENT_NOTICE, body) || GuardLibrary.matches(GuardId.BILL_DUE_NOTICE, body)
 
     /**
      * True when the body reports a FAILED / declined / unsuccessful payment.
@@ -184,7 +184,7 @@ class TransactionParser {
      * from the parser OR from rule extracts. (If the amount was provisionally
      * debited, the refund arrives as its own message and parses then.)
      */
-    fun isFailedPayment(body: String): Boolean = FAILED_PAYMENT_REGEX.containsMatchIn(body)
+    fun isFailedPayment(body: String): Boolean = GuardLibrary.matches(GuardId.FAILED_PAYMENT, body)
 
     /**
      * ISO currency code when the transaction amount is denominated in a
@@ -193,7 +193,7 @@ class TransactionParser {
      * silently summed as INR.
      */
     fun foreignCurrency(body: String): String? {
-        val effectiveBody = STATEMENT_NOTICE_REGEX.replace(body, " ")
+        val effectiveBody = GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body)
         val balanceMatch = BALANCE_REGEX.find(effectiveBody)
         val excluded =
             listOfNotNull(balanceMatch?.range) + AVAILABLE_LIMIT_REGEX.findAll(effectiveBody).map { it.range }
@@ -256,7 +256,7 @@ class TransactionParser {
             .findAll(body)
             .firstOrNull { match ->
                 val start = maxOf(0, match.range.first - FUTURE_LOOKBEHIND)
-                !FUTURE_TENSE_REGEX.containsMatchIn(body.substring(start, match.range.first))
+                !GuardLibrary.matches(GuardId.FUTURE_TENSE, body.substring(start, match.range.first))
             }?.range
             ?.first
 
@@ -294,7 +294,7 @@ class TransactionParser {
             // and a candidate that starts with an instruction verb.
             val precedingWindow = body.substring(maxOf(0, match.range.first - URL_LOOKBEHIND), match.range.first)
             if (PRECEDING_URL_REGEX.containsMatchIn(precedingWindow)) continue
-            if (INSTRUCTION_START_REGEX.containsMatchIn(candidate)) continue
+            if (GuardLibrary.matches(GuardId.INSTRUCTION_START, candidate)) continue
             candidate = candidate.removePrefix("VPA ").removePrefix("vpa ").trim()
             // Cut trailing narration like "on 12-07-26", "Ref 12345" or "via UPI".
             candidate =

@@ -20,8 +20,8 @@ import java.util.Locale
  *   confirmations) are never reminders, even when the body also mentions a
  *   premium or a due date.
  * - A reminder needs a payment OBLIGATION: marketing/investment pitches and
- *   voucher/coupon expiries are rejected outright ([MARKETING_PITCH_REGEX],
- *   [VOUCHER_REGEX]) — a date plus a financial-sounding word obligates
+ *   voucher/coupon expiries are rejected outright (the `marketing_pitch`
+ *   and `voucher` guards) — a date plus a financial-sounding word obligates
  *   nothing.
  * - The TYPE is decided by [ReminderTypeClassifier], which scores anchored
  *   evidence per type (see its KDoc table) instead of first-keyword-wins —
@@ -40,13 +40,13 @@ class ReminderParser {
         body: String,
     ): ParsedReminder? {
         // Completed/settled events are not actionable reminders.
-        if (SETTLED_REGEX.containsMatchIn(body)) return null
+        if (GuardLibrary.matches(GuardId.SETTLED_PAYMENT, body)) return null
         // A reminder needs a payment OBLIGATION on the user's own product.
         // Marketing pitches (investment upsells) and voucher/coupon expiries
         // carry dates and financial words but obligate nothing — they must
         // never surface in Alerts.
-        if (MARKETING_PITCH_REGEX.containsMatchIn(body)) return null
-        if (VOUCHER_REGEX.containsMatchIn(body)) return null
+        if (GuardLibrary.matches(GuardId.MARKETING_PITCH, body)) return null
+        if (GuardLibrary.matches(GuardId.VOUCHER, body)) return null
         // The due keyword must be adjacent to a parseable date.
         val dueDate = findAnchoredDueDate(body) ?: return null
         val type = typeClassifier.classify(sender, body) ?: return null

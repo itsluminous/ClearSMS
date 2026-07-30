@@ -81,7 +81,7 @@ class ReminderTypeClassifier {
         // body uses it as a product-tier name ("LIV Premium subscription",
         // "YouTube Premium plan") — that word alone used to drag every OTT
         // tier-name confirmation into the insurance bucket.
-        if (!TIER_PREMIUM_REGEX.containsMatchIn(body) && PREMIUM_OBLIGATION_REGEX.containsMatchIn(body)) score += STRONG
+        if (!GuardLibrary.matches(GuardId.TIER_PREMIUM, body) && PREMIUM_OBLIGATION_REGEX.containsMatchIn(body)) score += STRONG
         if (INSURANCE_WORD_REGEX.containsMatchIn(body)) score += STRONG
         if (score > 0 && INSURER_NAME_REGEX.containsMatchIn(body)) score += 2
         return score
