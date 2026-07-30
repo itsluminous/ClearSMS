@@ -119,6 +119,13 @@ android {
     sourceSets {
         getByName("main") {
             kotlin.srcDir("src/main/kotlin")
+            // Bundled parser tables as CLASSPATH resources, so the pure-JVM
+            // domain parsers (and their plain JUnit tests) load them with no
+            // Android Context. `assets/tables/` mirrors `rules/tables/`
+            // (identity enforced by a unit test); `rules/brands/` is the
+            // community master of brands.json, packaged directly.
+            resources.srcDir("src/main/assets/tables")
+            resources.srcDir("$rootDir/rules/brands")
         }
         getByName("debug") {
             // Robolectric unit tests read the DEBUG merged assets; exposing the

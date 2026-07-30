@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "description": "Merchant-keyword to spend-category mapping used by the transaction parser. Rows are tried in order; the first pattern that matches the merchant name or message body decides the category. Patterns are case-insensitive regexes: keep them simple (plain alternations, word boundaries), never nest quantifiers, and use only generic public brand names.",
+  "categories": [
+    {
+      "pattern": "(?i)swiggy|zomato",
+      "category": "FOOD"
+    },
+    {
+      "pattern": "(?i)amazon|flipkart|myntra",
+      "category": "SHOPPING"
+    },
+    {
+      "pattern": "(?i)\\buber\\b|\\bola\\b|irctc",
+      "category": "TRANSPORTATION"
+    },
+    {
+      "pattern": "(?i)makemytrip|hotel",
+      "category": "TRAVEL_HOTEL"
+    },
+    {
+      "pattern": "(?i)netflix|bookmyshow|spotify",
+      "category": "ENTERTAINMENT"
+    },
+    {
+      "pattern": "(?i)\\bschool\\b|\\bfees?\\b|tuition",
+      "category": "EDUCATION"
+    },
+    {
+      "pattern": "(?i)hospital|pharmacy|apollo",
+      "category": "HOSPITAL"
+    },
+    {
+      "pattern": "(?i)electricity|\\bwater\\b|\\bgas\\b|broadband",
+      "category": "UTILITY_BILL"
+    },
+    {
+      "pattern": "(?i)\\bsip\\b|mutual\\s*fund|zerodha|groww|\\brd\\s+instal?lment|\\bfd\\s+instal?lment|recurring\\s+deposit",
+      "category": "INVESTMENT"
+    },
+    {
+      "pattern": "(?i)\\bnps\\b|\\bpran\\b",
+      "category": "INVESTMENT"
+    },
+    {
+      "pattern": "(?i)\\brecharged?\\b",
+      "category": "RECHARGE"
+    }
+  ]
+}

@@ -420,7 +420,7 @@ class TransactionParser {
         body: String,
     ): MerchantCategory {
         val haystack = "${merchant.orEmpty()} $body".lowercase()
-        for ((regex, category) in CATEGORY_RULES) {
+        for ((regex, category) in ParserTables.merchantCategories) {
             if (regex.containsMatchIn(haystack)) return category
         }
         val looksLikeP2p = merchant?.contains('@') == true || Regex("(?i)\\b(?:upi|vpa)\\b").containsMatchIn(body)
@@ -701,25 +701,6 @@ class TransactionParser {
 
         /** Money moving FROM a wallet, or a wallet that merely fronts a card. */
         val WALLET_SOURCE_REGEX = Regex("(?i)\\bfrom\\b[^\\n]{0,40}?\\bwallet\\b|\\bwallet\\s+linked\\b")
-
-        val CATEGORY_RULES =
-            listOf(
-                Regex("(?i)swiggy|zomato") to MerchantCategory.FOOD,
-                Regex("(?i)amazon|flipkart|myntra") to MerchantCategory.SHOPPING,
-                Regex("(?i)\\buber\\b|\\bola\\b|irctc") to MerchantCategory.TRANSPORTATION,
-                Regex("(?i)makemytrip|hotel") to MerchantCategory.TRAVEL_HOTEL,
-                Regex("(?i)netflix|bookmyshow|spotify") to MerchantCategory.ENTERTAINMENT,
-                Regex("(?i)\\bschool\\b|\\bfees?\\b|tuition") to MerchantCategory.EDUCATION,
-                Regex("(?i)hospital|pharmacy|apollo") to MerchantCategory.HOSPITAL,
-                Regex("(?i)electricity|\\bwater\\b|\\bgas\\b|broadband") to MerchantCategory.UTILITY_BILL,
-                // RD/FD installments are deposit CONTRIBUTIONS, not purchases.
-                Regex("(?i)\\bsip\\b|mutual\\s*fund|zerodha|groww|\\brd\\s+instal?lment|\\bfd\\s+instal?lment|recurring\\s+deposit") to
-                    MerchantCategory.INVESTMENT,
-                // NPS contributions are retirement investments; PRAN is the
-                // NPS account identifier and only appears in that context.
-                Regex("(?i)\\bnps\\b|\\bpran\\b") to MerchantCategory.INVESTMENT,
-                Regex("(?i)\\brecharged?\\b") to MerchantCategory.RECHARGE,
-            )
     }
 }
 
