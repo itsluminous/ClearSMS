@@ -122,46 +122,11 @@ class DeliveryParser {
          * Courier / merchant lookup keys, matched against BOTH the sender id
          * and the body text (uppercased, substring match) — several couriers
          * only ever appear in the body ("via Blue Dart", "? INDIAPOST",
-         * "Nimbuspost Courier"). "DOMINO" covers both the "Domino's" and
-         * "DOMINOS" spellings.
+         * "Nimbuspost Courier"). The rows live in
+         * `rules/tables/couriers.json` (community-editable; "DOMINO" there
+         * covers both the "Domino's" and "DOMINOS" spellings).
          */
-        val MERCHANTS =
-            listOf(
-                "AMAZON" to "Amazon",
-                "AMZN" to "Amazon",
-                "FLIPKART" to "Flipkart",
-                "FLPKRT" to "Flipkart",
-                "MYNTRA" to "Myntra",
-                "MEESHO" to "Meesho",
-                "AJIO" to "AJIO",
-                "NYKAA" to "Nykaa",
-                "DELHIVERY" to "Delhivery",
-                "DLHVRY" to "Delhivery",
-                "BLUEDART" to "Blue Dart",
-                "BLUE DART" to "Blue Dart",
-                "BLUDRT" to "Blue Dart",
-                "EKART" to "Ekart",
-                "DTDC" to "DTDC",
-                "XPRESSBEES" to "XpressBees",
-                "XPRSBS" to "XpressBees",
-                "SHIPROCKET" to "Shiprocket",
-                "INDPST" to "India Post",
-                "INDPOST" to "India Post",
-                "INDIA POST" to "India Post",
-                "INDIAPOST" to "India Post",
-                "FEDEX" to "FedEx",
-                "DHL" to "DHL",
-                "ECOMEX" to "Ecom Express",
-                "SWIGGY" to "Swiggy",
-                "ZOMATO" to "Zomato",
-                "BIGBASKET" to "bigbasket",
-                "BLINKIT" to "Blinkit",
-                "DOMINO" to "Domino's",
-                "NIMBUSPOST" to "Nimbuspost",
-                "SHADOWFAX" to "Shadowfax",
-                // Body signature is "Rgds, Team Croma"; the sender id varies.
-                "CROMA" to "Croma",
-            )
+        val MERCHANTS: List<Pair<String, String>> get() = ParserTables.couriers.merchants
 
         /** URL with its hostname captured; spans are excluded from name matching. */
         val URL_REGEX = Regex("(?i)\\bhttps?://([A-Za-z0-9.-]{1,80})(?:[/?#]\\S{0,200})?")
@@ -169,19 +134,9 @@ class DeliveryParser {
         /**
          * Known brand registered domains, matched against URL hostnames only
          * (see [brandForHost]). Brands like Croma often identify themselves
-         * mainly through their order-tracking link.
+         * mainly through their order-tracking link. The rows live in
+         * `rules/tables/couriers.json` (community-editable).
          */
-        val BRAND_DOMAINS =
-            listOf(
-                "croma.com" to "Croma",
-                "amazon.in" to "Amazon",
-                "flipkart.com" to "Flipkart",
-                "myntra.com" to "Myntra",
-                "delhivery.com" to "Delhivery",
-                "bluedart.com" to "Blue Dart",
-                "dtdc.in" to "DTDC",
-                "indiapost.gov.in" to "India Post",
-                "ekartlogistics.com" to "Ekart",
-            )
+        val BRAND_DOMAINS: List<Pair<String, String>> get() = ParserTables.couriers.brandDomains
     }
 }
