@@ -9,8 +9,12 @@ and reports how many are confidently categorized:
      first match wins; a rule matches when ALL present conditions hold —
      ``sender_pattern`` found in the sender, ``body_pattern`` found in the
      body (``Regex.find`` semantics, i.e. match anywhere), every
-     ``body_must_contain`` term present (case-insensitive) and no
-     ``body_must_not_contain`` term present. Only the first
+     ``body_must_contain`` term present (case-insensitive), no
+     ``body_must_not_contain`` term present, and no guard named in
+     ``guards_none`` matching the body. Named guards are replayed from
+     ``rules/guards.json`` and ``rules/rule_guards.json`` exactly like the
+     app's guard library (any-pattern match; a rule referencing an unknown
+     guard id is skipped, mirroring the engine). Only the first
      ``MAX_EVAL_BODY_LENGTH`` (1000) characters of the body are evaluated,
      mirroring ``MessageCategorizer``.
   2. Sender-ID directory (``app/src/main/assets/sender_ids.db``): the sender
@@ -58,6 +62,10 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_RULES = os.path.join(REPO, "app/src/main/assets/default_rules.json")
 DEFAULT_SENDER_DB = os.path.join(REPO, "app/src/main/assets/sender_ids.db")
+DEFAULT_GUARD_DOCS = (
+    os.path.join(REPO, "rules/guards.json"),
+    os.path.join(REPO, "rules/rule_guards.json"),
+)
 
 # Mirrors MessageCategorizer.MAX_EVAL_BODY_LENGTH.
 MAX_EVAL_BODY_LENGTH = 1000
@@ -129,15 +137,55 @@ def load_corpus_from_device(adb="adb"):
 
 
 # --------------------------------------------------------------------------
+# Named guards (guard library + rule-guard extensions), as the app loads them
+# --------------------------------------------------------------------------
+
+
+class GuardSet:
+    """Compiled named guards; ``matches`` mirrors GuardLibrary/RuleGuards.
+
+    Java-flavoured regexes in the guard documents are compatible with
+    Python's ``re`` for the shapes the ReDoS rules allow (word boundaries,
+    bounded gaps, ``(?i)`` flags). Patterns that still fail to compile are
+    skipped, exactly like the app's load-time degradation.
+    """
+
+    def __init__(self, doc_paths=DEFAULT_GUARD_DOCS):
+        self.guards = {}
+        for path in doc_paths:
+            if not os.path.exists(path):
+                continue
+            with open(path, encoding="utf-8") as f:
+                doc = json.load(f)
+            for entry in doc.get("guards", []):
+                patterns = []
+                for pattern in entry.get("patterns", []):
+                    try:
+                        patterns.append(re.compile(pattern))
+                    except re.error:
+                        print(f"warning: guard '{entry['id']}' pattern skipped",
+                              file=sys.stderr)
+                self.guards.setdefault(entry["id"], []).extend(patterns)
+
+    def is_known(self, guard_id):
+        return guard_id in self.guards
+
+    def matches(self, guard_id, body):
+        # Same input cap as GuardLibrary.MAX_INPUT_LENGTH (== eval cap here).
+        return any(rx.search(body) for rx in self.guards.get(guard_id, []))
+
+
+# --------------------------------------------------------------------------
 # Stage 1: rule engine (exact RuleEngine semantics)
 # --------------------------------------------------------------------------
 
 
 class RuleMatcher:
-    def __init__(self, rules_path):
+    def __init__(self, rules_path, guards=None):
         with open(rules_path, encoding="utf-8") as f:
             doc = json.load(f)
         self.rules = sorted(doc["rules"], key=lambda r: -r["priority"])
+        self.guards = guards if guards is not None else GuardSet()
         self._cache = {}
 
     def _compiled(self, pattern):
@@ -169,6 +217,12 @@ class RuleMatcher:
             if any(t.lower() not in lower for t in m.get("body_must_contain", [])):
                 continue
             if any(t.lower() in lower for t in m.get("body_must_not_contain", [])):
+                continue
+            guards_none = m.get("guards_none", [])
+            # Unknown guard id: the rule is skipped, mirroring the engine.
+            if any(not self.guards.is_known(g) for g in guards_none):
+                continue
+            if any(self.guards.matches(g, body) for g in guards_none):
                 continue
             return rule["id"]
         return None
