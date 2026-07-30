@@ -192,7 +192,6 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_section_blocking">Blocking</string>
     <string name="settings_block_list">Block &amp; allow list</string>
     <string name="settings_block_list_summary">%1$d blocked sender(s)</string>
     <string name="settings_block_add_hint">Sender or number</string>
@@ -270,7 +269,6 @@
     <string name="notification_action_share_otp">Share OTP</string>
     <string name="swipe_action_none">Do nothing</string>
     <string name="swipe_action_toggle_read">Toggle read</string>
-    <string name="settings_section_sort">Sort</string>
     <string name="settings_sort_again">Sort inbox again</string>
     <string name="settings_sort_again_summary">Re-run categorization on all messages and refresh Finance and Alerts</string>
     <string name="settings_sort_confirm">All messages will be re-categorized using the current rules, and Finance transactions and Alerts will be refreshed. Your notes and card limits are kept. This may take a moment.</string>
@@ -314,6 +312,18 @@
     <string name="settings_privacy_policy_summary">Everything stays on your device</string>
     <string name="settings_licenses">Open source licenses</string>
     <string name="settings_licenses_summary">Libraries this app is built with</string>
+    <string name="settings_default_finance_filter">Default Finance filter</string>
+    <string name="settings_source_code">Source code</string>
+    <string name="settings_source_code_summary">View the project on GitHub</string>
+    <string name="settings_section_donate">Donate</string>
+    <string name="settings_donate_paypal">Paypal</string>
+    <string name="settings_donate_paypal_summary">If the app is useful to you, you can support it via PayPal</string>
+    <string name="settings_donate_upi">UPI</string>
+    <string name="settings_donate_upi_summary">Support the project with a UPI payment</string>
+    <string name="settings_link_no_handler">No app found to open this link</string>
+    <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
+    <string name="url_donate_paypal" translatable="false">https://paypal.me/itsluminous</string>
+    <string name="url_donate_upi" translatable="false">upi://pay?pa=itsluminous@upi&amp;cn=ClearSMS</string>
 
     <!-- Enum labels -->
     <string name="theme_system">System default</string>
