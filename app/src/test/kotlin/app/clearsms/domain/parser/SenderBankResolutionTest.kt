@@ -1,12 +1,7 @@
 package app.clearsms.domain.parser
 
 import com.google.common.truth.Truth.assertThat
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Test
-import java.io.File
 
 /**
  * Bank resolution chain and canonicalization: "SBI" / "State Bank of India"
@@ -80,32 +75,4 @@ class SenderBankResolutionTest {
             ),
         ).isEqualTo("Pluxee")
     }
-
-    @Test
-    fun `every bank and wallet sender in the curated brand table resolves to a name`() {
-        val brandsJson = repoFile("rules/brands/brands.json").readText()
-        val brands =
-            Json
-                .parseToJsonElement(brandsJson)
-                .jsonObject
-                .getValue("brands")
-                .jsonArray
-        for (brand in brands) {
-            val obj = brand.jsonObject
-            val category = obj["category"]?.jsonPrimitive?.content ?: continue
-            if (category !in setOf("BANK", "CARD", "WALLET")) continue
-            for (sender in obj.getValue("senders").jsonArray) {
-                val senderId = sender.jsonPrimitive.content
-                val resolved = SenderNameResolver.bankNameFor(senderId)
-                // Every financial sender must resolve to SOME display name —
-                // the table keeps major ones human-readable.
-                assertThat(resolved).isNotNull()
-                assertThat(resolved).isNotEmpty()
-            }
-        }
-    }
-
-    private fun repoFile(repoRelativePath: String): File =
-        sequenceOf(File(repoRelativePath), File("..", repoRelativePath))
-            .first(File::exists)
 }

@@ -1,5 +1,10 @@
 package app.clearsms.domain.parser
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import java.util.logging.Logger
+
 /**
  * Resolves and canonicalizes financial-institution names from sender IDs and
  * message bodies.
@@ -7,8 +12,8 @@ package app.clearsms.domain.parser
  * Resolution chain (first hit wins):
  * 1. an institution named in the BODY (that is the account's bank even when
  *    the SMS arrives via an aggregator like a card-payment app),
- * 2. the sender ID matched against the curated institution table below
- *    (kept in sync with `rules/brands/brands.json` by a unit test),
+ * 2. the sender ID matched against the institution table generated from
+ *    `rules/brands/brands.json` (entries carrying an `is_issuer` field),
  * 3. the normalized sender ID itself — an account should never be nameless;
  *    showing "VD-Pluxee" as "PLUXEE" beats showing "Unknown bank".
  *
@@ -18,7 +23,7 @@ package app.clearsms.domain.parser
  * (used on write and when merging/migrating existing rows).
  */
 object SenderNameResolver {
-    private class Institution(
+    internal class Institution(
         val name: String,
         /** Sender-ID fragments after TRAI normalization ("VM-HDFCBK" -> "HDFCBK"). */
         val senderKeys: List<String>,
@@ -33,76 +38,90 @@ object SenderNameResolver {
         val isIssuer: Boolean = true,
     )
 
-    private val INSTITUTIONS =
-        listOf(
-            Institution("HDFC Bank", listOf("HDFCBK", "HDFCB"), listOf("HDFC BANK", "HDFC")),
-            Institution("ICICI Bank", listOf("ICICIB", "ICICIT"), listOf("ICICI BANK", "ICICI")),
-            Institution(
-                "State Bank of India",
-                listOf("SBIINB", "SBIUPI", "SBIPSG", "SBIOTP", "CBSSBI", "ATMSBI", "SBICRD", "SBIBNK", "SBICAR", "SBIYON"),
-                listOf("STATE BANK OF INDIA", "STATE BANK", "SBI CARD", "SBI"),
-            ),
-            Institution("Axis Bank", listOf("AXISBK", "AXISB"), listOf("AXIS BANK", "AXIS")),
-            Institution("Kotak Mahindra Bank", listOf("KOTAKB", "KOTAKM"), listOf("KOTAK MAHINDRA BANK", "KOTAK")),
-            Institution("Punjab National Bank", listOf("PNBSMS", "PNBOTP"), listOf("PUNJAB NATIONAL BANK", "PNB")),
-            Institution("Bank of Baroda", listOf("BOBTXN", "BOBSMS", "BOBCRD"), listOf("BANK OF BARODA", "BOB CARD")),
-            Institution("Canara Bank", listOf("CANBNK", "CANARA"), listOf("CANARA BANK", "CANARA")),
-            Institution("Union Bank of India", listOf("UNIONB", "UBOI"), listOf("UNION BANK OF INDIA", "UNION BANK")),
-            Institution("IDFC FIRST Bank", listOf("IDFCFB", "IDFCBK"), listOf("IDFC FIRST BANK", "IDFC FIRST", "IDFC")),
-            Institution("IndusInd Bank", listOf("INDUSB", "INDBNK"), listOf("INDUSIND BANK", "INDUSIND")),
-            Institution("Yes Bank", listOf("YESBNK"), listOf("YES BANK", "YESBANK")),
-            Institution("Federal Bank", listOf("FEDBNK", "FEDERL"), listOf("FEDERAL BANK")),
-            Institution("Citi", listOf("CITIBK", "CITIBA", "CITI"), listOf("CITI BANK", "CITIBANK", "CITI")),
-            Institution(
-                "Paytm Payments Bank",
-                listOf("PYTMPB", "PAYTMB", "IPAYTM", "PAYTM"),
-                listOf("PAYTM PAYMENTS BANK", "PAYTM"),
-            ),
-            Institution("PhonePe", listOf("PHONPE"), listOf("PHONEPE")),
-            Institution("Amazon Pay", listOf("AMZNPY", "APAYIN"), listOf("AMAZON PAY")),
-            // CRED is a payment CHANNEL for other banks' credit cards — a
-            // "payment received for card 4001" via CRED belongs to whichever
-            // bank issued card 4001, so CRED must never own an account.
-            Institution("CRED", listOf("CREDCL", "CREDIN"), listOf("CRED"), isIssuer = false),
-            Institution("PayZapp", listOf("PAYZAP"), listOf("PAYZAPP")),
-            // Sodexo meal cards were rebranded to Pluxee; both ids are one wallet.
-            Institution("Pluxee", listOf("PLUXEE", "SODEXO"), listOf("PLUXEE", "SODEXO")),
-            // Protean (formerly NSDL e-Gov) is the NPS Central Recordkeeping
-            // Agency: an NPS contribution creates a real investment account
-            // (identified by the PRAN tail), so Protean IS an issuer — the
-            // user's NPS holdings deserve an account card like any deposit.
-            // Displayed as "Protean NPS" so the account card says what it
-            // holds; the bare "PROTEAN" alias keeps older stored names
-            // canonicalizing to the same account.
-            Institution("Protean NPS", listOf("PTNNPS", "PROTEA", "NSDLNP", "NSDLPN", "CRANPS"), listOf("PROTEAN NPS", "PROTEAN")),
-            // EPFO passbook contributions are deposits into a real
-            // provident-fund account (keyed on the member-id tail), so like
-            // Protean/NPS the EPFO IS an issuer and gets an account card.
-            Institution("EPFO", listOf("EPFOHO"), listOf("EPFO")),
-            // Non-bank issuers seen in real inboxes — better display names for
-            // the sender-ID fallback path. Not issuers: a Flipkart refund goes
-            // TO a bank account, an Airtel bill is charged FROM one.
-            Institution("Flipkart", listOf("FLPKRT"), listOf("FLIPKART"), isIssuer = false),
-            Institution("Airtel", listOf("AIRTEL", "AIRBIL", "AIRINF"), listOf("AIRTEL"), isIssuer = false),
-            // The other telecoms, so their recharge and bill rows are titled by
-            // brand rather than falling back to a generic phrase.
-            Institution("Jio", listOf("JIOSMS", "RJIOSM", "JIOFBR", "JIOBB", "JIO"), listOf("RELIANCE JIO", "JIO"), isIssuer = false),
-            Institution("Vi", listOf("VICARE", "VIDEA", "VODAFO", "IDEAMN"), listOf("VODAFONE IDEA", "VODAFONE"), isIssuer = false),
-            Institution("BSNL", listOf("BSNLMB", "BSNLOF", "BSNL"), listOf("BSNL"), isIssuer = false),
-            // Sony LIV subscription confirmations arrive from LIVCNF; the
-            // friendly name keeps the Subscriptions view readable. An OTT
-            // service is never an account's home, so it is not an issuer.
-            Institution("Sony LIV", listOf("LIVCNF", "SONYLV"), listOf("SONY LIV", "SONYLIV"), isIssuer = false),
-        )
+    /**
+     * The institution table, generated from the single source of truth,
+     * `rules/brands/brands.json` (bundled as a classpath resource): every
+     * brand entry carrying an `is_issuer` field is an institution. The
+     * optional `issuer_name` / `issuer_senders` / `issuer_aliases` fields
+     * override the brand's display values where the RESOLVER's view differs
+     * from the avatar view (e.g. SBI Card messages belong to the State Bank
+     * of India account, but keep their own avatar).
+     *
+     * A malformed or missing table degrades to an empty list with a logged
+     * warning — resolution then falls back to normalized sender ids, never
+     * a crash.
+     */
+    private val INSTITUTIONS: List<Institution> by lazy {
+        parseInstitutions(readBrandsResource())
+    }
+
+    internal fun readBrandsResource(): String? =
+        try {
+            SenderNameResolver::class.java.classLoader
+                ?.getResourceAsStream("brands.json")
+                ?.bufferedReader()
+                ?.use { it.readText() }
+                .also { if (it == null) warnUnusable("resource not found") }
+        } catch (e: Exception) {
+            warnUnusable(e.toString())
+            null
+        }
+
+    /** Institutions from a brands.json document; empty (with a warning) when unusable. */
+    internal fun parseInstitutions(json: String?): List<Institution> {
+        if (json == null) return emptyList()
+        return try {
+            FORMAT
+                .decodeFromString<BrandTableJson>(json)
+                .brands
+                .mapNotNull { brand ->
+                    val isIssuer = brand.isIssuer ?: return@mapNotNull null
+                    Institution(
+                        name = brand.issuerName ?: brand.name,
+                        senderKeys = brand.issuerSenders ?: brand.senders,
+                        aliases = brand.issuerAliases ?: brand.aliases,
+                        isIssuer = isIssuer,
+                    )
+                }
+        } catch (e: Exception) {
+            warnUnusable(e.toString())
+            emptyList()
+        }
+    }
+
+    private fun warnUnusable(reason: String) {
+        Logger
+            .getLogger("ClearSMS")
+            .warning("Bundled brands.json unusable ($reason); institution resolution degrades to sender ids")
+    }
+
+    private val FORMAT = Json { ignoreUnknownKeys = true }
+
+    @Serializable
+    private data class BrandTableJson(
+        val brands: List<BrandJson> = emptyList(),
+    )
+
+    @Serializable
+    private data class BrandJson(
+        val name: String,
+        val senders: List<String> = emptyList(),
+        val aliases: List<String> = emptyList(),
+        @SerialName("is_issuer") val isIssuer: Boolean? = null,
+        @SerialName("issuer_name") val issuerName: String? = null,
+        @SerialName("issuer_senders") val issuerSenders: List<String>? = null,
+        @SerialName("issuer_aliases") val issuerAliases: List<String>? = null,
+    )
 
     /** Aliases sorted longest-first so "Paytm Payments Bank" wins over "Paytm". */
-    private val aliasIndex: List<Pair<Regex, Institution>> =
+    private val aliasIndex: List<Pair<Regex, Institution>> by lazy {
         INSTITUTIONS
             .flatMap { inst -> inst.aliases.map { alias -> alias to inst } }
             .sortedByDescending { (alias, _) -> alias.length }
             .map { (alias, inst) ->
                 Regex("(?<![A-Z0-9])${Regex.escape(alias)}(?![A-Z0-9])") to inst
             }
+    }
 
     /**
      * Human-readable canonical institution name for [senderId]/[body];
