@@ -137,6 +137,11 @@ class ReminderParser {
         BILL_FOR_REGEX.find(body)?.let { match ->
             return "${match.groupValues[1].trim()} bill"
         }
+        // "your ACT Fibernet Broadband bill of Rs.1178.82" -> the biller
+        // product ("ACT Fibernet Broadband bill").
+        BILLER_BILL_OF_REGEX.find(body)?.let { match ->
+            return "${match.groupValues[1].trim()} bill"
+        }
         // "... your ICICIPru policy ICICI Pru iProtect Smart policy no H123" ->
         // "ICICI Pru iProtect Smart".
         POLICY_PLAN_REGEX.find(body)?.let { return it.groupValues[1].trim() }
@@ -418,6 +423,9 @@ class ReminderParser {
         /** "Bill for your Airtel Mobile 98xxx" — the biller product. */
         val BILL_FOR_REGEX =
             Regex("(?i)bill\\s+for\\s+your\\s+([A-Za-z][A-Za-z ]{2,30}?)(?=\\s*(?:\\d|x{2,}|no\\b|number|is\\b|:|,|\\.))")
+
+        /** "your ACT Fibernet Broadband bill of Rs.X" — the biller product. */
+        val BILLER_BILL_OF_REGEX = Regex("(?i)your\\s+([A-Za-z][A-Za-z0-9 ]{2,34}?)\\s+bill\\s+of\\b")
 
         /** "your <brand> policy <PLAN NAME> policy no H123" — the plan name. */
         val POLICY_PLAN_REGEX = Regex("(?i)policy\\s+([A-Za-z][A-Za-z0-9 .&'-]{3,38}?)\\s+policy\\s+no\\b")
