@@ -77,6 +77,7 @@ Each file is a document with a `version` and a list of `rules`:
 | `match.body_pattern` | no | Regex matched against the message body; capture groups feed `extract` |
 | `match.body_must_contain` | no | All strings must be present (case-sensitive) |
 | `match.body_must_not_contain` | no | None of these strings may be present |
+| `match.guards_none` | no | Named guards that must NOT match the body — the rule does not apply if any listed guard fires. Ids come from `rules/guards.json` or `rules/rule_guards.json` (e.g. `otp_mention`, `settled_payment`); a rule naming an unknown id is skipped with a logged warning |
 | `action.category` | yes | `important` \| `promotional` \| `personal` \| `otp` \| `unknown` |
 | `action.sub_category` | no | e.g. `transaction`, `otp`, `bill`, `bank_alert`, `delivery`, `offer`, `scam`, `recharge`, `government`, `investment` |
 | `action.extract` | no | Map of extracted keys to `$n` capture-group references or literals (`amount`, `account_last4`, `type`, `bank`, `otp_code`, `due_date`, `merchant`, …) |
@@ -206,6 +207,33 @@ Bounded spans like `[^\n]{0,80}?` are the right way to bridge words.
 What a guard *means* — where it is consulted and what happens when it fires —
 stays in Kotlin. Editing `guards.json` can fix a false positive (a new
 statement phrasing leaking into transactions) but cannot change semantics.
+
+### Referencing guards from rules: `guards_none`
+
+A categorization rule can veto itself against named guards instead of
+restating the patterns:
+
+```json
+"match": {
+  "sender_pattern": "HDFCBK",
+  "body_pattern": "(?i)debited[\\s\\S]{0,40}?Rs\\.?\\s*([\\d,]+)",
+  "guards_none": ["otp_mention"]
+}
+```
+
+means "this rule does not apply if any listed guard matches the body". Rules
+may reference every `guards.json` id, plus the entries of
+[`rules/rule_guards.json`](rules/rule_guards.json) (mirrored at
+`app/src/main/assets/guards/rule_guards.json`; a unit test keeps the two
+identical) — guards that exist purely for rules, like `otp_mention`, which no
+Kotlin call site consults. That file's id namespace is open: adding a guard
+there needs no code change, so shared negative knowledge lives in one
+editable entry instead of being copy-pasted across a hundred rules. The same
+pattern-safety rules as `guards.json` apply, and a rule naming an unknown
+guard id is skipped with a logged warning — it never fires without its veto.
+
+`scripts/audit_rule_coverage.py` replays `guards_none` faithfully, so
+coverage audits reflect exactly what the app would do.
 
 ## Code contributions
 

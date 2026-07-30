@@ -73,6 +73,11 @@ enum class GuardId(
 object GuardLibrary {
     private val guards: Map<GuardId, List<Regex>> by lazy { parse(readResource()) }
 
+    private val byId: Map<String, GuardId> = GuardId.entries.associateBy { it.id }
+
+    /** [GuardId] for a data-referenced guard id string, or null when unknown. */
+    fun guardFor(id: String): GuardId? = byId[id]
+
     /** True when any of [id]'s patterns matches [text] (bounded input/budget). */
     fun matches(
         id: GuardId,

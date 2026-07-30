@@ -29,6 +29,13 @@ data class RuleMatch(
     @SerialName("body_pattern") val bodyPattern: String? = null,
     @SerialName("body_must_contain") val bodyMustContain: List<String> = emptyList(),
     @SerialName("body_must_not_contain") val bodyMustNotContain: List<String> = emptyList(),
+    /**
+     * Ids of named guards (guard library or rule-guard extensions) that must
+     * ALL be absent from the body: the rule does not apply if any listed
+     * guard matches. A rule referencing an unknown guard id is skipped and
+     * logged at evaluation — applying it without its veto would be worse.
+     */
+    @SerialName("guards_none") val guardsNone: List<String> = emptyList(),
 )
 
 /** Effect of a matching rule: target category and values to extract. */

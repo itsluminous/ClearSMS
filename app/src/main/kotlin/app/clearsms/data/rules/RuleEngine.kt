@@ -6,6 +6,7 @@ import app.clearsms.domain.model.ExtractedValue
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.domain.model.TransactionType
 import app.clearsms.domain.parser.ReminderParser
+import app.clearsms.domain.parser.RuleGuards
 import app.clearsms.domain.parser.TransactionParser
 import java.time.LocalDate
 import java.util.concurrent.ConcurrentHashMap
@@ -18,7 +19,11 @@ import java.util.concurrent.ConcurrentHashMap
  * - `sender_pattern` regex matches the sender,
  * - `body_pattern` regex matches the body,
  * - every `body_must_contain` term occurs in the body (case-insensitive),
- * - no `body_must_not_contain` term occurs in the body (case-insensitive).
+ * - no `body_must_not_contain` term occurs in the body (case-insensitive),
+ * - no guard named in `guards_none` matches the body ([RuleGuards]): a rule
+ *   can veto itself declaratively against the shared negative-knowledge
+ *   library instead of restating the patterns. A rule referencing an unknown
+ *   guard id is skipped and logged — never applied without its veto.
  *
  * Regexes are compiled once and cached; rules with invalid patterns are skipped
  * (and reported through [log]) so one bad community rule cannot break the engine.
@@ -48,6 +53,10 @@ class RuleEngine(
     private val dateParser: (String) -> LocalDate? = ReminderParser()::parseDate,
     /** Shared merchant normalizer ([TransactionParser.normalizeMerchantCandidate]). */
     private val merchantNormalizer: (String) -> String? = TransactionParser()::normalizeMerchantCandidate,
+    /** Whether a `guards_none` id names a known guard ([RuleGuards.isKnown]). */
+    private val guardKnown: (String) -> Boolean = RuleGuards::isKnown,
+    /** Whether the named guard matches the body ([RuleGuards.matches]). */
+    private val guardMatches: (String, String) -> Boolean = RuleGuards::matches,
 ) {
     private val regexCache = ConcurrentHashMap<String, Any>()
 
@@ -93,6 +102,15 @@ class RuleEngine(
             }
         }
 
+        // Same policy for an unknown guard id in `guards_none`: the rule is
+        // skipped-and-logged rather than applied without its veto.
+        for (id in match.guardsNone) {
+            if (!guardKnown(id)) {
+                log("Skipping rule '${rule.id}': unknown guard id '$id' in guards_none")
+                return null
+            }
+        }
+
         val senderRegex = match.senderPattern?.let { compiled(it, rule.id) ?: return null }
         if (senderRegex != null && !senderRegex.containsMatchIn(sender)) return null
 
@@ -104,6 +122,9 @@ class RuleEngine(
 
         if (match.bodyMustContain.any { !body.contains(it, ignoreCase = true) }) return null
         if (match.bodyMustNotContain.any { body.contains(it, ignoreCase = true) }) return null
+        // Declarative reference into the named-guard library: the rule does
+        // not apply when any listed guard matches the body.
+        if (match.guardsNone.any { guardMatches(it, body) }) return null
 
         val (raw, typed) = resolveExtracts(rule, bodyMatch)
         return CategorizationResult(
