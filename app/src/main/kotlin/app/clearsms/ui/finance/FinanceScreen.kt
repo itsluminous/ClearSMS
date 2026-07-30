@@ -84,6 +84,7 @@ import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.MaskedAmountText
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 
@@ -93,6 +94,8 @@ import kotlinx.coroutines.launch
 fun FinanceScreen(
     onOpenAccount: (accountNumber: String, bank: String) -> Unit,
     onOpenMessage: (threadId: Long, messageId: Long) -> Unit,
+    onSearch: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -138,6 +141,8 @@ fun FinanceScreen(
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.finance_title)) },
+                // Same search + settings pair as the Inbox (see SearchSettingsActions).
+                actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                 scrollBehavior = scrollBehavior,
             )
         },

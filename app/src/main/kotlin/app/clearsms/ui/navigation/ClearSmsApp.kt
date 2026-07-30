@@ -169,6 +169,8 @@ private fun MainScaffold(
                     onOpenMessage = { threadId, messageId ->
                         navController.navigate(Routes.conversation(threadId, messageId))
                     },
+                    onSearch = { navController.navigate(Routes.SEARCH) },
+                    onSettings = { navController.navigate(Routes.SETTINGS) },
                 )
             }
             composable(
@@ -179,6 +181,8 @@ private fun MainScaffold(
                     onOpenMessage = { threadId, messageId ->
                         navController.navigate(Routes.conversation(threadId, messageId))
                     },
+                    onSearch = { navController.navigate(Routes.SEARCH) },
+                    onSettings = { navController.navigate(Routes.SETTINGS) },
                 )
             }
             composable(Routes.SEARCH) {

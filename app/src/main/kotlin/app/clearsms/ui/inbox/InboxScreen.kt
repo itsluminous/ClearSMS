@@ -31,9 +31,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.MarkEmailRead
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -85,6 +83,7 @@ import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.displayName
+import app.clearsms.ui.navigation.SearchSettingsActions
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -156,14 +155,7 @@ fun InboxScreen(
             } else {
                 LargeTopAppBar(
                     title = { Text(stringResource(R.string.inbox_title)) },
-                    actions = {
-                        IconButton(onClick = onSearch) {
-                            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.action_search))
-                        }
-                        IconButton(onClick = onSettings) {
-                            Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings))
-                        }
-                    },
+                    actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                     scrollBehavior = scrollBehavior,
                 )
             }

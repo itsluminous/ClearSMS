@@ -57,6 +57,7 @@ import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.finance.reminderGlyph
+import app.clearsms.ui.navigation.SearchSettingsActions
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -70,6 +71,8 @@ private val DUE_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.E
 @Composable
 fun AlertsScreen(
     onOpenMessage: (threadId: Long, messageId: Long) -> Unit,
+    onSearch: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: AlertsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -95,6 +98,8 @@ fun AlertsScreen(
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.alerts_title)) },
+                // Same search + settings pair as the Inbox (see SearchSettingsActions).
+                actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                 scrollBehavior = scrollBehavior,
             )
         },
