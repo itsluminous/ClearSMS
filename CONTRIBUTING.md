@@ -80,11 +80,46 @@ Each file is a document with a `version` and a list of `rules`:
 | `action.category` | yes | `important` \| `promotional` \| `personal` \| `otp` \| `unknown` |
 | `action.sub_category` | no | e.g. `transaction`, `otp`, `bill`, `bank_alert`, `delivery`, `offer`, `scam`, `recharge`, `government`, `investment` |
 | `action.extract` | no | Map of extracted keys to `$n` capture-group references or literals (`amount`, `account_last4`, `type`, `bank`, `otp_code`, `due_date`, `merchant`, …) |
+| `action.extract_types` | no | Explicit types for extract keys where inference is wrong (see below) |
 | `action.notification` | no | e.g. `otp_popup` |
 | `contributed_by` | no | Your GitHub username |
 | `created_at` | no | ISO-8601 timestamp |
 
 Keys are **snake_case**, exactly as shown.
+
+### Typed extracts
+
+Every extracted value is resolved to a **typed** value exactly once by the
+app, so the rule only has to say *which capture is what kind of thing* — the
+parsing itself (the amount grammar, date formats, merchant cleanup) is done
+by the app.
+
+The type is **inferred from the extract key**, so the terse form above needs
+no annotations:
+
+| Extract key | Inferred type |
+|---|---|
+| `amount`, `balance`, `available_limit`, `total_due`, `min_due`, `total_limit` | `amount` — comma-grouped digits, e.g. `1,23,456.78` |
+| `due_date` | `date` — `DD-MM-YY(YY)`, `DD-MMM-YY(YY)` or `YYYY-MM-DD` |
+| `merchant` | `merchant` — cleaned of reference digits and trailing month/year noise |
+| `type` | `transaction_type` — `debit` or `credit` |
+| anything else | `text` — kept verbatim |
+
+Where inference would be wrong, declare the type explicitly in
+`action.extract_types` (values: `amount`, `date`, `merchant`,
+`transaction_type`, `text`):
+
+```json
+"action": {
+  "category": "important",
+  "extract": { "renewal_date": "$1" },
+  "extract_types": { "renewal_date": "date" }
+}
+```
+
+A capture that fails to parse as its type is kept as raw text (the rule
+still applies); a rule declaring an unknown type name is skipped entirely,
+with a logged warning.
 
 ## Rule guidelines
 

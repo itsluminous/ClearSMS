@@ -38,5 +38,13 @@ data class RuleAction(
     @SerialName("sub_category") val subCategory: String? = null,
     /** Values to extract; `$N` placeholders refer to `body_pattern` capture groups. */
     val extract: Map<String, String> = emptyMap(),
+    /**
+     * Explicit extract types, overriding the type inferred from the extract
+     * key (see [RuleEngine]'s inference table). Values are one of `amount`,
+     * `date`, `merchant`, `transaction_type`, `text`. Only needed where
+     * inference is wrong or ambiguous — well-known keys such as `amount` or
+     * `due_date` type themselves.
+     */
+    @SerialName("extract_types") val extractTypes: Map<String, String> = emptyMap(),
     val notification: String? = null,
 )
