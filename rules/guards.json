@@ -12,9 +12,10 @@
     },
     {
       "id": "bill_due_notice",
-      "description": "Bill-due notices ('Payment of INR X ... is due on <date>') — a FUTURE obligation, never a completed debit. Rejects the transaction outright; the reminder pipeline handles the message instead.",
+      "description": "Bill-due notices ('Payment of INR X ... is due on <date>') and reminder advisories ('Kindly ignore if paid') — a FUTURE obligation, never a completed debit. Rejects the transaction outright; the reminder pipeline handles the message instead. The 'ignore if paid' advisory only ever appears on reminders (a completed debit alert never asks you to ignore it), and its 'paid' verb otherwise satisfies the debit heuristics.",
       "patterns": [
-        "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b"
+        "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b",
+        "(?i)\\bignore\\s+if\\s+(?:already\\s+)?paid\\b"
       ]
     },
     {
@@ -30,7 +31,7 @@
     },
     {
       "id": "settled_payment",
-      "description": "Completed / settled / reversed events (payments received, thank-you-for-payment confirmations, refunds, reimbursement claims, debit/credit confirmations). Money already moved (or is coming back) — never a reminder.",
+      "description": "Completed / settled / reversed events (payments received, thank-you-for-payment confirmations, refunds, reimbursement claims, debit/credit confirmations). Money already moved (or is coming back) — never a reminder. 'will/shall/would be debited' is exempted via fixed-length lookbehinds: a future-tense debit ('Rs 59 will be debited on 03-Jul') is an upcoming obligation, exactly what reminders exist for.",
       "patterns": [
         "(?i)payment\\s+(?:of\\s+\\S{0,20}\\s*)?(?:received|successful|processed)",
         "(?i)\\breceived\\s+(?:your\\s+)?payment",
@@ -44,7 +45,7 @@
         "(?i)\\brefund(?:ed)?\\b",
         "(?i)\\bsettled\\b",
         "(?i)\\bclaim\\s+(?:of|amount|no\\.?|number|id)\\b",
-        "(?i)\\bdebited\\b",
+        "(?i)(?<!will be )(?<!shall be )(?<!would be )\\bdebited\\b",
         "(?i)\\bcredited\\b"
       ]
     },

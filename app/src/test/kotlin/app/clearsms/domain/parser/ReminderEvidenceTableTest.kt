@@ -224,6 +224,9 @@ class ReminderEvidenceTableTest {
         fun bill(): Int {
             var s = 0
             if (FROZEN_BILL_PHRASE.containsMatchIn(body)) s += 3
+            // Round T: an upcoming autopay/mandate/standing-instruction debit
+            // is bill evidence — future tense means an obligation, not a move.
+            if (FROZEN_UPCOMING_DEBIT.containsMatchIn(body)) s += 3
             if (ParserTables.billers.billDomainRegex.containsMatchIn(body)) s += 3
             val knownBiller = ParserTables.billers.knownBillerSenderRegex.containsMatchIn(sender)
             if (s == 0 && knownBiller && FROZEN_BILL_WORD.containsMatchIn(body)) s += 3
@@ -296,6 +299,11 @@ class ReminderEvidenceTableTest {
                     "payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,.]+\\s+is\\s+due\\b[^\\n]{0,60}?\\bfor\\s+your\\b",
             )
         val FROZEN_BILL_WORD = Regex("(?i)\\bbill\\b")
+        val FROZEN_UPCOMING_DEBIT =
+            Regex(
+                "(?i)\\bwill\\s+be\\s+debited\\b[^\\n]{0,80}?\\b(?:towards|for|from)\\b|" +
+                    "\\bautopay\\b|\\bupi\\s+mandate\\b|\\bstanding\\s+instruction",
+            )
         val FROZEN_SUBSCRIPTION_WORD = Regex("(?i)\\bsubscription\\b|\\bmembership\\b|auto[-\\s]?renew")
         val FROZEN_PLAN_WORD = Regex("(?i)\\bplan\\b")
         val FROZEN_RENEWAL_WORD = Regex("(?i)\\brenew(?:al|s|ed)?\\b")

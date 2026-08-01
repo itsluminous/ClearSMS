@@ -88,7 +88,11 @@ class GuardEquivalenceTest {
         /** Optional local corpus (JSONL of {"sender","body"}), never committed. */
         const val CORPUS = "/tmp/clearsms/guard-corpus.jsonl"
 
-        /** Verbatim copies of the deleted Kotlin constants. Do not edit. */
+        /**
+         * Verbatim copies of the deleted Kotlin constants, updated in lockstep
+         * with deliberate guard-content changes (see the round-T comments
+         * inline) so the corpus equivalence check freezes CURRENT intent.
+         */
         val FROZEN: Map<GuardId, Regex> =
             mapOf(
                 GuardId.STATEMENT_NOTICE to
@@ -100,7 +104,10 @@ class GuardEquivalenceTest {
                     ),
                 GuardId.BILL_DUE_NOTICE to
                     Regex(
-                        "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b",
+                        "(?i)\\b(?:payment|bill)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\bis\\s+due\\b|" +
+                            // Round T: the "ignore if paid" advisory only appears on
+                            // reminders; its "paid" verb otherwise fakes a debit.
+                            "\\bignore\\s+if\\s+(?:already\\s+)?paid\\b",
                     ),
                 GuardId.FAILED_PAYMENT to
                     Regex(
@@ -124,7 +131,9 @@ class GuardEquivalenceTest {
                             "has\\s+been\\s+(?:paid|received|credited|processed|settled|reimbursed|refunded)|" +
                             "\\breimburse(?:d|ment)\\b|\\brefund(?:ed)?\\b|\\bsettled\\b|" +
                             "\\bclaim\\s+(?:of|amount|no\\.?|number|id)\\b|" +
-                            "\\bdebited\\b|\\bcredited\\b",
+                            // Round T: future-tense "will/shall/would be debited" is an
+                            // upcoming obligation, not a settled event.
+                            "(?<!will be )(?<!shall be )(?<!would be )\\bdebited\\b|\\bcredited\\b",
                     ),
                 GuardId.MARKETING_PITCH to
                     Regex(

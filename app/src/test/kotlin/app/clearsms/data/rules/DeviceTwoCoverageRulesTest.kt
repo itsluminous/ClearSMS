@@ -113,7 +113,10 @@ class DeviceTwoCoverageRulesTest {
         assertThat(result?.extracted?.get("account_last4")).isEqualTo("123")
         assertThat(result?.extracted?.get("amount")).isEqualTo("59.00")
         assertThat(result?.extracted?.get("due_date")).isEqualTo("15-Jul-26")
-        assertThat(result?.extracted?.get("merchant")).isEqualTo("Autopay for StreamingSvc")
+        // The payee alone is the merchant ("Autopay for" is boilerplate);
+        // the label names the obligation for the Alerts card.
+        assertThat(result?.extracted?.get("merchant")).isEqualTo("StreamingSvc")
+        assertThat(result?.extracted?.get("label")).isEqualTo("StreamingSvc autopay")
     }
 
     @Test

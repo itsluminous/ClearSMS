@@ -444,7 +444,7 @@
       "priority": 333,
       "match": {
         "sender_pattern": "(?i)ICICI",
-        "body_pattern": "(?i)ICICI\\s+Bank\\s+SAVINGS\\s+Account\\s+[Xx*\\d]*(\\d{3,4})\\s+will\\s+be\\s+debited\\s+for\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(\\S{5,12})\\s+towards\\s+([^\\n.]{1,45})",
+        "body_pattern": "(?i)ICICI\\s+Bank\\s+SAVINGS\\s+Account\\s+[Xx*\\d]*(\\d{3,4})\\s+will\\s+be\\s+debited\\s+for\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+(\\S{5,12})\\s+towards\\s+(?:Autopay\\s+for\\s+)?([^,\\n.]{1,30})",
         "guards_none": [
           "otp_mention"
         ]
@@ -457,7 +457,8 @@
           "amount": "$2",
           "due_date": "$3",
           "merchant": "$4",
-          "bank": "ICICI Bank"
+          "bank": "ICICI Bank",
+          "label": "$4 autopay"
         }
       },
       "contributed_by": "clearsms",

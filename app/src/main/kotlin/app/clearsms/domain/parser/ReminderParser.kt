@@ -146,6 +146,8 @@ class ReminderParser {
         // "ICICI Pru iProtect Smart".
         POLICY_PLAN_REGEX.find(body)?.let { return it.groupValues[1].trim() }
         POLICY_FOR_REGEX.find(body)?.let { return "${it.groupValues[1].trim()} policy" }
+        // "towards Autopay for YouTube, UPI Mandate, ..." -> "YouTube autopay".
+        AUTOPAY_PAYEE_REGEX.find(body)?.let { return "${it.groupValues[1].trim()} autopay" }
         // "Tata Neu Infinity HDFC Bank Credit Card" -> the card product.
         CARD_PRODUCT_REGEX.find(body)?.let { return "${it.groupValues[1].trim()} Credit Card" }
         // "your Netflix plan / postpaid connection" -> "<name> plan".
@@ -239,9 +241,10 @@ class ReminderParser {
 
         /**
          * Currency amount with capture group: `Rs. 1,234.56`, `INR 500`,
-         * `₹99`, and the statement style `INR  Dr. 4,255.00`.
+         * `₹99`, the statement style `INR  Dr. 4,255.00`, and the HDFC
+         * autopay style `INR.649.00` (dot directly after INR).
          */
-        const val AMOUNT = "(?:INR|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?([\\d,]+(?:\\.\\d{1,2})?)"
+        const val AMOUNT = "(?:INR\\.?|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?([\\d,]+(?:\\.\\d{1,2})?)"
 
         /**
          * Amount with the currency symbol OPTIONAL — for phrasings where banks
@@ -270,6 +273,15 @@ class ReminderParser {
                 "\\bexpir(?:es|ing|y)\\s*(?:on|date)?\\s*(?:is|:)?\\s*($DATE)",
                 "\\bvalid\\s+(?:till|until|upto|up\\s+to)\\s+($DATE)",
                 "\\bpayment\\s+due\\s+(?:on\\s+)?($DATE)",
+                // Upcoming autopay/mandate/standing-instruction debit: "will
+                // be debited for Rs 59.00 on 03-Jul-26", "will be debited on
+                // 12/08/2026 from HDFC Bank Card", "will be debited from
+                // your bank a/c on 15-08-2026". Future tense IS the due
+                // signal — the debit has not happened yet, and the date is
+                // when it will. Bounded gap; a Tata Neu/CRED collect request
+                // ("will be debited from your account. To authorise, click
+                // ...") carries no date and never anchors.
+                "\\bwill\\s+be\\s+debited\\b[^\\n]{0,40}?\\bon\\s+($DATE)",
             ).map { Regex("(?i)$it") }
 
         /**
@@ -323,8 +335,17 @@ class ReminderParser {
                 "instal?lment\\s+of\\s+$AMOUNT",
                 // "premium of Rs.24,000 is due".
                 "premium\\s+of\\s+$AMOUNT",
-                // "Premium due on 05-May-2026 for your ... policy no H123 for Rs. 5000".
-                "(?:premium|policy)[^\\n]{0,120}?\\bfor\\s+$AMOUNT",
+                // "Premium due on 05-May-2026 for your ... policy no H123 for Rs. 5000"
+                // and the variant with the amount AFTER the policy number,
+                // introduced by "of": "... policy no. H4847657 of Rs. 1250".
+                "(?:premium|policy)[^\\n]{0,120}?\\b(?:for|of)\\s+$AMOUNT",
+                // Upcoming autopay/standing-instruction debits — future tense,
+                // so this is an obligation, not a movement (the transaction
+                // parser rejects the same phrasing): "will be debited for
+                // Rs 59.00 on 03-Jul-26" and "INR 649.00 will be debited on
+                // 12/08/2026 from HDFC Bank Card".
+                "will\\s+be\\s+debited\\s+for\\s+$AMOUNT",
+                "$AMOUNT\\s+will\\s+be\\s+debited\\b",
                 // "Bill amount Rs 890", "bill of Rs.2,340".
                 "bill\\s+(?:amount|of)\\s*:?\\s*$AMOUNT",
                 // "Your bill for JUL-26 on A/C xx1550 is INR 1178.82" — the
@@ -394,6 +415,10 @@ class ReminderParser {
         /** "your <name> plan/subscription/membership/postpaid". */
         val PLAN_REGEX =
             Regex("(?i)your\\s+([A-Za-z][A-Za-z0-9 ]{2,30}?)\\s+(plan|subscription|membership|pack|postpaid)\\b")
+
+        /** "towards Autopay for YouTube," — the autopay payee. */
+        val AUTOPAY_PAYEE_REGEX =
+            Regex("(?i)\\btowards\\s+Autopay\\s+for\\s+([A-Za-z][A-Za-z0-9 &.'-]{1,29}?)(?=[,.\\n]|$)")
 
         val WHITESPACE_REGEX = Regex("\\s+")
 
