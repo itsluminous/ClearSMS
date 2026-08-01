@@ -124,7 +124,10 @@ class TypedExtractConsumptionTest {
                     .toEpochMilli()
             assertThat(reminder.dueDate).isEqualTo(expected)
             // The amount extract backs the minimum due when no min_due exists.
-            assertThat(reminder.minDue).isEqualTo(850.0)
+            // A rule's generic "amount" is the amount DUE — the headline
+            // total, never the minimum.
+            assertThat(reminder.totalDue).isEqualTo(850.0)
+            assertThat(reminder.minDue).isNull()
         }
 
     private object NoopDataStore : DataStore<Preferences> {

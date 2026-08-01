@@ -504,7 +504,7 @@ class MessageRepositoryImpl(
         val parsedReminder = if (delivery == null) reminderParser.parse(sender, evalBody) else null
         val reminder =
             when {
-                parsedReminder != null -> mergeReminder(parsedReminder, result.typed)
+                parsedReminder != null -> mergeReminder(parsedReminder, result.typed, extracts)
                 result.subCategory == SubCategory.BILL -> reminderFromExtracts(sender, evalBody, extracts, result.typed)
                 else -> null
                 // A reminder without a due date is not actionable; this also
@@ -559,11 +559,6 @@ class MessageRepositoryImpl(
             statement.accountLast4?.let { merged.putIfAbsent("account_last4", it) }
             statement.bankName?.let { merged.putIfAbsent("bank", it) }
         }
-        reminder?.let { rem ->
-            rem.totalDue?.let { merged["total_due"] = it.toString() }
-            rem.minDue?.let { merged["min_due"] = it.toString() }
-            rem.dueDate?.let { merged["due_date"] = it.toString() }
-        }
         otpCode?.let { merged["otp_code"] = it }
         // Rule-extracted values win over parser heuristics for shared keys.
         merged.putAll(extracts)
@@ -573,6 +568,20 @@ class MessageRepositoryImpl(
         // would land in extractedDataJson and resurface in the UI.
         transaction?.let { tx ->
             tx.merchantName?.let { merged["merchant"] = it } ?: merged.remove("merchant")
+        }
+        // ...and the reminder fields: the reminder object above already
+        // merged rule extracts with parser output, TYPED (its due date is a
+        // real date, not a raw "03-Jul-26" capture) and invariant-checked
+        // (totalDue >= minDue). Re-stamping keeps extractedDataJson — what
+        // the parsed notification and the conversation card render — in
+        // lockstep with the Alerts row, and normalizes the due date to ISO.
+        reminder?.let { rem ->
+            rem.totalDue?.let { merged["total_due"] = it.toString() } ?: merged.remove("total_due")
+            rem.minDue?.let { merged["min_due"] = it.toString() } ?: merged.remove("min_due")
+            rem.dueDate?.let { merged["due_date"] = it.toString() }
+            rem.accountLast4?.let { merged.putIfAbsent("account_last4", it) }
+            rem.bankName?.let { merged.putIfAbsent("bank", it) }
+            rem.label?.let { merged.putIfAbsent("label", it) }
         }
 
         return Enriched(
@@ -1014,16 +1023,29 @@ class MessageRepositoryImpl(
             else -> null
         }
 
+    /**
+     * Rule extracts win over parser heuristics per field. A rule's generic
+     * "amount" extract is the amount DUE — it backfills the total when
+     * neither the rule nor the parser produced an explicit total (the ICICI
+     * Pru premium rule captures the premium as "amount"; dropping it was why
+     * premiums surfaced with no amount). [ensureTotalNotBelowMin] re-applies
+     * the totalDue >= minDue invariant AFTER the merge, because raw rule
+     * captures bypass the parser's own [ReminderParser] resolution.
+     */
     private fun mergeReminder(
         parsed: ParsedReminder,
         typed: Map<String, ExtractedValue>,
+        extracts: Map<String, String>,
     ): ParsedReminder =
-        parsed.copy(
-            dueDate = typed.date("due_date") ?: parsed.dueDate,
-            totalDue = typed.amount("total_due") ?: parsed.totalDue,
-            minDue = typed.amount("min_due") ?: parsed.minDue,
-            accountLast4 = (typed["account_last4"] as? ExtractedValue.Text)?.raw ?: parsed.accountLast4,
-            bankName = (typed["bank"] as? ExtractedValue.Text)?.raw ?: parsed.bankName,
+        ensureTotalNotBelowMin(
+            parsed.copy(
+                dueDate = typed.date("due_date") ?: parsed.dueDate,
+                totalDue = typed.amount("total_due") ?: parsed.totalDue ?: typed.amount("amount"),
+                minDue = typed.amount("min_due") ?: parsed.minDue,
+                accountLast4 = (typed["account_last4"] as? ExtractedValue.Text)?.raw ?: parsed.accountLast4,
+                bankName = (typed["bank"] as? ExtractedValue.Text)?.raw ?: parsed.bankName,
+                label = extracts["label"] ?: parsed.label,
+            ),
         )
 
     private fun reminderFromExtracts(
@@ -1035,17 +1057,36 @@ class MessageRepositoryImpl(
         // Undated candidates are not actionable reminders — an amount alone
         // (e.g. a reimbursement-claim SMS) must not become an Alerts card.
         val dueDate = typed.date("due_date") ?: return null
-        return ParsedReminder(
-            // A rule only says "this is a bill-like reminder"; the TYPE still
-            // comes from the body's evidence (a card mini-statement matched
-            // by a bill rule is a credit-card bill, not a generic bill).
-            type = reminderTypeClassifier.classify(sender, evalBody) ?: ReminderType.OTHER,
-            dueDate = dueDate,
-            totalDue = typed.amount("total_due"),
-            minDue = typed.amount("min_due") ?: typed.amount("amount"),
-            accountLast4 = extracts["account_last4"],
-            bankName = extracts["bank"],
+        return ensureTotalNotBelowMin(
+            ParsedReminder(
+                // A rule only says "this is a bill-like reminder"; the TYPE still
+                // comes from the body's evidence (a card mini-statement matched
+                // by a bill rule is a credit-card bill, not a generic bill).
+                type = reminderTypeClassifier.classify(sender, evalBody) ?: ReminderType.OTHER,
+                dueDate = dueDate,
+                // A rule's generic "amount" is the amount DUE — the headline
+                // total, never the minimum (the Alerts card and the parsed
+                // notification lead with the total).
+                totalDue = typed.amount("total_due") ?: typed.amount("amount"),
+                minDue = typed.amount("min_due"),
+                accountLast4 = extracts["account_last4"],
+                bankName = extracts["bank"],
+                label = extracts["label"],
+            ),
         )
+    }
+
+    /**
+     * Post-merge totalDue >= minDue invariant: a merged "total" below the
+     * minimum is a mis-capture (a minimum-due phrase landing in a total
+     * slot), so the total is dropped rather than stored wrong — mirroring
+     * [ReminderParser]'s own resolution, which raw rule captures bypass.
+     */
+    private fun ensureTotalNotBelowMin(reminder: ParsedReminder): ParsedReminder {
+        val total = reminder.totalDue
+        val min = reminder.minDue
+        if (total == null || min == null || total >= min) return reminder
+        return reminder.copy(totalDue = null)
     }
 
     private fun encodeExtracted(extracted: Map<String, String>): String? =
