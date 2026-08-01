@@ -67,6 +67,10 @@
           "score": 3
         },
         {
+          "pattern": "(?i)\\bwill\\s+be\\s+debited\\b[^\\n]{0,80}?\\b(?:towards|for|from)\\b|\\bautopay\\b|\\bupi\\s+mandate\\b|\\bstanding\\s+instruction",
+          "score": 3
+        },
+        {
           "table_ref": "bill_domains",
           "score": 3
         },
