@@ -30,6 +30,8 @@
     <!-- Transaction notifications -->
     <string name="transaction_balance_update">Balance update</string>
     <string name="transaction_account_short">A/c %1$s</string>
+    <string name="transaction_bill_due">Due %1$s</string>
+    <string name="transaction_bill_min_due">Min due ₹%1$s</string>
 
     <!-- Message notifications -->
     <string name="notification_me">Me</string>

@@ -24,6 +24,9 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
@@ -105,6 +108,8 @@ class TransactionNotifier
                     details = details,
                     balanceUpdateLabel = context.getString(R.string.transaction_balance_update),
                     accountFormat = context.getString(R.string.transaction_account_short),
+                    dueDateFormat = context.getString(R.string.transaction_bill_due),
+                    minDueFormat = context.getString(R.string.transaction_bill_min_due),
                 ) ?: return null
             Channels.ensureCreated(context)
 
@@ -247,31 +252,39 @@ class TransactionNotifier
              * Builds notification content from the message's extracted
              * detail map (keys written by the ingestion pipeline: "amount",
              * "type", "merchant", "account_last4", "bank", "balance",
-             * "due_date", "total_due", "min_due").
+             * "due_date", "total_due", "min_due", "label").
              *
              * Bill/reminder-derived amounts win first: any of the reminder
              * keys ("due_date", "total_due", "min_due") marks the message as
              * a bill notice, which is informational — no money moved — so it
              * renders in the blue balance treatment with NO sign, never as a
              * red debit (even when a parser also stamped a debit "type" on
-             * the same message). Otherwise kind selection mirrors the UI: an
-             * amount with type debit / credit wins; a lone balance renders as
-             * a balance-only update; with neither there is nothing to show
-             * (null).
+             * the same message). The bill HEADLINE is the invariant-checked
+             * TOTAL due when present; a rule's generic "amount" or the
+             * minimum are only fallbacks — a card bill must lead with what
+             * is owed, not the minimum. The detail line carries the due
+             * date, the biller (merchant or reminder label), the account and
+             * the bank, plus the minimum due as a secondary figure.
+             * Otherwise kind selection mirrors the UI: an amount with type
+             * debit / credit wins; a lone balance renders as a balance-only
+             * update; with neither there is nothing to show (null).
              */
             fun buildContent(
                 details: Map<String, String>,
                 balanceUpdateLabel: String,
                 accountFormat: String,
+                dueDateFormat: String = "Due %s",
+                minDueFormat: String = "Min due \u20b9%s",
             ): Content? {
                 val amount = details["amount"]?.replace(",", "")?.toDoubleOrNull()
                 val type = details["type"]?.lowercase()
                 val balance = details["balance"]?.replace(",", "")?.toDoubleOrNull()
+                val minDue = details["min_due"]?.replace(",", "")?.toDoubleOrNull()
                 val billAmount =
                     if (BILL_MARKER_KEYS.any { it in details }) {
-                        amount
-                            ?: details["total_due"]?.replace(",", "")?.toDoubleOrNull()
-                            ?: details["min_due"]?.replace(",", "")?.toDoubleOrNull()
+                        details["total_due"]?.replace(",", "")?.toDoubleOrNull()
+                            ?: amount
+                            ?: minDue
                             ?: balance
                     } else {
                         null
@@ -292,22 +305,43 @@ class TransactionNotifier
                         kind == Content.Kind.CREDIT -> "+ ₹${grouped(amount!!)}"
                         else -> "₹${grouped(balance!!)}"
                     }
-                return Content(
-                    kind = kind,
-                    title = title,
-                    text =
+                val text =
+                    if (billAmount != null) {
+                        listOfNotNull(
+                            formatDueDate(details["due_date"])?.let { String.format(dueDateFormat, it) },
+                            details["merchant"] ?: details["label"],
+                            details["account_last4"]?.let { String.format(accountFormat, it) },
+                            details["bank"],
+                            // Secondary figure only when it differs from the headline.
+                            minDue?.takeIf { it != billAmount }?.let { String.format(minDueFormat, grouped(it)) },
+                        ).joinToString(" · ")
+                    } else {
                         compactText(
                             merchant = details["merchant"],
                             accountLast4 = details["account_last4"],
                             bank = details["bank"],
-                            // A bill keeps its merchant/account/bank line; the
-                            // "Balance update" lead-in is only for true
-                            // balance-only statements.
-                            balanceOnly = billAmount == null && kind == Content.Kind.BALANCE,
+                            balanceOnly = kind == Content.Kind.BALANCE,
                             balanceUpdateLabel = balanceUpdateLabel,
                             accountFormat = accountFormat,
-                        ),
-                )
+                        )
+                    }
+                return Content(kind = kind, title = title, text = text)
+            }
+
+            /**
+             * "2026-08-04" (the pipeline's normalized ISO due date) → "4 Aug".
+             * Null when the stored value is not ISO — a missing date is
+             * better than a raw capture leaking into the notification.
+             */
+            internal fun formatDueDate(iso: String?): String? {
+                if (iso == null) return null
+                return try {
+                    LocalDate
+                        .parse(iso)
+                        .format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
+                } catch (_: Exception) {
+                    null
+                }
             }
 
             /**

@@ -100,15 +100,21 @@ class SmsReceiver : BroadcastReceiver() {
         when {
             entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(context, entity, selectedActions)
             entity.subCategory == SubCategory.SCAM -> messageNotifier.notifyScam(entity)
-            // Parsed transaction/balance notification (opt-out via settings).
-            // Balance-only updates (BANK_ALERT with a parsed balance) ride
-            // the SAME transactionNotifications gate as transactions: they
-            // are one parsed-finance surface, and a second toggle would add
+            // Parsed transaction/balance/bill notification (opt-out via
+            // settings). Balance-only updates (BANK_ALERT with a parsed
+            // balance) and bill reminders (BILL with a parsed amount due)
+            // ride the SAME transactionNotifications gate as transactions:
+            // they are one parsed-finance surface rendered by one notifier
+            // with one semantic color scheme, and a second toggle would add
             // a confusing third state for the same notification style. When
             // the setting is off — or the message has no renderable parsed
             // data (notify returns false) — control falls through to the
             // plain message notification below, i.e. today's behavior.
-            (entity.subCategory == SubCategory.TRANSACTION || entity.subCategory == SubCategory.BANK_ALERT) &&
+            (
+                entity.subCategory == SubCategory.TRANSACTION ||
+                    entity.subCategory == SubCategory.BANK_ALERT ||
+                    entity.subCategory == SubCategory.BILL
+            ) &&
                 settingsRepository.transactionNotifications.first() &&
                 transactionNotifier.notify(entity, selectedActions) -> Unit
             entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
