@@ -33,7 +33,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)PAYZAP",
-        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+from\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+debited\\s+from\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "guards_none": [
           "otp_mention"
         ]
@@ -58,7 +58,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)PAYZAP",
-        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "body_pattern": "(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+PayZapp\\s+wallet\\s+(\\d{1,4})[\\s\\S]{0,20}?Avl\\s+Bal:?\\s*(?:INR|Rs\\.?|\\u20b9)?\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         "guards_none": [
           "otp_mention"
         ]
