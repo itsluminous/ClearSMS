@@ -74,7 +74,7 @@
       "name": "Branded OTP (digits first)",
       "priority": 51,
       "match": {
-        "body_pattern": "(?i)(?<!\\d)(\\d{4,8})\\s+is\\s+your\\s+(?:\\w+[ .-]){0,3}?otp"
+        "body_pattern": "(?i)(?<!\\d)(\\d{4,8})\\s+is\\s+(?:(?:your|the)\\s+)?(?:\\w+[ .-]){0,3}?otp\\b"
       },
       "action": {
         "category": "otp",

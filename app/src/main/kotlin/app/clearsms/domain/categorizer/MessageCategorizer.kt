@@ -95,6 +95,20 @@ class MessageCategorizer(
      * 2. An extracted transaction is never PROMOTIONAL: when the message is
      *    tagged [SubCategory.TRANSACTION] or the transaction parser finds a
      *    completed debit/credit, the message is promoted to IMPORTANT.
+     * 3. A keyword-ANCHORED OTP beats a transaction categorization: an
+     *    authorization request ("413423 is SECRET OTP for txn of INR 1205.23
+     *    on ... card ... at ...") quotes an amount, a card and a merchant,
+     *    but nothing has moved — the user needs the CODE, not a transaction
+     *    row. This mirrors invariant 1 for the transaction path, and also
+     *    lifts a directory-matched sender's [SubCategory.OTP] refinement to
+     *    the real OTP category so the OTP notification fires. Only
+     *    [OtpParser.parseAnchored] counts here: the bare
+     *    six-digits-near-a-context-word fallback could mistake a transaction
+     *    reference in a debit alert that merely SAYS "OTP"/"PIN" in an
+     *    advisory ("spent ... without PIN/OTP") for a code, so it must never
+     *    reclassify a real spend. Transaction-ish extracts (amount/type/
+     *    merchant) are dropped in the process so no transaction can derive
+     *    downstream from the rule's captures.
      *
      * Exceptions, deliberately narrow:
      * - SCAM results stay put — a phishing message quoting an "OTP" or a
@@ -108,8 +122,24 @@ class MessageCategorizer(
         evalBody: String,
         result: CategorizationResult,
     ): CategorizationResult {
-        if (result.category != Category.PROMOTIONAL) return result
         if (result.subCategory == SubCategory.SCAM) return result
+
+        // Invariant 3: an anchored OTP beats a transaction categorization
+        // (and lifts a directory sender's OTP sub-category to the category).
+        if (result.category != Category.OTP &&
+            (result.subCategory == SubCategory.TRANSACTION || result.subCategory == SubCategory.OTP)
+        ) {
+            otpParser.parseAnchored(evalBody)?.let { otp ->
+                return result.copy(
+                    category = Category.OTP,
+                    subCategory = SubCategory.OTP,
+                    extracted =
+                        result.extracted - TRANSACTION_EXTRACT_KEYS + (EXTRACT_OTP_CODE to otp.code),
+                )
+            }
+        }
+
+        if (result.category != Category.PROMOTIONAL) return result
 
         otpParser.parse(evalBody)?.let { otp ->
             return result.copy(
@@ -175,6 +205,14 @@ class MessageCategorizer(
     companion object {
         /** Key used for OTP codes in [CategorizationResult.extracted]. */
         const val EXTRACT_OTP_CODE = "otp_code"
+
+        /**
+         * Rule-extract keys that describe a money movement. Dropped when an
+         * anchored OTP reclassifies a rule-matched "transaction" to OTP, so
+         * an authorization request's quoted amount can never derive a
+         * transaction row or render as a signed amount downstream.
+         */
+        private val TRANSACTION_EXTRACT_KEYS = setOf("amount", "type", "merchant", "reference")
 
         /**
          * Maximum number of characters of a message body that rule regexes

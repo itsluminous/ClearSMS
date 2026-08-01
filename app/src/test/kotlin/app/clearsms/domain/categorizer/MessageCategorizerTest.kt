@@ -146,7 +146,7 @@ class MessageCategorizerTest {
     }
 
     @Test
-    fun `directory sender with otp content gets otp sub category`() {
+    fun `directory sender with anchored otp content is lifted to the otp category`() {
         val senderId = SenderIdLookup { SenderInfo("Some Bank", Category.IMPORTANT, "banking") }
         val result =
             categorizer(senderIdLookup = senderId).categorize(
@@ -155,7 +155,11 @@ class MessageCategorizerTest {
                 userRules = emptyList(),
                 builtinRules = emptyList(),
             )
-        assertThat(result.category).isEqualTo(Category.IMPORTANT)
+        // A keyword-anchored code is a real OTP: the directory's IMPORTANT
+        // must not keep it out of the OTP category (the OTP notification
+        // and auto-delete only act on Category.OTP with an extracted code).
+        assertThat(result.category).isEqualTo(Category.OTP)
         assertThat(result.subCategory).isEqualTo(SubCategory.OTP)
+        assertThat(result.extracted["otp_code"]).isEqualTo("482910")
     }
 }
