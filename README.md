@@ -3,6 +3,7 @@
 [![Android CI](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml/badge.svg)](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml)
 [![Latest release](https://img.shields.io/github/v/release/itsluminous/ClearSMS?sort=semver)](https://github.com/itsluminous/ClearSMS/releases/latest)
 [![License](https://img.shields.io/github/license/itsluminous/ClearSMS)](LICENSE)
+[![Rules](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fitsluminous%2FClearSMS%2Fmain%2Fapp%2Fsrc%2Fmain%2Fassets%2Fdefault_rules.json&query=%24.rules.length&label=rules&color=teal)](rules/)
 
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
 organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
@@ -23,6 +24,20 @@ handles OTPs intelligently — all completely offline, on your device.
   on older devices. Light, dark, and system themes.
 - **Community rules** — categorization rules are plain JSON, bundled with the app and
   maintained by the community in this repository.
+
+## Screenshots
+
+| Smart inbox | Finance | Alerts |
+| :---: | :---: | :---: |
+| ![Inbox](docs/screenshots/inbox.png) | ![Finance dashboard](docs/screenshots/finance.png) | ![Alerts](docs/screenshots/alerts.png) |
+
+| Account detail | Extracted transaction | Search |
+| :---: | :---: | :---: |
+| ![Account detail](docs/screenshots/account-detail.png) | ![Extracted transaction](docs/screenshots/extracted-transaction.png) | ![Search](docs/screenshots/search.png) |
+
+| Parsed notifications | OTP notification | Balance lock | Dark theme |
+| :---: | :---: | :---: | :---: |
+| ![Parsed transaction notifications](docs/screenshots/notifications.png) | ![OTP notification](docs/screenshots/otp-notification.png) | ![Biometric balance lock](docs/screenshots/balance-lock.png) | ![Dark theme](docs/screenshots/dark-inbox.png) |
 
 ## Privacy Principles
 
