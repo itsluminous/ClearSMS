@@ -152,11 +152,9 @@ class OtpNotifier
             )
         }
 
-        private fun notificationId(messageId: Long) = OTP_NOTIFICATION_ID_BASE + (messageId % 1000).toInt()
+        private fun notificationId(messageId: Long) = NotificationIds.otp(messageId)
 
         companion object {
-            private const val OTP_NOTIFICATION_ID_BASE = 10_000
-
             /** "123456" → "1 2 3 4 5 6", bold and scaled per [displaySize]. */
             fun buildTitle(
                 otp: String,

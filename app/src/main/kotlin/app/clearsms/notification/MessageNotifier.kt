@@ -100,7 +100,7 @@ class MessageNotifier
                     .setContentIntent(conversationIntent(message.threadId))
                     .setAutoCancel(true)
                     .build()
-            post(SCAM_NOTIFICATION_ID_BASE + (message.id % 1000).toInt(), notification)
+            post(NotificationIds.scam(message.id), notification)
         }
 
         /** Shown when an outgoing message could not be sent. */
@@ -115,11 +115,7 @@ class MessageNotifier
                     .setCategory(NotificationCompat.CATEGORY_ERROR)
                     .setAutoCancel(true)
                     .build()
-            post(SEND_FAILURE_NOTIFICATION_ID, notification)
-        }
-
-        fun cancelThread(threadId: Long) {
-            NotificationManagerCompat.from(context).cancel(threadNotificationId(threadId))
+            post(NotificationIds.SEND_FAILURE, notification)
         }
 
         private fun conversationIntent(threadId: Long): PendingIntent {
@@ -150,15 +146,12 @@ class MessageNotifier
             }
         }
 
-        private fun threadNotificationId(threadId: Long) = MESSAGE_NOTIFICATION_ID_BASE + (threadId % 10_000).toInt()
+        private fun threadNotificationId(threadId: Long) = NotificationIds.messageThread(threadId)
 
         companion object {
             const val EXTRA_THREAD_ID = "thread_id"
 
             /** Mirrors the settings default (MARK_READ + REPLY). */
             val DEFAULT_SELECTED = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY)
-            private const val MESSAGE_NOTIFICATION_ID_BASE = 20_000
-            private const val SCAM_NOTIFICATION_ID_BASE = 40_000
-            private const val SEND_FAILURE_NOTIFICATION_ID = 50_001
         }
     }

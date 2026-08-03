@@ -59,6 +59,8 @@ class MessageRepositoryImpl(
     /** Platform hook syncing deletions to the system SMS provider (null in tests). */
     private val systemSmsDeleter: SystemSmsDeleter? = null,
     private val systemSmsReadWriter: SystemSmsReadWriter? = null,
+    /** Platform hook cancelling shade notifications for read/deleted messages (null in tests). */
+    private val readNotificationCanceler: ReadNotificationCanceler? = null,
     /** Page size for [recategorizeAll]; overridable so tests can hit batch boundaries. */
     private val recategorizePageSize: Int = RECATEGORIZE_PAGE_SIZE,
 ) : MessageRepository {
@@ -136,6 +138,7 @@ class MessageRepositoryImpl(
     ) {
         messageDao.markRead(messageId, read)
         syncReadToProvider(messageDao.systemSmsIdsFor(listOf(messageId)), read)
+        if (read) cancelNotificationsForRead(listOf(messageId))
     }
 
     override suspend fun delete(messageId: Long) = deleteMessages(listOf(messageId))
@@ -147,25 +150,37 @@ class MessageRepositoryImpl(
         // sync happens after commit — losing our copy but keeping the
         // provider row (crash in between) self-heals via the unique
         // systemSmsId re-import, the reverse would not.
-        val systemIds =
+        val (systemIds, threadIds) =
             database.withTransaction {
-                val collected = chunks.flatMap { messageDao.systemSmsIdsFor(it) }
+                val collectedSystem = chunks.flatMap { messageDao.systemSmsIdsFor(it) }
+                val collectedThreads = chunks.flatMap { messageDao.threadIdsFor(it) }.distinct()
                 chunks.forEach { messageDao.deleteByIds(it) }
-                collected
+                collectedSystem to collectedThreads
             }
         deleteFromProvider(systemIds)
+        // A deleted message is no longer "new": its OTP / transaction / scam
+        // notifications go with it (this is what makes the OTP auto-delete
+        // path clear its notification too).
+        readNotificationCanceler?.cancelFor(ids)
+        cancelFullyReadThreadNotifications(threadIds)
     }
 
     override suspend fun deleteThreads(threadIds: List<Long>) {
         if (threadIds.isEmpty()) return
         val chunks = SqliteChunker.chunk(threadIds)
-        val systemIds =
+        val (systemIds, unreadIds) =
             database.withTransaction {
-                val collected = chunks.flatMap { messageDao.systemSmsIdsForThreads(it) }
+                val collectedSystem = chunks.flatMap { messageDao.systemSmsIdsForThreads(it) }
+                // Only unread messages can still own per-message notifications
+                // (read transitions cancel them), so collect just those before
+                // the rows disappear.
+                val collectedUnread = chunks.flatMap { messageDao.unreadMessageIdsInThreads(it) }
                 chunks.forEach { messageDao.deleteByThreadIds(it) }
-                collected
+                collectedSystem to collectedUnread
             }
         deleteFromProvider(systemIds)
+        readNotificationCanceler?.cancelFor(unreadIds)
+        readNotificationCanceler?.cancelThreads(threadIds)
     }
 
     /** Forwards provider ids to the platform deleter in bounded chunks. */
@@ -199,6 +214,7 @@ class MessageRepositoryImpl(
                 collected
             }
         syncReadToProvider(systemIds, read)
+        if (read) cancelNotificationsForRead(ids)
     }
 
     override suspend fun setReadForThreads(
@@ -207,13 +223,46 @@ class MessageRepositoryImpl(
     ) {
         if (threadIds.isEmpty()) return
         val chunks = SqliteChunker.chunk(threadIds)
-        val systemIds =
+        val (systemIds, unreadIds) =
             database.withTransaction {
-                val collected = chunks.flatMap { messageDao.systemSmsIdsForThreads(it) }
+                val collectedSystem = chunks.flatMap { messageDao.systemSmsIdsForThreads(it) }
+                // Captured BEFORE the update: only the previously unread
+                // messages may still own per-message notifications, and after
+                // the write the distinction is gone.
+                val collectedUnread =
+                    if (read) chunks.flatMap { messageDao.unreadMessageIdsInThreads(it) } else emptyList()
                 chunks.forEach { messageDao.setReadForThreads(it, read) }
-                collected
+                collectedSystem to collectedUnread
             }
         syncReadToProvider(systemIds, read)
+        if (read) {
+            readNotificationCanceler?.cancelFor(unreadIds)
+            // The whole thread is read by definition of this operation.
+            readNotificationCanceler?.cancelThreads(threadIds)
+        }
+    }
+
+    /**
+     * Cancels the notifications belonging to messages that just became read:
+     * their per-message notifications unconditionally, and each owning
+     * thread's message notification only once the thread has NO unread
+     * messages left (a partially read thread keeps its notification).
+     */
+    private suspend fun cancelNotificationsForRead(messageIds: List<Long>) {
+        val canceler = readNotificationCanceler ?: return
+        canceler.cancelFor(messageIds)
+        val threadIds = SqliteChunker.chunk(messageIds).flatMap { messageDao.threadIdsFor(it) }.distinct()
+        cancelFullyReadThreadNotifications(threadIds)
+    }
+
+    /** Cancels thread message notifications for the subset of [threadIds] with zero unread messages. */
+    private suspend fun cancelFullyReadThreadNotifications(threadIds: List<Long>) {
+        val canceler = readNotificationCanceler ?: return
+        if (threadIds.isEmpty()) return
+        val withUnread =
+            SqliteChunker.chunk(threadIds).flatMap { messageDao.threadIdsWithUnread(it) }.toSet()
+        val fullyRead = threadIds.filterNot { it in withUnread }
+        if (fullyRead.isNotEmpty()) canceler.cancelThreads(fullyRead)
     }
 
     /**

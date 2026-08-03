@@ -29,6 +29,7 @@ import app.clearsms.data.rules.RuleImporter
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.notification.NotificationDismisser
 import app.clearsms.sms.SystemSentSmsSource
 import app.clearsms.sms.TelephonyWriter
 import dagger.BindsOptionalOf
@@ -156,6 +157,7 @@ object DataModule {
         bundledRuleLoader: BundledRuleLoader,
         json: Json,
         telephonyWriter: TelephonyWriter,
+        notificationDismisser: NotificationDismisser,
     ): MessageRepositoryImpl =
         MessageRepositoryImpl(
             database = database,
@@ -164,6 +166,7 @@ object DataModule {
             json = json,
             systemSmsDeleter = telephonyWriter,
             systemSmsReadWriter = telephonyWriter,
+            readNotificationCanceler = notificationDismisser,
         )
 
     @Provides

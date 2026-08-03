@@ -342,6 +342,18 @@ interface MessageDao {
         read: Boolean,
     )
 
+    /** Distinct thread ids owning the given messages (notification cancellation). */
+    @Query("SELECT DISTINCT threadId FROM messages WHERE id IN (:ids)")
+    suspend fun threadIdsFor(ids: List<Long>): List<Long>
+
+    /** Of [threadIds], the threads that still contain at least one unread message. */
+    @Query("SELECT DISTINCT threadId FROM messages WHERE threadId IN (:threadIds) AND isRead = 0")
+    suspend fun threadIdsWithUnread(threadIds: List<Long>): List<Long>
+
+    /** Unread message ids inside [threadIds] — the messages that may still own notifications. */
+    @Query("SELECT id FROM messages WHERE threadId IN (:threadIds) AND isRead = 0")
+    suspend fun unreadMessageIdsInThreads(threadIds: List<Long>): List<Long>
+
     @Query("UPDATE messages SET isArchived = :archived WHERE threadId IN (:threadIds)")
     suspend fun setArchivedForThreads(
         threadIds: List<Long>,

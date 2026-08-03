@@ -161,10 +161,6 @@ class TransactionNotifier
             return builder.build()
         }
 
-        fun cancel(messageId: Long) {
-            NotificationManagerCompat.from(context).cancel(notificationId(messageId))
-        }
-
         /** Inflates one of the custom layouts with the amount (explicitly colored) and detail line. */
         private fun contentView(
             content: Content,
@@ -213,7 +209,7 @@ class TransactionNotifier
                 }
             }
 
-        private fun notificationId(messageId: Long) = TRANSACTION_NOTIFICATION_ID_BASE + (messageId % 1000).toInt()
+        private fun notificationId(messageId: Long) = NotificationIds.transaction(messageId)
 
         /** What a transaction notification shows; pure and unit-testable. */
         data class Content(
@@ -225,9 +221,8 @@ class TransactionNotifier
         }
 
         companion object {
-            private const val TRANSACTION_NOTIFICATION_ID_BASE = 30_000
-            private const val GROUP_SUMMARY_ID = 31_000
-            private const val GROUP_KEY = "app.clearsms.TRANSACTIONS"
+            private const val GROUP_SUMMARY_ID = NotificationIds.TRANSACTION_GROUP_SUMMARY
+            private const val GROUP_KEY = NotificationIds.TRANSACTION_GROUP_KEY
 
             /**
              * Detail keys written only for bill/payment reminders. Their
