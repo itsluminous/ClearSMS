@@ -53,6 +53,14 @@ data class InboxFilterState(
     fun selectCategory(value: Category): InboxFilterState = copy(category = if (category == value) null else value)
 
     fun toggleUnread(): InboxFilterState = copy(unreadOnly = !unreadOnly)
+
+    /**
+     * Whether inbox rows should carry their category tag. Only views that mix
+     * categories need it to disambiguate: no category pill selected (all
+     * messages), with or without the Unread toggle. Under a single-category
+     * pill every row would repeat the pill's own label, so the tag is hidden.
+     */
+    val showsCategoryTags: Boolean get() = category == null
 }
 
 /**

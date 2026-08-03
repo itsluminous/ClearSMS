@@ -253,6 +253,7 @@ fun InboxScreen(
                             InboxRow(
                                 item = item,
                                 richAvatars = state.richAvatars,
+                                showCategoryTag = state.filter.showsCategoryTags,
                                 selected = selected,
                                 onClick = {
                                     if (selection.active) {
@@ -432,6 +433,7 @@ private fun FilterChipRow(
 private fun InboxRow(
     item: InboxItem,
     richAvatars: Boolean,
+    showCategoryTag: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -486,8 +488,10 @@ private fun InboxRow(
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(4.dp))
-                CategoryBadge(category = message.category)
+                if (showCategoryTag) {
+                    Spacer(Modifier.height(4.dp))
+                    CategoryBadge(category = message.category)
+                }
             }
         },
         trailingContent = {
