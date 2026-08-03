@@ -2,6 +2,7 @@ package app.clearsms.notification
 
 import android.app.NotificationManager
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationManagerCompat
 import app.clearsms.data.repository.ReadNotificationCanceler
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,12 +31,14 @@ class NotificationDismisser
         override fun cancelFor(messageIds: List<Long>) {
             if (messageIds.isEmpty()) return
             val manager = NotificationManagerCompat.from(context)
+            val cancelled = mutableSetOf<Int>()
             for (id in messageIds) {
-                manager.cancel(NotificationIds.transaction(id))
-                manager.cancel(NotificationIds.otp(id))
-                manager.cancel(NotificationIds.scam(id))
+                cancelled += NotificationIds.transaction(id)
+                cancelled += NotificationIds.otp(id)
+                cancelled += NotificationIds.scam(id)
             }
-            reapOrphanTransactionSummary(manager)
+            cancelled.forEach(manager::cancel)
+            reapOrphanTransactionSummary(manager, cancelled)
         }
 
         override fun cancelThreads(threadIds: List<Long>) {
@@ -47,8 +50,20 @@ class NotificationDismisser
         /**
          * Cancels the transaction group summary when no child of the group is
          * left in the shade; keeps it while any child remains (partial reads).
+         *
+         * [justCancelled] ids are treated as gone even if [NotificationManager]
+         * still reports them: cancellation is dispatched asynchronously, so the
+         * shade snapshot taken immediately after [NotificationManagerCompat.cancel]
+         * can still contain the child we just removed. Without this exclusion the
+         * summary survives its last child whenever reads arrive one at a time
+         * (verified on the emulator; Robolectric misses it because shadow
+         * cancellation is synchronous).
          */
-        private fun reapOrphanTransactionSummary(manager: NotificationManagerCompat) {
+        @VisibleForTesting
+        internal fun reapOrphanTransactionSummary(
+            manager: NotificationManagerCompat,
+            justCancelled: Set<Int>,
+        ) {
             val notificationManager =
                 context.getSystemService(NotificationManager::class.java) ?: return
             val active =
@@ -62,6 +77,7 @@ class NotificationDismisser
             val hasChild =
                 active.any { sbn ->
                     sbn.id != NotificationIds.TRANSACTION_GROUP_SUMMARY &&
+                        sbn.id !in justCancelled &&
                         sbn.notification.group == NotificationIds.TRANSACTION_GROUP_KEY
                 }
             if (!hasChild) manager.cancel(NotificationIds.TRANSACTION_GROUP_SUMMARY)

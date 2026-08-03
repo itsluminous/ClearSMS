@@ -2,6 +2,7 @@ package app.clearsms.notification
 
 import android.app.NotificationManager
 import android.content.Context
+import androidx.core.app.NotificationManagerCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
@@ -43,6 +44,7 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class ReadNotificationCancellationTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val dismisser = NotificationDismisser(context)
     private lateinit var db: ClearSmsDatabase
     private lateinit var repository: MessageRepositoryImpl
 
@@ -116,7 +118,7 @@ class ReadNotificationCancellationTest {
                     ),
                 bundledRuleLoader = BundledRuleLoader(context, db.ruleDao(), json, NoopDataStore),
                 json = json,
-                readNotificationCanceler = NotificationDismisser(context),
+                readNotificationCanceler = dismisser,
             )
         runBlocking {
             db.messageDao().insert(txMessage1)
@@ -231,6 +233,24 @@ class ReadNotificationCancellationTest {
     fun `deleting threads cancels their notifications and reaps the summary`() {
         runBlocking { repository.deleteThreads(listOf(1L, 2L)) }
         assertThat(activeIds()).isEmpty()
+    }
+
+    @Test
+    fun `summary reap treats just-cancelled ids as gone despite a stale shade snapshot`() {
+        // NotificationManagerCompat.cancel is dispatched asynchronously, so on a
+        // real device activeNotifications can still list a child the dismisser
+        // cancelled a moment ago. Robolectric's shadow cancels synchronously and
+        // cannot produce that staleness, so this pins the exclusion directly:
+        // the shade still shows the last child (we never cancel it here), but
+        // because its id is in justCancelled the summary must be reaped anyway.
+        runBlocking { repository.setReadForThreads(listOf(1L), read = true) }
+        // Only message 3's transaction child remains in the shade.
+        assertThat(activeIds()).contains(NotificationIds.transaction(3L))
+        dismisser.reapOrphanTransactionSummary(
+            NotificationManagerCompat.from(context),
+            justCancelled = setOf(NotificationIds.transaction(3L)),
+        )
+        assertThat(activeIds()).doesNotContain(NotificationIds.TRANSACTION_GROUP_SUMMARY)
     }
 
     @Test
