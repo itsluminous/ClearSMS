@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.clearsms.BuildConfig
 import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
@@ -820,8 +821,12 @@ private fun settingsRowEntries(
                     title,
                     state.signature.ifBlank { stringResource(R.string.settings_signature_disabled) },
                 ) { openDialog(SettingsDialog.SIGNATURE) }
-            SettingsItem.VERSION ->
-                row(section, title, appVersion()) {}
+            SettingsItem.VERSION -> {
+                // Interpolate the real build version so the link always lands
+                // on this build's release notes — never a hardcoded tag.
+                val url = stringResource(R.string.url_release_notes, BuildConfig.VERSION_NAME)
+                row(section, title, appVersion()) { onOpenLink(url) }
+            }
             SettingsItem.SOURCE_CODE -> {
                 val url = stringResource(R.string.url_source_code)
                 row(section, title, stringResource(R.string.settings_source_code_summary)) { onOpenLink(url) }

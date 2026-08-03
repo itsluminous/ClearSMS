@@ -81,7 +81,7 @@
     <string name="finance_available_limit">Available limit</string>
     <string name="finance_no_limit_data">No limit data yet</string>
     <string name="finance_utilization">%1$d%% of limit used</string>
-    <string name="finance_high_usage_alert">High credit usage detected — %1$d card(s) are above the safe 30%% limit</string>
+    <string name="finance_high_usage_alert">High credit usage detected - %1$d card(s) are above the safe 30%% limit</string>
     <string name="finance_transaction">Transaction</string>
     <string name="finance_expand_section">Expand section</string>
     <string name="finance_collapse_section">Collapse section</string>
@@ -175,7 +175,7 @@
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to Clear SMS</string>
-    <string name="onboarding_welcome_body">Your inbox, organized. Messages are categorized, transactions tracked and OTPs surfaced — entirely on this device. No servers, no ads, no tracking.</string>
+    <string name="onboarding_welcome_body">Your inbox, organized. Messages are categorized, transactions tracked and OTPs surfaced - entirely on this device. No servers, no ads, no tracking.</string>
     <string name="onboarding_get_started">Get started</string>
     <string name="onboarding_permissions_title">Permissions</string>
     <string name="onboarding_permissions_body">Clear SMS needs SMS access to organize your messages, and contacts access to recognize people you know. Nothing ever leaves your phone.</string>
@@ -243,19 +243,19 @@
     <string name="balance_show_balances">Show balances</string>
     <string name="balance_hide_balances">Hide balances</string>
     <string name="balance_unlock_title">Unlock to show balances</string>
-    <string name="balance_unlock_subtitle">Use your screen lock — fingerprint, face, PIN, pattern or password</string>
+    <string name="balance_unlock_subtitle">Use your screen lock - fingerprint, face, PIN, pattern or password</string>
     <string name="balance_no_lock_title">No screen lock set</string>
     <string name="balance_no_lock_text">Revealing hidden balances needs a device screen lock (PIN, pattern or password). Set one up in system settings, or turn “Show balance” back on to skip the lock.</string>
     <string name="balance_no_lock_open_settings">Open security settings</string>
     <string name="balance_unavailable_title">Can’t verify right now</string>
-    <string name="balance_unavailable_text">Device authentication is temporarily unavailable. Balances stay hidden — try again in a moment.</string>
+    <string name="balance_unavailable_text">Device authentication is temporarily unavailable. Balances stay hidden - try again in a moment.</string>
     <string name="action_ok">OK</string>
     <string name="settings_section_notification">Notifications</string>
     <string name="settings_delivery_reports">SMS delivery reports</string>
     <string name="settings_delivery_reports_summary">Confirm when sent messages are delivered</string>
     <string name="settings_notification_actions">Notification action buttons</string>
     <string name="settings_notification_actions_none">None</string>
-    <string name="settings_notification_actions_hint">Pick up to 3 — Android shows at most 3 buttons on a notification.</string>
+    <string name="settings_notification_actions_hint">Pick up to 3 - Android shows at most 3 buttons on a notification.</string>
     <string name="settings_transaction_notifications">Transaction notifications</string>
     <string name="settings_transaction_notifications_summary">Show the parsed amount instead of the raw message</string>
     <string name="settings_swipe_right">Swipe right action</string>
@@ -276,7 +276,7 @@
     <string name="settings_sort_done">Inbox sorted</string>
     <string name="settings_sort_running">Sorting inbox…</string>
     <string name="settings_sort_progress">%1$d of %2$d messages</string>
-    <string name="settings_sort_done_count">Inbox sorted — %1$d messages re-categorized</string>
+    <string name="settings_sort_done_count">Inbox sorted - %1$d messages re-categorized</string>
     <string name="compose_change_recipient">Change recipient</string>
     <string name="settings_section_otp">OTP</string>
     <string name="settings_otp_auto_copy">Auto copy</string>
@@ -284,8 +284,8 @@
     <string name="settings_otp_auto_delete">Auto delete OTP</string>
     <string name="settings_otp_size">OTP display size</string>
     <string name="settings_clear_otp">Clear older OTPs</string>
-    <string name="settings_clear_otp_summary">One-time cleanup — deletes now, nothing is saved</string>
-    <string name="settings_clear_otp_note">Runs once, right now — this is not a saved setting. For recurring cleanup use “Auto delete OTP” above.</string>
+    <string name="settings_clear_otp_summary">One-time cleanup - deletes now, nothing is saved</string>
+    <string name="settings_clear_otp_note">Runs once, right now - this is not a saved setting. For recurring cleanup use “Auto delete OTP” above.</string>
     <string name="clear_otp_all">All</string>
     <string name="clear_otp_1_day">Older than 1 day</string>
     <string name="clear_otp_3_days">Older than 3 days</string>
@@ -322,6 +322,7 @@
     <string name="settings_donate_upi_summary">Support the project with a UPI payment</string>
     <string name="settings_link_no_handler">No app found to open this link</string>
     <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
+    <string name="url_release_notes" translatable="false">https://github.com/itsluminous/ClearSMS/releases/tag/v%1$s</string>
     <string name="url_donate_paypal" translatable="false">https://paypal.me/itsluminous</string>
     <string name="url_donate_upi" translatable="false">upi://pay?pa=itsluminous@upi&amp;cn=ClearSMS</string>
 
@@ -360,7 +361,7 @@
     <string name="privacy_rules_body">Every categorization rule is human-readable JSON you can inspect, edit, export and contribute back to the community. Sharing rules with the developer is always an explicit action that uses your email app.</string>
 
     <!-- Licenses content -->
-    <string name="licenses_app">Apache License 2.0 — free and open source.</string>
+    <string name="licenses_app">Apache License 2.0 - free and open source.</string>
     <string name="licenses_apache2">Apache License 2.0</string>
 
     <!-- Permission explanations -->
@@ -402,7 +403,7 @@
     <string name="rule_wizard_analyze">Analyze message</string>
     <string name="rule_wizard_step_category">2. What is this message?</string>
     <string name="rule_wizard_step_extract">3. What should we extract?</string>
-    <string name="rule_wizard_extract_empty">No values detected — this rule will only categorize messages.</string>
+    <string name="rule_wizard_extract_empty">No values detected - this rule will only categorize messages.</string>
     <string name="rule_wizard_field_ignore">Ignore</string>
     <string name="rule_wizard_step_conditions">4. When should this rule apply?</string>
     <string name="rule_wizard_keywords_hint">Message must contain</string>
@@ -430,11 +431,11 @@
     <string name="rule_token_number">Number</string>
     <string name="rule_token_vendor">Vendor / merchant</string>
     <string name="rule_token_keyword">Keyword</string>
-    <string name="rule_error_empty_pattern">Nothing to match yet — analyze a sample message first.</string>
+    <string name="rule_error_empty_pattern">Nothing to match yet - analyze a sample message first.</string>
     <string name="rule_error_invalid_pattern">The pattern does not compile. Fix it or reset to the suggested pattern.</string>
-    <string name="rule_error_catch_all">The pattern starts or ends with a catch-all like .* — remove it; matching already scans the whole message.</string>
+    <string name="rule_error_catch_all">The pattern starts or ends with a catch-all like .* - remove it; matching already scans the whole message.</string>
     <string name="rule_error_capture_mismatch">The pattern has fewer capture groups than the extraction mapping needs.</string>
-    <string name="rule_error_duplicate_field">Two values are mapped to the same field — set one of them to Ignore.</string>
+    <string name="rule_error_duplicate_field">Two values are mapped to the same field - set one of them to Ignore.</string>
     <string name="rule_error_no_source_match">The rule no longer matches the source message. Loosen the conditions or reset the pattern.</string>
     <!-- Alerts: delivery reminders -->
     <string name="alerts_filter_delivery">Delivery</string>

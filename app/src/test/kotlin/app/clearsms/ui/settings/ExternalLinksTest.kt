@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
+import app.clearsms.BuildConfig
 import app.clearsms.R
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -41,6 +42,24 @@ class ExternalLinksTest {
         assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
         assertThat(intent.data?.scheme).isEqualTo("upi")
         assertThat(intent.dataString).isEqualTo("upi://pay?pa=itsluminous@upi&cn=ClearSMS")
+    }
+
+    @Test
+    fun `version row builds the release notes url from the build versionName`() {
+        val url = context.getString(R.string.url_release_notes, BuildConfig.VERSION_NAME)
+        assertThat(url)
+            .isEqualTo("https://github.com/itsluminous/ClearSMS/releases/tag/v${BuildConfig.VERSION_NAME}")
+        // The placeholder must be fully consumed — never a literal %1$s in the link.
+        assertThat(url).doesNotContain("%")
+        assertThat(BuildConfig.VERSION_NAME).isNotEmpty()
+    }
+
+    @Test
+    fun `version row resolves to a browser view intent`() {
+        val url = context.getString(R.string.url_release_notes, BuildConfig.VERSION_NAME)
+        val intent = ExternalLinks.intent(url)
+        assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
+        assertThat(intent.dataString).isEqualTo(url)
     }
 
     @Test

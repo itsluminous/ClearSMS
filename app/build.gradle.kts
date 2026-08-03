@@ -95,6 +95,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.VERSION_NAME feeds the Settings → About release-notes link.
+        buildConfig = true
     }
 
     lint {
