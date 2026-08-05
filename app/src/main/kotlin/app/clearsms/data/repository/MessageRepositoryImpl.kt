@@ -667,29 +667,18 @@ class MessageRepositoryImpl(
             // bogus "Flipkart bank account".
             val bankName =
                 if (SenderNameResolver.isPlausibleIssuer(canonicalBank)) canonicalBank else ""
-            // Resolve the owning account ONCE, here at ingestion. With a
-            // named issuer the account is upserted and its id used. With a
-            // blank issuer NO account is ever created: the transaction
-            // attaches to an existing account only when exactly one named
-            // bank holds that last-4, otherwise it stays unattached — a
-            // nameless account row is never the answer. The one exception
-            // to "no last-4, no account" is a curated standalone CARD
-            // product (see issuerKeyedCardAccountId): its spend SMS carry
-            // no digits at all, yet the issuer identifies the card exactly.
-            val accountId =
-                when {
-                    accountNumber.isEmpty() -> issuerKeyedCardAccountId(tx, bankName, timestampMs)
-                    bankName.isNotEmpty() -> upsertAccount(tx, accountNumber, bankName, timestampMs)
-                    else -> soleAccountIdForTail(accountNumber, tx.accountType)
-                }
-            val candidate =
+            // Deduplication runs BEFORE any account write: a suppressed
+            // cross-bank UPI echo (the provider bank re-announcing the
+            // user's own bank's payment) must never create a transaction
+            // OR an account under the provider bank.
+            val unlinked =
                 TransactionEntity(
                     amount = tx.amount,
                     type = tx.type,
                     merchantName = tx.merchantName,
                     accountNumber = accountNumber,
                     bankName = bankName,
-                    accountId = accountId,
+                    accountId = null,
                     timestamp = timestampMs,
                     balance = tx.balance,
                     referenceNumber = tx.referenceNumber,
@@ -698,17 +687,25 @@ class MessageRepositoryImpl(
                     note = preservedNote,
                 )
             // Banks alert the same payment more than once (spend alert +
-            // statement line). When an existing row already records this
-            // payment — same reference on the same account, or a twin alert
-            // moments apart (see [TransactionDeduplication]) — the rows are
+            // statement line), and a UPI payment is echoed by a SECOND bank
+            // (the UPI app's provider). When an existing row already records
+            // this payment (see [TransactionDeduplication]) the rows are
             // collapsed instead of double-counting the money.
-            val duplicate = findExistingDuplicate(candidate)
-            if (duplicate != null) {
-                transactionDao.update(
-                    TransactionDeduplication.collapse(duplicate, candidate).copy(id = duplicate.id),
-                )
-            } else {
-                transactionDao.insert(candidate)
+            val duplicate = findExistingDuplicate(unlinked)
+            when {
+                duplicate == null -> {
+                    val accountId = resolveAccountId(tx, accountNumber, bankName, timestampMs)
+                    transactionDao.insert(unlinked.copy(accountId = accountId))
+                }
+                duplicate.bankName.isNotEmpty() && bankName.isNotEmpty() && duplicate.bankName != bankName ->
+                    collapseCrossBankEcho(duplicate, unlinked, tx, timestampMs)
+                else -> {
+                    val accountId = resolveAccountId(tx, accountNumber, bankName, timestampMs)
+                    val candidate = unlinked.copy(accountId = accountId)
+                    transactionDao.update(
+                        TransactionDeduplication.collapse(duplicate, candidate).copy(id = duplicate.id),
+                    )
+                }
             }
         }
         // Balance-only messages update the account WITHOUT fabricating a
@@ -785,10 +782,13 @@ class MessageRepositoryImpl(
     /**
      * An already-persisted row recording the same payment as [candidate],
      * or null. Candidates are narrowed by the DAO (same reference on the
-     * same account at any time distance, or same amount/type/account inside
-     * the tier-2 window) and each pairing is confirmed by
-     * [TransactionDeduplication], which applies the balance / merchant /
-     * account-link guards.
+     * same account last-4 at any time distance, or same amount/type/last-4
+     * inside the tier-2 window — bank-agnostic, so cross-bank echoes
+     * surface) and each pairing is confirmed by [TransactionDeduplication].
+     * A ref-LESS cross-bank pairing is additionally vetoed when BOTH banks
+     * hold independent transaction evidence for the tail: two genuine
+     * accounts at two banks sharing a last-4 and receiving the same amount
+     * is exactly the false positive that tier must never merge.
      */
     private suspend fun findExistingDuplicate(candidate: TransactionEntity): TransactionEntity? {
         val normalizedRef = TransactionDeduplication.normalizedReference(candidate.referenceNumber)
@@ -803,11 +803,112 @@ class MessageRepositoryImpl(
                 amount = candidate.amount,
                 type = candidate.type,
                 accountNumber = candidate.accountNumber,
-                bankName = candidate.bankName,
                 fromTs = candidate.timestamp - TransactionDeduplication.NEAR_DUPLICATE_WINDOW_MS,
                 toTs = candidate.timestamp + TransactionDeduplication.NEAR_DUPLICATE_WINDOW_MS,
             )
-        return (byReference + nearby).firstOrNull { TransactionDeduplication.isDuplicate(it, candidate) }
+        for (existing in (byReference + nearby).distinctBy { it.id }) {
+            val duplicate =
+                when {
+                    TransactionDeduplication.isReferenceDuplicate(existing, candidate) -> true
+                    TransactionDeduplication.isNearDuplicateAlert(existing, candidate) -> true
+                    TransactionDeduplication.isCrossBankReferenceEcho(existing, candidate) -> true
+                    TransactionDeduplication.isCrossBankNearEcho(existing, candidate) ->
+                        !bothBanksHoldTail(existing, candidate)
+                    else -> false
+                }
+            if (duplicate) return existing
+        }
+        return null
+    }
+
+    /**
+     * Whether BOTH banks of a ref-less cross-bank pairing have transaction
+     * evidence for the tail beyond the pair itself — the two-genuine-accounts
+     * shape a near-echo merge must never touch.
+     */
+    private suspend fun bothBanksHoldTail(
+        existing: TransactionEntity,
+        candidate: TransactionEntity,
+    ): Boolean {
+        val existingEvidence =
+            transactionDao.countByBankAndTail(existing.bankName, existing.accountNumber, existing.id)
+        if (existingEvidence == 0) return false
+        val candidateEvidence =
+            transactionDao.countByBankAndTail(candidate.bankName, candidate.accountNumber, existing.id)
+        return candidateEvidence > 0
+    }
+
+    /**
+     * Resolves the owning account ONCE, at ingestion. With a named issuer
+     * the account is upserted and its id used. With a blank issuer NO
+     * account is ever created: the transaction attaches to an existing
+     * account only when exactly one named bank holds that last-4, otherwise
+     * it stays unattached — a nameless account row is never the answer. The
+     * one exception to "no last-4, no account" is a curated standalone CARD
+     * product (see issuerKeyedCardAccountId): its spend SMS carry no digits
+     * at all, yet the issuer identifies the card exactly.
+     */
+    private suspend fun resolveAccountId(
+        tx: ParsedTransaction,
+        accountNumber: String,
+        bankName: String,
+        timestampMs: Long,
+    ): Long? =
+        when {
+            accountNumber.isEmpty() -> issuerKeyedCardAccountId(tx, bankName, timestampMs)
+            bankName.isNotEmpty() -> upsertAccount(tx, accountNumber, bankName, timestampMs)
+            else -> soleAccountIdForTail(accountNumber, tx.accountType)
+        }
+
+    /**
+     * Collapses a cross-bank UPI echo pair into ONE transaction under ONE
+     * bank. The surviving bank is the one with a real account relationship
+     * — other transactions already attributed to that (bank, last-4); the
+     * UPI provider's echo has none (see
+     * [TransactionDeduplication.crossBankSurvivor]). Only the winner's
+     * account is (up)serted; if the LOSING side already spawned an account
+     * that nothing else references — no other transaction, no balance or
+     * limit ever reported — that phantom row is reaped, so the provider
+     * bank never surfaces in Finance.
+     */
+    private suspend fun collapseCrossBankEcho(
+        existing: TransactionEntity,
+        candidate: TransactionEntity,
+        tx: ParsedTransaction,
+        timestampMs: Long,
+    ) {
+        val existingEvidence =
+            transactionDao.countByBankAndTail(existing.bankName, existing.accountNumber, existing.id)
+        val candidateEvidence =
+            transactionDao.countByBankAndTail(candidate.bankName, candidate.accountNumber, existing.id)
+        val winner =
+            TransactionDeduplication.crossBankSurvivor(existing, candidate, existingEvidence, candidateEvidence)
+        val loser = if (winner === existing) candidate else existing
+        val accountId =
+            winner.accountId
+                ?: upsertAccountBalance(
+                    accountNumber = winner.accountNumber,
+                    bankName = winner.bankName,
+                    accountType = tx.accountType,
+                    balance = winner.balance,
+                    timestampMs = timestampMs,
+                )
+        transactionDao.update(
+            TransactionDeduplication
+                .collapseCrossBank(winner, loser)
+                .copy(id = existing.id, accountId = accountId),
+        )
+        // Reap the phantom: the losing side's account, when the echo was its
+        // only evidence. A row holding ANY other transaction or a reported
+        // balance/limit is a genuine account and stays.
+        val orphanId = if (loser === existing) existing.accountId else null
+        orphanId?.let { id ->
+            if (id == accountId) return@let
+            val account = accountDao.findById(id) ?: return@let
+            if (transactionDao.countByAccountId(id, existing.id) > 0) return@let
+            if (account.lastKnownBalance != null || account.creditLimit != null || account.availableLimit != null) return@let
+            accountDao.deleteById(id)
+        }
     }
 
     private suspend fun upsertAccount(

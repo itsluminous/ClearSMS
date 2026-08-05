@@ -33,8 +33,13 @@ import kotlin.math.abs
  *    differing merchants (same-amount SIPs into different funds), differing
  *    valid references, or rows already linked to different accounts.
  *
- * Never merged across accounts or types, and never across two different
- * NAMED banks — the same last-4 legitimately exists at several banks.
+ * Never merged across accounts or types. Merging across two different NAMED
+ * banks — the same last-4 legitimately exists at several banks — is allowed
+ * ONLY by the cross-bank echo tiers (1b/2b below), which exist because a UPI
+ * payment is texted by BOTH the account's own bank and the UPI app's
+ * provider bank: same tail, amount, direction and UPI reference, minutes
+ * apart, but attributed to two banks — one event, and without these tiers a
+ * phantom transaction plus a phantom account appear under the provider bank.
  */
 object TransactionDeduplication {
     /** Shortest token accepted as a transaction reference. */
@@ -42,6 +47,19 @@ object TransactionDeduplication {
 
     /** Tier-2 pairing window; see the class doc for the evidence behind 90s. */
     const val NEAR_DUPLICATE_WINDOW_MS = 90_000L
+
+    /**
+     * Cross-bank reference-echo window (tier 1b). When a UPI payment lands,
+     * TWO banks can text the user: the account's own bank AND the UPI app's
+     * provider bank — same tail, amount, direction and UPI reference, but
+     * attributed to different banks. The reference (a UPI RRN) is globally
+     * unique per transaction, so equality is near-proof of one event; the
+     * window exists only to bound the horizon over which RRNs could ever be
+     * reused. Provider echoes usually arrive within minutes, but SMS
+     * delivery can lag hours (DND windows, queued delivery) — 24h keeps
+     * every real echo while a reused RRN months later stays distinct.
+     */
+    const val CROSS_BANK_REF_WINDOW_MS = 24 * 60 * 60 * 1000L
 
     /**
      * Canonical form of a reference: trimmed and uppercased. Returns null
@@ -55,11 +73,109 @@ object TransactionDeduplication {
         return trimmed
     }
 
-    /** True when [a] and [b] describe the same payment under either tier. */
+    /** True when [a] and [b] describe the same payment under any tier. */
     fun isDuplicate(
         a: TransactionEntity,
         b: TransactionEntity,
-    ): Boolean = isReferenceDuplicate(a, b) || isNearDuplicateAlert(a, b)
+    ): Boolean =
+        isReferenceDuplicate(a, b) ||
+            isNearDuplicateAlert(a, b) ||
+            isCrossBankReferenceEcho(a, b) ||
+            isCrossBankNearEcho(a, b)
+
+    /**
+     * Tier 1b: the same payment texted by TWO different banks (the user's
+     * own bank plus the UPI provider's bank). Requires the strongest
+     * possible signal set: equal valid references, equal amount and
+     * direction, and the same NON-EMPTY account tail — a blank tail is no
+     * shared-account evidence at all. Both banks must actually be named
+     * (a blank bank is tier 1's territory), and the account-link veto is
+     * deliberately NOT applied: the phantom account the echo spawned is
+     * exactly the state this tier exists to eliminate.
+     */
+    fun isCrossBankReferenceEcho(
+        a: TransactionEntity,
+        b: TransactionEntity,
+    ): Boolean {
+        val refA = normalizedReference(a.referenceNumber) ?: return false
+        val refB = normalizedReference(b.referenceNumber) ?: return false
+        if (refA != refB) return false
+        if (a.amount != b.amount || a.type != b.type) return false
+        if (a.accountNumber.isEmpty() || a.accountNumber != b.accountNumber) return false
+        if (a.bankName.isEmpty() || b.bankName.isEmpty() || a.bankName == b.bankName) return false
+        return abs(a.timestamp - b.timestamp) <= CROSS_BANK_REF_WINDOW_MS
+    }
+
+    /**
+     * Tier 2b: a cross-bank echo whose provider message dropped the
+     * reference. With no reference to lean on the window stays TIGHT
+     * ([NEAR_DUPLICATE_WINDOW_MS]) and every tier-2 veto applies, plus one
+     * more: rows already linked to two different accounts are two GENUINE
+     * accounts that happen to share a tail — the one false positive this
+     * tier must never touch (ingestion additionally vetoes when both banks
+     * hold independent transaction evidence for the tail; see
+     * the repository's duplicate lookup).
+     */
+    fun isCrossBankNearEcho(
+        a: TransactionEntity,
+        b: TransactionEntity,
+    ): Boolean {
+        val refA = normalizedReference(a.referenceNumber)
+        val refB = normalizedReference(b.referenceNumber)
+        // Two valid references either agree (tier 1b) or prove two payments.
+        if (refA != null && refB != null) return false
+        if (a.amount != b.amount || a.type != b.type) return false
+        if (a.accountNumber.isEmpty() || a.accountNumber != b.accountNumber) return false
+        if (a.bankName.isEmpty() || b.bankName.isEmpty() || a.bankName == b.bankName) return false
+        if (linkedToDifferentAccounts(a, b)) return false
+        if (abs(a.timestamp - b.timestamp) > NEAR_DUPLICATE_WINDOW_MS) return false
+        if (a.balance != null && b.balance != null && a.balance != b.balance) return false
+        val merchantA = a.merchantName?.trim().orEmpty()
+        val merchantB = b.merchantName?.trim().orEmpty()
+        if (merchantA.isNotEmpty() && merchantB.isNotEmpty() && !merchantA.equals(merchantB, ignoreCase = true)) return false
+        return true
+    }
+
+    /**
+     * Survivor of a cross-bank echo pair: the row whose bank has a REAL
+     * account relationship with the tail — measured by how many OTHER
+     * transactions are already attributed to that (bank, last-4) — wins;
+     * the provider bank's echo has none. On a tie the richer row wins, and
+     * on equal richness [a] (the already-persisted row) is kept.
+     */
+    fun crossBankSurvivor(
+        a: TransactionEntity,
+        b: TransactionEntity,
+        aBankEvidence: Int,
+        bBankEvidence: Int,
+    ): TransactionEntity =
+        when {
+            aBankEvidence > bBankEvidence -> a
+            bBankEvidence > aBankEvidence -> b
+            richness(b) > richness(a) -> b
+            else -> a
+        }
+
+    /**
+     * One row for a cross-bank echo pair, keeping the WINNER's identity
+     * wholesale — id, rawSmsId, timestamp, bank, account link — and filling
+     * only the counterparty-description gaps from the loser. The loser's
+     * balance is never copied: it describes the other bank's (usually
+     * phantom) ledger, not the surviving account's.
+     */
+    fun collapseCrossBank(
+        winner: TransactionEntity,
+        loser: TransactionEntity,
+    ): TransactionEntity =
+        winner.copy(
+            merchantName = winner.merchantName?.takeIf { it.isNotBlank() } ?: loser.merchantName,
+            referenceNumber =
+                winner.referenceNumber?.takeIf { normalizedReference(it) != null }
+                    ?: loser.referenceNumber?.takeIf { normalizedReference(it) != null }
+                    ?: winner.referenceNumber
+                    ?: loser.referenceNumber,
+            note = mergeNotes(winner.note, loser.note),
+        )
 
     /** Tier 1: same normalized reference on the same account, any time gap. */
     fun isReferenceDuplicate(
@@ -188,7 +304,9 @@ object TransactionDeduplication {
                     clusters += mutableListOf(row)
                     survivors += row
                 } else {
-                    if (clusters[index].any { isReferenceDuplicate(it, row) }) tier1++ else tier2++
+                    val referenceBacked =
+                        clusters[index].any { isReferenceDuplicate(it, row) || isCrossBankReferenceEcho(it, row) }
+                    if (referenceBacked) tier1++ else tier2++
                     clusters[index] += row
                     survivors[index] = collapse(survivors[index], row)
                 }

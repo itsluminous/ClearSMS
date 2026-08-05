@@ -128,7 +128,6 @@ private class FakeTransactionDao(
         amount: Double,
         type: TransactionType,
         accountNumber: String,
-        bankName: String,
         fromTs: Long,
         toTs: Long,
     ): List<TransactionEntity> =
@@ -136,9 +135,22 @@ private class FakeTransactionDao(
             it.amount == amount &&
                 it.type == type &&
                 it.accountNumber == accountNumber &&
-                it.bankName == bankName &&
                 it.timestamp in fromTs..toTs
         }
+
+    override suspend fun countByBankAndTail(
+        bankName: String,
+        accountNumber: String,
+        excludeId: Long,
+    ): Int =
+        transactions.count {
+            it.bankName == bankName && it.accountNumber == accountNumber && it.id != excludeId
+        }
+
+    override suspend fun countByAccountId(
+        accountId: Long,
+        excludeId: Long,
+    ): Int = transactions.count { it.accountId == accountId && it.id != excludeId }
 
     override suspend fun update(transaction: TransactionEntity) = Unit
 
@@ -174,6 +186,10 @@ private class FakeAccountDao : AccountDao {
     override suspend fun findByNumber(accountNumber: String): List<AccountEntity> = emptyList()
 
     override suspend fun findByBank(bankName: String): List<AccountEntity> = emptyList()
+
+    override suspend fun findById(id: Long): AccountEntity? = null
+
+    override suspend fun deleteById(id: Long) = Unit
 
     override suspend fun getAll(): List<AccountEntity> = emptyList()
 

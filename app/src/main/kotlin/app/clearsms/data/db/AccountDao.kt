@@ -46,6 +46,17 @@ interface AccountDao {
     @Update
     suspend fun update(account: AccountEntity)
 
+    @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
+    suspend fun findById(id: Long): AccountEntity?
+
+    /**
+     * Deletes ONE account row by id — used solely to reap the phantom
+     * account a cross-bank UPI echo spawned, after the echo transaction has
+     * been collapsed away and nothing else references the row.
+     */
+    @Query("DELETE FROM accounts WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM accounts")
     suspend fun deleteAll()
 }

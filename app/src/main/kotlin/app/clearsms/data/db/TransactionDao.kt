@@ -98,15 +98,17 @@ interface TransactionDao {
     ): List<TransactionEntity>
 
     /**
-     * Duplicate candidates by proximity (tier 2): same amount, type and
-     * exact (last-4, bank) account inside a timestamp window. Callers
-     * re-check each pair against the dedup guards.
+     * Duplicate candidates by proximity (tiers 2/2b): same amount, type and
+     * last-4 inside a timestamp window — the BANK is deliberately not
+     * filtered here, so cross-bank echo candidates surface too. Callers
+     * re-check each pair against the dedup guards (tier 2 requires equal
+     * banks; tier 2b requires different ones plus its vetoes).
      */
     @Query(
         """
         SELECT * FROM transactions
         WHERE amount = :amount AND type = :type
-          AND accountNumber = :accountNumber AND bankName = :bankName
+          AND accountNumber = :accountNumber
           AND timestamp BETWEEN :fromTs AND :toTs
         """,
     )
@@ -114,10 +116,34 @@ interface TransactionDao {
         amount: Double,
         type: TransactionType,
         accountNumber: String,
-        bankName: String,
         fromTs: Long,
         toTs: Long,
     ): List<TransactionEntity>
+
+    /**
+     * How many OTHER transactions are attributed to this (bank, last-4) —
+     * the "real account relationship" evidence used to pick the surviving
+     * bank of a cross-bank echo pair and to veto ref-less cross-bank merges
+     * when BOTH banks genuinely hold the tail.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM transactions
+        WHERE bankName = :bankName AND accountNumber = :accountNumber AND id != :excludeId
+        """,
+    )
+    suspend fun countByBankAndTail(
+        bankName: String,
+        accountNumber: String,
+        excludeId: Long,
+    ): Int
+
+    /** Transactions still linked to [accountId], excluding [excludeId] — orphan check. */
+    @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId AND id != :excludeId")
+    suspend fun countByAccountId(
+        accountId: Long,
+        excludeId: Long,
+    ): Int
 
     @Update
     suspend fun update(transaction: TransactionEntity)
