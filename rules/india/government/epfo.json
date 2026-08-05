@@ -34,7 +34,7 @@
           "account_last4": "$1",
           "balance": "$2",
           "amount": "$3",
-          "type": "debit",
+          "type": "credit",
           "merchant": "EPF",
           "bank": "EPFO"
         }

@@ -14,7 +14,7 @@
         "sub_category": "investment",
         "extract": {
           "amount": "$2",
-          "type": "debit",
+          "type": "credit",
           "merchant": "NPS",
           "account_last4": "$1",
           "bank": "Protean NPS"
@@ -56,7 +56,7 @@
         "sub_category": "investment",
         "extract": {
           "amount": "$1",
-          "type": "debit",
+          "type": "credit",
           "merchant": "NPS",
           "bank": "Protean NPS"
         }

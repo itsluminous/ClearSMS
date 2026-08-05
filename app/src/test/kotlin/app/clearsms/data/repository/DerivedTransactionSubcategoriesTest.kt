@@ -64,7 +64,7 @@ class DerivedTransactionSubcategoriesTest {
     }
 
     @Test
-    fun `nps contribution derives one investment debit with a protean account`() =
+    fun `nps contribution derives one investment credit with a protean account`() =
         runBlocking {
             repository.insertIncoming(
                 "VM-NSDLNP",
@@ -74,7 +74,10 @@ class DerivedTransactionSubcategoriesTest {
             )
             val tx = db.transactionDao().getAll().single()
             assertThat(tx.amount).isEqualTo(44236.0)
-            assertThat(tx.type).isEqualTo(TransactionType.DEBIT)
+            // Money RECEIVED into the retirement account: employer NPS
+            // contributions never leave a tracked bank account, so a debit
+            // here fabricated spend (CR: retirement credits).
+            assertThat(tx.type).isEqualTo(TransactionType.CREDIT)
             assertThat(tx.merchantName).isEqualTo("NPS")
             assertThat(tx.category).isEqualTo(MerchantCategory.INVESTMENT)
             // The user asked for NPS to be treated as an account: the PRAN

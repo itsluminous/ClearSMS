@@ -170,14 +170,16 @@ class TaxonomyRulesTest {
     }
 
     @Test
-    fun `nps contribution is an investment debit with the pran tail`() {
+    fun `nps contribution is an investment credit with the pran tail`() {
         val result =
             evaluate("PTNNPS", "PRAN XX8227: Units for (APR-2026) contribution of Rs.44,236.00 credited with NAV of 07/05/26 -Protean")
         assertThat(result?.matchedRuleId).isEqualTo("nps-contribution-01")
         assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
         assertThat(result?.extracted?.get("amount")).isEqualTo("44,236.00")
-        assertThat(result?.extracted?.get("type")).isEqualTo("debit")
+        // Units credited INTO the retirement account are money received —
+        // an employer contribution never debits a tracked bank account.
+        assertThat(result?.extracted?.get("type")).isEqualTo("credit")
         assertThat(result?.extracted?.get("merchant")).isEqualTo("NPS")
         assertThat(result?.extracted?.get("account_last4")).isEqualTo("8227")
     }
