@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "description": "Evidence table for reminder TYPE classification. Each type accumulates a score from its 'evidence' rows (evaluated in order; a row with 'only_if_no_other_evidence' counts only when no earlier evidence row of the same type matched); 'support' rows are corroboration that is added only when at least one evidence row matched — support can never reach the threshold alone. A row matches when its 'pattern' (a case-insensitive-by-(?i) regex FRAGMENT run against the body) and/or its 'sender_table_ref'/'table_ref' regex match; 'table_ref'/'sender_table_ref' reference the assembled regexes from tables/billers.json ('insurer_names', 'bill_domains', 'known_biller_senders') so brand lists live in one place. 'not_if_guard' names a guard from guards.json whose match suppresses the row (e.g. product-tier 'Premium' never counts as an insurance premium). The SCORING ALGORITHM — the threshold (3), the tie-break order (credit card, deposit, EMI, insurance, bill, subscription), and bill-evidence disqualifying subscription — stays in code (ReminderTypeClassifier); only pattern content and weights live here. Keep patterns simple: word boundaries, bounded gaps like [^\\n]{0,60}?, never nested quantifiers; patterns are ReDoS-validated at load and invalid rows are skipped.",
+  "description": "Evidence table for reminder TYPE classification. Each type accumulates a score from its 'evidence' rows (evaluated in order; a row with 'only_if_no_other_evidence' counts only when no earlier evidence row of the same type matched); 'support' rows are corroboration that is added only when at least one evidence row matched \u2014 support can never reach the threshold alone. A row matches when its 'pattern' (a case-insensitive-by-(?i) regex FRAGMENT run against the body) and/or its 'sender_table_ref'/'table_ref' regex match; 'table_ref'/'sender_table_ref' reference the assembled regexes from tables/billers.json ('insurer_names', 'bill_domains', 'known_biller_senders') so brand lists live in one place. 'not_if_guard' names a guard from guards.json whose match suppresses the row (e.g. product-tier 'Premium' never counts as an insurance premium). The SCORING ALGORITHM \u2014 the threshold (3), the tie-break order (credit card, deposit, EMI, insurance, bill, subscription), and bill-evidence disqualifying subscription \u2014 stays in code (ReminderTypeClassifier); only pattern content and weights live here. Keep patterns simple: word boundaries, bounded gaps like [^\\n]{0,60}?, never nested quantifiers; patterns are ReDoS-validated at load and invalid rows are skipped.",
   "types": [
     {
       "type": "CREDIT_CARD",
@@ -8,6 +8,11 @@
         {
           "pattern": "(?i)credit\\s*card|card\\s+(?:bill|statement|ending)|(?:mini\\s+)?statement\\s+for\\s+(?:your\\s+)?card\\b",
           "score": 3
+        },
+        {
+          "comment": "The bill's OBJECT is the credit card itself ('Your credit card bill for Federal Bank XXXX-1234') - weighted above the generic bill-domain words ('fees', 'tax') that a card bill's late-fee advisory also mentions, so a card bill from an aggregator (CRED) types as CREDIT_CARD, not generic BILL.",
+          "pattern": "(?i)credit\\s+card\\s+bill\\b",
+          "score": 4
         }
       ],
       "support": [

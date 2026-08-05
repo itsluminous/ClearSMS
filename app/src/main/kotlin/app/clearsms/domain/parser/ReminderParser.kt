@@ -105,6 +105,27 @@ class ReminderParser {
                 null
             }
         }
+        // Month-first "August 08, 2026" / "Aug 8 2026" (CRED bill statements).
+        // The first three letters of every English month ARE its standard
+        // abbreviation, so a full name parses through the same MMM formatter;
+        // a non-month word simply fails the parse and yields null.
+        MONTH_FIRST_DATE_REGEX.find(text)?.let { match ->
+            val monthName =
+                match.groupValues[1]
+                    .take(3)
+                    .lowercase()
+                    .replaceFirstChar { it.uppercase() }
+            val day = match.groupValues[2].toInt()
+            val year = match.groupValues[3].toInt()
+            return try {
+                LocalDate.parse(
+                    "$day-$monthName-${normalizeYear(year)}",
+                    DateTimeFormatter.ofPattern("d-MMM-yyyy", Locale.ENGLISH),
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
         // ISO yyyy-MM-dd (rule extracts / round-tripped values).
         ISO_DATE_REGEX.find(text)?.let { match ->
             val (year, month, day) = match.destructured
@@ -233,11 +254,13 @@ class ReminderParser {
 
         /**
          * Date fragment used to anchor due-context keywords: DD-MM-YY(YY),
-         * DD/MM/YYYY, DD-MMM-YY(YY) or "5 Aug 2026".
+         * DD/MM/YYYY, DD-MMM-YY(YY), "5 Aug 2026" or the month-first
+         * "August 08, 2026" (CRED bill statements).
          */
         const val DATE =
             "(?<!\\d)(?:\\d{1,2}[-/](?:\\d{1,2}|[A-Za-z]{3})[-/]\\d{2}(?:\\d{2})?|" +
-                "\\d{1,2}[-\\s][A-Za-z]{3,9}[-\\s,]\\s?\\d{2}(?:\\d{2})?)(?!\\d)"
+                "\\d{1,2}[-\\s][A-Za-z]{3,9}[-\\s,]\\s?\\d{2}(?:\\d{2})?|" +
+                "[A-Za-z]{3,9}\\s\\d{1,2},?\\s\\d{2}(?:\\d{2})?)(?!\\d)"
 
         /**
          * Currency amount with capture group: `Rs. 1,234.56`, `INR 500`,
@@ -299,6 +322,10 @@ class ReminderParser {
         /** DD-MMM-YY / DD MMM YYYY style dates ("05-Aug-26", "5 Aug 2026"). */
         val MONTH_NAME_DATE_REGEX =
             Regex("(?i)(?<!\\d)(\\d{1,2})[-/\\s]([A-Za-z]{3})[-/\\s](\\d{2}(?:\\d{2})?)(?!\\d)")
+
+        /** Month-first "August 08, 2026" / "Aug 8 2026" style dates. */
+        val MONTH_FIRST_DATE_REGEX =
+            Regex("(?i)\\b([A-Za-z]{3,9})\\s+(\\d{1,2}),?\\s+(\\d{2}(?:\\d{2})?)(?!\\d)")
 
         /** ISO yyyy-MM-dd, produced by rule extracts and LocalDate.toString(). */
         val ISO_DATE_REGEX = Regex("(?<!\\d)(\\d{4})-(\\d{2})-(\\d{2})(?!\\d)")

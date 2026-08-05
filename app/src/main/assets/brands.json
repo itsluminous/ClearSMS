@@ -366,7 +366,8 @@
       "color": "#0D0D0D",
       "monogram": "CR",
       "senders": [
-        "CREDCL"
+        "CREDCL",
+        "CREDIN"
       ],
       "aliases": [
         "CRED"

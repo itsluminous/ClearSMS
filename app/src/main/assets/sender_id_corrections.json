@@ -21,6 +21,16 @@
       "name": "Scapia",
       "category": "important",
       "sub": "bank"
+    },
+    "CREDIN": {
+      "name": "CRED",
+      "category": "promotional",
+      "sub": "offer"
+    },
+    "CREDCL": {
+      "name": "CRED",
+      "category": "promotional",
+      "sub": "offer"
     }
   }
 }
