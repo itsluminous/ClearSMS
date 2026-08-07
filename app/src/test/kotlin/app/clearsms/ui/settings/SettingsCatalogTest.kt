@@ -90,7 +90,7 @@ class SettingsCatalogTest {
         assertThat(bySection["Alerts"]).containsExactly("Pill order")
         assertThat(bySection["Startup"]).containsExactly("Default screen")
         assertThat(bySection["Backup & restore"])
-            .containsExactly("Back up now", "Restore", "Backup frequency")
+            .containsExactly("Back up now", "Restore", "Back up settings", "Restore settings", "Backup frequency")
             .inOrder()
         assertThat(bySection["Rules"]).containsExactly("Manage rules")
         assertThat(bySection["Signature"]).containsExactly("SMS signature")
@@ -136,10 +136,18 @@ class SettingsCatalogTest {
                 "Privacy policy",
                 "Open source licenses",
             )
-        val newRows = listOf("Default Finance filter", "Source code", "Paypal", "UPI")
+        val newRows =
+            listOf(
+                "Default Finance filter",
+                "Source code",
+                "Paypal",
+                "UPI",
+                "Back up settings",
+                "Restore settings",
+            )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 4 additions = 36 rows.
+        // No row lost, none dropped: 32 survivors + 6 additions = 38 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)

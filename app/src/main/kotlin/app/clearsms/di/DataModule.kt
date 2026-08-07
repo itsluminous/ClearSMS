@@ -6,7 +6,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import app.clearsms.BuildConfig
 import app.clearsms.data.backup.BackupManager
+import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.db.AccountDao
 import app.clearsms.data.db.BackfillMessageDirections
 import app.clearsms.data.db.ClearSmsDatabase
@@ -199,4 +201,11 @@ object DataModule {
         database: ClearSmsDatabase,
         json: Json,
     ): BackupManager = BackupManager(database, json)
+
+    @Provides
+    @Singleton
+    fun provideSettingsBackupManager(
+        dataStore: DataStore<Preferences>,
+        json: Json,
+    ): SettingsBackupManager = SettingsBackupManager(dataStore, json, BuildConfig.VERSION_NAME)
 }

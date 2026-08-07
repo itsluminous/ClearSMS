@@ -61,6 +61,8 @@ enum class SettingsItem(
     DEFAULT_SCREEN(SettingsSection.STARTUP, R.string.settings_default_screen),
     BACKUP_NOW(SettingsSection.BACKUP, R.string.settings_backup_now),
     RESTORE(SettingsSection.BACKUP, R.string.settings_restore),
+    BACKUP_SETTINGS(SettingsSection.BACKUP, R.string.settings_backup_settings),
+    RESTORE_SETTINGS(SettingsSection.BACKUP, R.string.settings_restore_settings),
     BACKUP_FREQUENCY(SettingsSection.BACKUP, R.string.settings_backup_frequency),
     MANAGE_RULES(SettingsSection.RULES, R.string.settings_manage_rules),
     SIGNATURE(SettingsSection.SIGNATURE, R.string.settings_signature),

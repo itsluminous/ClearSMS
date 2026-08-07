@@ -8,6 +8,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.backup.RestoreResult
+import app.clearsms.data.backup.SettingsBackupManager
+import app.clearsms.data.backup.SettingsRestoreResult
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.IoDispatcher
@@ -90,6 +92,18 @@ sealed interface SettingsEvent {
         val reason: String? = null,
     ) : SettingsEvent
 
+    data object SettingsBackupDone : SettingsEvent
+
+    data object SettingsBackupFailed : SettingsEvent
+
+    /** Settings restore succeeded; carries applied/skipped entry counts. */
+    data class SettingsRestoreDone(
+        val result: SettingsRestoreResult,
+    ) : SettingsEvent
+
+    /** Settings restore failed: not a settings backup, or unreadable. */
+    data object SettingsRestoreFailed : SettingsEvent
+
     /** Manual re-sort finished; [count] messages were re-categorized. */
     data class SortDone(
         val count: Int,
@@ -124,6 +138,7 @@ class SettingsViewModel
         private val uiPrefs: UiPrefs,
         private val messageRepository: MessageRepository,
         private val backupManager: BackupManager,
+        private val settingsBackupManager: SettingsBackupManager,
         private val workManager: WorkManager,
         private val balanceVisibility: BalanceVisibility,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -397,6 +412,45 @@ class SettingsViewModel
                     events.emit(SettingsEvent.RestoreFailed(e.message))
                 } catch (_: Exception) {
                     events.emit(SettingsEvent.RestoreFailed())
+                } finally {
+                    busy.value = false
+                }
+            }
+        }
+
+        /** Settings → Backup & restore → Back up settings. */
+        fun backupSettingsTo(uri: Uri) {
+            launchIo {
+                busy.value = true
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { settingsBackupManager.exportTo(it) }
+                    events.emit(SettingsEvent.SettingsBackupDone)
+                } catch (_: Exception) {
+                    events.emit(SettingsEvent.SettingsBackupFailed)
+                } finally {
+                    busy.value = false
+                }
+            }
+        }
+
+        /**
+         * Settings → Backup & restore → Restore settings. Applied values
+         * take effect immediately: every settings Flow re-emits from the
+         * DataStore write, so the theme flips live.
+         */
+        fun restoreSettingsFrom(uri: Uri) {
+            launchIo {
+                busy.value = true
+                try {
+                    val result =
+                        context.contentResolver.openInputStream(uri)?.use { settingsBackupManager.importFrom(it) }
+                    if (result != null) {
+                        events.emit(SettingsEvent.SettingsRestoreDone(result))
+                    } else {
+                        events.emit(SettingsEvent.SettingsRestoreFailed)
+                    }
+                } catch (_: Exception) {
+                    events.emit(SettingsEvent.SettingsRestoreFailed)
                 } finally {
                     busy.value = false
                 }

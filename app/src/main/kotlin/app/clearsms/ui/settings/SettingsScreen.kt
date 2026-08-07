@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -158,6 +159,14 @@ fun SettingsScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) viewModel.restoreFrom(uri)
         }
+    val settingsBackupLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri != null) viewModel.backupSettingsTo(uri)
+        }
+    val settingsRestoreLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) viewModel.restoreSettingsFrom(uri)
+        }
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
@@ -194,6 +203,30 @@ fun SettingsScreen(
                         event.reason
                             ?.let { context.getString(R.string.settings_restore_failed_reason, it) }
                             ?: restoreFailed
+                    SettingsEvent.SettingsBackupDone ->
+                        context.getString(R.string.settings_backup_settings_done)
+                    SettingsEvent.SettingsBackupFailed ->
+                        context.getString(R.string.settings_backup_settings_failed)
+                    is SettingsEvent.SettingsRestoreDone ->
+                        buildString {
+                            append(
+                                context.getString(
+                                    R.string.settings_restore_settings_done,
+                                    event.result.applied,
+                                ),
+                            )
+                            if (event.result.skipped > 0) {
+                                append(' ')
+                                append(
+                                    context.getString(
+                                        R.string.settings_restore_settings_skipped,
+                                        event.result.skipped,
+                                    ),
+                                )
+                            }
+                        }
+                    SettingsEvent.SettingsRestoreFailed ->
+                        context.getString(R.string.settings_restore_settings_failed)
                     is SettingsEvent.SortDone ->
                         context.getString(R.string.settings_sort_done_count, event.count)
                     is SettingsEvent.OtpCleared ->
@@ -212,6 +245,8 @@ fun SettingsScreen(
             openDialog = { dialog = it },
             onBackupNow = { backupLauncher.launch("clearsms-backup.json") },
             onRestore = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
+            onBackupSettings = { settingsBackupLauncher.launch("clearsms-settings.json") },
+            onRestoreSettings = { settingsRestoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             onManageRules = onManageRules,
             onArchived = onArchived,
             onPermissions = onPermissions,
@@ -575,6 +610,8 @@ private fun settingsRowEntries(
     openDialog: (SettingsDialog) -> Unit,
     onBackupNow: () -> Unit,
     onRestore: () -> Unit,
+    onBackupSettings: () -> Unit,
+    onRestoreSettings: () -> Unit,
     onManageRules: () -> Unit,
     onArchived: () -> Unit,
     onPermissions: () -> Unit,
@@ -749,7 +786,11 @@ private fun settingsRowEntries(
                             },
                         )
                     } else {
-                        SettingRow(
+                        // Same convention as "Clear older OTPs": one-shot
+                        // ACTION rows get a leading icon; preference and
+                        // navigation rows stay plain.
+                        ActionRow(
+                            icon = Icons.Outlined.Refresh,
                             title = title,
                             subtitle = sortSummary,
                             onClick = { openDialog(SettingsDialog.SORT_CONFIRM) },
@@ -796,6 +837,10 @@ private fun settingsRowEntries(
                 row(section, title, stringResource(R.string.settings_backup_now_summary), onBackupNow)
             SettingsItem.RESTORE ->
                 row(section, title, stringResource(R.string.settings_restore_summary), onRestore)
+            SettingsItem.BACKUP_SETTINGS ->
+                row(section, title, stringResource(R.string.settings_backup_settings_summary), onBackupSettings)
+            SettingsItem.RESTORE_SETTINGS ->
+                row(section, title, stringResource(R.string.settings_restore_settings_summary), onRestoreSettings)
             SettingsItem.BACKUP_FREQUENCY -> {
                 val backupFrequencySummary = backupFrequencyLabel(state.backupFrequency)
                 val autoBackupNote = stringResource(R.string.settings_auto_backup_note)
