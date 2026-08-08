@@ -6606,7 +6606,10 @@
       "name": "IRCTC Service Update",
       "priority": 200,
       "match": {
-        "sender_pattern": "(?i)IRCTC"
+        "sender_pattern": "(?i)IRCTC",
+        "guards_none": [
+          "otp_mention"
+        ]
       },
       "action": {
         "category": "important"
