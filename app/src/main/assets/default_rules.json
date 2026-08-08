@@ -7390,6 +7390,30 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-06T00:00:00Z"
+    },
+    {
+      "id": "pluxee-wallet-credit-01",
+      "name": "Pluxee Wallet Load (Credit + Balance)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:PLUXEE|SODEXO)",
+        "body_pattern": "(?i)(?:Pluxee|Sodexo)\\s+Card\\s+has\\s+been\\s+successfully\\s+credited\\s+with\\s+(?:INR|Rs\\.?|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+towards\\s+(?:[A-Za-z]+\\s+){1,3}?Wallet(?:[\\s\\S]{0,120}?balance\\s+is\\s+(?:INR|Rs\\.?|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?))?",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "balance": "$2",
+          "type": "credit",
+          "bank": "Pluxee"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-08T00:00:00Z"
     }
   ]
 }

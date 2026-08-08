@@ -845,8 +845,8 @@ class MessageRepositoryImpl(
      * account only when exactly one named bank holds that last-4, otherwise
      * it stays unattached — a nameless account row is never the answer. The
      * one exception to "no last-4, no account" is a curated standalone CARD
-     * product (see issuerKeyedCardAccountId): its spend SMS carry no digits
-     * at all, yet the issuer identifies the card exactly.
+     * product or WALLET issuer (see issuerKeyedAccountId): their money SMS
+     * carry no digits at all, yet the issuer identifies the account exactly.
      */
     private suspend fun resolveAccountId(
         tx: ParsedTransaction,
@@ -855,7 +855,7 @@ class MessageRepositoryImpl(
         timestampMs: Long,
     ): Long? =
         when {
-            accountNumber.isEmpty() -> issuerKeyedCardAccountId(tx, bankName, timestampMs)
+            accountNumber.isEmpty() -> issuerKeyedAccountId(tx, bankName, timestampMs)
             bankName.isNotEmpty() -> upsertAccount(tx, accountNumber, bankName, timestampMs)
             else -> soleAccountIdForTail(accountNumber, tx.accountType)
         }
@@ -935,47 +935,59 @@ class MessageRepositoryImpl(
     }
 
     /**
-     * The account for a card spend whose SMS carries NO account digits at
-     * all — the shape co-branded card products (Scapia Federal) actually
-     * send: "txn ... on your Scapia Federal Visa credit card was
-     * successful", never a last-4.
+     * The account for a money message whose SMS carries NO account digits
+     * at all — two curated shapes send exactly that:
+     *  - co-branded card products (Scapia Federal): "txn ... on your Scapia
+     *    Federal Visa credit card was successful", never a last-4;
+     *  - wallet products (Pluxee): "Your Pluxee Card has been successfully
+     *    credited with Rs.X towards Meal Wallet", never a last-4.
      *
      * The rule, deliberately narrow:
      *  - the resolved issuer must be a curated standalone CARD product
-     *    ([SenderNameResolver.isCardProductIssuer]) and the body must read
-     *    as a card ([AccountType.CREDIT_CARD]) — a digit-less SAVINGS debit
-     *    stays unattached exactly as before;
-     *  - when the issuer already has exactly ONE card account (a template
-     *    change later adds a last-4, say), the spend attaches to it;
-     *  - when it has none, ONE card account is created under a stable
-     *    synthetic key ([SenderNameResolver.syntheticAccountKey]) — the
-     *    issuer alone identifies the card, and the user's spends belong on
-     *    a card, not in an unattached limbo;
-     *  - several cards of the same issuer are ambiguous: unattached (null).
+     *    ([SenderNameResolver.isCardProductIssuer]) with a body that reads
+     *    as a card ([AccountType.CREDIT_CARD]), OR a curated WALLET issuer
+     *    ([SenderNameResolver.isWalletIssuer]) with a body that reads as a
+     *    wallet ([AccountType.WALLET]) — a digit-less SAVINGS debit stays
+     *    unattached exactly as before;
+     *  - when the issuer already has exactly ONE account of that type (a
+     *    template change later adds a last-4, say), the money attaches
+     *    to it;
+     *  - when it has none, ONE account is created under a stable synthetic
+     *    key ([SenderNameResolver.syntheticAccountKey]) — the issuer alone
+     *    identifies the card/wallet, and the user's money belongs on it,
+     *    not in an unattached limbo;
+     *  - several same-type accounts of the same issuer are ambiguous:
+     *    unattached (null).
      *
      * Known failure mode: if the issuer later starts quoting a real last-4,
-     * the first such message creates a second (digit-keyed) card next to
+     * the first such message creates a second (digit-keyed) account next to
      * the synthetic one and history splits between them. Accepted: the
      * attach-to-sole-existing branch handles the reverse (and far likelier)
      * order, and merchants still can never become accounts — the issuer
-     * must survive the curated card-product check.
+     * must survive the curated card-product/wallet-issuer check.
      */
-    private suspend fun issuerKeyedCardAccountId(
+    private suspend fun issuerKeyedAccountId(
         tx: ParsedTransaction,
         bankName: String,
         timestampMs: Long,
     ): Long? {
         if (bankName.isEmpty()) return null
-        if (tx.accountType != AccountType.CREDIT_CARD) return null
-        if (!SenderNameResolver.isCardProductIssuer(bankName)) return null
-        val cards = accountDao.findByBank(bankName).filter { it.type == AccountType.CREDIT_CARD }
+        val ownedType =
+            when {
+                tx.accountType == AccountType.CREDIT_CARD && SenderNameResolver.isCardProductIssuer(bankName) ->
+                    AccountType.CREDIT_CARD
+                tx.accountType == AccountType.WALLET && SenderNameResolver.isWalletIssuer(bankName) ->
+                    AccountType.WALLET
+                else -> return null
+            }
+        val owned = accountDao.findByBank(bankName).filter { it.type == ownedType }
         return when {
-            cards.size > 1 -> null
-            cards.size == 1 ->
+            owned.size > 1 -> null
+            owned.size == 1 ->
                 upsertAccountBalance(
-                    accountNumber = cards.single().accountNumber,
+                    accountNumber = owned.single().accountNumber,
                     bankName = bankName,
-                    accountType = AccountType.CREDIT_CARD,
+                    accountType = ownedType,
                     balance = tx.balance,
                     timestampMs = timestampMs,
                     availableLimit = tx.availableLimit,
@@ -984,7 +996,7 @@ class MessageRepositoryImpl(
                 upsertAccountBalance(
                     accountNumber = SenderNameResolver.syntheticAccountKey(bankName),
                     bankName = bankName,
-                    accountType = AccountType.CREDIT_CARD,
+                    accountType = ownedType,
                     balance = tx.balance,
                     timestampMs = timestampMs,
                     availableLimit = tx.availableLimit,

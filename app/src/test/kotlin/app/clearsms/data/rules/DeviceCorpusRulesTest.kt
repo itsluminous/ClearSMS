@@ -76,6 +76,46 @@ class DeviceCorpusRulesTest {
     }
 
     @Test
+    fun `meal wallet load extracts the credited amount not the trailing balance`() {
+        val result =
+            evaluate(
+                "VD-PLUXEE-S",
+                "Your Pluxee Card has been successfully credited with Rs.2200 towards  Meal Wallet " +
+                    "on Sat Aug 08 2026 01:20:51. Your current Meal Wallet balance is Rs.2200.00.",
+            )
+        assertThat(result?.matchedRuleId).isEqualTo("pluxee-wallet-credit-01")
+        assertThat(result?.subCategory).isEqualTo(SubCategory.TRANSACTION)
+        assertThat(result?.extracted?.get("amount")).isEqualTo("2200")
+        assertThat(result?.extracted?.get("balance")).isEqualTo("2200.00")
+        assertThat(result?.extracted?.get("type")).isEqualTo("credit")
+        assertThat(result?.extracted?.get("bank")).isEqualTo("Pluxee")
+    }
+
+    @Test
+    fun `meal wallet load without a balance tail still extracts the amount`() {
+        val result =
+            evaluate(
+                "VD-PLUXEE-S",
+                "Your Pluxee Card has been successfully credited with Rs.500 towards Reimbursement Wallet " +
+                    "on Fri Aug 07 2026 09:00:00.",
+            )
+        assertThat(result?.matchedRuleId).isEqualTo("pluxee-wallet-credit-01")
+        assertThat(result?.extracted?.get("amount")).isEqualTo("500")
+        assertThat(result?.extracted).doesNotContainKey("balance")
+    }
+
+    @Test
+    fun `non-monetary wallet credit notice is not a wallet-load transaction`() {
+        val result =
+            evaluate(
+                "VD-PLUXEE-S",
+                "Your Pluxee Card has been successfully credited with reward points towards Meal Wallet.",
+            )
+        assertThat(result?.matchedRuleId).isNotEqualTo("pluxee-wallet-credit-01")
+        assertThat(result?.subCategory).isNotEqualTo(SubCategory.TRANSACTION)
+    }
+
+    @Test
     fun `train booking confirmation extracts the pnr`() {
         val result =
             evaluate(

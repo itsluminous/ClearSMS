@@ -51,6 +51,14 @@ object SenderNameResolver {
          * account — see the account-identity rules at the ingestion site.
          */
         val isCardProduct: Boolean = false,
+        /**
+         * Whether the issuer is a WALLET product (brands.json
+         * `category == "WALLET"`): a meal/benefits wallet like Pluxee whose
+         * credit/spend SMS may carry no account digits at all. Only such
+         * issuers may own an issuer-keyed (digit-less) wallet account —
+         * the wallet counterpart of [isCardProduct].
+         */
+        val isWalletProduct: Boolean = false,
     )
 
     /**
@@ -97,6 +105,7 @@ object SenderNameResolver {
                         aliases = brand.issuerAliases ?: brand.aliases,
                         isIssuer = isIssuer,
                         isCardProduct = brand.category == "CARD",
+                        isWalletProduct = brand.category == "WALLET",
                     )
                 }
         } catch (e: Exception) {
@@ -200,10 +209,23 @@ object SenderNameResolver {
     }
 
     /**
-     * Stable synthetic account key for an issuer-keyed card account (a card
-     * product whose SMS carries no digits): the canonical issuer name with
-     * everything but letters and digits stripped, uppercased. Deliberately
-     * non-numeric so it can never collide with a real last-4.
+     * Whether [name] resolves to a curated WALLET issuer (Pluxee, Paytm...).
+     * Wallet products routinely send digit-less money SMS ("credited with
+     * Rs.X towards Meal Wallet") — only such issuers may own an issuer-keyed,
+     * digit-less wallet account, mirroring [isCardProductIssuer] for cards.
+     */
+    fun isWalletIssuer(name: String?): Boolean {
+        val trimmed = name?.trim().orEmpty()
+        if (trimmed.isEmpty()) return false
+        val inst = matchAlias(trimmed.uppercase()) ?: return false
+        return inst.isIssuer && inst.isWalletProduct
+    }
+
+    /**
+     * Stable synthetic account key for an issuer-keyed account (a card or
+     * wallet product whose SMS carries no digits): the canonical issuer name
+     * with everything but letters and digits stripped, uppercased.
+     * Deliberately non-numeric so it can never collide with a real last-4.
      */
     fun syntheticAccountKey(bankName: String): String = bankName.uppercase().filter { it.isLetterOrDigit() }
 
