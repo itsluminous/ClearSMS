@@ -876,13 +876,13 @@ private fun settingsRowEntries(
                 val url = stringResource(R.string.url_source_code)
                 row(section, title, stringResource(R.string.settings_source_code_summary)) { onOpenLink(url) }
             }
-            SettingsItem.PAYPAL -> {
-                val url = stringResource(R.string.url_donate_paypal)
-                row(section, title, stringResource(R.string.settings_donate_paypal_summary)) { onOpenLink(url) }
-            }
             SettingsItem.UPI -> {
                 val url = stringResource(R.string.url_donate_upi)
                 row(section, title, stringResource(R.string.settings_donate_upi_summary)) { onOpenLink(url) }
+            }
+            SettingsItem.PAYPAL -> {
+                val url = stringResource(R.string.url_donate_paypal)
+                row(section, title, stringResource(R.string.settings_donate_paypal_summary)) { onOpenLink(url) }
             }
             SettingsItem.PERMISSIONS ->
                 row(section, title, stringResource(R.string.settings_permissions_summary), onPermissions)

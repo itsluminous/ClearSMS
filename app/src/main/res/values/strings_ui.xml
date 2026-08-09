@@ -328,12 +328,12 @@
     <string name="settings_donate_paypal">Paypal</string>
     <string name="settings_donate_paypal_summary">If the app is useful to you, you can support it via PayPal</string>
     <string name="settings_donate_upi">UPI</string>
-    <string name="settings_donate_upi_summary">Support the project with a UPI payment</string>
+    <string name="settings_donate_upi_summary">Support app development with a UPI payment</string>
     <string name="settings_link_no_handler">No app found to open this link</string>
     <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
     <string name="url_release_notes" translatable="false">https://github.com/itsluminous/ClearSMS/releases/tag/v%1$s</string>
-    <string name="url_donate_paypal" translatable="false">https://paypal.me/itsluminous</string>
-    <string name="url_donate_upi" translatable="false">upi://pay?pa=itsluminous@upi&amp;cn=ClearSMS</string>
+    <string name="url_donate_paypal" translatable="false">https://paypal.me/prakashait</string>
+    <string name="url_donate_upi" translatable="false">upi://pay?pa=electricprakash@axisb&amp;cn=ClearSMS</string>
 
     <!-- Enum labels -->
     <string name="theme_system">System default</string>
