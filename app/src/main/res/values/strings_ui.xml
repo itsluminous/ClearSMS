@@ -208,6 +208,15 @@
     <string name="settings_title">Settings</string>
     <string name="settings_block_list">Block &amp; allow list</string>
     <string name="settings_block_list_summary">%1$d blocked sender(s)</string>
+    <string name="settings_block_list_summary_with_keywords">%1$d blocked sender(s), %2$d blocked keyword(s)</string>
+    <string name="settings_blocked_senders_header">Blocked senders</string>
+    <string name="settings_blocked_keywords_header">Blocked keywords</string>
+    <string name="settings_blocked_keywords_note">Incoming messages containing a keyword go straight to the recycle bin (or are deleted when the bin is off). No notification is shown.</string>
+    <string name="settings_block_keyword_hint">Add keyword</string>
+    <string name="settings_block_keyword_remove">Remove</string>
+    <string name="settings_block_keyword_too_short">Keywords need at least 2 characters - shorter ones would match almost every message.</string>
+    <string name="settings_block_keyword_duplicate">That keyword is already blocked.</string>
+    <string name="settings_block_keyword_limit">Limit of 100 keywords reached - remove one to add another.</string>
     <string name="settings_block_add_hint">Sender or number</string>
     <string name="settings_block_add">Block</string>
     <string name="settings_unblock">Unblock</string>

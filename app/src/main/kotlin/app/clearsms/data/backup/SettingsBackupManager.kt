@@ -121,6 +121,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("inbox_pill_order"),
             SettingsBackupEntry.StringEntry("finance_pill_order"),
             SettingsBackupEntry.StringEntry("alerts_pill_order"),
+            SettingsBackupEntry.StringSetEntry("blocked_keywords"),
         )
 
     val byName: Map<String, SettingsBackupEntry> = entries.associateBy { it.name }

@@ -72,6 +72,8 @@ data class SettingsUiState(
     /** Raised by the worker when the chosen directory vanished or its grant was revoked. */
     val backupDirectoryError: Boolean = false,
     val blockedSenders: List<String> = emptyList(),
+    /** Keywords that route matching incoming messages straight to the bin. */
+    val blockedKeywords: List<String> = emptyList(),
     /** Non-null while a manual re-sort is enqueued/running (drives the inline progress row). */
     val sortProgress: SortProgress? = null,
     val busy: Boolean = false,
@@ -270,6 +272,8 @@ class SettingsViewModel
             val blockedSenders: Set<String>,
             val backupDirectoryUri: String?,
             val backupDirectoryError: Boolean,
+            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            val blockedKeywords: Set<String> = emptySet(),
         )
 
         private val other =
@@ -280,7 +284,9 @@ class SettingsViewModel
                 uiPrefs.backupDirectoryUri,
                 uiPrefs.backupDirectoryError,
                 ::OtherState,
-            )
+            ).combine(settings.blockedKeywords) { other, keywords ->
+                other.copy(blockedKeywords = keywords)
+            }
 
         val uiState: StateFlow<SettingsUiState> =
             combine(
@@ -320,6 +326,7 @@ class SettingsViewModel
                     backupDirectoryUri = otherState.backupDirectoryUri,
                     backupDirectoryError = otherState.backupDirectoryError,
                     blockedSenders = otherState.blockedSenders.sorted(),
+                    blockedKeywords = otherState.blockedKeywords.sorted(),
                     sortProgress = sortState,
                     busy = isBusy,
                 )
@@ -463,6 +470,22 @@ class SettingsViewModel
             launchIo {
                 messageRepository.setBlocked(sender, false)
                 uiPrefs.setSenderBlocked(sender, false)
+            }
+
+        /**
+         * Adds a validated keyword (the dialog runs
+         * [app.clearsms.data.prefs.BlockedKeywords.validate] before calling
+         * this - blank/1-char keywords and the 100-keyword cap are refused
+         * there with an honest message).
+         */
+        fun addBlockedKeyword(keyword: String) =
+            launchIo {
+                settings.setBlockedKeywords(settings.blockedKeywords.first() + keyword.trim())
+            }
+
+        fun removeBlockedKeyword(keyword: String) =
+            launchIo {
+                settings.setBlockedKeywords(settings.blockedKeywords.first() - keyword)
             }
 
         fun backupTo(uri: Uri) {

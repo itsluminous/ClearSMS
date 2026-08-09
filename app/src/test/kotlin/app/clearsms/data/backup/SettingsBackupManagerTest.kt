@@ -72,6 +72,7 @@ class SettingsBackupManagerTest {
         repo.setInboxPillOrder(Category.entries.reversed())
         repo.setFinancePillOrder(FinanceTab.entries.reversed())
         repo.setAlertsPillOrder(AlertFilter.entries.reversed())
+        repo.setBlockedKeywords(setOf("loan offer", "casino"))
     }
 
     private suspend fun assertAllNonDefaults(repo: SettingsRepositoryImpl) {
@@ -95,6 +96,7 @@ class SettingsBackupManagerTest {
         assertThat(repo.inboxPillOrder.first()).isEqualTo(Category.entries.reversed())
         assertThat(repo.financePillOrder.first()).isEqualTo(FinanceTab.entries.reversed())
         assertThat(repo.alertsPillOrder.first()).isEqualTo(AlertFilter.entries.reversed())
+        assertThat(repo.blockedKeywords.first()).isEqualTo(setOf("loan offer", "casino"))
     }
 
     private fun export(dataStore: DataStore<Preferences>): ByteArray =

@@ -144,6 +144,17 @@ interface SettingsRepository {
     suspend fun setFinancePillOrder(value: List<FinanceTab>)
 
     /**
+     * Keywords whose presence in an incoming message body (case-insensitive
+     * substring) routes the message straight to the recycle bin - or drops
+     * it entirely when the bin is off. Validated through
+     * [BlockedKeywords.validate] before writing; matching happens at
+     * ingestion, before any notification or finance derivation.
+     */
+    val blockedKeywords: Flow<Set<String>>
+
+    suspend fun setBlockedKeywords(value: Set<String>)
+
+    /**
      * User-chosen order of the Alerts filter pills; same guarantees as
      * [inboxPillOrder]. Persisted as enum names, so [AlertFilter] staying in
      * the ui layer costs nothing at the storage level.

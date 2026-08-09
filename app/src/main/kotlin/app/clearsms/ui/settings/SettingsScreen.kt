@@ -66,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.BuildConfig
 import app.clearsms.R
 import app.clearsms.data.backup.BackupFileNames
+import app.clearsms.data.prefs.BlockedKeywords
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -576,8 +577,11 @@ fun SettingsScreen(
         SettingsDialog.BLOCK_LIST ->
             BlockListDialog(
                 blocked = state.blockedSenders,
+                blockedKeywords = state.blockedKeywords,
                 onBlock = viewModel::blockSender,
                 onUnblock = viewModel::unblockSender,
+                onAddKeyword = viewModel::addBlockedKeyword,
+                onRemoveKeyword = viewModel::removeBlockedKeyword,
                 onDismiss = { dialog = null },
             )
         SettingsDialog.BACKUP_FREQUENCY ->
@@ -707,7 +711,15 @@ private fun settingsRowEntries(
                 }
             }
             SettingsItem.BLOCK_LIST ->
-                row(section, title, stringResource(R.string.settings_block_list_summary, state.blockedSenders.size)) {
+                row(
+                    section,
+                    title,
+                    stringResource(
+                        R.string.settings_block_list_summary_with_keywords,
+                        state.blockedSenders.size,
+                        state.blockedKeywords.size,
+                    ),
+                ) {
                     openDialog(SettingsDialog.BLOCK_LIST)
                 }
             SettingsItem.SHOW_EXTRACTED_DETAILS ->
@@ -1324,19 +1336,35 @@ private fun SignatureDialog(
     )
 }
 
+/**
+ * One dialog for everything the user blocks - senders and keywords live as
+ * two sections of the SAME "Block & allow list" surface rather than a new
+ * settings row, because they are one mental task ("stop these messages")
+ * and splitting them would leave two half-empty screens.
+ */
 @Composable
 private fun BlockListDialog(
     blocked: List<String>,
+    blockedKeywords: List<String>,
     onBlock: (String) -> Unit,
     onUnblock: (String) -> Unit,
+    onAddKeyword: (String) -> Unit,
+    onRemoveKeyword: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var newSender by rememberSaveable { mutableStateOf("") }
+    var newKeyword by rememberSaveable { mutableStateOf("") }
+    var keywordError by rememberSaveable { mutableStateOf<BlockedKeywords.ValidationError?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_block_list)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(R.string.settings_blocked_senders_header),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = newSender,
@@ -1362,6 +1390,68 @@ private fun BlockListDialog(
                         Text(text = sender, modifier = Modifier.weight(1f))
                         TextButton(onClick = { onUnblock(sender) }) {
                             Text(stringResource(R.string.settings_unblock))
+                        }
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.settings_blocked_keywords_header),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+                Text(
+                    text = stringResource(R.string.settings_blocked_keywords_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newKeyword,
+                        onValueChange = {
+                            newKeyword = it
+                            keywordError = null
+                        },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.settings_block_keyword_hint)) },
+                        singleLine = true,
+                        isError = keywordError != null,
+                    )
+                    TextButton(
+                        onClick = {
+                            val error = BlockedKeywords.validate(newKeyword, blockedKeywords.toSet())
+                            keywordError = error
+                            if (error == null) {
+                                onAddKeyword(newKeyword.trim())
+                                newKeyword = ""
+                            }
+                        },
+                    ) { Text(stringResource(R.string.settings_block_add)) }
+                }
+                keywordError?.let { error ->
+                    Text(
+                        text =
+                            stringResource(
+                                when (error) {
+                                    BlockedKeywords.ValidationError.TOO_SHORT ->
+                                        R.string.settings_block_keyword_too_short
+                                    BlockedKeywords.ValidationError.DUPLICATE ->
+                                        R.string.settings_block_keyword_duplicate
+                                    BlockedKeywords.ValidationError.LIMIT_REACHED ->
+                                        R.string.settings_block_keyword_limit
+                                },
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                blockedKeywords.forEach { keyword ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(text = keyword, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onRemoveKeyword(keyword) }) {
+                            Text(stringResource(R.string.settings_block_keyword_remove))
                         }
                     }
                 }

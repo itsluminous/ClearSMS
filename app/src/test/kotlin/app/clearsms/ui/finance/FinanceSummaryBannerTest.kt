@@ -222,6 +222,10 @@ private class FakeFinanceRepository : FinanceRepository {
 private class FakeSettingsRepository : SettingsRepository {
     val defaultFinanceFilterFlow = MutableStateFlow(FinanceTab.ACCOUNTS)
 
+    override val blockedKeywords = MutableStateFlow(emptySet<String>())
+
+    override suspend fun setBlockedKeywords(value: Set<String>) = Unit
+
     override val theme = MutableStateFlow(ThemeMode.SYSTEM)
 
     override suspend fun setTheme(value: ThemeMode) = Unit

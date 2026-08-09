@@ -111,6 +111,12 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setAlertsPillOrder(value: List<AlertFilter>) = Unit
 
+    override val blockedKeywords = MutableStateFlow(emptySet<String>())
+
+    override suspend fun setBlockedKeywords(value: Set<String>) {
+        blockedKeywords.value = value
+    }
+
     override val handledOtpMessageId = MutableStateFlow(0L)
 
     override suspend fun setHandledOtpMessageId(value: Long) {

@@ -40,6 +40,10 @@ class IncomingMessageRouter
         /** Routes [entity] to its notification (or to silence). */
         suspend fun route(entity: MessageEntity) {
             if (entity.isBlockedSender) return
+            // Born-deleted rows (keyword-blocked at ingest) are silent: no
+            // OTP, transaction, scam or message notification may exist for a
+            // message that was never inbox-visible.
+            if (entity.deletedAt != null) return
             val selectedActions = settingsRepository.notificationActions.first()
             when {
                 entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(entity, selectedActions)

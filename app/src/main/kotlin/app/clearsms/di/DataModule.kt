@@ -199,6 +199,7 @@ object DataModule {
         json: Json,
         telephonyWriter: TelephonyWriter,
         notificationDismisser: NotificationDismisser,
+        settingsRepository: SettingsRepository,
     ): MessageRepositoryImpl =
         MessageRepositoryImpl(
             database = database,
@@ -209,6 +210,8 @@ object DataModule {
             systemSmsReadWriter = telephonyWriter,
             systemSmsReinserter = telephonyWriter,
             readNotificationCanceler = notificationDismisser,
+            blockedKeywords = { settingsRepository.blockedKeywords.first() },
+            recycleBinEnabled = { settingsRepository.recycleBinEnabled.first() },
         )
 
     @Provides

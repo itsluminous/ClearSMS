@@ -136,7 +136,15 @@ class SystemSmsImporter
                     inserted += insertedEntities.size
                     if (watermark != null) {
                         for (entity in insertedEntities) {
-                            if (entity.isOutgoing || entity.isBlockedSender || entity.timestamp <= watermark) continue
+                            // deletedAt != null = keyword-binned at import:
+                            // never "fresh", never notified.
+                            if (entity.isOutgoing ||
+                                entity.isBlockedSender ||
+                                entity.deletedAt != null ||
+                                entity.timestamp <= watermark
+                            ) {
+                                continue
+                            }
                             freshCount++
                             if (freshMessages.size < FRESH_SAMPLE_LIMIT) freshMessages += entity
                         }
