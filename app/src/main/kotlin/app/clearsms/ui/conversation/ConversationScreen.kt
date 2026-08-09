@@ -457,7 +457,16 @@ private fun ConversationSelectionBar(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     TopAppBar(
-        title = { Text(stringResource(R.string.selection_count, selection.count)) },
+        title = {
+            // titleMedium + single line: at the default titleLarge a
+            // six-digit "999999 selected" wrapped out of view next to the
+            // four action slots (measured on a 411dp-wide display).
+            Text(
+                text = stringResource(R.string.selection_count, selection.count),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onClose) {
                 Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.action_exit_selection))
