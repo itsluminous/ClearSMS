@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Check
@@ -115,6 +116,7 @@ fun InboxScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val items = viewModel.pagedItems.collectAsLazyPagingItems()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val allSelectedPinned by viewModel.allSelectedPinned.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -182,6 +184,7 @@ fun InboxScreen(
             if (selection.active) {
                 InboxSelectionBar(
                     selection = selection,
+                    allSelectedPinned = allSelectedPinned,
                     // Single-item-only actions from the old long-press sheet
                     // live in the overflow when exactly one thread is selected.
                     singleItem =
@@ -349,11 +352,16 @@ fun InboxScreen(
     }
 }
 
-/** Contextual top bar shown while thread multi-select is active. */
+/**
+ * Contextual top bar shown while thread multi-select is active. Layout is
+ * fixed by [SelectionBarLayout]: three inline icons plus one overflow menu,
+ * so the "N selected" title stays fully visible even at six digits.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InboxSelectionBar(
     selection: SelectionState<Long>,
+    allSelectedPinned: Boolean,
     singleItem: InboxItem?,
     onClose: () -> Unit,
     onDelete: () -> Unit,
@@ -373,34 +381,49 @@ private fun InboxSelectionBar(
             }
         },
         actions = {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
-            }
-            IconButton(onClick = onArchive) {
-                Icon(Icons.Outlined.Archive, contentDescription = stringResource(R.string.action_archive))
-            }
+            // Inline trio, most-used first (SelectionBarLayout.inlineActions).
             IconButton(onClick = onToggleRead) {
                 Icon(
                     Icons.Outlined.MarkEmailRead,
                     contentDescription = stringResource(R.string.action_mark_read_unread),
                 )
             }
-            // Pin/Unpin: pins when anything selected is unpinned, unpins
-            // when everything already is. Multiple pins are allowed.
-            IconButton(onClick = onTogglePin) {
-                Icon(
-                    Icons.Outlined.PushPin,
-                    contentDescription = stringResource(R.string.action_pin_unpin),
+            IconButton(onClick = onArchive) {
+                Icon(Icons.Outlined.Archive, contentDescription = stringResource(R.string.action_archive))
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
+            }
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                // Pin flips to Unpin only when EVERY selected thread is
+                // already pinned; a mixed selection pins the rest.
+                val pinLabel =
+                    stringResource(if (allSelectedPinned) R.string.action_unpin else R.string.action_pin)
+                DropdownMenuItem(
+                    text = { Text(pinLabel) },
+                    leadingIcon = {
+                        Icon(
+                            if (allSelectedPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        menuOpen = false
+                        onTogglePin()
+                    },
                 )
-            }
-            IconButton(onClick = onSelectAll) {
-                Icon(Icons.Outlined.SelectAll, contentDescription = stringResource(R.string.action_select_all))
-            }
-            if (singleItem != null) {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_select_all)) },
+                    leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onSelectAll()
+                    },
+                )
+                if (singleItem != null) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_block_sender)) },
                         leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },

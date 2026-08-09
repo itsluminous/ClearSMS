@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -140,6 +141,23 @@ class InboxViewModel
         /** Multi-select over thread ids (inbox rows are threads). */
         private val selectionState = MutableStateFlow(SelectionState<Long>())
         val selection: StateFlow<SelectionState<Long>> = selectionState.asStateFlow()
+
+        /**
+         * True while EVERY selected thread is already pinned, so the bar's
+         * pin entry can honestly read "Unpin" (mixed selections keep "Pin" -
+         * see [SelectionBarLayout.isUnpin]). Queried per selection change
+         * because select-all can cover threads no loaded page has seen.
+         */
+        val allSelectedPinned: StateFlow<Boolean> =
+            selectionState
+                .mapLatest { current ->
+                    val ids = current.selected.toList()
+                    SelectionBarLayout.isUnpin(
+                        selectedCount = ids.size,
+                        pinnedCount = if (ids.isEmpty()) 0 else messageRepository.pinnedCountInThreads(ids),
+                    )
+                }.flowOn(ioDispatcher)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
         init {
             // Honor the configured default filter on the first open of the

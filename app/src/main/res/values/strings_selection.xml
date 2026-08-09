@@ -6,6 +6,8 @@
     <string name="action_exit_selection">Exit selection</string>
     <string name="action_more_options">More options</string>
     <string name="action_mark_read_unread">Mark read/unread</string>
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
     <string name="selection_selected">Selected</string>
 
     <!-- Bulk delete confirmations (deletion also removes messages from the
