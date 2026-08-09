@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import android.util.Log
+import app.clearsms.data.db.MessageDao
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.ApplicationScope
 import app.clearsms.notification.IncomingMessageRouter
@@ -31,6 +32,9 @@ class SmsReceiver : BroadcastReceiver() {
     lateinit var messageRepository: MessageRepository
 
     @Inject
+    lateinit var messageDao: MessageDao
+
+    @Inject
     lateinit var telephonyWriter: TelephonyWriter
 
     @Inject
@@ -50,6 +54,7 @@ class SmsReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.SMS_DELIVER_ACTION) return
         val parts = extractParts(intent)
         if (parts.isEmpty()) return
+        val subscriptionId = extractSubscriptionId { key, def -> intent.getIntExtra(key, def) }
 
         val pendingResult = goAsync()
         applicationScope.launch {
@@ -61,14 +66,17 @@ class SmsReceiver : BroadcastReceiver() {
                         // numbers/sender ids - this line must stay content-free.
                         Log.e(TAG, "Failed to process an incoming message", e)
                     },
-                ) { merged -> process(merged) }
+                ) { merged -> process(merged, subscriptionId) }
             } finally {
                 pendingResult.finish()
             }
         }
     }
 
-    private suspend fun process(merged: Part) {
+    private suspend fun process(
+        merged: Part,
+        subscriptionId: Int?,
+    ) {
         // Keep the provider row id: without it a later delete commit cannot
         // remove the provider copy, resurrecting the message in other apps.
         // A failed provider write (null) degrades to a Room-only row - the
@@ -81,6 +89,12 @@ class SmsReceiver : BroadcastReceiver() {
         val ingest =
             messageRepository.ingestIncoming(merged.sender, merged.body, merged.timestampMs, systemSmsId)
         val entity = ingest.entity
+        // Provenance for dual-SIM users: which SIM received the message.
+        // Recorded post-ingest (the ingestion contract is subscription-
+        // agnostic); a duplicate row keeps the import's NULL - harmless.
+        if (subscriptionId != null && !ingest.duplicate) {
+            messageDao.setSubscriptionId(entity.id, subscriptionId)
+        }
         reminderAlarmScheduler.scheduleForMessage(entity.id)
         // Duplicate = a concurrent catch-up import committed this provider
         // row first. The import sees the row as post-watermark (it just
@@ -98,6 +112,20 @@ class SmsReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "SmsReceiver"
+
+        /**
+         * The subscription (SIM) the platform stamped on the `SMS_DELIVER`
+         * broadcast, or null when absent/invalid. Both the historical
+         * `"subscription"` extra and the documented
+         * `SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX` key are consulted -
+         * OEM stacks differ in which one they populate. Abstracted over a
+         * getter lambda so the precedence rules are testable without a
+         * broadcast.
+         */
+        internal fun extractSubscriptionId(getIntExtra: (key: String, default: Int) -> Int): Int? =
+            sequenceOf("subscription", "android.telephony.extra.SUBSCRIPTION_INDEX")
+                .map { getIntExtra(it, -1) }
+                .firstOrNull { it >= 0 }
 
         /**
          * Decodes the PDUs from an `SMS_DELIVER` intent. Malformed PDUs are a

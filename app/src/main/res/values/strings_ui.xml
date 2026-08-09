@@ -54,6 +54,17 @@
     <string name="conversation_failed_dialog_title">Message not sent</string>
     <string name="conversation_failed_dialog_message">Retry sending this message, or delete it?</string>
     <string name="conversation_delivered">Delivered</string>
+    <string name="conversation_sim_switch">Switch SIM</string>
+    <string name="conversation_scheduled">Scheduled</string>
+    <string name="conversation_scheduled_for">Scheduled for %1$s</string>
+    <string name="conversation_schedule_send">Schedule send</string>
+    <string name="conversation_schedule_pick_time">Pick a time</string>
+    <string name="conversation_scheduled_dialog_title">Scheduled message</string>
+    <string name="conversation_scheduled_dialog_message">Send this message now, change its time, or cancel it?</string>
+    <string name="conversation_schedule_send_now">Send now</string>
+    <string name="conversation_schedule_edit_time">Edit time</string>
+    <string name="conversation_schedule_cancel">Cancel send</string>
+    <string name="conversation_schedule_past_time">Pick a time in the future</string>
     <string name="conversation_show_message_details">Show message details</string>
     <string name="conversation_hide_message_details">Hide message details</string>
 

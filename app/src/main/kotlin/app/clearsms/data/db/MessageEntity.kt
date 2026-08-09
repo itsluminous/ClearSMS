@@ -82,4 +82,12 @@ data class MessageEntity(
      * message can never resurrect in other SMS apps.
      */
     @ColumnInfo(defaultValue = "0") val providerDeletePending: Boolean = false,
+    /**
+     * Telephony subscription the message travelled over: the receiving SIM
+     * for incoming rows, the chosen sending SIM for outgoing ones. Null when
+     * unknown (pre-feature rows, single-SIM sends via the default manager,
+     * or a broadcast that carried no subscription extra). Drives the
+     * per-bubble "SIM n" tag and lets a resend keep its original SIM.
+     */
+    val subscriptionId: Int? = null,
 )

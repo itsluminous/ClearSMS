@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.work.WorkManager
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.sms.ContactLookupImpl
+import app.clearsms.sms.DeviceSubscriptionSource
+import app.clearsms.sms.SubscriptionSource
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -65,4 +67,8 @@ object PlatformModule {
 internal interface PlatformBindings {
     @Binds
     fun contactLookup(impl: ContactLookupImpl): ContactLookup
+
+    /** Framework-backed SIM subscription access for the dual-SIM send UI. */
+    @Binds
+    fun subscriptionSource(impl: DeviceSubscriptionSource): SubscriptionSource
 }

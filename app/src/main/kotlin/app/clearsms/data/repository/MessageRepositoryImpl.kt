@@ -112,6 +112,10 @@ class MessageRepositoryImpl(
 
     override suspend fun bodiesInOrder(ids: List<Long>): List<String> = SqliteChunker.chunk(ids).flatMap { messageDao.bodiesFor(it) }
 
+    override suspend fun lastSubscriptionIdInThread(threadId: Long): Int? = messageDao.lastSubscriptionIdInThread(threadId)
+
+    override suspend fun distinctSubscriptionIds(): List<Int> = messageDao.distinctSubscriptionIds()
+
     override fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>> = messageDao.observeUnreadCounts()
 
     override fun search(query: String): Flow<List<MessageEntity>> =

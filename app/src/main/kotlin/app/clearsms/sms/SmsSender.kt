@@ -49,6 +49,8 @@ class SmsSender
         /**
          * Sends [body] to [destination] and records the message locally.
          *
+         * @param subscriptionId the SIM to send with; null uses the system
+         *   default [SmsManager] (single-SIM devices, or no choice made).
          * @return the Room row id of the persisted outgoing message. A
          *   dispatch failure after persistence marks the row FAILED and
          *   still returns the id (the bubble shows the failure).
@@ -56,13 +58,14 @@ class SmsSender
         suspend fun send(
             destination: String,
             body: String,
+            subscriptionId: Int? = null,
         ): Long =
             withContext(ioDispatcher) {
                 val timestamp = System.currentTimeMillis()
                 val providerUri = telephonyWriter.writeSent(destination, body, timestamp)
                 val systemSmsId = providerUri?.lastPathSegment?.toLongOrNull()
-                val messageId = persistToRoom(destination, body, timestamp, systemSmsId)
-                dispatch(messageId, destination, body, providerUri?.toString())
+                val messageId = persistToRoom(destination, body, timestamp, systemSmsId, subscriptionId)
+                dispatch(messageId, destination, body, providerUri?.toString(), subscriptionId)
                 messageId
             }
 
@@ -70,7 +73,8 @@ class SmsSender
          * Re-dispatches a previously failed outgoing message on the SAME Room
          * row: the bubble keeps its place (original timestamp) and flips back
          * to Sending. The provider gets a fresh sent row (the old one, marked
-         * failed, is removed) and `systemSmsId` is repointed at it.
+         * failed, is removed) and `systemSmsId` is repointed at it. The row's
+         * recorded SIM is reused, so a retry never silently switches SIMs.
          */
         suspend fun resend(messageId: Long) {
             withContext(ioDispatcher) {
@@ -79,7 +83,7 @@ class SmsSender
                 message.systemSmsId?.let { telephonyWriter.deleteBySystemIds(listOf(it)) }
                 val providerUri = telephonyWriter.writeSent(message.sender, message.body, message.timestamp)
                 messageDao.resetForResend(messageId, providerUri?.lastPathSegment?.toLongOrNull())
-                dispatch(messageId, message.sender, message.body, providerUri?.toString())
+                dispatch(messageId, message.sender, message.body, providerUri?.toString(), message.subscriptionId)
             }
         }
 
@@ -93,9 +97,10 @@ class SmsSender
             destination: String,
             body: String,
             providerUri: String?,
+            subscriptionId: Int?,
         ) {
             try {
-                val smsManager = smsManager()
+                val smsManager = smsManagerFor(subscriptionId)
                 val parts = smsManager.divideMessage(body)
                 // Worst-part status aggregation needs the denominator on the
                 // row before any report can arrive.
@@ -148,6 +153,7 @@ class SmsSender
             body: String,
             timestampMs: Long,
             systemSmsId: Long?,
+            subscriptionId: Int?,
         ): Long {
             val normalized = SenderNormalizer.normalize(destination)
             val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
@@ -163,6 +169,7 @@ class SmsSender
                     systemSmsId = systemSmsId,
                     isOutgoing = true,
                     deliveryStatus = DeliveryStatus.SENDING,
+                    subscriptionId = subscriptionId,
                 ),
             )
         }
@@ -189,12 +196,23 @@ class SmsSender
             )
         }
 
-        private fun smsManager(): SmsManager =
+        /**
+         * The [SmsManager] for the chosen SIM. With no choice (null) the
+         * system-default manager is used - the pre-dual-SIM behaviour. Per
+         * API level: `createForSubscriptionId` on S+, the static
+         * `getSmsManagerForSubscriptionId` before it.
+         */
+        private fun smsManagerFor(subscriptionId: Int?): SmsManager =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                requireNotNull(context.getSystemService(SmsManager::class.java))
+                val default = requireNotNull(context.getSystemService(SmsManager::class.java))
+                if (subscriptionId != null) default.createForSubscriptionId(subscriptionId) else default
             } else {
                 @Suppress("DEPRECATION")
-                SmsManager.getDefault()
+                if (subscriptionId != null) {
+                    SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+                } else {
+                    SmsManager.getDefault()
+                }
             }
 
         private companion object {

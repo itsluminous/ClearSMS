@@ -252,6 +252,35 @@ interface MessageDao {
     @Query("SELECT threadId FROM messages WHERE normalizedSender = :normalizedSender LIMIT 1")
     suspend fun threadIdFor(normalizedSender: String): Long?
 
+    // region SIM subscription bookkeeping
+
+    /** Records which SIM an already-ingested (incoming) message arrived on. */
+    @Query("UPDATE messages SET subscriptionId = :subscriptionId WHERE id = :id")
+    suspend fun setSubscriptionId(
+        id: Long,
+        subscriptionId: Int,
+    )
+
+    /**
+     * The SIM of the newest message in the thread that recorded one - the
+     * default sending SIM for a thread with no remembered per-recipient
+     * choice (reply on the SIM the conversation already lives on).
+     */
+    @Query(
+        """
+        SELECT subscriptionId FROM messages
+        WHERE threadId = :threadId AND subscriptionId IS NOT NULL AND deletedAt IS NULL
+        ORDER BY timestamp DESC, id DESC LIMIT 1
+        """,
+    )
+    suspend fun lastSubscriptionIdInThread(threadId: Long): Int?
+
+    /** Every distinct SIM the stored corpus spans (drives bubble SIM tags). */
+    @Query("SELECT DISTINCT subscriptionId FROM messages WHERE subscriptionId IS NOT NULL")
+    suspend fun distinctSubscriptionIds(): List<Int>
+
+    // endregion
+
     // region outgoing message status
 
     @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")

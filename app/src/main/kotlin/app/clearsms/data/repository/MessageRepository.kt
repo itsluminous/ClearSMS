@@ -56,6 +56,16 @@ interface MessageRepository {
     /** Bodies of the given messages in chronological order (bulk copy). */
     suspend fun bodiesInOrder(ids: List<Long>): List<String>
 
+    /**
+     * The SIM of the newest message in the thread that recorded one (the
+     * thread's natural sending SIM when the user never chose one). Default
+     * null: implementations without SIM bookkeeping simply have no history.
+     */
+    suspend fun lastSubscriptionIdInThread(threadId: Long): Int? = null
+
+    /** Every distinct SIM the stored corpus spans (drives bubble SIM tags). */
+    suspend fun distinctSubscriptionIds(): List<Int> = emptyList()
+
     fun observeUnreadCounts(): Flow<List<CategoryUnreadCount>>
 
     /** Full-text search (token-prefix match); empty flow for unsearchable input. */

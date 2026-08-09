@@ -1,12 +1,14 @@
 package app.clearsms.ui.conversation
 
 import android.text.format.DateFormat
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,6 +101,7 @@ fun ConversationScreen(
     viewModel: ConversationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val simState by viewModel.simState.collectAsStateWithLifecycle()
     val items = viewModel.pagedItems.collectAsLazyPagingItems()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -258,6 +261,10 @@ fun ConversationScreen(
                             // bubble tracks the send state.
                             viewModel.send(draft)
                             draft = ""
+                        },
+                        sim = simState,
+                        onCycleSim = {
+                            viewModel.cycleSim()
                         },
                     )
                 else -> NotRepliableRow()
@@ -431,7 +438,10 @@ private fun ReplyComposer(
     draft: String,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
+    sim: SimUiState = SimUiState(),
+    onCycleSim: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -445,6 +455,29 @@ private fun ReplyComposer(
             shape = RoundedCornerShape(28.dp),
             maxLines = 4,
         )
+        // Compact SIM indicator, dual-SIM devices only: shows the slot the
+        // next send uses; tapping cycles SIMs and toasts the operator name.
+        if (sim.visible) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier =
+                    Modifier.clickable(
+                        onClick = {
+                            onCycleSim()
+                            Toast.makeText(context, sim.operatorName, Toast.LENGTH_SHORT).show()
+                        },
+                        onClickLabel = stringResource(R.string.conversation_sim_switch),
+                    ),
+            ) {
+                Text(
+                    text = sim.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
         FilledIconButton(
             onClick = onSend,
             enabled = draft.isNotBlank(),
@@ -660,7 +693,7 @@ private fun MessageMetadataLine(item: ConversationItem) {
             }
         }
     Text(
-        text = if (detail != null) "$timestamp · $detail" else timestamp,
+        text = listOfNotNull(timestamp, detail, item.simLabel).joinToString(" · "),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),

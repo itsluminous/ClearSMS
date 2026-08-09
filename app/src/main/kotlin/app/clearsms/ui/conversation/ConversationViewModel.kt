@@ -17,7 +17,11 @@ import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
+import app.clearsms.sms.SimChoiceStore
+import app.clearsms.sms.SimInfo
+import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SmsSender
+import app.clearsms.sms.SubscriptionSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
@@ -64,10 +68,15 @@ data class ConversationItem(
     val timeLabel: String = "",
     /** Persisted send lifecycle for outgoing messages (null on incoming). */
     val deliveryStatus: DeliveryStatus? = null,
+    /** "SIM 1"/"SIM 2" provenance tag; null when tags are off or unknown. */
+    val simLabel: String? = null,
 )
 
 /** Maps a stored message to its bubble; direction and status come from the row. */
-internal fun MessageEntity.toConversationItem(json: Json): ConversationItem =
+internal fun MessageEntity.toConversationItem(
+    json: Json,
+    simTagFor: (Int?) -> String? = { null },
+): ConversationItem =
     ConversationItem(
         id = id,
         body = body,
@@ -77,6 +86,7 @@ internal fun MessageEntity.toConversationItem(json: Json): ConversationItem =
         details = parseDetails(json, extractedDataJson),
         timeLabel = RelativeTime.format(timestamp),
         deliveryStatus = if (isOutgoing) deliveryStatus else null,
+        simLabel = simTagFor(subscriptionId),
     )
 
 private fun parseDetails(
@@ -116,6 +126,18 @@ sealed interface SendEvent {
     ) : SendEvent
 }
 
+/**
+ * The compose-bar SIM indicator. [visible] only on devices with 2+ active
+ * subscriptions - single-SIM devices keep the pre-feature compose bar.
+ */
+data class SimUiState(
+    val visible: Boolean = false,
+    /** "SIM 1"/"SIM 2" - the slot of the SIM the next send will use. */
+    val label: String = "",
+    /** Operator / user-given subscription name, surfaced as a toast on tap. */
+    val operatorName: String = "",
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ConversationViewModel
@@ -128,11 +150,31 @@ class ConversationViewModel
         private val contactsSource: ContactsSource,
         private val smsSender: SmsSender,
         private val sentMessageWatcher: SentMessageWatcher,
+        private val subscriptionSource: SubscriptionSource,
+        private val simChoiceStore: SimChoiceStore,
         settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
+
+        /** Active SIMs, primed once in init; empty on single-SIM devices. */
+        @Volatile
+        private var activeSims: List<SimInfo> = emptyList()
+
+        /** Whether bubbles carry SIM tags (2+ SIMs on device or in corpus). */
+        @Volatile
+        private var simTagsEnabled: Boolean = false
+
+        /** The recipient address, kept for the per-number SIM memory writes. */
+        @Volatile
+        private var recipientAddress: String = ""
+
+        /** Subscription the next send will use; null = system default manager. */
+        private val chosenSim = MutableStateFlow<Int?>(null)
+
+        private val simUi = MutableStateFlow(SimUiState())
+        val simState: StateFlow<SimUiState> = simUi.asStateFlow()
 
         init {
             // Opening a conversation in-app means the user has now seen its
@@ -144,7 +186,50 @@ class ConversationViewModel
             viewModelScope.launch(ioDispatcher) {
                 messageRepository.setReadForThreads(listOf(threadId), read = true)
             }
+            // Prime the SIM chooser: remembered per-recipient choice, else
+            // the SIM this thread last used, else the system default.
+            viewModelScope.launch(ioDispatcher) {
+                activeSims = subscriptionSource.activeSims()
+                simTagsEnabled =
+                    SimSelector.showSimTags(activeSims, messageRepository.distinctSubscriptionIds())
+                recipientAddress = messageRepository.firstInThread(threadId)?.sender.orEmpty()
+                val remembered =
+                    recipientAddress.takeIf { it.isNotBlank() }?.let { simChoiceStore.rememberedFor(it) }
+                chosenSim.value =
+                    SimSelector.choose(
+                        activeSims = activeSims,
+                        remembered = remembered,
+                        lastUsedInThread = messageRepository.lastSubscriptionIdInThread(threadId),
+                        defaultSubscriptionId = subscriptionSource.defaultSmsSubscriptionId(),
+                    )
+                refreshSimUi()
+            }
         }
+
+        /** Cycles to the next SIM and remembers the choice for this recipient. */
+        fun cycleSim() {
+            val next = SimSelector.next(activeSims, chosenSim.value) ?: return
+            chosenSim.value = next
+            refreshSimUi()
+            val address = recipientAddress
+            if (address.isNotBlank()) {
+                viewModelScope.launch(ioDispatcher) { simChoiceStore.remember(address, next) }
+            }
+        }
+
+        private fun refreshSimUi() {
+            val chosen = chosenSim.value
+            simUi.value =
+                SimUiState(
+                    visible = SimSelector.indicatorVisible(activeSims),
+                    label = SimSelector.slotLabelFor(activeSims, chosen).orEmpty(),
+                    operatorName = activeSims.firstOrNull { it.subscriptionId == chosen }?.displayName.orEmpty(),
+                )
+        }
+
+        /** Bubble SIM tag for a stored subscription id (null when tags are off). */
+        private fun simTagFor(subscriptionId: Int?): String? =
+            if (simTagsEnabled) SimSelector.slotLabelFor(activeSims, subscriptionId) else null
 
         /**
          * Message to scroll to and briefly highlight, from search / Alerts /
@@ -194,7 +279,7 @@ class ConversationViewModel
                         initialKey = position,
                         pagingSourceFactory = { messageRepository.pagedThread(threadId) },
                     ).flow
-                }.map { data -> data.map { it.toConversationItem(json) } }
+                }.map { data -> data.map { it.toConversationItem(json, ::simTagFor) } }
                 .flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 
@@ -231,7 +316,7 @@ class ConversationViewModel
             viewModelScope.launch(ioDispatcher) {
                 val messageId =
                     try {
-                        smsSender.send(destination, body)
+                        smsSender.send(destination, body, chosenSim.value)
                     } catch (_: Exception) {
                         // Persisting the message itself failed - nothing to retry against.
                         sendEvents.send(SendEvent.Failed(NO_MESSAGE))

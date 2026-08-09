@@ -26,7 +26,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -82,6 +82,10 @@ import java.time.ZoneId
         // multipart worst-part delivery aggregation. Pure additions; existing
         // rows read as single-part with no delivery reports counted.
         AutoMigration(from = 11, to = 12),
+        // v12 -> v13: adds messages.subscriptionId (nullable) - which SIM a
+        // message travelled over on dual-SIM devices. Pure addition; existing
+        // rows read as unknown (no SIM tag shown).
+        AutoMigration(from = 12, to = 13),
     ],
 )
 @TypeConverters(Converters::class)
