@@ -103,7 +103,7 @@ class SettingsCatalogTest {
         assertThat(bySection["Rules"]).containsExactly("Manage rules")
         assertThat(bySection["Signature"]).containsExactly("SMS signature")
         assertThat(bySection["About"]).containsExactly("Version", "Source code").inOrder()
-        assertThat(bySection["Donate"]).containsExactly("Paypal", "UPI").inOrder()
+        assertThat(bySection["Donate"]).containsExactly("UPI", "Paypal").inOrder()
     }
 
     @Test
