@@ -1,5 +1,6 @@
 package app.clearsms.sms
 
+import android.app.NotificationManager
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Context
@@ -32,6 +33,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 
 /**
  * End-to-end tests for the resumable, idempotent, parallel history import,
@@ -196,6 +198,39 @@ class SystemSmsImporterTest {
             addMixedRows(11L..15L)
             assertThat(env.importer.importAll()).isEqualTo(5)
             assertThat(env.db.messageDao().getAll()).hasSize(15)
+        }
+
+    @Test
+    fun `catch-up after a completed run classifies new rows and posts no notifications`() =
+        runBlocking {
+            addMixedRows(1L..8L)
+            val env = Env("catchup")
+            env.importer.importAll()
+            val transactionsBefore =
+                env.db
+                    .transactionDao()
+                    .getAll()
+                    .size
+
+            // Messages that landed in the provider while another app was the
+            // default: a catch-up re-run must put them through the FULL
+            // pipeline (categorization + extraction), silently.
+            addInbox(9, "AX-BOOKMY", otpBody(9))
+            addInbox(10, "VM-HDFCBK", txnBody(10))
+            assertThat(env.importer.importAll()).isEqualTo(2)
+
+            val messages = env.db.messageDao().getAll()
+            val otp = messages.single { it.systemSmsId == 9L }
+            assertThat(otp.category).isEqualTo(Category.OTP)
+            assertThat(otp.extractedOtp).isEqualTo("1009")
+            val txn = messages.single { it.systemSmsId == 10L }
+            assertThat(txn.category).isEqualTo(Category.IMPORTANT)
+            assertThat(env.db.transactionDao().getAll()).hasSize(transactionsBefore + 1)
+
+            // Bulk persistence never notifies per message - the shade stays
+            // empty (only the worker posts, a single progress notification).
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+            assertThat(shadowOf(notificationManager).size()).isEqualTo(0)
         }
 
     @Test

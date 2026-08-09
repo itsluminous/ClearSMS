@@ -71,4 +71,42 @@ class DefaultSmsBannerStateTest {
         state.onRoleChecked(held = false)
         assertThat(state.visible).isTrue()
     }
+
+    @Test
+    fun `absent to held transition reports a regain - the catch-up import trigger`() {
+        val state = DefaultSmsBannerState()
+        assertThat(state.onRoleChecked(held = false)).isFalse()
+        // The banner-flow grant (or an external switch back) is observed.
+        assertThat(state.onRoleChecked(held = true)).isTrue()
+    }
+
+    @Test
+    fun `first check of a session never reports a regain`() {
+        // Cold start while the role is held: no observed transition - the
+        // provider gap probe covers messages missed while the app was dead.
+        assertThat(DefaultSmsBannerState().onRoleChecked(held = true)).isFalse()
+    }
+
+    @Test
+    fun `steady held checks report no regain`() {
+        val state = DefaultSmsBannerState()
+        state.onRoleChecked(held = true)
+        assertThat(state.onRoleChecked(held = true)).isFalse()
+    }
+
+    @Test
+    fun `losing the role reports no regain`() {
+        val state = DefaultSmsBannerState()
+        state.onRoleChecked(held = true)
+        assertThat(state.onRoleChecked(held = false)).isFalse()
+    }
+
+    @Test
+    fun `each absent to held transition reports its own regain`() {
+        val state = DefaultSmsBannerState()
+        state.onRoleChecked(held = false)
+        assertThat(state.onRoleChecked(held = true)).isTrue()
+        state.onRoleChecked(held = false)
+        assertThat(state.onRoleChecked(held = true)).isTrue()
+    }
 }

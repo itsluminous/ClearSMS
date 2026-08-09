@@ -372,6 +372,14 @@ interface MessageDao {
     @Query("SELECT MAX(threadId) FROM messages")
     suspend fun maxThreadId(): Long?
 
+    /**
+     * Highest provider row id we have ever stored (satisfied by the unique
+     * `systemSmsId` index); the catch-up gap probe compares it against the
+     * provider's own max `_id`.
+     */
+    @Query("SELECT MAX(systemSmsId) FROM messages")
+    suspend fun maxSystemSmsId(): Long?
+
     @Query("SELECT EXISTS(SELECT 1 FROM messages WHERE normalizedSender = :normalizedSender AND isBlockedSender = 1)")
     suspend fun isSenderBlocked(normalizedSender: String): Boolean
 

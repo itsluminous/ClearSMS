@@ -154,15 +154,20 @@ fun InboxScreen(
 
     // Losing the default-SMS role means new messages silently stop arriving.
     // Re-check on every resume so returning from the system role dialog (or
-    // from another SMS app's settings) updates the banner live.
+    // from another SMS app's settings) updates the banner live. Every check
+    // also feeds the catch-up scheduler: regaining the role (or a cold-start
+    // provider gap) imports the messages that landed while another app was
+    // default.
     val context = LocalContext.current
     val defaultSmsBanner = remember { DefaultSmsBannerState() }
     val defaultSmsLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            defaultSmsBanner.onRoleChecked(DefaultSmsAppHelper.isDefaultSmsApp(context))
+            val held = DefaultSmsAppHelper.isDefaultSmsApp(context)
+            viewModel.onSmsRoleChecked(held, regained = defaultSmsBanner.onRoleChecked(held))
         }
     LifecycleResumeEffect(Unit) {
-        defaultSmsBanner.onRoleChecked(DefaultSmsAppHelper.isDefaultSmsApp(context))
+        val held = DefaultSmsAppHelper.isDefaultSmsApp(context)
+        viewModel.onSmsRoleChecked(held, regained = defaultSmsBanner.onRoleChecked(held))
         onPauseOrDispose { }
     }
 

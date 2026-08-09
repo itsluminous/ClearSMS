@@ -28,16 +28,34 @@ class DefaultSmsBannerState {
     var dismissed: Boolean by mutableStateOf(false)
         private set
 
+    /**
+     * Result of the previous [onRoleChecked] call, or null before the first
+     * check. Distinct from [roleHeld]'s optimistic initial value: a regain is
+     * only reported after the role was OBSERVED absent, never on the first
+     * check of a session.
+     */
+    private var lastCheckedHeld: Boolean? = null
+
     /** The banner shows while the role is missing and not yet dismissed. */
     val visible: Boolean get() = !roleHeld && !dismissed
 
     /**
      * Records a role check (launch, resume, or role-dialog result). Gaining
      * the role clears any dismissal, so a later loss shows the banner again.
+     *
+     * @return true when this check observed the role transitioning from
+     *   ABSENT to HELD (granted via the banner flow, or re-gained externally
+     *   and detected on resume) - the caller's cue to run a catch-up import
+     *   of messages that landed in the provider while another app was
+     *   default. Never true on the first check of a session; the cold-start
+     *   gap probe covers that case.
      */
-    fun onRoleChecked(held: Boolean) {
+    fun onRoleChecked(held: Boolean): Boolean {
+        val regained = lastCheckedHeld == false && held
+        lastCheckedHeld = held
         roleHeld = held
         if (held) dismissed = false
+        return regained
     }
 
     /** Hides the banner for the rest of this session. */

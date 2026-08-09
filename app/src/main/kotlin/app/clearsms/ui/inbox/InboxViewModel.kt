@@ -24,6 +24,7 @@ import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
+import app.clearsms.work.CatchUpSyncScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -113,6 +114,7 @@ class InboxViewModel
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
         private val settings: SettingsRepository,
+        private val catchUpSyncScheduler: CatchUpSyncScheduler,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val filter = MutableStateFlow(InboxFilterState())
@@ -273,6 +275,20 @@ class InboxViewModel
 
         fun block(sender: String) {
             viewModelScope.launch(ioDispatcher) { messageRepository.setBlocked(sender, true) }
+        }
+
+        /**
+         * Forwards the inbox's default-SMS role checks (launch, resume,
+         * role-dialog result) to the catch-up scheduler: a regained role or a
+         * cold-start provider/local id gap enqueues the checkpointed history
+         * import so messages that arrived while another app was default show
+         * up, fully categorized, without duplicate rows or notifications.
+         */
+        fun onSmsRoleChecked(
+            held: Boolean,
+            regained: Boolean,
+        ) {
+            viewModelScope.launch(ioDispatcher) { catchUpSyncScheduler.onRoleChecked(held, regained) }
         }
 
         // region selection
