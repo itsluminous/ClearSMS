@@ -47,6 +47,8 @@ data class SettingsUiState(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val showTransactionDetails: Boolean = true,
+    /** Recycle bin for deleted messages (30-day retention); default OFF. */
+    val recycleBinEnabled: Boolean = false,
     val showRichAvatars: Boolean = true,
     /** Privacy gate: false masks Finance balances behind the device lock. */
     val showBalance: Boolean = true,
@@ -204,6 +206,8 @@ class SettingsViewModel
             val showBalance: Boolean,
             /** Filled by the second combine stage (combine() maxes out at 5 flows). */
             val logoBackground: LogoBackground = LogoBackground.NONE,
+            /** Filled by the third combine stage. */
+            val recycleBinEnabled: Boolean = false,
         )
 
         private data class NotificationState(
@@ -230,6 +234,8 @@ class SettingsViewModel
                 ::AppearanceState,
             ).combine(settings.logoBackground) { appearance, logoBackground ->
                 appearance.copy(logoBackground = logoBackground)
+            }.combine(settings.recycleBinEnabled) { appearance, binEnabled ->
+                appearance.copy(recycleBinEnabled = binEnabled)
             }
         private val notifications =
             combine(
@@ -270,6 +276,7 @@ class SettingsViewModel
                     theme = appearanceState.theme,
                     dynamicColor = appearanceState.dynamicColor,
                     showTransactionDetails = appearanceState.showTransactionDetails,
+                    recycleBinEnabled = appearanceState.recycleBinEnabled,
                     showRichAvatars = appearanceState.showRichAvatars,
                     logoBackground = appearanceState.logoBackground,
                     showBalance = appearanceState.showBalance,
@@ -297,6 +304,8 @@ class SettingsViewModel
         fun setDynamicColor(value: Boolean) = launchIo { uiPrefs.setDynamicColor(value) }
 
         fun setShowTransactionDetails(value: Boolean) = launchIo { settings.setShowTransactionDetails(value) }
+
+        fun setRecycleBinEnabled(value: Boolean) = launchIo { settings.setRecycleBinEnabled(value) }
 
         fun setShowRichAvatars(value: Boolean) = launchIo { settings.setShowRichAvatars(value) }
 

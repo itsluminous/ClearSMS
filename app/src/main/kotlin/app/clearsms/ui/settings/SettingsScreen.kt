@@ -124,6 +124,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onManageRules: () -> Unit,
     onArchived: () -> Unit,
+    onRecycleBin: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLicenses: () -> Unit,
     onPermissions: () -> Unit,
@@ -249,6 +250,7 @@ fun SettingsScreen(
             onRestoreSettings = { settingsRestoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             onManageRules = onManageRules,
             onArchived = onArchived,
+            onRecycleBin = onRecycleBin,
             onPermissions = onPermissions,
             onPrivacyPolicy = onPrivacyPolicy,
             onLicenses = onLicenses,
@@ -614,6 +616,7 @@ private fun settingsRowEntries(
     onRestoreSettings: () -> Unit,
     onManageRules: () -> Unit,
     onArchived: () -> Unit,
+    onRecycleBin: () -> Unit,
     onPermissions: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLicenses: () -> Unit,
@@ -644,6 +647,28 @@ private fun settingsRowEntries(
         when (item) {
             SettingsItem.ARCHIVED ->
                 row(section, title, stringResource(R.string.settings_archived_summary), onArchived)
+            // Tap opens the bin (like Archived); the trailing switch flips
+            // the behaviour of committed deletes. Retention is fixed at 30
+            // days, stated in the summary.
+            SettingsItem.RECYCLE_BIN -> {
+                val binSummary =
+                    stringResource(
+                        if (state.recycleBinEnabled) {
+                            R.string.settings_recycle_bin_summary_on
+                        } else {
+                            R.string.settings_recycle_bin_summary_off
+                        },
+                    )
+                SettingsRowEntry(section, title, binSummary) {
+                    NavigableToggleRow(
+                        title = title,
+                        subtitle = binSummary,
+                        checked = state.recycleBinEnabled,
+                        onClick = onRecycleBin,
+                        onToggle = viewModel::setRecycleBinEnabled,
+                    )
+                }
+            }
             SettingsItem.BLOCK_LIST ->
                 row(section, title, stringResource(R.string.settings_block_list_summary, state.blockedSenders.size)) {
                     openDialog(SettingsDialog.BLOCK_LIST)
@@ -1021,6 +1046,33 @@ private fun ToggleRow(
 ) {
     ListItem(
         modifier = Modifier.clickable { onToggle(!checked) },
+        headlineContent = { Text(title) },
+        supportingContent = {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onToggle) },
+    )
+}
+
+/**
+ * Row that both navigates (tap anywhere) and carries a trailing switch —
+ * the Recycle bin row opens the bin like Archived while its switch flips
+ * the delete behaviour.
+ */
+@Composable
+private fun NavigableToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onClick: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+) {
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(title) },
         supportingContent = {
             Text(

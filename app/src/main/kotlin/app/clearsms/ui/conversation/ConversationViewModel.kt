@@ -12,12 +12,14 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SmsSender
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
@@ -121,6 +123,7 @@ class ConversationViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val messageRepository: MessageRepository,
+        private val undoManager: UndoManager,
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
         private val smsSender: SmsSender,
@@ -155,6 +158,10 @@ class ConversationViewModel
         /** One-shot send outcomes for the screen's snackbar. */
         private val sendEvents = Channel<SendEvent>(Channel.BUFFERED)
         val events: Flow<SendEvent> = sendEvents.receiveAsFlow()
+
+        /** One-shot undo snackbar requests (a delete was just staged). */
+        private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
+        val undoEventFlow: Flow<UndoUiEvent> = undoEvents.receiveAsFlow()
 
         /** Fires after a reply is persisted so the screen pins back to the bottom. */
         private val scrollToBottomSignal = Channel<Unit>(Channel.CONFLATED)
@@ -257,7 +264,15 @@ class ConversationViewModel
         }
 
         fun delete(messageId: Long) {
-            viewModelScope.launch(ioDispatcher) { messageRepository.deleteMessages(listOf(messageId)) }
+            viewModelScope.launch(ioDispatcher) {
+                val staged = undoManager.stageDeleteMessages(listOf(messageId))
+                if (staged > 0) undoEvents.send(UndoUiEvent.Deleted(staged))
+            }
+        }
+
+        /** Reverts the last staged delete while its snackbar is showing. */
+        fun undo() {
+            viewModelScope.launch(ioDispatcher) { undoManager.undo() }
         }
 
         // region selection
@@ -282,11 +297,14 @@ class ConversationViewModel
             }
         }
 
-        /** Deletes the selected messages (batched, synced to the system provider). */
+        /** Deletes the selected messages undoably (staged; provider commit deferred). */
         fun deleteSelected() {
             val ids = selectionState.value.selected.toList()
             exitSelection()
-            viewModelScope.launch(ioDispatcher) { messageRepository.deleteMessages(ids) }
+            viewModelScope.launch(ioDispatcher) {
+                val staged = undoManager.stageDeleteMessages(ids)
+                if (staged > 0) undoEvents.send(UndoUiEvent.Deleted(staged))
+            }
         }
 
         /**

@@ -8,6 +8,7 @@ import android.util.Log
 import app.clearsms.data.repository.SqliteChunker
 import app.clearsms.data.repository.SystemSmsDeleter
 import app.clearsms.data.repository.SystemSmsReadWriter
+import app.clearsms.data.repository.SystemSmsReinserter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,7 +27,8 @@ class TelephonyWriter
     constructor(
         @ApplicationContext private val context: Context,
     ) : SystemSmsDeleter,
-        SystemSmsReadWriter {
+        SystemSmsReadWriter,
+        SystemSmsReinserter {
         /** Inserts a received message into the inbox. Returns the row uri, or null. */
         fun writeInbox(
             sender: String,
@@ -60,6 +62,40 @@ class TelephonyWriter
                     put(Telephony.Sms.SEEN, 1)
                 },
             )
+
+        /**
+         * Re-inserts a restored incoming message (recycle-bin restore) into
+         * the provider inbox, preserving its read state. Returns the fresh
+         * row id, or null when not the default app / on failure — the
+         * in-app restore proceeds regardless.
+         */
+        override fun reinsertInbox(
+            sender: String,
+            body: String,
+            timestampMs: Long,
+            read: Boolean,
+        ): Long? =
+            insert(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                ContentValues().apply {
+                    put(Telephony.Sms.ADDRESS, sender)
+                    put(Telephony.Sms.BODY, body)
+                    put(Telephony.Sms.DATE, timestampMs)
+                    put(Telephony.Sms.READ, if (read) 1 else 0)
+                    // Restored history is never "new": no notification badge.
+                    put(Telephony.Sms.SEEN, 1)
+                },
+            )?.rowId()
+
+        /** Re-inserts a restored outgoing message into the provider sent box. */
+        override fun reinsertSent(
+            destination: String,
+            body: String,
+            timestampMs: Long,
+        ): Long? = writeSent(destination, body, timestampMs)?.rowId()
+
+        /** Row id from a provider insert uri (`content://sms/<id>`), or null. */
+        private fun Uri.rowId(): Long? = lastPathSegment?.toLongOrNull()
 
         /** Marks a previously written outgoing message as failed. */
         fun markFailed(messageUri: Uri) {

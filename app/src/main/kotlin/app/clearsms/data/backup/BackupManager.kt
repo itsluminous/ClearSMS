@@ -51,7 +51,11 @@ class BackupManager(
     ) {
         val messages =
             database.messageDao().getAll().filter { message ->
-                otpCutoffMs == null || message.category != Category.OTP || message.timestamp >= otpCutoffMs
+                // Deleted messages never travel: neither rows inside the
+                // transient undo window nor recycle-bin residents belong in
+                // a backup — restoring one must not resurrect deletions.
+                message.deletedAt == null &&
+                    (otpCutoffMs == null || message.category != Category.OTP || message.timestamp >= otpCutoffMs)
             }
         val document =
             BackupDocument(

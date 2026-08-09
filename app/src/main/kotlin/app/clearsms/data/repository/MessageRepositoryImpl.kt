@@ -59,6 +59,8 @@ class MessageRepositoryImpl(
     /** Platform hook syncing deletions to the system SMS provider (null in tests). */
     private val systemSmsDeleter: SystemSmsDeleter? = null,
     private val systemSmsReadWriter: SystemSmsReadWriter? = null,
+    /** Platform hook re-inserting restored bin rows into the provider (null in tests). */
+    private val systemSmsReinserter: SystemSmsReinserter? = null,
     /** Platform hook cancelling shade notifications for read/deleted messages (null in tests). */
     private val readNotificationCanceler: ReadNotificationCanceler? = null,
     /** Page size for [recategorizeAll]; overridable so tests can hit batch boundaries. */
@@ -188,6 +190,103 @@ class MessageRepositoryImpl(
         val deleter = systemSmsDeleter ?: return
         SqliteChunker.chunk(systemIds).forEach { deleter.deleteBySystemIds(it) }
     }
+
+    // region undoable delete / recycle bin
+
+    override suspend fun stageDeleteMessages(ids: List<Long>): List<Long> {
+        if (ids.isEmpty()) return emptyList()
+        val chunks = SqliteChunker.chunk(ids)
+        val now = System.currentTimeMillis()
+        // Soft-delete atomically; the rows keep their systemSmsId so the
+        // deferred provider deletion (and an undo) need no bookkeeping
+        // beyond the flags themselves.
+        val (staged, threadIds) =
+            database.withTransaction {
+                val live = chunks.flatMap { messageDao.liveIds(it) }
+                val threads = chunks.flatMap { messageDao.threadIdsFor(it) }.distinct()
+                SqliteChunker.chunk(live).forEach { messageDao.stageDelete(it, now) }
+                live to threads
+            }
+        // Deleted messages are no longer "new": exactly the cancellation the
+        // hard-delete path performs. Undo never re-posts notifications.
+        readNotificationCanceler?.cancelFor(staged)
+        cancelFullyReadThreadNotifications(threadIds)
+        return staged
+    }
+
+    override suspend fun stageDeleteThreads(threadIds: List<Long>): List<Long> {
+        if (threadIds.isEmpty()) return emptyList()
+        val ids = SqliteChunker.chunk(threadIds).flatMap { messageDao.liveIdsInThreads(it) }
+        val staged = stageDeleteMessages(ids)
+        readNotificationCanceler?.cancelThreads(threadIds)
+        return staged
+    }
+
+    override suspend fun undoStagedDelete(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        database.withTransaction {
+            SqliteChunker.chunk(ids).forEach { messageDao.undoDelete(it) }
+        }
+    }
+
+    override suspend fun commitStagedDelete(
+        ids: List<Long>,
+        toBin: Boolean,
+    ) {
+        if (ids.isEmpty()) return
+        val chunks = SqliteChunker.chunk(ids)
+        // Provider first: a crash after the provider deletion but before the
+        // flag/row write leaves providerDeletePending set, and the next
+        // launch re-issues a delete for already-gone provider ids — a no-op.
+        // The reverse order could resurrect the message in other SMS apps.
+        val systemIds = chunks.flatMap { messageDao.pendingSystemIdsFor(it) }
+        deleteFromProvider(systemIds)
+        database.withTransaction {
+            if (toBin) {
+                chunks.forEach { messageDao.clearProviderPending(it) }
+            } else {
+                chunks.forEach { messageDao.deleteByIds(it) }
+            }
+        }
+    }
+
+    override suspend fun commitAllPendingDeletes(toBin: Boolean) {
+        commitStagedDelete(messageDao.pendingCommitIds(), toBin)
+    }
+
+    override fun observeBin(): Flow<List<MessageEntity>> = messageDao.observeBin()
+
+    override suspend fun binMessageIds(): List<Long> = messageDao.binIds()
+
+    override suspend fun restoreFromBin(ids: List<Long>): BinRestoreResult {
+        if (ids.isEmpty()) return BinRestoreResult(restored = 0, reinserted = 0)
+        val rows = SqliteChunker.chunk(ids).flatMap { messageDao.getByIds(it) }.filter { it.deletedAt != null }
+        var reinserted = 0
+        for (row in rows) {
+            // The pre-deletion provider row is gone (deleted at commit), so
+            // a restore writes a FRESH provider row; on failure the message
+            // still comes back in-app, just without a provider mapping.
+            val newSystemId =
+                if (row.isOutgoing) {
+                    systemSmsReinserter?.reinsertSent(row.sender, row.body, row.timestamp)
+                } else {
+                    systemSmsReinserter?.reinsertInbox(row.sender, row.body, row.timestamp, row.isRead)
+                }
+            if (newSystemId != null) reinserted++
+            messageDao.restoreRow(row.id, newSystemId)
+        }
+        return BinRestoreResult(restored = rows.size, reinserted = reinserted)
+    }
+
+    override suspend fun deleteForever(ids: List<Long>) = deleteMessages(ids)
+
+    override suspend fun purgeExpiredBin(cutoffMs: Long): Int {
+        val expired = messageDao.expiredBinIds(cutoffMs)
+        deleteMessages(expired)
+        return expired.size
+    }
+
+    // endregion
 
     override suspend fun countOtpOlderThan(cutoffMs: Long): Int = messageDao.countOlderThan(Category.OTP, cutoffMs)
 

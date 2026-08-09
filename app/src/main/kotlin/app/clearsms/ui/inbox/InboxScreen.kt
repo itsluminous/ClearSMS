@@ -2,6 +2,8 @@ package app.clearsms.ui.inbox
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +31,7 @@ import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MarkEmailRead
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.SelectAll
@@ -45,8 +48,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,11 +67,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -74,6 +81,8 @@ import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.sms.DefaultSmsAppHelper
+import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
@@ -117,6 +126,44 @@ fun InboxScreen(
         val granted = contactsPermission.status.isGranted
         if (granted && !hadContactsPermission) viewModel.onContactsPermissionGranted()
         hadContactsPermission = granted
+    }
+
+    // Gmail-style transient undo: every delete/archive surfaces a snackbar
+    // whose UNDO reverts the staged action (deletes commit to the system
+    // provider only after the window closes — see UndoManager).
+    val undoLabel = stringResource(R.string.undo_action)
+    val resources = LocalContext.current.resources
+    LaunchedEffect(Unit) {
+        viewModel.undoEventFlow.collect { event ->
+            val message =
+                when (event) {
+                    is UndoUiEvent.Deleted ->
+                        resources.getQuantityString(R.plurals.undo_deleted, event.count, event.count)
+                    is UndoUiEvent.Archived ->
+                        resources.getQuantityString(R.plurals.undo_archived, event.count, event.count)
+                }
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo()
+        }
+    }
+
+    // Losing the default-SMS role means new messages silently stop arriving.
+    // Re-check on every resume so returning from the system role dialog (or
+    // from another SMS app's settings) updates the banner live.
+    val context = LocalContext.current
+    val defaultSmsBanner = remember { DefaultSmsBannerState() }
+    val defaultSmsLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            defaultSmsBanner.onRoleChecked(DefaultSmsAppHelper.isDefaultSmsApp(context))
+        }
+    LifecycleResumeEffect(Unit) {
+        defaultSmsBanner.onRoleChecked(DefaultSmsAppHelper.isDefaultSmsApp(context))
+        onPauseOrDispose { }
     }
 
     // System back exits selection mode instead of leaving the screen.
@@ -183,6 +230,17 @@ fun InboxScreen(
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (defaultSmsBanner.visible) {
+                        item(key = "default_sms_banner") {
+                            DefaultSmsBanner(
+                                onSetDefault = {
+                                    defaultSmsLauncher.launch(DefaultSmsAppHelper.createRequestIntent(context))
+                                },
+                                onDismiss = defaultSmsBanner::dismiss,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
                     if (!contactsPermission.status.isGranted) {
                         item(key = "contacts_permission") {
                             ContactsPermissionBanner(
@@ -348,6 +406,53 @@ private fun InboxSelectionBar(
             }
         },
     )
+}
+
+/**
+ * Persistent warning shown while Clear SMS is not the default SMS app:
+ * without the role, new incoming messages never reach the app. Inline (not
+ * a snackbar), dismissible for the session only.
+ */
+@Composable
+private fun DefaultSmsBanner(
+    onSetDefault: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.inbox_default_sms_banner),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+                TextButton(onClick = onSetDefault) {
+                    Text(stringResource(R.string.onboarding_set_default))
+                }
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.inbox_default_sms_dismiss),
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        }
+    }
 }
 
 /** Compact prompt shown while READ_CONTACTS is missing. */

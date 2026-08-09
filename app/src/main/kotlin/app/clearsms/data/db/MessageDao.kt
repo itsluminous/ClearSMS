@@ -32,6 +32,7 @@ interface MessageDao {
         INNER JOIN (
             SELECT threadId, MAX(timestamp) AS maxTs, MAX(id) AS maxId
             FROM messages
+            WHERE deletedAt IS NULL
             GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         WHERE m.isArchived = 0
@@ -45,7 +46,7 @@ interface MessageDao {
         unreadOnly: Boolean,
     ): Flow<List<MessageEntity>>
 
-    @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY timestamp ASC")
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC")
     fun observeThread(threadId: Long): Flow<List<MessageEntity>>
 
     /** Paged variant of [observeInbox]: same latest-per-thread rows, loaded incrementally. */
@@ -55,6 +56,7 @@ interface MessageDao {
         INNER JOIN (
             SELECT threadId, MAX(timestamp) AS maxTs, MAX(id) AS maxId
             FROM messages
+            WHERE deletedAt IS NULL
             GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         WHERE m.isArchived = 0
@@ -73,11 +75,13 @@ interface MessageDao {
      * initial page is the visible bottom of the thread and history loads on
      * upward scroll. Backed by the (threadId, timestamp) index.
      */
-    @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY timestamp DESC, id DESC")
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp DESC, id DESC")
     fun pagingThread(threadId: Long): PagingSource<Int, MessageEntity>
 
     /** Oldest message of a thread — carries the sender for the header. */
-    @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY timestamp ASC, id ASC LIMIT 1")
+    @Query(
+        "SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC, id ASC LIMIT 1",
+    )
     suspend fun firstInThread(threadId: Long): MessageEntity?
 
     /** Thread ids of the current inbox view, for select-all. */
@@ -85,7 +89,7 @@ interface MessageDao {
         """
         SELECT m.threadId FROM messages m
         INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId FROM messages GROUP BY threadId
+            SELECT threadId, MAX(id) AS maxId FROM messages WHERE deletedAt IS NULL GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
@@ -98,7 +102,7 @@ interface MessageDao {
         unreadOnly: Boolean,
     ): List<Long>
 
-    @Query("SELECT id FROM messages WHERE threadId = :threadId")
+    @Query("SELECT id FROM messages WHERE threadId = :threadId AND deletedAt IS NULL")
     suspend fun messageIdsInThread(threadId: Long): List<Long>
 
     /** How many messages in the thread are newer than [messageId] (its index in DESC order). */
@@ -106,6 +110,7 @@ interface MessageDao {
         """
         SELECT COUNT(*) FROM messages
         WHERE threadId = :threadId
+          AND deletedAt IS NULL
           AND timestamp > (SELECT timestamp FROM messages WHERE id = :messageId)
         """,
     )
@@ -125,14 +130,14 @@ interface MessageDao {
     @Query("SELECT systemSmsId FROM messages WHERE threadId IN (:threadIds) AND systemSmsId IS NOT NULL")
     suspend fun systemSmsIdsForThreads(threadIds: List<Long>): List<Long>
 
-    @Query("SELECT COUNT(*) FROM messages WHERE threadId IN (:threadIds) AND isRead = 0")
+    @Query("SELECT COUNT(*) FROM messages WHERE threadId IN (:threadIds) AND isRead = 0 AND deletedAt IS NULL")
     suspend fun unreadCountInThreads(threadIds: List<Long>): Int
 
     @Query(
         """
         SELECT m.category AS category, COUNT(*) AS count FROM messages m
         INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId FROM messages GROUP BY threadId
+            SELECT threadId, MAX(id) AS maxId FROM messages WHERE deletedAt IS NULL GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         WHERE m.isRead = 0 AND m.isArchived = 0
         GROUP BY m.category
@@ -151,6 +156,7 @@ interface MessageDao {
         SELECT m.* FROM messages m
         JOIN messages_fts ON m.id = messages_fts.rowid
         WHERE messages_fts MATCH :match
+          AND m.deletedAt IS NULL
           AND (:category IS NULL OR m.category = :category)
           AND (:cutoffMs IS NULL OR m.timestamp >= :cutoffMs)
         ORDER BY m.timestamp DESC
@@ -167,7 +173,7 @@ interface MessageDao {
         """
         SELECT m.* FROM messages m
         JOIN messages_fts ON m.id = messages_fts.rowid
-        WHERE messages_fts MATCH :match
+        WHERE messages_fts MATCH :match AND m.deletedAt IS NULL
         ORDER BY m.timestamp DESC
         """,
     )
@@ -180,6 +186,7 @@ interface MessageDao {
         INNER JOIN (
             SELECT threadId, MAX(id) AS maxId
             FROM messages
+            WHERE deletedAt IS NULL
             GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         WHERE m.isArchived = 1
@@ -193,7 +200,7 @@ interface MessageDao {
         """
         SELECT m.threadId FROM messages m
         INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId FROM messages GROUP BY threadId
+            SELECT threadId, MAX(id) AS maxId FROM messages WHERE deletedAt IS NULL GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         WHERE m.isArchived = 1
         ORDER BY m.timestamp DESC
@@ -201,21 +208,21 @@ interface MessageDao {
     )
     suspend fun archivedThreadIds(): List<Long>
 
-    @Query("SELECT * FROM messages WHERE category = :category AND timestamp < :cutoffMs")
+    @Query("SELECT * FROM messages WHERE category = :category AND timestamp < :cutoffMs AND deletedAt IS NULL")
     suspend fun messagesOlderThan(
         category: Category,
         cutoffMs: Long,
     ): List<MessageEntity>
 
     /** Count for the confirm-before-delete step of the manual OTP cleanup. */
-    @Query("SELECT COUNT(*) FROM messages WHERE category = :category AND timestamp < :cutoffMs")
+    @Query("SELECT COUNT(*) FROM messages WHERE category = :category AND timestamp < :cutoffMs AND deletedAt IS NULL")
     suspend fun countOlderThan(
         category: Category,
         cutoffMs: Long,
     ): Int
 
     /** Ids behind [countOlderThan], fed into the shared bulk-delete path. */
-    @Query("SELECT id FROM messages WHERE category = :category AND timestamp < :cutoffMs")
+    @Query("SELECT id FROM messages WHERE category = :category AND timestamp < :cutoffMs AND deletedAt IS NULL")
     suspend fun idsOlderThan(
         category: Category,
         cutoffMs: Long,
@@ -347,11 +354,13 @@ interface MessageDao {
     suspend fun threadIdsFor(ids: List<Long>): List<Long>
 
     /** Of [threadIds], the threads that still contain at least one unread message. */
-    @Query("SELECT DISTINCT threadId FROM messages WHERE threadId IN (:threadIds) AND isRead = 0")
+    @Query(
+        "SELECT DISTINCT threadId FROM messages WHERE threadId IN (:threadIds) AND isRead = 0 AND deletedAt IS NULL",
+    )
     suspend fun threadIdsWithUnread(threadIds: List<Long>): List<Long>
 
     /** Unread message ids inside [threadIds] — the messages that may still own notifications. */
-    @Query("SELECT id FROM messages WHERE threadId IN (:threadIds) AND isRead = 0")
+    @Query("SELECT id FROM messages WHERE threadId IN (:threadIds) AND isRead = 0 AND deletedAt IS NULL")
     suspend fun unreadMessageIdsInThreads(threadIds: List<Long>): List<Long>
 
     @Query("UPDATE messages SET isArchived = :archived WHERE threadId IN (:threadIds)")
@@ -371,6 +380,73 @@ interface MessageDao {
         normalizedSender: String,
         blocked: Boolean,
     )
+
+    // region soft delete / recycle bin
+
+    /** Stages live rows for deletion: hidden everywhere, provider commit deferred. */
+    @Query(
+        "UPDATE messages SET deletedAt = :deletedAt, providerDeletePending = 1 WHERE id IN (:ids) AND deletedAt IS NULL",
+    )
+    suspend fun stageDelete(
+        ids: List<Long>,
+        deletedAt: Long,
+    )
+
+    /** Of [ids], the rows that are still live (not soft-deleted). */
+    @Query("SELECT id FROM messages WHERE id IN (:ids) AND deletedAt IS NULL")
+    suspend fun liveIds(ids: List<Long>): List<Long>
+
+    /** Live message ids of the given threads (staging input for thread deletes). */
+    @Query("SELECT id FROM messages WHERE threadId IN (:threadIds) AND deletedAt IS NULL")
+    suspend fun liveIdsInThreads(threadIds: List<Long>): List<Long>
+
+    /** Reverts a staged deletion: rows become live again, nothing owed to the provider. */
+    @Query("UPDATE messages SET deletedAt = NULL, providerDeletePending = 0 WHERE id IN (:ids)")
+    suspend fun undoDelete(ids: List<Long>)
+
+    /** Provider row ids still awaiting the deferred deletion commit. */
+    @Query(
+        "SELECT systemSmsId FROM messages WHERE id IN (:ids) AND providerDeletePending = 1 AND systemSmsId IS NOT NULL",
+    )
+    suspend fun pendingSystemIdsFor(ids: List<Long>): List<Long>
+
+    /** Marks the deferred provider deletion as committed (rows rest in the bin). */
+    @Query("UPDATE messages SET providerDeletePending = 0 WHERE id IN (:ids)")
+    suspend fun clearProviderPending(ids: List<Long>)
+
+    /** Every row whose provider deletion never committed (startup recovery). */
+    @Query("SELECT id FROM messages WHERE providerDeletePending = 1")
+    suspend fun pendingCommitIds(): List<Long>
+
+    /** Recycle-bin contents, most recently deleted first. */
+    @Query("SELECT * FROM messages WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC, timestamp DESC")
+    fun observeBin(): Flow<List<MessageEntity>>
+
+    @Query("SELECT id FROM messages WHERE deletedAt IS NOT NULL")
+    suspend fun binIds(): List<Long>
+
+    /** Bin rows past the retention window (auto-purge input). */
+    @Query("SELECT id FROM messages WHERE deletedAt IS NOT NULL AND deletedAt < :cutoffMs")
+    suspend fun expiredBinIds(cutoffMs: Long): List<Long>
+
+    @Query("SELECT * FROM messages WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<MessageEntity>
+
+    /**
+     * Restores one bin row to the inbox. [systemSmsId] is the freshly
+     * re-inserted provider row id, or null when the re-insert failed or was
+     * skipped (not the default SMS app) — the stale pre-deletion id must not
+     * survive either way, because that provider row is gone.
+     */
+    @Query(
+        "UPDATE messages SET deletedAt = NULL, providerDeletePending = 0, systemSmsId = :systemSmsId WHERE id = :id",
+    )
+    suspend fun restoreRow(
+        id: Long,
+        systemSmsId: Long?,
+    )
+
+    // endregion
 
     @Query("DELETE FROM messages WHERE id = :id")
     suspend fun deleteById(id: Long)

@@ -76,6 +76,7 @@ import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.SelectionState
@@ -124,6 +125,29 @@ fun ConversationScreen(
                     if (result == SnackbarResult.ActionPerformed) viewModel.retry(event.messageId)
                 }
             }
+        }
+    }
+
+    // Deletes are undoable: the snackbar's UNDO reverts the staged action
+    // before its deferred provider commit (see UndoManager).
+    val undoLabel = stringResource(R.string.undo_action)
+    val resources = LocalContext.current.resources
+    LaunchedEffect(Unit) {
+        viewModel.undoEventFlow.collect { event ->
+            val message =
+                when (event) {
+                    is UndoUiEvent.Deleted ->
+                        resources.getQuantityString(R.plurals.undo_deleted, event.count, event.count)
+                    is UndoUiEvent.Archived ->
+                        resources.getQuantityString(R.plurals.undo_archived, event.count, event.count)
+                }
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo()
         }
     }
 

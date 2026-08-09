@@ -24,6 +24,7 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.MessageRepositoryImpl
 import app.clearsms.data.repository.RuleRepository
 import app.clearsms.data.repository.RuleRepositoryImpl
+import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleEngine
 import app.clearsms.data.rules.RuleExporter
@@ -41,7 +42,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.util.Optional
 import javax.inject.Qualifier
@@ -168,12 +171,26 @@ object DataModule {
             json = json,
             systemSmsDeleter = telephonyWriter,
             systemSmsReadWriter = telephonyWriter,
+            systemSmsReinserter = telephonyWriter,
             readNotificationCanceler = notificationDismisser,
         )
 
     @Provides
     @Singleton
     fun provideMessageRepository(impl: MessageRepositoryImpl): MessageRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideUndoManager(
+        repository: MessageRepository,
+        settings: SettingsRepository,
+        @ApplicationScope scope: CoroutineScope,
+    ): UndoManager =
+        UndoManager(
+            repository = repository,
+            scope = scope,
+            recycleBinEnabled = { settings.recycleBinEnabled.first() },
+        )
 
     @Provides
     @Singleton

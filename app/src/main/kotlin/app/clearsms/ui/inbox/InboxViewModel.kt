@@ -10,6 +10,7 @@ import androidx.paging.map
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
@@ -17,6 +18,7 @@ import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
@@ -25,6 +27,7 @@ import app.clearsms.ui.components.resolveSenderDisplay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +38,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -105,12 +109,17 @@ class InboxViewModel
     @Inject
     constructor(
         private val messageRepository: MessageRepository,
+        private val undoManager: UndoManager,
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
         private val settings: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val filter = MutableStateFlow(InboxFilterState())
+
+        /** One-shot undo snackbar requests (delete/archive just staged). */
+        private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
+        val undoEventFlow: Flow<UndoUiEvent> = undoEvents.receiveAsFlow()
 
         /** Bumped when contacts become available so rows re-resolve names. */
         private val contactsTick = MutableStateFlow(0)
@@ -244,11 +253,22 @@ class InboxViewModel
         }
 
         fun archive(messageId: Long) {
-            viewModelScope.launch(ioDispatcher) { messageRepository.archive(messageId) }
+            viewModelScope.launch(ioDispatcher) {
+                undoManager.stageArchiveMessage(messageId)
+                undoEvents.send(UndoUiEvent.Archived(1))
+            }
         }
 
         fun delete(messageId: Long) {
-            viewModelScope.launch(ioDispatcher) { messageRepository.delete(messageId) }
+            viewModelScope.launch(ioDispatcher) {
+                val staged = undoManager.stageDeleteMessages(listOf(messageId))
+                if (staged > 0) undoEvents.send(UndoUiEvent.Deleted(staged))
+            }
+        }
+
+        /** Reverts the last delete/archive while its snackbar is showing. */
+        fun undo() {
+            viewModelScope.launch(ioDispatcher) { undoManager.undo() }
         }
 
         fun block(sender: String) {
@@ -278,17 +298,23 @@ class InboxViewModel
             }
         }
 
-        /** Deletes the selected threads (single batched DB op + provider sync). */
+        /** Deletes the selected threads undoably (staged; provider commit deferred). */
         fun deleteSelected() {
             val ids = selectionState.value.selected.toList()
             exitSelection()
-            viewModelScope.launch(ioDispatcher) { messageRepository.deleteThreads(ids) }
+            viewModelScope.launch(ioDispatcher) {
+                val count = undoManager.stageDeleteThreads(ids)
+                if (count > 0) undoEvents.send(UndoUiEvent.Deleted(count))
+            }
         }
 
         fun archiveSelected() {
             val ids = selectionState.value.selected.toList()
             exitSelection()
-            viewModelScope.launch(ioDispatcher) { messageRepository.archiveThreads(ids) }
+            viewModelScope.launch(ioDispatcher) {
+                val count = undoManager.stageArchiveThreads(ids)
+                if (count > 0) undoEvents.send(UndoUiEvent.Archived(count))
+            }
         }
 
         /** Marks read when anything selected is unread, otherwise marks unread. */

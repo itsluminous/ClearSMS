@@ -36,6 +36,16 @@ interface SettingsRepository {
     suspend fun setShowTransactionDetails(value: Boolean)
 
     /**
+     * Recycle bin for deleted messages. Default OFF — deletes stay
+     * permanent exactly as before. When ON, a committed delete keeps the
+     * message in an in-app bin for 30 days (the system-provider copy is
+     * still removed) instead of dropping the row.
+     */
+    val recycleBinEnabled: Flow<Boolean>
+
+    suspend fun setRecycleBinEnabled(value: Boolean)
+
+    /**
      * Privacy gate for the Finance tab: when false, balances (account
      * balances, card outstanding, the month summary) are masked until the
      * user authenticates with the device screen lock. Default FALSE —

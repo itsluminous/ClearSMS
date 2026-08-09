@@ -61,6 +61,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_SHOW_TRANSACTION_DETAILS] = value }
     }
 
+    override val recycleBinEnabled: Flow<Boolean> =
+        dataStore.data.map { it[KEY_RECYCLE_BIN_ENABLED] ?: false }
+
+    override suspend fun setRecycleBinEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_RECYCLE_BIN_ENABLED] = value }
+    }
+
     override val showBalance: Flow<Boolean> =
         dataStore.data.map { it[KEY_SHOW_BALANCE] ?: false }
 
@@ -218,6 +225,7 @@ class SettingsRepositoryImpl(
         val KEY_OTP_AUTO_DELETE = stringPreferencesKey("otp_auto_delete_policy")
         val KEY_OTP_DISPLAY_SIZE = stringPreferencesKey("otp_display_size")
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
+        val KEY_RECYCLE_BIN_ENABLED = booleanPreferencesKey("recycle_bin_enabled")
         val KEY_SHOW_BALANCE = booleanPreferencesKey("show_balance")
         val KEY_SIGNATURE = stringPreferencesKey("signature")
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")

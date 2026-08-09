@@ -40,6 +40,7 @@ import app.clearsms.ui.conversation.ConversationScreen
 import app.clearsms.ui.finance.AccountDetailScreen
 import app.clearsms.ui.finance.FinanceScreen
 import app.clearsms.ui.inbox.ArchivedScreen
+import app.clearsms.ui.inbox.BinScreen
 import app.clearsms.ui.inbox.InboxScreen
 import app.clearsms.ui.onboarding.OnboardingScreen
 import app.clearsms.ui.rules.RuleWizardScreen
@@ -163,6 +164,9 @@ private fun MainScaffold(
                     onBack = { navController.popBackStack() },
                 )
             }
+            composable(Routes.RECYCLE_BIN) {
+                BinScreen(onBack = { navController.popBackStack() })
+            }
             composable(Routes.FINANCE) {
                 FinanceScreen(
                     onOpenAccount = { number, bank -> navController.navigate(Routes.accountDetail(number, bank)) },
@@ -244,6 +248,7 @@ private fun MainScaffold(
                     onBack = { navController.popBackStack() },
                     onManageRules = { navController.navigate(Routes.RULES) },
                     onArchived = { navController.navigate(Routes.ARCHIVED) },
+                    onRecycleBin = { navController.navigate(Routes.RECYCLE_BIN) },
                     onPrivacyPolicy = { navController.navigate(Routes.PRIVACY_POLICY) },
                     onLicenses = { navController.navigate(Routes.LICENSES) },
                     onPermissions = { navController.navigate(Routes.PERMISSIONS_INFO) },

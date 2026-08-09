@@ -28,22 +28,29 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
@@ -66,10 +73,35 @@ fun ArchivedScreen(
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmDeleteRow by remember { mutableStateOf<InboxItem?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Deletes are undoable: the snackbar's UNDO reverts the staged action
+    // before its deferred provider commit (see UndoManager).
+    val undoLabel = stringResource(R.string.undo_action)
+    val resources = LocalContext.current.resources
+    LaunchedEffect(Unit) {
+        viewModel.undoEventFlow.collect { event ->
+            val message =
+                when (event) {
+                    is UndoUiEvent.Deleted ->
+                        resources.getQuantityString(R.plurals.undo_deleted, event.count, event.count)
+                    is UndoUiEvent.Archived ->
+                        resources.getQuantityString(R.plurals.undo_archived, event.count, event.count)
+                }
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo()
+        }
+    }
 
     BackHandler(enabled = selection.active) { viewModel.exitSelection() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (selection.active) {
                 TopAppBar(

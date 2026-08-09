@@ -36,6 +36,7 @@ enum class SettingsItem(
     @StringRes val titleRes: Int,
 ) {
     ARCHIVED(SettingsSection.MESSAGES, R.string.settings_archived),
+    RECYCLE_BIN(SettingsSection.MESSAGES, R.string.settings_recycle_bin),
     BLOCK_LIST(SettingsSection.MESSAGES, R.string.settings_block_list),
     SHOW_EXTRACTED_DETAILS(SettingsSection.MESSAGES, R.string.settings_show_transaction_details),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),

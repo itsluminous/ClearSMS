@@ -13,6 +13,7 @@ import androidx.work.WorkerParameters
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.domain.model.Category
 import com.google.common.truth.Truth.assertThat
@@ -106,6 +107,29 @@ class RecategorizeWorkerTest {
             override suspend fun deleteMessages(ids: List<Long>) = Unit
 
             override suspend fun deleteThreads(threadIds: List<Long>) = Unit
+
+            override suspend fun stageDeleteMessages(ids: List<Long>): List<Long> = ids
+
+            override suspend fun stageDeleteThreads(threadIds: List<Long>): List<Long> = threadIds
+
+            override suspend fun undoStagedDelete(ids: List<Long>) = Unit
+
+            override suspend fun commitStagedDelete(
+                ids: List<Long>,
+                toBin: Boolean,
+            ) = Unit
+
+            override suspend fun commitAllPendingDeletes(toBin: Boolean) = Unit
+
+            override fun observeBin(): Flow<List<MessageEntity>> = emptyFlow()
+
+            override suspend fun binMessageIds(): List<Long> = emptyList()
+
+            override suspend fun restoreFromBin(ids: List<Long>): BinRestoreResult = BinRestoreResult(0, 0)
+
+            override suspend fun deleteForever(ids: List<Long>) = Unit
+
+            override suspend fun purgeExpiredBin(cutoffMs: Long): Int = 0
 
             override suspend fun setReadForMessages(
                 ids: List<Long>,

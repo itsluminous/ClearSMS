@@ -65,7 +65,7 @@ class SettingsCatalogTest {
                 .filter { it.section != null }
                 .groupBy({ sectionTitle(it.section!!) }, ::title)
         assertThat(bySection["Messages"])
-            .containsExactly("Archived messages", "Block & allow list", "Show extracted message details")
+            .containsExactly("Archived messages", "Recycle bin", "Block & allow list", "Show extracted message details")
             .inOrder()
         assertThat(bySection["Appearance"])
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
@@ -144,6 +144,9 @@ class SettingsCatalogTest {
                 "UPI",
                 "Back up settings",
                 "Restore settings",
+                // Messages section, right after Archived: the recycle bin
+                // toggle + entry point (30-day retention, default OFF).
+                "Recycle bin",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
@@ -172,6 +175,14 @@ class SettingsCatalogTest {
     fun `search finds a row in the Messages section`() {
         assertThat(search("block allow").map { it.section }).containsExactly(SettingsSection.MESSAGES)
         assertThat(search("archived")).contains(SettingsItem.ARCHIVED)
+    }
+
+    @Test
+    fun `recycle bin row sits in Messages directly after Archived and is searchable`() {
+        val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
+        assertThat(messagesRows.indexOf(SettingsItem.RECYCLE_BIN))
+            .isEqualTo(messagesRows.indexOf(SettingsItem.ARCHIVED) + 1)
+        assertThat(search("recycle bin")).containsExactly(SettingsItem.RECYCLE_BIN)
     }
 
     @Test

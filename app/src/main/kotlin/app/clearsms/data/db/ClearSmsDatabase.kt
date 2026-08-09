@@ -26,7 +26,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -71,6 +71,12 @@ import java.time.ZoneId
         // two-tier identity the ingestion path now enforces — see
         // [ClearSmsDatabase.CollapseDuplicateTransactions].
         AutoMigration(from = 9, to = 10, spec = ClearSmsDatabase.CollapseDuplicateTransactions::class),
+        // v10 -> v11: adds messages.deletedAt (soft-delete marker backing the
+        // transient delete-undo window and the recycle bin) plus
+        // messages.providerDeletePending (deferred system-provider deletion
+        // committed after the undo window or on next launch), and an index
+        // on deletedAt for the read-path filters. Pure additions.
+        AutoMigration(from = 10, to = 11),
     ],
 )
 @TypeConverters(Converters::class)

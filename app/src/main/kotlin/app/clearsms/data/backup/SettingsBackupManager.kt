@@ -107,6 +107,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("otp_auto_delete_policy"),
             SettingsBackupEntry.StringEntry("otp_display_size"),
             SettingsBackupEntry.BooleanEntry("show_transaction_details"),
+            SettingsBackupEntry.BooleanEntry("recycle_bin_enabled"),
             SettingsBackupEntry.StringEntry("signature"),
             SettingsBackupEntry.BooleanEntry("show_rich_avatars"),
             SettingsBackupEntry.StringSetEntry("notification_actions"),

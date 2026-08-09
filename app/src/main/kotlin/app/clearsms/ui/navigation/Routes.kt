@@ -7,6 +7,7 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val INBOX = "inbox"
     const val ARCHIVED = "inbox/archived"
+    const val RECYCLE_BIN = "inbox/bin"
     const val FINANCE = "finance"
     const val ALERTS = "alerts"
     const val SEARCH = "search"

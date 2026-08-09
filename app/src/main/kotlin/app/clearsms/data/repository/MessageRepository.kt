@@ -6,6 +6,17 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import kotlinx.coroutines.flow.Flow
 
+/** Outcome of a recycle-bin restore. */
+data class BinRestoreResult(
+    /** Rows made live again in the app database. */
+    val restored: Int,
+    /** Of [restored], how many were re-inserted into the system provider. */
+    val reinserted: Int,
+) {
+    /** True when every restored row is back in the system provider too. */
+    val fullyReinserted: Boolean get() = restored == reinserted
+}
+
 /** Access to messages: inbox observation, search, mutations and ingestion. */
 interface MessageRepository {
     /** Latest message per thread, optionally filtered by category / unread state. */
@@ -79,6 +90,60 @@ interface MessageRepository {
 
     /** Batched whole-thread delete; also removes rows from the system provider. */
     suspend fun deleteThreads(threadIds: List<Long>)
+
+    // region undoable delete / recycle bin
+
+    /**
+     * Soft-deletes [ids]: the rows disappear from every read path
+     * immediately and their notifications are cancelled, but the system-
+     * provider deletion is DEFERRED until [commitStagedDelete] — so
+     * [undoStagedDelete] can restore them without re-inserting provider
+     * rows.
+     *
+     * @return the ids actually staged (already-deleted rows are skipped).
+     */
+    suspend fun stageDeleteMessages(ids: List<Long>): List<Long>
+
+    /** Whole-thread variant of [stageDeleteMessages]; returns staged message ids. */
+    suspend fun stageDeleteThreads(threadIds: List<Long>): List<Long>
+
+    /** Reverts a staged deletion: rows are live again, provider untouched. */
+    suspend fun undoStagedDelete(ids: List<Long>)
+
+    /**
+     * Commits a staged deletion: the deferred provider rows are deleted,
+     * then the app rows are hard-deleted ([toBin] false) or left resting in
+     * the recycle bin ([toBin] true).
+     */
+    suspend fun commitStagedDelete(
+        ids: List<Long>,
+        toBin: Boolean,
+    )
+
+    /** Commits every staged deletion that never committed (startup recovery). */
+    suspend fun commitAllPendingDeletes(toBin: Boolean)
+
+    /** Recycle-bin contents, most recently deleted first. */
+    fun observeBin(): Flow<List<MessageEntity>>
+
+    suspend fun binMessageIds(): List<Long>
+
+    /**
+     * Restores bin rows to the inbox and re-inserts them into the system
+     * provider when possible (default SMS app only).
+     */
+    suspend fun restoreFromBin(ids: List<Long>): BinRestoreResult
+
+    /** Hard-deletes bin rows — exactly what [deleteMessages] does today. */
+    suspend fun deleteForever(ids: List<Long>)
+
+    /**
+     * Hard-deletes bin rows older than [cutoffMs] (the 30-day retention
+     * sweep). @return the number of purged messages.
+     */
+    suspend fun purgeExpiredBin(cutoffMs: Long): Int
+
+    // endregion
 
     /**
      * Number of messages categorized [Category.OTP] older than [cutoffMs]

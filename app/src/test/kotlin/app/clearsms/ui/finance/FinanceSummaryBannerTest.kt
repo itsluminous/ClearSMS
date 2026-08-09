@@ -242,6 +242,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setShowTransactionDetails(value: Boolean) = Unit
 
+    override val recycleBinEnabled = MutableStateFlow(false)
+
+    override suspend fun setRecycleBinEnabled(value: Boolean) = Unit
+
     override val showBalance = MutableStateFlow(true)
 
     override suspend fun setShowBalance(value: Boolean) = Unit
