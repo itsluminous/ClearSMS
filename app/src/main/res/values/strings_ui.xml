@@ -459,8 +459,6 @@
     <string name="alerts_tracking_ref">Ref: %1$s</string>
 
     <!-- Swipe-to-delete confirmation -->
-    <string name="swipe_delete_title">Delete message?</string>
-    <string name="swipe_delete_message">The latest message from %1$s will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
 
     <!-- Reminder detail -->
     <string name="alerts_type_deposit">Deposit</string>
