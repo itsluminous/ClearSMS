@@ -249,3 +249,17 @@ class RulesViewModel
             )
         }
     }
+
+/**
+ * Case-insensitive rules search over name and id, so "hdfc" finds both
+ * "HDFC Bank Debit Transaction" and `hdfc-debit-01`. A blank query keeps
+ * everything (the pill is a filter, never a gate).
+ */
+fun filterRules(
+    rules: List<RuleItem>,
+    query: String,
+): List<RuleItem> {
+    val q = query.trim()
+    if (q.isEmpty()) return rules
+    return rules.filter { it.name.contains(q, ignoreCase = true) || it.id.contains(q, ignoreCase = true) }
+}

@@ -315,6 +315,9 @@
     <string name="settings_clear_otp_empty">No OTP messages to clear</string>
     <string name="action_continue">Continue</string>
     <string name="settings_section_rules">Rules</string>
+    <string name="rules_search_hint">Search rules</string>
+    <string name="rules_search_clear">Clear rules search</string>
+    <string name="rules_search_empty">No rules match \"%1$s\"</string>
     <string name="settings_manage_rules">Manage rules</string>
     <string name="settings_manage_rules_summary">View, create, import, export and share rules</string>
     <string name="settings_section_signature">Signature</string>

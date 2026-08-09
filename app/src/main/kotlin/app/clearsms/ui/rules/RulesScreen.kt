@@ -8,18 +8,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Rule
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -40,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -153,6 +159,9 @@ fun RulesScreen(
             }
         },
     ) { padding ->
+        var query by rememberSaveable { mutableStateOf("") }
+        val shownUserRules = filterRules(state.userRules, query)
+        val shownBuiltinRules = filterRules(state.builtinRules, query)
         if (state.loaded && state.builtinRules.isEmpty() && state.userRules.isEmpty()) {
             EmptyState(
                 icon = Icons.AutoMirrored.Outlined.Rule,
@@ -162,45 +171,81 @@ fun RulesScreen(
             )
             return@Scaffold
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 88.dp),
-        ) {
-            if (state.userRules.isNotEmpty()) {
-                item(key = "user_header") {
-                    Text(
-                        text = stringResource(R.string.rules_user_section),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Search pill: rounded like the inbox filter pills, filtering both
+            // sections live on name or rule id.
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(stringResource(R.string.rules_search_hint)) },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = stringResource(R.string.rules_search_clear),
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            if (query.isNotBlank() && shownUserRules.isEmpty() && shownBuiltinRules.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.rules_search_empty, query),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp),
+                )
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 88.dp),
+            ) {
+                if (shownUserRules.isNotEmpty()) {
+                    item(key = "user_header") {
+                        Text(
+                            text = stringResource(R.string.rules_user_section),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                    items(shownUserRules, key = { "user_${it.id}" }) { rule ->
+                        RuleRow(
+                            rule = rule,
+                            // A parked (disabled) rule is not in the database, so
+                            // there is nothing for the editor to load.
+                            onClick = if (rule.enabled) ({ onEditRule(rule.id) }) else null,
+                            onToggle = { viewModel.setEnabled(rule, it) },
+                            onDelete = { viewModel.deleteUserRule(rule.id) },
+                        )
+                    }
                 }
-                items(state.userRules, key = { "user_${it.id}" }) { rule ->
+                if (shownBuiltinRules.isNotEmpty()) {
+                    item(key = "builtin_header") {
+                        Text(
+                            text = stringResource(R.string.rules_builtin_section),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                }
+                items(shownBuiltinRules, key = { "builtin_${it.id}" }) { rule ->
                     RuleRow(
                         rule = rule,
-                        // A parked (disabled) rule is not in the database, so
-                        // there is nothing for the editor to load.
-                        onClick = if (rule.enabled) ({ onEditRule(rule.id) }) else null,
+                        onClick = if (rule.enabled) ({ viewModel.showDetail(rule.id) }) else null,
                         onToggle = { viewModel.setEnabled(rule, it) },
-                        onDelete = { viewModel.deleteUserRule(rule.id) },
+                        onDelete = null,
                     )
                 }
-            }
-            item(key = "builtin_header") {
-                Text(
-                    text = stringResource(R.string.rules_builtin_section),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            }
-            items(state.builtinRules, key = { "builtin_${it.id}" }) { rule ->
-                RuleRow(
-                    rule = rule,
-                    onClick = if (rule.enabled) ({ viewModel.showDetail(rule.id) }) else null,
-                    onToggle = { viewModel.setEnabled(rule, it) },
-                    onDelete = null,
-                )
             }
         }
     }
