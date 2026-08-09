@@ -8,6 +8,7 @@ import app.clearsms.data.rules.RuleAction
 import app.clearsms.data.rules.RuleDefinition
 import app.clearsms.data.rules.RuleEngine
 import app.clearsms.data.rules.RuleMatch
+import app.clearsms.data.rules.toDefinition
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.rules.CapturePick
@@ -20,7 +21,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.util.UUID
 import javax.inject.Inject
 
@@ -38,6 +41,21 @@ enum class WizardValidationError {
 }
 
 data class RuleWizardUiState(
+    /**
+     * Edit mode: id of the rule being edited in place; null when creating
+     * (or duplicating, which must mint a fresh user-owned id).
+     */
+    val editingRuleId: String? = null,
+    /** Sender pattern loaded from an existing rule (no source message to compose from). */
+    val senderPatternOverride: String? = null,
+    /** Extract map loaded from an existing rule (no tokens to compose from). */
+    val extractOverride: Map<String, String>? = null,
+    /** Guard ids carried over verbatim from the loaded rule. */
+    val guardsNone: List<String> = emptyList(),
+    /** Explicit extract types carried over verbatim from the loaded rule. */
+    val extractTypes: Map<String, String> = emptyMap(),
+    /** Notification template carried over verbatim from the loaded rule. */
+    val notificationAction: String? = null,
     // Step 1 — source message and detected tokens.
     val sourceSender: String = "",
     val sourceBody: String = "",
@@ -82,6 +100,7 @@ class RuleWizardViewModel
         savedStateHandle: SavedStateHandle,
         private val ruleRepository: RuleRepository,
         private val ruleEngine: RuleEngine,
+        private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val state = MutableStateFlow(RuleWizardUiState())
@@ -90,8 +109,56 @@ class RuleWizardViewModel
         init {
             val sender = savedStateHandle.get<String>("sender").orEmpty()
             val body = savedStateHandle.get<String>("body").orEmpty()
+            val ruleId = savedStateHandle.get<String>("ruleId").orEmpty()
+            val duplicate = savedStateHandle.get<Boolean>("duplicate") ?: false
             state.value = RuleWizardUiState(sourceSender = sender, sourceBody = body)
-            if (body.isNotBlank()) analyze()
+            if (ruleId.isNotBlank()) {
+                loadExistingRule(ruleId, duplicate)
+            } else if (body.isNotBlank()) {
+                analyze()
+            }
+        }
+
+        /**
+         * Seeds the wizard from an existing rule. Editing keeps the rule's
+         * id so saving updates it in place; duplicating drops the id so
+         * saving creates a fresh user-owned copy and never touches the
+         * original (bundled rules must stay identical to the shipped asset).
+         */
+        private fun loadExistingRule(
+            ruleId: String,
+            duplicate: Boolean,
+        ) {
+            viewModelScope.launch(ioDispatcher) {
+                val definition =
+                    ruleRepository
+                        .observeRules()
+                        .first()
+                        .firstOrNull { it.id == ruleId }
+                        ?.toDefinition(json) ?: return@launch
+                val loadedName = definition.name ?: definition.id
+                update {
+                    RuleWizardUiState(
+                        editingRuleId = if (duplicate) null else definition.id,
+                        analyzed = true,
+                        senderPatternOverride = definition.match.senderPattern,
+                        patternOverride = definition.match.bodyPattern.orEmpty(),
+                        extractOverride = definition.action.extract,
+                        guardsNone = definition.match.guardsNone,
+                        extractTypes = definition.action.extractTypes,
+                        notificationAction = definition.action.notification,
+                        category = definition.action.category,
+                        subCategory = definition.action.subCategory,
+                        keywordOptions = definition.match.bodyMustContain,
+                        mustContain = definition.match.bodyMustContain.toSet(),
+                        mustNotContain = definition.match.bodyMustNotContain.joinToString(", "),
+                        bindSender = definition.match.senderPattern != null,
+                        name = if (duplicate) "$loadedName (copy)" else loadedName,
+                        priority =
+                            (if (duplicate) DEFAULT_USER_PRIORITY else definition.priority).toString(),
+                    )
+                }
+            }
         }
 
         fun onSourceSenderChange(value: String) {
@@ -186,9 +253,10 @@ class RuleWizardViewModel
             val recomposed =
                 next.copy(
                     composedSenderPattern =
-                        if (next.sourceSender.isBlank()) "" else RuleSuggester.senderPattern(next.sourceSender),
+                        next.senderPatternOverride
+                            ?: if (next.sourceSender.isBlank()) "" else RuleSuggester.senderPattern(next.sourceSender),
                     composedBodyPattern = composed.bodyPattern,
-                    extract = composed.extract,
+                    extract = next.extractOverride ?: composed.extract,
                 )
             val error = validate(recomposed)
             val definition = if (error == null) buildDefinition(recomposed) else null
@@ -229,7 +297,10 @@ class RuleWizardViewModel
                 return WizardValidationError.CAPTURE_MISMATCH
             }
             val probe = buildDefinition(s) ?: return WizardValidationError.EMPTY_PATTERN
-            if (ruleEngine.evaluate(listOf(probe), s.sourceSender, s.sourceBody) == null) {
+            // Editing an existing rule has no source message to match against.
+            if (s.sourceBody.isNotBlank() &&
+                ruleEngine.evaluate(listOf(probe), s.sourceSender, s.sourceBody) == null
+            ) {
                 return WizardValidationError.NO_SOURCE_MATCH
             }
             return null
@@ -240,7 +311,8 @@ class RuleWizardViewModel
             val sender = s.composedSenderPattern.takeIf { s.bindSender && it.isNotBlank() }
             if (body == null && sender == null) return null
             return RuleDefinition(
-                id = "user_" + UUID.randomUUID().toString().take(8),
+                // Editing keeps the id so the REPLACE insert updates in place.
+                id = s.editingRuleId ?: ("user_" + UUID.randomUUID().toString().take(8)),
                 name = s.name.ifBlank { "My rule" },
                 priority = s.priority.toIntOrNull() ?: DEFAULT_USER_PRIORITY,
                 match =
@@ -253,12 +325,15 @@ class RuleWizardViewModel
                                 .split(',')
                                 .map(String::trim)
                                 .filter(String::isNotEmpty),
+                        guardsNone = s.guardsNone,
                     ),
                 action =
                     RuleAction(
                         category = s.category,
                         subCategory = s.subCategory,
                         extract = s.extract,
+                        extractTypes = s.extractTypes,
+                        notification = s.notificationAction,
                     ),
             )
         }

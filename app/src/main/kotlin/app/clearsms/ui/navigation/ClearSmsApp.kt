@@ -261,6 +261,8 @@ private fun MainScaffold(
                 RulesScreen(
                     onBack = { navController.popBackStack() },
                     onCreateRule = { navController.navigate(Routes.ruleWizard()) },
+                    onEditRule = { ruleId -> navController.navigate(Routes.ruleWizardEdit(ruleId)) },
+                    onDuplicateRule = { ruleId -> navController.navigate(Routes.ruleWizardDuplicate(ruleId)) },
                 )
             }
             composable(
@@ -269,6 +271,11 @@ private fun MainScaffold(
                     listOf(
                         navArgument("sender") { defaultValue = "" },
                         navArgument("body") { defaultValue = "" },
+                        navArgument("ruleId") { defaultValue = "" },
+                        navArgument("duplicate") {
+                            type = NavType.BoolType
+                            defaultValue = false
+                        },
                     ),
             ) {
                 RuleWizardScreen(onBack = { navController.popBackStack() })

@@ -38,12 +38,18 @@ object Routes {
         bank: String,
     ): String = "account/${Uri.encode(accountNumber)}?bank=${Uri.encode(bank)}"
 
-    const val RULE_WIZARD = "ruleWizard?sender={sender}&body={body}"
+    const val RULE_WIZARD = "ruleWizard?sender={sender}&body={body}&ruleId={ruleId}&duplicate={duplicate}"
 
     fun ruleWizard(
         sender: String? = null,
         body: String? = null,
-    ): String = "ruleWizard?sender=${Uri.encode(sender.orEmpty())}&body=${Uri.encode(body.orEmpty())}"
+    ): String = "ruleWizard?sender=${Uri.encode(sender.orEmpty())}&body=${Uri.encode(body.orEmpty())}&ruleId=&duplicate=false"
+
+    /** Opens the rule editor pre-filled with [ruleId]; saving updates the rule in place. */
+    fun ruleWizardEdit(ruleId: String): String = "ruleWizard?sender=&body=&ruleId=${Uri.encode(ruleId)}&duplicate=false"
+
+    /** Opens the rule editor on a copy of [ruleId]; saving creates a new user rule. */
+    fun ruleWizardDuplicate(ruleId: String): String = "ruleWizard?sender=&body=&ruleId=${Uri.encode(ruleId)}&duplicate=true"
 
     /** Routes on which the bottom navigation bar is visible. */
     val topLevel = setOf(INBOX, FINANCE, ALERTS)

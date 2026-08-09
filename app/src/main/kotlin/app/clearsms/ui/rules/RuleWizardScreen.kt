@@ -95,7 +95,13 @@ fun RuleWizardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.rule_wizard_title)) },
+                title = {
+                    Text(
+                        stringResource(
+                            if (state.editingRuleId != null) R.string.rule_wizard_title_edit else R.string.rule_wizard_title,
+                        ),
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -128,7 +134,8 @@ fun RuleWizardScreen(
             if (!state.analyzed) {
                 SampleMessageStep(state, viewModel)
             } else {
-                SourceMessageStep(state, viewModel)
+                // Editing an existing rule has no source message to show.
+                if (state.sourceBody.isNotBlank()) SourceMessageStep(state, viewModel)
                 CategoryStep(state, viewModel)
                 ExtractionStep(state, viewModel)
                 ConditionsStep(state, viewModel)
@@ -279,11 +286,26 @@ private fun ExtractionStep(
     val rows = state.tokens.withIndex().filter { it.value.kind != TokenKind.KEYWORD }
     StepCard(title = stringResource(R.string.rule_wizard_step_extract)) {
         if (rows.isEmpty()) {
-            Text(
-                text = stringResource(R.string.rule_wizard_extract_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (state.extract.isNotEmpty()) {
+                // Edit mode: extracts loaded from the rule, editable only
+                // through the advanced pattern editor.
+                state.extract.forEach { (key, value) ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(text = key, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.rule_wizard_extract_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         rows.forEachIndexed { position, (index, token) ->
             if (position > 0) HorizontalDivider()
@@ -427,12 +449,14 @@ private fun TestStep(
                 )
             }
         }
-        Verdict(
-            matched = state.sourceResult != null,
-            matchedText = stringResource(R.string.rule_wizard_source_match),
-            unmatchedText = stringResource(R.string.rule_wizard_source_no_match),
-        )
-        ExtractedValues(state.sourceResult)
+        if (state.sourceBody.isNotBlank()) {
+            Verdict(
+                matched = state.sourceResult != null,
+                matchedText = stringResource(R.string.rule_wizard_source_match),
+                unmatchedText = stringResource(R.string.rule_wizard_source_no_match),
+            )
+            ExtractedValues(state.sourceResult)
+        }
 
         HorizontalDivider()
         Text(stringResource(R.string.rule_wizard_try_another), style = MaterialTheme.typography.labelLarge)

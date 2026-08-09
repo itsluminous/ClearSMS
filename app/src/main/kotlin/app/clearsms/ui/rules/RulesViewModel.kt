@@ -10,9 +10,11 @@ import app.clearsms.ui.common.UiPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -28,6 +30,27 @@ data class RuleItem(
     val enabled: Boolean,
     /** For disabled rules: the parked definition JSON needed to re-enable. */
     val parkedEntry: String? = null,
+)
+
+/**
+ * Read-only view of a rule's full definition, shown when a BUNDLED rule is
+ * tapped. Bundled content is never edited in place — the bundled set must
+ * stay identical to the shipped asset — so the only mutation offered is
+ * "duplicate as my rule".
+ */
+data class RuleDetail(
+    val id: String,
+    val name: String,
+    val priority: Int,
+    val category: String,
+    val subCategory: String?,
+    val senderPattern: String?,
+    val bodyPattern: String?,
+    val mustContain: List<String>,
+    val mustNotContain: List<String>,
+    val guardsNone: List<String>,
+    val extract: Map<String, String>,
+    val isUserDefined: Boolean,
 )
 
 data class RulesUiState(
@@ -62,6 +85,11 @@ class RulesViewModel
     ) : ViewModel() {
         private val events = MutableSharedFlow<RulesEvent>()
         val eventFlow: SharedFlow<RulesEvent> = events
+
+        private val detail = MutableStateFlow<RuleDetail?>(null)
+
+        /** Detail sheet for a tapped bundled rule; null when nothing is shown. */
+        val ruleDetail: StateFlow<RuleDetail?> = detail.asStateFlow()
 
         init {
             viewModelScope.launch(ioDispatcher) { ruleRepository.ensureBundledRulesLoaded() }
@@ -115,6 +143,38 @@ class RulesViewModel
 
         fun deleteUserRule(id: String) {
             viewModelScope.launch(ioDispatcher) { ruleRepository.deleteRule(id) }
+        }
+
+        /** Opens the read-only detail view for the rule with [id]. */
+        fun showDetail(id: String) {
+            viewModelScope.launch(ioDispatcher) {
+                val entity =
+                    ruleRepository
+                        .observeRules()
+                        .first()
+                        .firstOrNull { it.id == id }
+                detail.value =
+                    entity?.let(::entityToDefinition)?.let { definition ->
+                        RuleDetail(
+                            id = definition.id,
+                            name = definition.name ?: definition.id,
+                            priority = definition.priority,
+                            category = definition.action.category,
+                            subCategory = definition.action.subCategory,
+                            senderPattern = definition.match.senderPattern,
+                            bodyPattern = definition.match.bodyPattern,
+                            mustContain = definition.match.bodyMustContain,
+                            mustNotContain = definition.match.bodyMustNotContain,
+                            guardsNone = definition.match.guardsNone,
+                            extract = definition.action.extract,
+                            isUserDefined = entity.isUserDefined,
+                        )
+                    }
+            }
+        }
+
+        fun dismissDetail() {
+            detail.value = null
         }
 
         fun export() {

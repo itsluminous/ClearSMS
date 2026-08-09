@@ -468,4 +468,22 @@
         <item quantity="one">%1$s, %2$d reminder</item>
         <item quantity="other">%1$s, %2$d reminders</item>
     </plurals>
+
+    <!-- Default-SMS-role banner -->
+    <string name="inbox_default_sms_banner">Clear SMS is not your default SMS app — new messages won\'t arrive here</string>
+    <string name="inbox_default_sms_dismiss">Dismiss</string>
+
+    <!-- Rule editing -->
+    <string name="rule_wizard_title_edit">Edit rule</string>
+    <string name="rule_detail_id">Rule ID</string>
+    <string name="rule_detail_priority">Priority</string>
+    <string name="rule_detail_category">Category</string>
+    <string name="rule_detail_sender_pattern">Sender pattern</string>
+    <string name="rule_detail_body_pattern">Body pattern</string>
+    <string name="rule_detail_must_contain">Must contain</string>
+    <string name="rule_detail_must_not_contain">Must not contain</string>
+    <string name="rule_detail_guards">Guards</string>
+    <string name="rule_detail_extract">Extracts</string>
+    <string name="rule_detail_duplicate">Duplicate as my rule</string>
+    <string name="ui_action_close">Close</string>
 </resources>

@@ -3,11 +3,16 @@ package app.clearsms.ui.rules
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Rule
@@ -16,6 +21,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -27,6 +33,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,9 +57,12 @@ import app.clearsms.ui.components.EmptyState
 fun RulesScreen(
     onBack: () -> Unit,
     onCreateRule: () -> Unit,
+    onEditRule: (String) -> Unit,
+    onDuplicateRule: (String) -> Unit,
     viewModel: RulesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val detail by viewModel.ruleDetail.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingExport by remember { mutableStateOf<String?>(null) }
@@ -167,6 +178,9 @@ fun RulesScreen(
                 items(state.userRules, key = { "user_${it.id}" }) { rule ->
                     RuleRow(
                         rule = rule,
+                        // A parked (disabled) rule is not in the database, so
+                        // there is nothing for the editor to load.
+                        onClick = if (rule.enabled) ({ onEditRule(rule.id) }) else null,
                         onToggle = { viewModel.setEnabled(rule, it) },
                         onDelete = { viewModel.deleteUserRule(rule.id) },
                     )
@@ -183,21 +197,37 @@ fun RulesScreen(
             items(state.builtinRules, key = { "builtin_${it.id}" }) { rule ->
                 RuleRow(
                     rule = rule,
+                    onClick = if (rule.enabled) ({ viewModel.showDetail(rule.id) }) else null,
                     onToggle = { viewModel.setEnabled(rule, it) },
                     onDelete = null,
                 )
             }
         }
     }
+
+    detail?.let { rule ->
+        RuleDetailDialog(
+            detail = rule,
+            onDismiss = viewModel::dismissDetail,
+            onDuplicate = {
+                viewModel.dismissDetail()
+                onDuplicateRule(rule.id)
+            },
+        )
+    }
 }
 
 @Composable
 private fun RuleRow(
     rule: RuleItem,
+    onClick: (() -> Unit)?,
     onToggle: (Boolean) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
     ListItem(
+        // The switch and delete button consume their own taps, so the row
+        // click never swallows the toggle.
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
         headlineContent = { Text(rule.name) },
         supportingContent = {
             Text(
@@ -223,4 +253,82 @@ private fun RuleRow(
             }
         },
     )
+}
+
+/**
+ * Read-only detail for a tapped bundled rule. Bundled rules are never
+ * edited in place (the bundled set must stay identical to the shipped
+ * asset), so the only action is duplicating into a user-owned copy.
+ */
+@Composable
+private fun RuleDetailDialog(
+    detail: RuleDetail,
+    onDismiss: () -> Unit,
+    onDuplicate: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(detail.name) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                DetailField(stringResource(R.string.rule_detail_id), detail.id)
+                DetailField(stringResource(R.string.rule_detail_priority), detail.priority.toString())
+                DetailField(
+                    stringResource(R.string.rule_detail_category),
+                    listOfNotNull(detail.category, detail.subCategory).joinToString(" / "),
+                )
+                detail.senderPattern?.let { DetailField(stringResource(R.string.rule_detail_sender_pattern), it) }
+                detail.bodyPattern?.let { DetailField(stringResource(R.string.rule_detail_body_pattern), it) }
+                if (detail.mustContain.isNotEmpty()) {
+                    DetailField(stringResource(R.string.rule_detail_must_contain), detail.mustContain.joinToString(", "))
+                }
+                if (detail.mustNotContain.isNotEmpty()) {
+                    DetailField(
+                        stringResource(R.string.rule_detail_must_not_contain),
+                        detail.mustNotContain.joinToString(", "),
+                    )
+                }
+                if (detail.guardsNone.isNotEmpty()) {
+                    DetailField(stringResource(R.string.rule_detail_guards), detail.guardsNone.joinToString(", "))
+                }
+                if (detail.extract.isNotEmpty()) {
+                    DetailField(
+                        stringResource(R.string.rule_detail_extract),
+                        detail.extract.entries.joinToString("\n") { "${it.key} = ${it.value}" },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDuplicate) {
+                Text(stringResource(R.string.rule_detail_duplicate))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ui_action_close))
+            }
+        },
+    )
+}
+
+@Composable
+private fun DetailField(
+    label: String,
+    value: String,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+        )
+    }
 }
