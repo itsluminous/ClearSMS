@@ -27,6 +27,7 @@ import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
+import app.clearsms.ui.components.SimUiState
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
 import app.clearsms.work.MessageScheduler
@@ -126,18 +127,6 @@ sealed interface SendEvent {
         val messageId: Long,
     ) : SendEvent
 }
-
-/**
- * The compose-bar SIM indicator. [visible] only on devices with 2+ active
- * subscriptions - single-SIM devices keep the pre-feature compose bar.
- */
-data class SimUiState(
-    val visible: Boolean = false,
-    /** "SIM 1"/"SIM 2" - the slot of the SIM the next send will use. */
-    val label: String = "",
-    /** Operator / user-given subscription name, surfaced as a toast on tap. */
-    val operatorName: String = "",
-)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel

@@ -1,14 +1,12 @@
 package app.clearsms.ui.conversation
 
 import android.text.format.DateFormat
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -28,7 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -38,15 +34,12 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -55,10 +48,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,6 +75,8 @@ import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.MessageComposerBar
+import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.amountKindOf
@@ -267,7 +259,7 @@ fun ConversationScreen(
             when {
                 !state.loaded -> Unit
                 state.repliable ->
-                    ReplyComposer(
+                    MessageComposerBar(
                         draft = draft,
                         onDraftChange = viewModel::setDraft,
                         onSend = {
@@ -502,168 +494,6 @@ private fun ConversationSelectionBar(
         },
     )
 }
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ReplyComposer(
-    draft: String,
-    onDraftChange: (String) -> Unit,
-    onSend: () -> Unit,
-    sim: SimUiState = SimUiState(),
-    onCycleSim: () -> Unit = {},
-    onScheduleSend: () -> Unit = {},
-) {
-    val context = LocalContext.current
-    Row(
-        modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedTextField(
-            value = draft,
-            onValueChange = onDraftChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text(stringResource(R.string.conversation_reply_hint)) },
-            shape = RoundedCornerShape(28.dp),
-            maxLines = 4,
-        )
-        // Compact SIM indicator, dual-SIM devices only: shows the slot the
-        // next send uses; tapping cycles SIMs and toasts the operator name.
-        if (sim.visible) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier =
-                    Modifier.clickable(
-                        onClick = {
-                            onCycleSim()
-                            Toast.makeText(context, sim.operatorName, Toast.LENGTH_SHORT).show()
-                        },
-                        onClickLabel = stringResource(R.string.conversation_sim_switch),
-                    ),
-            ) {
-                Text(
-                    text = sim.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-            }
-        }
-        // Send: tap sends now, long-press opens the schedule picker. A
-        // custom surface because FilledIconButton exposes no long-press.
-        val enabled = draft.isNotBlank()
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color =
-                if (enabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            modifier =
-                Modifier.combinedClickable(
-                    enabled = enabled,
-                    onClick = onSend,
-                    onClickLabel = stringResource(R.string.action_send),
-                    onLongClick = onScheduleSend,
-                    onLongClickLabel = stringResource(R.string.conversation_schedule_send),
-                ),
-        ) {
-            Icon(
-                Icons.AutoMirrored.Outlined.Send,
-                contentDescription = stringResource(R.string.action_send),
-                tint =
-                    if (enabled) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                modifier = Modifier.padding(10.dp),
-            )
-        }
-    }
-}
-
-/**
- * Two-step Material3 schedule picker: a date, then a time. Confirming with
- * a moment that is not in the future keeps the picker open and toasts why -
- * a schedule in the past is always a mistake, never a send.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ScheduleTimePicker(
-    onDismiss: () -> Unit,
-    onConfirm: (Long) -> Unit,
-) {
-    val context = LocalContext.current
-    var pickingTime by rememberSaveable { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
-    val timePickerState = rememberTimePickerState(is24Hour = DateFormat.is24HourFormat(context))
-    val pastTimeMessage = stringResource(R.string.conversation_schedule_past_time)
-
-    if (!pickingTime) {
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(
-                    enabled = datePickerState.selectedDateMillis != null,
-                    onClick = { pickingTime = true },
-                ) { Text(stringResource(R.string.conversation_schedule_pick_time)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-            },
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    } else {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.conversation_schedule_send)) },
-            text = { TimePicker(state = timePickerState) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val atMs =
-                            combineDateAndTime(
-                                utcDateMillis = datePickerState.selectedDateMillis ?: return@TextButton,
-                                hour = timePickerState.hour,
-                                minute = timePickerState.minute,
-                            )
-                        if (atMs <= System.currentTimeMillis()) {
-                            Toast.makeText(context, pastTimeMessage, Toast.LENGTH_SHORT).show()
-                        } else {
-                            onConfirm(atMs)
-                        }
-                    },
-                ) { Text(stringResource(R.string.conversation_schedule_send)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
-    }
-}
-
-/**
- * A DatePicker selection (UTC midnight of the chosen day) plus a local
- * hour/minute, combined into the epoch instant of that local wall time.
- */
-internal fun combineDateAndTime(
-    utcDateMillis: Long,
-    hour: Int,
-    minute: Int,
-    zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
-): Long =
-    java.time.Instant
-        .ofEpochMilli(utcDateMillis)
-        .atZone(java.time.ZoneOffset.UTC)
-        .toLocalDate()
-        .atTime(hour, minute)
-        .atZone(zone)
-        .toInstant()
-        .toEpochMilli()
 
 /** Replaces the composer for one-way senders (alphanumeric ids, short codes). */
 @Composable
