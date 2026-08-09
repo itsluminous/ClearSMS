@@ -6,6 +6,8 @@ import androidx.work.WorkManager
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.sms.ContactLookupImpl
 import app.clearsms.sms.DeviceSubscriptionSource
+import app.clearsms.sms.FrameworkSmsGateway
+import app.clearsms.sms.SmsGateway
 import app.clearsms.sms.SubscriptionSource
 import dagger.Binds
 import dagger.Module
@@ -71,4 +73,8 @@ internal interface PlatformBindings {
     /** Framework-backed SIM subscription access for the dual-SIM send UI. */
     @Binds
     fun subscriptionSource(impl: DeviceSubscriptionSource): SubscriptionSource
+
+    /** Framework-backed radio access for [app.clearsms.sms.SmsSender]. */
+    @Binds
+    fun smsGateway(impl: FrameworkSmsGateway): SmsGateway
 }

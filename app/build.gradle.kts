@@ -115,6 +115,15 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all { test ->
+                // Native graphics for the WHOLE suite, set once and uniformly.
+                // Per-test @GraphicsMode / @Config values fork extra Robolectric
+                // sandbox classloaders, which race on the JVM-global native
+                // runtime extraction (FileSystemAlreadyExistsException ->
+                // UnsatisfiedLinkError); RobolectricSandboxConventionTest
+                // enforces that no test splits the sandbox.
+                test.systemProperty("robolectric.graphicsMode", "NATIVE")
+            }
         }
     }
 

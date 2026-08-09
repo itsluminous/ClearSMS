@@ -3,7 +3,6 @@ package app.clearsms.sms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.telephony.SmsManager
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
@@ -45,6 +44,7 @@ class SmsSender
         private val telephonyWriter: TelephonyWriter,
         private val uiPrefs: UiPrefs,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+        private val smsGateway: SmsGateway,
     ) {
         /**
          * Sends [body] to [destination] and records the message locally.
@@ -130,8 +130,7 @@ class SmsSender
             subscriptionId: Int?,
         ) {
             try {
-                val smsManager = smsManagerFor(subscriptionId)
-                val parts = smsManager.divideMessage(body)
+                val parts = smsGateway.divideMessage(subscriptionId, body)
                 // Worst-part status aggregation needs the denominator on the
                 // row before any report can arrive.
                 messageDao.setPartCount(messageId, parts.size)
@@ -166,9 +165,9 @@ class SmsSender
                             )
                         }
                     }
-                smsManager.sendMultipartTextMessage(
+                smsGateway.sendMultipartTextMessage(
+                    subscriptionId,
                     destination,
-                    null,
                     parts,
                     sentIntents,
                     deliveredIntents,
@@ -225,25 +224,6 @@ class SmsSender
                 PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE,
             )
         }
-
-        /**
-         * The [SmsManager] for the chosen SIM. With no choice (null) the
-         * system-default manager is used - the pre-dual-SIM behaviour. Per
-         * API level: `createForSubscriptionId` on S+, the static
-         * `getSmsManagerForSubscriptionId` before it.
-         */
-        private fun smsManagerFor(subscriptionId: Int?): SmsManager =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val default = requireNotNull(context.getSystemService(SmsManager::class.java))
-                if (subscriptionId != null) default.createForSubscriptionId(subscriptionId) else default
-            } else {
-                @Suppress("DEPRECATION")
-                if (subscriptionId != null) {
-                    SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
-                } else {
-                    SmsManager.getDefault()
-                }
-            }
 
         private companion object {
             val REQUEST_CODE =

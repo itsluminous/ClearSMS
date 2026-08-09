@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger
  * degrade (never crash) on corrupt or missing artwork.
  */
 @RunWith(RobolectricTestRunner::class)
-@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 class SenderIconFactoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val factory = SenderIconFactory(context)

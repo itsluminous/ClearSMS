@@ -9,6 +9,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.ui.common.UiPrefs
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.io.File
 
 /**
@@ -27,11 +27,11 @@ import java.io.File
  * switching.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(shadows = [DividingShadowSmsManager::class])
 class SmsSenderSubscriptionTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
     private lateinit var dao: MessageDao
+    private lateinit var gateway: FakeSmsGateway
     private lateinit var sender: SmsSender
 
     @Before
@@ -49,7 +49,8 @@ class SmsSenderSubscriptionTest {
                     File.createTempFile("ui_settings", ".preferences_pb")
                 },
             )
-        sender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO)
+        gateway = FakeSmsGateway()
+        sender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO, gateway)
     }
 
     @After
@@ -63,6 +64,7 @@ class SmsSenderSubscriptionTest {
             val id = sender.send("+15551234567", "hello", subscriptionId = 7)
 
             assertThat(dao.getById(id)?.subscriptionId).isEqualTo(7)
+            assertThat(gateway.lastSend?.subscriptionId).isEqualTo(7)
         }
 
     @Test
@@ -71,6 +73,8 @@ class SmsSenderSubscriptionTest {
             val id = sender.send("+15551234567", "hello")
 
             assertThat(dao.getById(id)?.subscriptionId).isNull()
+            assertThat(gateway.sends).hasSize(1)
+            assertThat(gateway.lastSend?.subscriptionId).isNull()
         }
 
     @Test
@@ -97,5 +101,6 @@ class SmsSenderSubscriptionTest {
             val row = dao.getById(id)
             assertThat(row?.subscriptionId).isEqualTo(7)
             assertThat(row?.deliveryStatus).isEqualTo(DeliveryStatus.SENDING)
+            assertThat(gateway.lastSend?.subscriptionId).isEqualTo(7)
         }
 }

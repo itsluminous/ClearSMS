@@ -8,9 +8,9 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
-import app.clearsms.sms.DividingShadowSmsManager
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.TelephonyWriter
+import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.ui.common.UiPrefs
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +21,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
 import java.io.File
 
@@ -32,12 +31,12 @@ import java.io.File
  * dispatch.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(shadows = [DividingShadowSmsManager::class])
 class MessageSchedulerTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
     private lateinit var dao: MessageDao
     private lateinit var scheduler: MessageScheduler
+    private lateinit var gateway: FakeSmsGateway
     private lateinit var smsSender: SmsSender
     private lateinit var shadowAlarms: ShadowAlarmManager
 
@@ -58,7 +57,8 @@ class MessageSchedulerTest {
                     File.createTempFile("ui_settings", ".preferences_pb")
                 },
             )
-        smsSender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO)
+        gateway = FakeSmsGateway()
+        smsSender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO, gateway)
         scheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), Dispatchers.IO)
         shadowAlarms = shadowOf(requireNotNull(context.getSystemService(AlarmManager::class.java)))
     }
@@ -99,9 +99,7 @@ class MessageSchedulerTest {
             assertThat(row.scheduledAt).isNull()
             assertThat(row.timestamp).isAtLeast(future - 120_000L)
             // The radio actually received the message.
-            val smsManager = requireNotNull(context.getSystemService(android.telephony.SmsManager::class.java))
-            val params = shadowOf(smsManager).lastSentMultipartTextMessageParams
-            assertThat(params.parts).containsExactly("later!")
+            assertThat(requireNotNull(gateway.lastSend).parts).containsExactly("later!")
         }
 
     @Test

@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
 import android.os.PersistableBundle
+import androidx.annotation.ChecksSdkIntAtLeast
 import app.clearsms.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -28,26 +29,34 @@ import kotlinx.coroutines.launch
 object OtpClipboard {
     private const val CLEAR_AFTER_MS = 60_000L
 
-    /** Copies [otp] to the clipboard, flagged sensitive, with a timed clear. */
+    /**
+     * Copies [otp] to the clipboard, flagged sensitive, with a timed clear.
+     *
+     * [sdkInt] is injectable (defaulting to the device's real level) so both
+     * API branches are unit-testable in the default Robolectric sandbox -
+     * `@Config(sdk = ...)` pins would split the sandbox and re-trigger the
+     * native-runtime extraction race (see RobolectricSandboxConventionTest).
+     */
     fun copy(
         context: Context,
         otp: String,
         clearScope: CoroutineScope,
+        sdkInt: Int = Build.VERSION.SDK_INT,
     ) {
         val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return
         val label = context.getString(R.string.otp_clip_label)
         val clip = ClipData.newPlainText(label, otp)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (atLeast(sdkInt, Build.VERSION_CODES.TIRAMISU)) {
             clip.description.extras =
                 PersistableBundle().apply {
                     putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
                 }
         }
         clipboard.setPrimaryClip(clip)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        if (atLeast(sdkInt, Build.VERSION_CODES.P)) {
             clearScope.launch {
                 delay(CLEAR_AFTER_MS)
-                clearIfStillOurs(clipboard, label)
+                clearIfStillOurs(clipboard, label, sdkInt)
             }
         }
     }
@@ -56,11 +65,22 @@ object OtpClipboard {
     internal fun clearIfStillOurs(
         clipboard: ClipboardManager,
         label: String,
+        sdkInt: Int = Build.VERSION.SDK_INT,
     ) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
+        if (!atLeast(sdkInt, Build.VERSION_CODES.P)) return
         if (!shouldClear(clipboard.primaryClipDescription?.label?.toString(), label)) return
         runCatching { clipboard.clearPrimaryClip() }
     }
+
+    /**
+     * The `sdkInt >= level` check, shaped so lint's NewApi analysis follows
+     * the injectable [sdkInt] the same way it follows `Build.VERSION.SDK_INT`.
+     */
+    @ChecksSdkIntAtLeast(parameter = 1)
+    private fun atLeast(
+        sdkInt: Int,
+        level: Int,
+    ): Boolean = sdkInt >= level
 
     /** Pure decision: clear only when the current clip label is our OTP label. */
     internal fun shouldClear(

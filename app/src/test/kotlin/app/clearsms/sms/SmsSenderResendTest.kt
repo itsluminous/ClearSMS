@@ -1,7 +1,6 @@
 package app.clearsms.sms
 
 import android.content.Context
-import android.telephony.SmsManager
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -10,6 +9,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.ui.common.UiPrefs
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -19,22 +19,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
-import org.robolectric.annotation.Implementation
-import org.robolectric.annotation.Implements
-import org.robolectric.shadows.ShadowSmsManager
 import java.io.File
-
-/**
- * [ShadowSmsManager] leaves `divideMessage` to real framework code, which
- * cannot run on the JVM; single-part division is all these tests need.
- */
-@Implements(SmsManager::class)
-class DividingShadowSmsManager : ShadowSmsManager() {
-    @Implementation
-    protected fun divideMessage(text: String): ArrayList<String> = arrayListOf(text)
-}
 
 /**
  * Retrying a failed outgoing message via [SmsSender.resend]: the SAME Room
@@ -43,12 +28,12 @@ class DividingShadowSmsManager : ShadowSmsManager() {
  * setting is honoured afresh on every retry.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(shadows = [DividingShadowSmsManager::class])
 class SmsSenderResendTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
     private lateinit var dao: MessageDao
     private lateinit var uiPrefs: UiPrefs
+    private lateinit var gateway: FakeSmsGateway
     private lateinit var sender: SmsSender
 
     @Before
@@ -66,7 +51,8 @@ class SmsSenderResendTest {
                     File.createTempFile("ui_settings", ".preferences_pb")
                 },
             )
-        sender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO)
+        gateway = FakeSmsGateway()
+        sender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO, gateway)
     }
 
     @After
@@ -91,8 +77,6 @@ class SmsSenderResendTest {
             )
         }
 
-    private fun smsManager(): SmsManager = requireNotNull(context.getSystemService(SmsManager::class.java))
-
     @Test
     fun `retry resets the SAME row to SENDING - no new row, body and timestamp kept`() =
         runBlocking {
@@ -108,15 +92,15 @@ class SmsSenderResendTest {
             assertThat(row.body).isEqualTo("hello there")
             assertThat(row.timestamp).isEqualTo(1_700_000_000_000L)
             // The retry went through the normal multipart send path.
-            val params = shadowOf(smsManager()).lastSentMultipartTextMessageParams
-            assertThat(params.destinationAddress).isEqualTo("+15551234567")
-            assertThat(params.parts).containsExactly("hello there").inOrder()
+            val send = requireNotNull(gateway.lastSend)
+            assertThat(send.destination).isEqualTo("+15551234567")
+            assertThat(send.parts).containsExactly("hello there").inOrder()
         }
 
     @Test
     fun `retry rejected immediately by the radio returns the row to FAILED`() =
         runBlocking {
-            // ShadowSmsManager throws for an empty destination - the same
+            // The gateway throws for an empty destination - the same
             // synchronous rejection airplane mode produces.
             val id = failedOutgoing(destination = "")
 
@@ -133,8 +117,8 @@ class SmsSenderResendTest {
             uiPrefs.setDeliveryReports(false)
             sender.resend(failedOutgoing())
 
-            val params = shadowOf(smsManager()).lastSentMultipartTextMessageParams
-            assertThat(params.deliveryIntents.filterNotNull()).isEmpty()
+            val send = requireNotNull(gateway.lastSend)
+            assertThat(send.deliveryIntents.filterNotNull()).isEmpty()
         }
 
     @Test
@@ -143,9 +127,9 @@ class SmsSenderResendTest {
             uiPrefs.setDeliveryReports(true)
             sender.resend(failedOutgoing())
 
-            val params = shadowOf(smsManager()).lastSentMultipartTextMessageParams
-            assertThat(params.deliveryIntents).hasSize(params.parts.size)
-            assertThat(params.deliveryIntents.filterNotNull()).hasSize(params.parts.size)
+            val send = requireNotNull(gateway.lastSend)
+            assertThat(send.deliveryIntents).hasSize(send.parts.size)
+            assertThat(send.deliveryIntents.filterNotNull()).hasSize(send.parts.size)
         }
 
     @Test
@@ -167,7 +151,7 @@ class SmsSenderResendTest {
 
             sender.resend(id)
 
-            assertThat(shadowOf(smsManager()).lastSentMultipartTextMessageParams).isNull()
+            assertThat(gateway.sends).isEmpty()
             assertThat(dao.getById(id)?.deliveryStatus).isNull()
         }
 }
