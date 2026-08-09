@@ -26,9 +26,10 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * Catch-up import triggers: a regained default-SMS role always enqueues the
- * checkpointed history import, and the once-per-process cold-start probe
- * enqueues it only when the provider holds rows newer than anything stored
- * locally (messages that arrived while another app was default).
+ * checkpointed history import, and the per-resume gap probe enqueues it
+ * whenever the provider holds rows newer than anything stored locally
+ * (messages that arrived while another app was default, or that a failed
+ * receiver run persisted to the provider only).
  */
 @RunWith(RobolectricTestRunner::class)
 class CatchUpSyncSchedulerTest {
@@ -119,15 +120,22 @@ class CatchUpSyncSchedulerTest {
         }
 
     @Test
-    fun `probe runs once per process - later checks do not re-query the provider`() =
+    fun `probe runs on every role check so a live process still catches gaps`() =
         runBlocking {
             storeLocalMessage(systemSmsId = 10L)
             FakeMaxIdProvider.maxId = 10L
             scheduler.onRoleChecked(held = true, regained = false)
             assertThat(FakeMaxIdProvider.queries).isEqualTo(1)
-            scheduler.onRoleChecked(held = true, regained = false)
-            assertThat(FakeMaxIdProvider.queries).isEqualTo(1)
             assertThat(enqueued()).isEqualTo(0)
+
+            // A gap appearing LATER (a receiver run whose Room insert failed
+            // after the provider write, or an external role switch we never
+            // observed) must be caught on the next resume - a user reopening
+            // a still-alive background process cannot wait for a cold start.
+            FakeMaxIdProvider.maxId = 12L
+            scheduler.onRoleChecked(held = true, regained = false)
+            assertThat(FakeMaxIdProvider.queries).isEqualTo(2)
+            assertThat(enqueued()).isEqualTo(1)
         }
 
     /** `content://sms` stand-in answering only the scheduler's max-id probe. */

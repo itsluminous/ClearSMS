@@ -141,7 +141,7 @@ class SystemSmsImporterTest {
             FakeSmsProvider.rows += FakeSmsProvider.Row(5, "9876543210", "unsent draft", 1_700_000_005_000, type = 3, read = 0)
 
             val env = Env("basic")
-            val inserted = env.importer.importAll()
+            val inserted = env.importer.importAll().inserted
 
             val messages = env.db.messageDao().getAll()
             assertThat(inserted).isEqualTo(4)
@@ -174,7 +174,7 @@ class SystemSmsImporterTest {
             env.checkpoints.set(SyncCheckpointStore.Checkpoint(lastSystemSmsId = 5L, processedCount = 5))
 
             val progress = mutableListOf<Pair<Int, Int>>()
-            val inserted = env.importer.importAll { imported, total -> progress += imported to total }
+            val inserted = env.importer.importAll { imported, total -> progress += imported to total }.inserted
 
             assertThat(inserted).isEqualTo(5)
             assertThat(
@@ -193,15 +193,15 @@ class SystemSmsImporterTest {
         runBlocking {
             addMixedRows(1L..10L)
             val env = Env("incremental")
-            assertThat(env.importer.importAll()).isEqualTo(10)
+            assertThat(env.importer.importAll().inserted).isEqualTo(10)
 
             addMixedRows(11L..15L)
-            assertThat(env.importer.importAll()).isEqualTo(5)
+            assertThat(env.importer.importAll().inserted).isEqualTo(5)
             assertThat(env.db.messageDao().getAll()).hasSize(15)
         }
 
     @Test
-    fun `catch-up after a completed run classifies new rows and posts no notifications`() =
+    fun `catch-up after a completed run classifies new rows and reports them fresh`() =
         runBlocking {
             addMixedRows(1L..8L)
             val env = Env("catchup")
@@ -214,10 +214,15 @@ class SystemSmsImporterTest {
 
             // Messages that landed in the provider while another app was the
             // default: a catch-up re-run must put them through the FULL
-            // pipeline (categorization + extraction), silently.
+            // pipeline (categorization + extraction) and report them fresh -
+            // they are newer than the watermark, so the user has never been
+            // notified about them (the worker notifies via CatchUpNotifier).
             addInbox(9, "AX-BOOKMY", otpBody(9))
             addInbox(10, "VM-HDFCBK", txnBody(10))
-            assertThat(env.importer.importAll()).isEqualTo(2)
+            val result = env.importer.importAll()
+            assertThat(result.inserted).isEqualTo(2)
+            assertThat(result.freshCount).isEqualTo(2)
+            assertThat(result.freshMessages.map { it.systemSmsId }).containsExactly(9L, 10L)
 
             val messages = env.db.messageDao().getAll()
             val otp = messages.single { it.systemSmsId == 9L }
@@ -227,10 +232,59 @@ class SystemSmsImporterTest {
             assertThat(txn.category).isEqualTo(Category.IMPORTANT)
             assertThat(env.db.transactionDao().getAll()).hasSize(transactionsBefore + 1)
 
-            // Bulk persistence never notifies per message - the shade stays
-            // empty (only the worker posts, a single progress notification).
+            // Bulk persistence itself never posts per message - notification
+            // policy lives in the worker's CatchUpNotifier, driven by this
+            // result. The shade stays empty here.
             val notificationManager = context.getSystemService(NotificationManager::class.java)
             assertThat(shadowOf(notificationManager).size()).isEqualTo(0)
+        }
+
+    @Test
+    fun `fresh-install initial import reports nothing fresh`() =
+        runBlocking {
+            // Empty database → null watermark → ALL history is old: the
+            // onboarding import must stay silent end-to-end.
+            addMixedRows(1L..10L)
+            val env = Env("freshinstall")
+            val result = env.importer.importAll()
+            assertThat(result.inserted).isEqualTo(10)
+            assertThat(result.freshCount).isEqualTo(0)
+            assertThat(result.freshMessages).isEmpty()
+        }
+
+    @Test
+    fun `catch-up of rows older than the watermark reports nothing fresh`() =
+        runBlocking {
+            addMixedRows(1L..4L)
+            val env = Env("oldrows")
+            env.importer.importAll()
+
+            // A higher provider _id with an OLDER date (backfill / restored
+            // history) is not something the user missed being notified about.
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(5, "9876543210", "old backfilled text", date = 1_600_000_000_000, type = 1, read = 0)
+            val result = env.importer.importAll()
+            assertThat(result.inserted).isEqualTo(1)
+            assertThat(result.freshCount).isEqualTo(0)
+        }
+
+    @Test
+    fun `fresh sample is capped while the count keeps the truth`() =
+        runBlocking {
+            addMixedRows(1L..4L)
+            val env = Env("capped")
+            env.importer.importAll()
+
+            // Seven new incoming rows (newer than everything stored) plus one
+            // outgoing: outgoing rows are never "fresh", and the sample stops
+            // at the per-message notification cap.
+            for (id in 5L..11L) addInbox(id, "98765000$id", "missed message $id")
+            addSent(12, "9876543210", "my own reply")
+            val result = env.importer.importAll()
+            assertThat(result.inserted).isEqualTo(8)
+            assertThat(result.freshCount).isEqualTo(7)
+            assertThat(result.freshMessages).hasSize(5)
+            assertThat(result.freshMessages.none { it.isOutgoing }).isTrue()
         }
 
     @Test
@@ -248,7 +302,7 @@ class SystemSmsImporterTest {
             // Losing the checkpoint forces a full re-scan; the unique
             // systemSmsId index must keep it a no-op.
             env.checkpoints.clear()
-            val insertedOnRerun = env.importer.importAll()
+            val insertedOnRerun = env.importer.importAll().inserted
 
             assertThat(insertedOnRerun).isEqualTo(0)
             assertThat(env.db.messageDao().getAll()).isEqualTo(messagesAfterFirst)
@@ -262,7 +316,7 @@ class SystemSmsImporterTest {
             val env = Env("paging")
 
             val progress = mutableListOf<Pair<Int, Int>>()
-            val inserted = env.importer.importAll { imported, total -> progress += imported to total }
+            val inserted = env.importer.importAll { imported, total -> progress += imported to total }.inserted
 
             assertThat(inserted).isEqualTo(1200)
             // Initial callback plus one per 500-row page - not one per message.

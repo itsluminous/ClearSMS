@@ -9,7 +9,6 @@ import app.clearsms.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,24 +27,28 @@ import javax.inject.Singleton
  *    rows the checkpoint already passed are skipped and re-scanned rows are
  *    deduplicated by the unique `systemSmsId` index. A no-gap run is a fast
  *    no-op.
- * 2. **Cold-start gap probe** (once per process, when the role is held) -
- *    covers a switch-away-and-back that happened entirely while the app was
- *    dead, where no transition is observable. Costs two single-row indexed
- *    queries: the provider's `MAX(_id)` (via `ORDER BY _id DESC LIMIT 1` on
- *    the primary key) and Room's `MAX(systemSmsId)` (backed by the unique
- *    index) - cheap enough to run on every cold start. A provider max above
- *    ours means rows exist that we never saw; the worker is enqueued. The
- *    probe can rarely over-trigger (e.g. the newest provider row is a
- *    draft, which the importer skips), in which case the run terminates
- *    immediately with nothing to import.
+ * 2. **Foreground gap probe** (every role check with the role held) -
+ *    covers rows that reached the provider without a matching Room row: a
+ *    default-app switch away-and-back that happened while the app was dead,
+ *    or a receiver run whose Room insert failed after the provider write.
+ *    It runs on EVERY inbox resume, not once per process: a user who
+ *    reopens a still-alive background process must not be left blind to
+ *    provider rows Room is missing until the next cold start. Each probe
+ *    costs two single-row indexed queries: the provider's `MAX(_id)` (via
+ *    `ORDER BY _id DESC LIMIT 1` on the primary key) and Room's
+ *    `MAX(systemSmsId)` (backed by the unique index) - cheap enough to pay
+ *    per resume. A provider max above ours means rows exist that we never
+ *    saw; the worker is enqueued. The probe can rarely over-trigger (e.g.
+ *    the newest provider row is a draft, which the importer skips), in
+ *    which case the run terminates immediately with nothing to import.
  *
  * Catch-up runs reuse the initial import wholesale: unique work (KEEP),
  * durable checkpoint, and the FULL classification pipeline (categorization,
- * transaction extraction, reminders). Crucially the importer persists pages
- * in bulk and posts NO per-message notifications - only the worker's single
- * low-importance progress notification, cancelled on completion - so
- * catching up on a day of missed messages never storms the shade the way
- * live [app.clearsms.receiver.SmsReceiver] deliveries would.
+ * transaction extraction, reminders). The importer persists pages in bulk;
+ * messages NEWER than the pre-run watermark (never seen, never notified)
+ * are then surfaced through [app.clearsms.notification.CatchUpNotifier] -
+ * per message when few, one summary when many - while old history imports
+ * silently, so catching up on a year of backfill never storms the shade.
  */
 @Singleton
 class CatchUpSyncScheduler
@@ -56,12 +59,10 @@ class CatchUpSyncScheduler
         private val workManager: WorkManager,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
-        private val probed = AtomicBoolean(false)
-
         /**
          * Reacts to a default-SMS role check from the inbox. [regained] is
          * [app.clearsms.ui.inbox.DefaultSmsBannerState.onRoleChecked]'s
-         * ABSENT→HELD transition signal; the first check of a process
+         * ABSENT→HELD transition signal; every check with the role held
          * additionally runs the gap probe.
          */
         suspend fun onRoleChecked(
@@ -73,7 +74,6 @@ class CatchUpSyncScheduler
                 InitialSyncWorker.enqueue(workManager)
                 return
             }
-            if (probed.getAndSet(true)) return
             withContext(ioDispatcher) {
                 val providerMax = providerMaxId() ?: return@withContext
                 val localMax = messageDao.maxSystemSmsId() ?: 0L

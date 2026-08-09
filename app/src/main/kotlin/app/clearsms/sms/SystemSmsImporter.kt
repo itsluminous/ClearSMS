@@ -3,6 +3,7 @@ package app.clearsms.sms
 import android.content.Context
 import android.provider.Telephony
 import android.util.Log
+import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.ImportedSmsRow
 import app.clearsms.data.repository.MessageRepositoryImpl
 import app.clearsms.di.IoDispatcher
@@ -59,20 +60,42 @@ class SystemSmsImporter
         )
 
         /**
+         * Result of one import run.
+         *
+         * @property inserted messages newly inserted by this run.
+         * @property freshMessages up to [CatchUpNotifier.MAX_INDIVIDUAL]
+         *   inserted INCOMING messages newer than the pre-run watermark -
+         *   messages the user has never been notified about. Empty on a
+         *   fresh install (null watermark: all history is "old").
+         * @property freshCount total count of such messages (may exceed
+         *   [freshMessages]'s capped size).
+         */
+        data class ImportResult(
+            val inserted: Int,
+            val freshMessages: List<MessageEntity>,
+            val freshCount: Int,
+        )
+
+        /**
          * Imports inbox and sent messages in `_id` order, resuming from the
          * durable checkpoint. Invokes [onProgress] with (processed, total)
          * once per committed page.
-         *
-         * @return the number of messages newly inserted by this run.
          */
-        suspend fun importAll(onProgress: suspend (imported: Int, total: Int) -> Unit = { _, _ -> }): Int =
+        suspend fun importAll(onProgress: suspend (imported: Int, total: Int) -> Unit = { _, _ -> }): ImportResult =
             withContext(ioDispatcher) {
                 val checkpoint = checkpointStore.get()
                 val remaining = countRemaining(checkpoint.lastSystemSmsId)
                 val total = checkpoint.processedCount + remaining
                 var processed = checkpoint.processedCount
                 onProgress(processed, total)
-                if (remaining == 0) return@withContext 0
+                if (remaining == 0) return@withContext ImportResult(0, emptyList(), 0)
+
+                // Notification watermark, read BEFORE the first page commits:
+                // anything already stored has been seen (and, when eligible,
+                // notified) - so only imported rows NEWER than this are
+                // messages the user missed. Null = empty database = fresh
+                // install: the whole initial import is old history, silent.
+                val watermark = repository.newestTimestamp()
 
                 val snapshot = repository.rulesSnapshot()
                 val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
@@ -80,6 +103,8 @@ class SystemSmsImporter
 
                 var cursorId = checkpoint.lastSystemSmsId
                 var inserted = 0
+                val freshMessages = ArrayList<MessageEntity>(FRESH_SAMPLE_LIMIT)
+                var freshCount = 0
                 while (true) {
                     val page = readPage(cursorId, PAGE_SIZE)
                     if (page.isEmpty()) break
@@ -107,7 +132,15 @@ class SystemSmsImporter
                                     }
                                 }.awaitAll()
                         }
-                    inserted += repository.persistImportedPage(rows)
+                    val insertedEntities = repository.persistImportedPage(rows)
+                    inserted += insertedEntities.size
+                    if (watermark != null) {
+                        for (entity in insertedEntities) {
+                            if (entity.isOutgoing || entity.isBlockedSender || entity.timestamp <= watermark) continue
+                            freshCount++
+                            if (freshMessages.size < FRESH_SAMPLE_LIMIT) freshMessages += entity
+                        }
+                    }
                     processed += page.size
                     cursorId = page.last().id
                     // Advance the checkpoint only after the page's transaction
@@ -115,7 +148,7 @@ class SystemSmsImporter
                     checkpointStore.set(SyncCheckpointStore.Checkpoint(cursorId, processed))
                     onProgress(processed, total)
                 }
-                inserted
+                ImportResult(inserted, freshMessages, freshCount)
             }
 
         /** Counts importable rows past the checkpoint (for progress totals). */
@@ -188,6 +221,14 @@ class SystemSmsImporter
         private companion object {
             const val TAG = "SystemSmsImporter"
             const val PAGE_SIZE = 500
+
+            /**
+             * At most this many fresh entities are materialized for
+             * per-message notifications; past it only the count matters
+             * (the notifier collapses to one summary). Mirrors
+             * [app.clearsms.notification.CatchUpNotifier.MAX_INDIVIDUAL].
+             */
+            const val FRESH_SAMPLE_LIMIT = 5
 
             /** Inbox and sent rows past the checkpoint; drafts/outbox/failed are skipped. */
             val SELECTION =

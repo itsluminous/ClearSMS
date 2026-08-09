@@ -203,6 +203,30 @@ interface MessageRepository {
     ): MessageEntity
 
     /**
+     * Outcome of [ingestIncoming]: the stored entity plus whether the row
+     * already existed (a concurrent catch-up import won the `systemSmsId`
+     * race). Exactly one of the two paths may notify; [duplicate] is the
+     * receiver's cue that the import path owns this message's notification.
+     */
+    data class IncomingIngest(
+        val entity: MessageEntity,
+        val duplicate: Boolean,
+    )
+
+    /**
+     * Like [insertIncoming], but reports whether the message row already
+     * existed under the same `systemSmsId` (inserted first by a racing
+     * catch-up import). Implementations that cannot race default to
+     * `duplicate = false`.
+     */
+    suspend fun ingestIncoming(
+        sender: String,
+        body: String,
+        timestampMs: Long,
+        systemSmsId: Long? = null,
+    ): IncomingIngest = IncomingIngest(insertIncoming(sender, body, timestampMs, systemSmsId), duplicate = false)
+
+    /**
      * Re-runs categorization and extraction over every stored message in
      * paged batches (one transaction per page, so cancellation between pages
      * leaves the database consistent).

@@ -3,26 +3,15 @@ package app.clearsms.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.provider.Telephony
 import android.util.Log
-import app.clearsms.data.db.MessageEntity
-import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.ApplicationScope
-import app.clearsms.domain.model.Category
-import app.clearsms.domain.model.NotificationAction
-import app.clearsms.domain.model.SubCategory
-import app.clearsms.notification.Channels
-import app.clearsms.notification.MessageNotifier
-import app.clearsms.notification.OtpClipboard
-import app.clearsms.notification.OtpNotifier
-import app.clearsms.notification.TransactionNotifier
+import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.work.ReminderAlarmScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -33,7 +22,8 @@ import javax.inject.Inject
  * Multipart messages arrive as several PDUs in one intent; parts are merged
  * per sender before ingestion. Each merged message is written to the system
  * SMS provider, run through the categorization pipeline, and then routed to
- * the appropriate notification.
+ * the appropriate notification via [IncomingMessageRouter] (shared with the
+ * catch-up import so both paths notify identically).
  */
 @AndroidEntryPoint
 class SmsReceiver : BroadcastReceiver() {
@@ -41,19 +31,10 @@ class SmsReceiver : BroadcastReceiver() {
     lateinit var messageRepository: MessageRepository
 
     @Inject
-    lateinit var settingsRepository: SettingsRepository
-
-    @Inject
     lateinit var telephonyWriter: TelephonyWriter
 
     @Inject
-    lateinit var otpNotifier: OtpNotifier
-
-    @Inject
-    lateinit var messageNotifier: MessageNotifier
-
-    @Inject
-    lateinit var transactionNotifier: TransactionNotifier
+    lateinit var incomingMessageRouter: IncomingMessageRouter
 
     @Inject
     lateinit var reminderAlarmScheduler: ReminderAlarmScheduler
@@ -80,80 +61,32 @@ class SmsReceiver : BroadcastReceiver() {
                         // numbers/sender ids - this line must stay content-free.
                         Log.e(TAG, "Failed to process an incoming message", e)
                     },
-                ) { merged -> process(context, merged) }
+                ) { merged -> process(merged) }
             } finally {
                 pendingResult.finish()
             }
         }
     }
 
-    private suspend fun process(
-        context: Context,
-        merged: Part,
-    ) {
+    private suspend fun process(merged: Part) {
         // Keep the provider row id: without it a later delete commit cannot
         // remove the provider copy, resurrecting the message in other apps.
+        // A failed provider write (null) degrades to a Room-only row - the
+        // message MUST stay visible in the app either way.
         val systemSmsId =
             telephonyWriter
                 .writeInbox(merged.sender, merged.body, merged.timestampMs)
                 ?.lastPathSegment
                 ?.toLongOrNull()
-        val entity =
-            messageRepository.insertIncoming(merged.sender, merged.body, merged.timestampMs, systemSmsId)
+        val ingest =
+            messageRepository.ingestIncoming(merged.sender, merged.body, merged.timestampMs, systemSmsId)
+        val entity = ingest.entity
         reminderAlarmScheduler.scheduleForMessage(entity.id)
-        if (entity.isBlockedSender) return
-
-        val selectedActions = settingsRepository.notificationActions.first()
-        when {
-            entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(context, entity, selectedActions)
-            entity.subCategory == SubCategory.SCAM -> messageNotifier.notifyScam(entity)
-            // Parsed transaction/balance/bill notification (opt-out via
-            // settings). Balance-only updates (BANK_ALERT with a parsed
-            // balance) and bill reminders (BILL with a parsed amount due)
-            // ride the SAME transactionNotifications gate as transactions:
-            // they are one parsed-finance surface rendered by one notifier
-            // with one semantic color scheme, and a second toggle would add
-            // a confusing third state for the same notification style. When
-            // the setting is off - or the message has no renderable parsed
-            // data (notify returns false) - control falls through to the
-            // plain message notification below, i.e. today's behavior.
-            (
-                entity.subCategory == SubCategory.TRANSACTION ||
-                    entity.subCategory == SubCategory.BANK_ALERT ||
-                    entity.subCategory == SubCategory.BILL
-            ) &&
-                settingsRepository.transactionNotifications.first() &&
-                transactionNotifier.notify(entity, selectedActions) -> Unit
-            entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
-                messageNotifier.notify(entity, selectedActions)
-            // Promotions always post to their own "Promotions" channel, which
-            // is created BLOCKED (IMPORTANCE_NONE) - so nothing is shown until
-            // the user enables the category in Android's notification settings.
-            // Posting unconditionally is what makes that switch meaningful: an
-            // extra in-app gate would silently swallow them and the Android
-            // toggle would appear to do nothing.
-            entity.category == Category.PROMOTIONAL ->
-                messageNotifier.notify(entity, selectedActions, channelId = Channels.PROMOTIONS)
-            // Everything else (unknown, informational) stays silent by design.
-            else -> Unit
-        }
-    }
-
-    private suspend fun notifyOtp(
-        context: Context,
-        entity: MessageEntity,
-        selectedActions: Set<NotificationAction>,
-    ) {
-        val otp = entity.extractedOtp ?: return
-        val autoCopy = settingsRepository.otpAutoCopy.first()
-        // Auto-copy: before Android Q a background component may write to the
-        // clipboard directly. From Q onward background clipboard access is
-        // restricted, so auto-copy is honored through the notification's
-        // "Copy" action instead (a user-triggered foreground path).
-        if (autoCopy && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            OtpClipboard.copy(context, otp, applicationScope)
-        }
-        otpNotifier.notify(entity, otp, settingsRepository.otpDisplaySize.first(), selectedActions)
+        // Duplicate = a concurrent catch-up import committed this provider
+        // row first. The import sees the row as post-watermark (it just
+        // arrived) and notifies it; notifying here too would double-post.
+        if (ingest.duplicate) return
+        incomingMessageRouter.route(entity)
     }
 
     /** One decoded PDU (or one merged message). */

@@ -45,6 +45,9 @@ class NotificationDismisser
             if (threadIds.isEmpty()) return
             val manager = NotificationManagerCompat.from(context)
             threadIds.forEach { manager.cancel(NotificationIds.messageThread(it)) }
+            // Reading any thread means the user is in the inbox: the "N new
+            // messages" catch-up summary has served its purpose.
+            manager.cancel(NotificationIds.CATCH_UP_SUMMARY)
         }
 
         /**

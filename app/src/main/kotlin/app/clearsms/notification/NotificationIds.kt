@@ -29,6 +29,9 @@ object NotificationIds {
     /** Singleton "message failed to send" notification. */
     const val SEND_FAILURE = 50_001
 
+    /** Singleton "N new messages" summary posted by a large catch-up import. */
+    const val CATCH_UP_SUMMARY = 50_002
+
     /** Shade group collapsing bursts of transaction notifications. */
     const val TRANSACTION_GROUP_KEY = "app.clearsms.TRANSACTIONS"
 

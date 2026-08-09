@@ -17,6 +17,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.clearsms.R
+import app.clearsms.notification.CatchUpNotifier
 import app.clearsms.notification.Channels
 import app.clearsms.sms.SystemSmsImporter
 import dagger.assisted.Assisted
@@ -46,21 +47,29 @@ class InitialSyncWorker
         @Assisted appContext: Context,
         @Assisted params: WorkerParameters,
         private val systemSmsImporter: SystemSmsImporter,
+        private val catchUpNotifier: CatchUpNotifier,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             Channels.ensureCreated(applicationContext)
             val manager = NotificationManagerCompat.from(applicationContext)
             return try {
-                systemSmsImporter.importAll { imported, total ->
-                    setProgress(
-                        Data
-                            .Builder()
-                            .putInt(PROGRESS_IMPORTED, imported)
-                            .putInt(PROGRESS_TOTAL, total)
-                            .build(),
-                    )
-                    postProgressNotification(manager, imported, total)
-                }
+                val result =
+                    systemSmsImporter.importAll { imported, total ->
+                        setProgress(
+                            Data
+                                .Builder()
+                                .putInt(PROGRESS_IMPORTED, imported)
+                                .putInt(PROGRESS_TOTAL, total)
+                                .build(),
+                        )
+                        postProgressNotification(manager, imported, total)
+                    }
+                // Fresh (post-watermark) messages were never notified live:
+                // surface them now, through the normal pipeline (or one
+                // summary when many). Old history stays silent, so the
+                // initial onboarding import never reaches this call with a
+                // non-zero count (fresh-install watermark is null).
+                catchUpNotifier.notifyFresh(result.freshMessages, result.freshCount)
                 Result.success()
             } catch (e: Exception) {
                 Log.w(TAG, "Import attempt $runAttemptCount failed; will resume from checkpoint", e)

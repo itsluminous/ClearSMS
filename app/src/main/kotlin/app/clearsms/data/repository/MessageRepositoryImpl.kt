@@ -402,7 +402,14 @@ class MessageRepositoryImpl(
         body: String,
         timestampMs: Long,
         systemSmsId: Long?,
-    ): MessageEntity {
+    ): MessageEntity = ingestIncoming(sender, body, timestampMs, systemSmsId).entity
+
+    override suspend fun ingestIncoming(
+        sender: String,
+        body: String,
+        timestampMs: Long,
+        systemSmsId: Long?,
+    ): MessageRepository.IncomingIngest {
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
         val enriched = classify(rulesSnapshot(), sender, body)
@@ -431,10 +438,27 @@ class MessageRepositoryImpl(
                     extractedDataJson = encodeExtracted(enriched.extracted),
                     isBlockedSender = blocked,
                 )
-            val id = messageDao.insert(entity)
-            persistDerived(id, timestampMs, enriched)
+            // IGNORE (not REPLACE) on the unique systemSmsId index: a
+            // concurrent catch-up import may have committed this provider row
+            // first. Replacing would delete the import's row (new id, lost
+            // read-state, orphaned derived rows); instead the existing row is
+            // returned marked duplicate, and the import path - which by
+            // definition sees this just-arrived row as post-watermark -
+            // carries the notification.
+            val id = messageDao.insertIgnore(entity)
+            if (id == -1L && systemSmsId != null) {
+                val existing = messageDao.bySystemSmsId(systemSmsId)
+                if (existing != null) {
+                    return@withTransaction MessageRepository.IncomingIngest(existing, duplicate = true)
+                }
+            }
+            // A -1 without a surviving row cannot happen inside this write
+            // transaction (nulls are exempt from the unique index), but a
+            // plain insert guarantees the message is never dropped either way.
+            val rowId = if (id == -1L) messageDao.insert(entity) else id
+            persistDerived(rowId, timestampMs, enriched)
             ingestionFailpointForTest?.invoke()
-            entity.copy(id = id)
+            MessageRepository.IncomingIngest(entity.copy(id = rowId), duplicate = false)
         }
     }
 
@@ -495,6 +519,14 @@ class MessageRepositoryImpl(
     // region bulk import
 
     /**
+     * Newest stored message timestamp - the import's notification watermark.
+     * Null on an empty database (fresh install), which the importer treats
+     * as "everything is old history": the initial onboarding import must
+     * stay silent end-to-end.
+     */
+    internal suspend fun newestTimestamp(): Long? = messageDao.maxTimestamp()
+
+    /**
      * Decodes the full rule set once. The categorization pipeline re-queries
      * and re-decodes rules for every message otherwise, which is O(N×R) over
      * an import; a snapshot makes it O(R).
@@ -523,12 +555,14 @@ class MessageRepositoryImpl(
      * Rows whose [ImportedSmsRow.systemSmsId] already exists are skipped by
      * the unique index (IGNORE strategy), and their derived transaction /
      * reminder rows are skipped with them - re-processing a page can never
-     * duplicate messages or double finance totals.
+     * duplicate messages or double finance totals. Skipping also covers a
+     * live delivery that beat this import to the row: the receiver already
+     * notified it, so the importer must not count it as fresh.
      *
-     * @return the number of messages actually inserted.
+     * @return the messages actually inserted, with their Room ids.
      */
-    internal suspend fun persistImportedPage(page: List<ImportedSmsRow>): Int {
-        if (page.isEmpty()) return 0
+    internal suspend fun persistImportedPage(page: List<ImportedSmsRow>): List<MessageEntity> {
+        if (page.isEmpty()) return emptyList()
         return database.withTransaction {
             var maxThreadId = messageDao.maxThreadId() ?: 0L
             val threadIds = HashMap<String, Long>()
@@ -575,10 +609,10 @@ class MessageRepositoryImpl(
                     }
                 }
             val ids = messageDao.insertAllIgnore(entities)
-            var inserted = 0
+            val inserted = ArrayList<MessageEntity>(entities.size)
             ids.forEachIndexed { index, id ->
                 if (id == -1L) return@forEachIndexed
-                inserted++
+                inserted += entities[index].copy(id = id)
                 val row = page[index]
                 row.enriched?.let { persistDerived(id, row.timestampMs, it) }
             }

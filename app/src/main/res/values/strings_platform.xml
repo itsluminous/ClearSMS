@@ -54,6 +54,11 @@
     <!-- Initial sync -->
     <string name="sync_title">Importing your messages</string>
     <string name="sync_progress">%1$d of %2$d messages</string>
+    <plurals name="catch_up_summary_title">
+        <item quantity="one">%d new message</item>
+        <item quantity="other">%d new messages</item>
+    </plurals>
+    <string name="catch_up_summary_text">Received while Clear SMS was catching up</string>
 
     <!-- Manual re-sort -->
     <string name="resort_title">Sorting your inbox</string>

@@ -380,11 +380,32 @@ interface MessageDao {
     @Query("SELECT MAX(systemSmsId) FROM messages")
     suspend fun maxSystemSmsId(): Long?
 
+    /**
+     * Newest message timestamp the app has ever stored - the catch-up
+     * import's notification watermark: imported rows newer than this are
+     * messages the user was never notified about. NULL on a fresh install,
+     * which makes the whole initial import "old" (silent).
+     */
+    @Query("SELECT MAX(timestamp) FROM messages")
+    suspend fun maxTimestamp(): Long?
+
+    @Query("SELECT * FROM messages WHERE systemSmsId = :systemSmsId LIMIT 1")
+    suspend fun bySystemSmsId(systemSmsId: Long): MessageEntity?
+
     @Query("SELECT EXISTS(SELECT 1 FROM messages WHERE normalizedSender = :normalizedSender AND isBlockedSender = 1)")
     suspend fun isSenderBlocked(normalizedSender: String): Boolean
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity): Long
+
+    /**
+     * Insert that yields `-1` instead of replacing when the unique
+     * `systemSmsId` index is violated - the live-delivery path uses this so
+     * losing the race against a concurrent catch-up import never REPLACEs
+     * (and thereby re-ids / un-reads) the row the import already committed.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(message: MessageEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(messages: List<MessageEntity>)

@@ -18,19 +18,26 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.After
-import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.IOException
 
+/**
+ * The `systemSmsId` race between a live delivery and a concurrent catch-up
+ * import (signal returns → receiver writes the provider row → the user opens
+ * the app → the gap probe's import commits the Room row first). Whichever
+ * path loses must become a no-op on the row so exactly one of the two
+ * notifies: the receiver skips when [MessageRepository.IncomingIngest.duplicate]
+ * is set (the import sees the row as post-watermark and notifies it), and the
+ * import's IGNORE insert skips rows the receiver committed first (which the
+ * receiver already notified live).
+ */
 @RunWith(RobolectricTestRunner::class)
-class MessageIngestionTransactionTest {
+class IngestImportRaceTest {
     private lateinit var db: ClearSmsDatabase
     private lateinit var repository: MessageRepositoryImpl
 
-    /** A real bank debit SMS that yields message + transaction + account rows. */
     private val debitBody =
         "Rs.250.00 debited from A/c XX9805 to VPA merchant@okicici on 20-07-26. Ref No 020520123456. Avl Bal Rs.5,000.25 - ICICI Bank."
     private val debitSender = "VM-ICICIB"
@@ -63,76 +70,55 @@ class MessageIngestionTransactionTest {
         db.close()
     }
 
-    @Test
-    fun `ingestion writes message and derived finance rows together`() =
-        runBlocking {
-            val inserted = repository.insertIncoming(debitSender, debitBody, 1_000L)
+    private suspend fun importedRow(systemSmsId: Long) =
+        ImportedSmsRow(
+            systemSmsId = systemSmsId,
+            sender = debitSender,
+            body = debitBody,
+            timestampMs = 5_000L,
+            isRead = false,
+            enriched = repository.classify(repository.rulesSnapshot(), debitSender, debitBody),
+            delivered = false,
+        )
 
-            assertThat(inserted.id).isGreaterThan(0L)
+    @Test
+    fun `plain ingest reports no duplicate`() =
+        runBlocking {
+            val ingest = repository.ingestIncoming(debitSender, debitBody, 5_000L, systemSmsId = 42L)
+            assertThat(ingest.duplicate).isFalse()
             assertThat(db.messageDao().getAll()).hasSize(1)
-            assertThat(db.transactionDao().getAll()).hasSize(1)
-            assertThat(
-                db
-                    .transactionDao()
-                    .getAll()
-                    .single()
-                    .rawSmsId,
-            ).isEqualTo(inserted.id)
         }
 
     @Test
-    fun `failure after derivation rolls back the message too`() =
+    fun `live delivery losing the race returns the imported row marked duplicate`() =
         runBlocking {
-            repository.ingestionFailpointForTest = { throw IOException("disk died mid-derivation") }
+            // Import commits the provider row first...
+            val imported = repository.persistImportedPage(listOf(importedRow(42L))).single()
+            val transactionsAfterImport = db.transactionDao().getAll()
 
-            assertThrows(IOException::class.java) {
-                runBlocking { repository.insertIncoming(debitSender, debitBody, 1_000L) }
-            }
+            // ...then the receiver's ingest hits the unique index.
+            val ingest = repository.ingestIncoming(debitSender, debitBody, 5_000L, systemSmsId = 42L)
 
-            // Nothing half-written: no orphan message, transaction or account.
-            assertThat(db.messageDao().getAll()).isEmpty()
-            assertThat(db.transactionDao().getAll()).isEmpty()
-            assertThat(db.accountDao().getAll()).isEmpty()
+            assertThat(ingest.duplicate).isTrue()
+            assertThat(ingest.entity.id).isEqualTo(imported.id)
+            // No second message row, no doubled finance rows.
+            assertThat(db.messageDao().getAll()).hasSize(1)
+            assertThat(db.transactionDao().getAll()).isEqualTo(transactionsAfterImport)
         }
 
     @Test
-    fun `retry after failure ingests exactly one consistent unit`() =
+    fun `import losing the race to a live delivery skips the row entirely`() =
         runBlocking {
-            repository.ingestionFailpointForTest = { throw IOException("first attempt fails") }
-            assertThrows(IOException::class.java) {
-                runBlocking { repository.insertIncoming(debitSender, debitBody, 1_000L) }
-            }
+            val ingest = repository.ingestIncoming(debitSender, debitBody, 5_000L, systemSmsId = 42L)
+            assertThat(ingest.duplicate).isFalse()
+            val transactionsAfterIngest = db.transactionDao().getAll()
 
-            repository.ingestionFailpointForTest = null
-            repository.insertIncoming(debitSender, debitBody, 1_000L)
+            // The import's page insert is IGNOREd: nothing fresh to notify.
+            val inserted = repository.persistImportedPage(listOf(importedRow(42L)))
 
+            assertThat(inserted).isEmpty()
             assertThat(db.messageDao().getAll()).hasSize(1)
-            assertThat(db.transactionDao().getAll()).hasSize(1)
-        }
-
-    @Test
-    fun `re-processing an imported page is a no-op`() =
-        runBlocking {
-            val snapshot = repository.rulesSnapshot()
-            val page =
-                listOf(
-                    ImportedSmsRow(
-                        systemSmsId = 42L,
-                        sender = debitSender,
-                        body = debitBody,
-                        timestampMs = 1_000L,
-                        isRead = true,
-                        enriched = repository.classify(snapshot, debitSender, debitBody),
-                    ),
-                )
-
-            val first = repository.persistImportedPage(page)
-            val second = repository.persistImportedPage(page)
-
-            assertThat(first).hasSize(1)
-            assertThat(second).isEmpty()
-            assertThat(db.messageDao().getAll()).hasSize(1)
-            assertThat(db.transactionDao().getAll()).hasSize(1)
+            assertThat(db.transactionDao().getAll()).isEqualTo(transactionsAfterIngest)
         }
 
     private object NoopDataStore : DataStore<Preferences> {
