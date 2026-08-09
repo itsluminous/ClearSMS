@@ -101,17 +101,26 @@
             </intent-filter>
         </service>
 
-        <!-- Re-schedules reminders and periodic work after a device reboot.
-             Exported is required to receive BOOT_COMPLETED; safe because it
-             is a protected broadcast only the system can send, and onReceive
+        <!-- Re-schedules reminders, scheduled sends and periodic work after a
+             device reboot or wall-clock/timezone change. Exported is required
+             to receive BOOT_COMPLETED; safe because all three actions are
+             protected broadcasts only the system can send, and onReceive
              ignores every other action. -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- AlarmManager target for scheduled message sends. NOT exported:
+             only our own PendingIntents may trigger a send. -->
+        <receiver
+            android:name=".receiver.ScheduledSendReceiver"
+            android:exported="false" />
 
         <!-- PendingIntent target for SMS sent / delivery reports. -->
         <receiver

@@ -51,7 +51,7 @@ class SentMessageWatcher
                     DeliveryStatus.SENT, DeliveryStatus.DELIVERED -> SendStatus.SENT
                     // Window elapsed with no report recorded: call it sent.
                     // Compare-and-set so a report landing right now wins.
-                    DeliveryStatus.SENDING, null -> {
+                    DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED, null -> {
                         messageDao.promoteDeliveryStatus(messageId, DeliveryStatus.SENDING, DeliveryStatus.SENT)
                         SendStatus.SENT
                     }

@@ -398,6 +398,52 @@ interface MessageDao {
 
     // endregion
 
+    // region scheduled messages
+
+    /** Every live scheduled message (alarm re-registration after boot / time change). */
+    @Query("SELECT * FROM messages WHERE deliveryStatus = :scheduled AND deletedAt IS NULL")
+    suspend fun scheduledMessages(scheduled: DeliveryStatus = DeliveryStatus.SCHEDULED): List<MessageEntity>
+
+    /**
+     * Moves a scheduled message's fire time. The bubble's [MessageEntity.timestamp]
+     * follows so it keeps sitting at its future position in the thread. Only
+     * a still-SCHEDULED row is touched (an edit racing the alarm loses).
+     */
+    @Query(
+        """
+        UPDATE messages SET scheduledAt = :scheduledAt, timestamp = :scheduledAt
+        WHERE id = :id AND deliveryStatus = :scheduled
+        """,
+    )
+    suspend fun updateScheduledTime(
+        id: Long,
+        scheduledAt: Long,
+        scheduled: DeliveryStatus = DeliveryStatus.SCHEDULED,
+    ): Int
+
+    /**
+     * Flips a fired schedule into the normal outgoing lifecycle: SENDING,
+     * stamped with the actual send time and the fresh provider row, schedule
+     * cleared. Compare-and-set on SCHEDULED so a cancel or a double alarm
+     * can never dispatch twice - the returned row count is the go/no-go.
+     */
+    @Query(
+        """
+        UPDATE messages SET deliveryStatus = :sending, timestamp = :timestamp,
+            systemSmsId = :systemSmsId, scheduledAt = NULL, deliveredParts = 0
+        WHERE id = :id AND deliveryStatus = :scheduled
+        """,
+    )
+    suspend fun markDispatchedFromSchedule(
+        id: Long,
+        timestamp: Long,
+        systemSmsId: Long?,
+        sending: DeliveryStatus = DeliveryStatus.SENDING,
+        scheduled: DeliveryStatus = DeliveryStatus.SCHEDULED,
+    ): Int
+
+    // endregion
+
     @Query("SELECT MAX(threadId) FROM messages")
     suspend fun maxThreadId(): Long?
 

@@ -38,10 +38,11 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,7 +55,10 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,6 +115,14 @@ fun ConversationScreen(
     // Failed outgoing message whose Retry/Delete dialog is open (from a
     // bubble tap); survives rotation so the choice is never silently lost.
     var failedMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Scheduled bubble whose Send now / Edit time / Cancel dialog is open.
+    var scheduledMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Date+time picker state: open flag plus the schedule being edited
+    // (null = scheduling the current draft from a Send long-press).
+    var showSchedulePicker by rememberSaveable { mutableStateOf(false) }
+    var scheduleEditTarget by rememberSaveable { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -266,6 +278,10 @@ fun ConversationScreen(
                         onCycleSim = {
                             viewModel.cycleSim()
                         },
+                        onScheduleSend = {
+                            scheduleEditTarget = null
+                            showSchedulePicker = true
+                        },
                     )
                 else -> NotRepliableRow()
             }
@@ -309,6 +325,7 @@ fun ConversationScreen(
                             ) {
                                 MessageMetadata.TapAction.TOGGLE_SELECTION -> viewModel.toggleSelection(item.id)
                                 MessageMetadata.TapAction.OFFER_RETRY -> failedMessageId = item.id
+                                MessageMetadata.TapAction.OFFER_SCHEDULE_ACTIONS -> scheduledMessageId = item.id
                                 MessageMetadata.TapAction.TOGGLE_DETAILS ->
                                     expandedId = MessageMetadata.onTap(expandedId, item.id, selectionActive = false)
                             }
@@ -346,6 +363,57 @@ fun ConversationScreen(
                         viewModel.delete(messageId)
                     },
                 ) { Text(stringResource(R.string.ui_action_delete)) }
+            },
+        )
+    }
+
+    // Send now / Edit time / Cancel for a tapped scheduled bubble - the
+    // same dialog pattern as the failed-retry choice above.
+    scheduledMessageId?.let { messageId ->
+        AlertDialog(
+            onDismissRequest = { scheduledMessageId = null },
+            title = { Text(stringResource(R.string.conversation_scheduled_dialog_title)) },
+            text = { Text(stringResource(R.string.conversation_scheduled_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scheduledMessageId = null
+                        viewModel.sendScheduledNow(messageId)
+                    },
+                ) { Text(stringResource(R.string.conversation_schedule_send_now)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            scheduledMessageId = null
+                            scheduleEditTarget = messageId
+                            showSchedulePicker = true
+                        },
+                    ) { Text(stringResource(R.string.conversation_schedule_edit_time)) }
+                    TextButton(
+                        onClick = {
+                            scheduledMessageId = null
+                            viewModel.cancelSchedule(messageId)
+                        },
+                    ) { Text(stringResource(R.string.conversation_schedule_cancel)) }
+                }
+            },
+        )
+    }
+
+    if (showSchedulePicker) {
+        ScheduleTimePicker(
+            onDismiss = { showSchedulePicker = false },
+            onConfirm = { atMs ->
+                showSchedulePicker = false
+                val target = scheduleEditTarget
+                if (target == null) {
+                    viewModel.scheduleSend(draft, atMs)
+                    draft = ""
+                } else {
+                    viewModel.editSchedule(target, atMs)
+                }
             },
         )
     }
@@ -433,6 +501,7 @@ private fun ConversationSelectionBar(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ReplyComposer(
     draft: String,
@@ -440,6 +509,7 @@ private fun ReplyComposer(
     onSend: () -> Unit,
     sim: SimUiState = SimUiState(),
     onCycleSim: () -> Unit = {},
+    onScheduleSend: () -> Unit = {},
 ) {
     val context = LocalContext.current
     Row(
@@ -478,17 +548,120 @@ private fun ReplyComposer(
                 )
             }
         }
-        FilledIconButton(
-            onClick = onSend,
-            enabled = draft.isNotBlank(),
+        // Send: tap sends now, long-press opens the schedule picker. A
+        // custom surface because FilledIconButton exposes no long-press.
+        val enabled = draft.isNotBlank()
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color =
+                if (enabled) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+            modifier =
+                Modifier.combinedClickable(
+                    enabled = enabled,
+                    onClick = onSend,
+                    onClickLabel = stringResource(R.string.action_send),
+                    onLongClick = onScheduleSend,
+                    onLongClickLabel = stringResource(R.string.conversation_schedule_send),
+                ),
         ) {
             Icon(
                 Icons.AutoMirrored.Outlined.Send,
                 contentDescription = stringResource(R.string.action_send),
+                tint =
+                    if (enabled) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                modifier = Modifier.padding(10.dp),
             )
         }
     }
 }
+
+/**
+ * Two-step Material3 schedule picker: a date, then a time. Confirming with
+ * a moment that is not in the future keeps the picker open and toasts why -
+ * a schedule in the past is always a mistake, never a send.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleTimePicker(
+    onDismiss: () -> Unit,
+    onConfirm: (Long) -> Unit,
+) {
+    val context = LocalContext.current
+    var pickingTime by rememberSaveable { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+    val timePickerState = rememberTimePickerState(is24Hour = DateFormat.is24HourFormat(context))
+    val pastTimeMessage = stringResource(R.string.conversation_schedule_past_time)
+
+    if (!pickingTime) {
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(
+                    enabled = datePickerState.selectedDateMillis != null,
+                    onClick = { pickingTime = true },
+                ) { Text(stringResource(R.string.conversation_schedule_pick_time)) }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.conversation_schedule_send)) },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val atMs =
+                            combineDateAndTime(
+                                utcDateMillis = datePickerState.selectedDateMillis ?: return@TextButton,
+                                hour = timePickerState.hour,
+                                minute = timePickerState.minute,
+                            )
+                        if (atMs <= System.currentTimeMillis()) {
+                            Toast.makeText(context, pastTimeMessage, Toast.LENGTH_SHORT).show()
+                        } else {
+                            onConfirm(atMs)
+                        }
+                    },
+                ) { Text(stringResource(R.string.conversation_schedule_send)) }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+/**
+ * A DatePicker selection (UTC midnight of the chosen day) plus a local
+ * hour/minute, combined into the epoch instant of that local wall time.
+ */
+internal fun combineDateAndTime(
+    utcDateMillis: Long,
+    hour: Int,
+    minute: Int,
+    zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+): Long =
+    java.time.Instant
+        .ofEpochMilli(utcDateMillis)
+        .atZone(java.time.ZoneOffset.UTC)
+        .toLocalDate()
+        .atTime(hour, minute)
+        .atZone(zone)
+        .toInstant()
+        .toEpochMilli()
 
 /** Replaces the composer for one-way senders (alphanumeric ids, short codes). */
 @Composable
@@ -639,25 +812,43 @@ private fun MessageBubble(
                         color = textColor.copy(alpha = 0.7f),
                         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
                     )
-                    // In-flight and failed sends stay visible on the bubble
-                    // itself; resolved statuses live in the metadata line.
-                    if (item.deliveryStatus == DeliveryStatus.SENDING || item.deliveryStatus == DeliveryStatus.FAILED) {
-                        Text(
-                            text =
-                                if (item.deliveryStatus == DeliveryStatus.FAILED) {
-                                    stringResource(R.string.conversation_not_sent)
-                                } else {
-                                    stringResource(R.string.conversation_sending)
-                                },
-                            style = MaterialTheme.typography.labelSmall,
-                            color =
-                                if (item.deliveryStatus == DeliveryStatus.FAILED) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    textColor.copy(alpha = 0.7f)
-                                },
-                            modifier = Modifier.align(Alignment.End),
-                        )
+                    // In-flight, failed and scheduled sends stay visible on
+                    // the bubble itself; resolved statuses live in the
+                    // metadata line.
+                    when (item.deliveryStatus) {
+                        DeliveryStatus.SCHEDULED -> {
+                            val context = LocalContext.current
+                            val is24Hour = remember { DateFormat.is24HourFormat(context) }
+                            val at = item.message?.scheduledAt ?: item.timestamp
+                            Text(
+                                text =
+                                    stringResource(
+                                        R.string.conversation_scheduled_for,
+                                        MessageMetadata.timestampLabel(at, is24Hour),
+                                    ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.align(Alignment.End),
+                            )
+                        }
+                        DeliveryStatus.SENDING, DeliveryStatus.FAILED ->
+                            Text(
+                                text =
+                                    if (item.deliveryStatus == DeliveryStatus.FAILED) {
+                                        stringResource(R.string.conversation_not_sent)
+                                    } else {
+                                        stringResource(R.string.conversation_sending)
+                                    },
+                                style = MaterialTheme.typography.labelSmall,
+                                color =
+                                    if (item.deliveryStatus == DeliveryStatus.FAILED) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        textColor.copy(alpha = 0.7f)
+                                    },
+                                modifier = Modifier.align(Alignment.End),
+                            )
+                        else -> Unit
                     }
                 }
             }
@@ -708,6 +899,7 @@ private fun MessageMetadataLine(item: ConversationItem) {
  */
 internal fun deliveryStatusLabelRes(status: DeliveryStatus?): Int =
     when (status) {
+        DeliveryStatus.SCHEDULED -> R.string.conversation_scheduled
         DeliveryStatus.SENDING -> R.string.conversation_sending
         DeliveryStatus.DELIVERED -> R.string.conversation_delivered
         DeliveryStatus.FAILED -> R.string.conversation_not_sent

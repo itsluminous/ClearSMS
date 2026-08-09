@@ -88,6 +88,36 @@ class SmsSender
         }
 
         /**
+         * Dispatches a [DeliveryStatus.SCHEDULED] message through the normal
+         * send path when its time arrives: fresh provider sent row, status
+         * SENDING stamped with the actual send time, then the radio - with
+         * the SIM recorded at scheduling time and the usual per-part report
+         * intents (failures land in the existing FAILED + retry flow).
+         *
+         * @return true when THIS call dispatched; false when the row is gone
+         *   or no longer scheduled (cancelled, or a duplicate alarm lost the
+         *   compare-and-set claim - its provider row is rolled back).
+         */
+        suspend fun sendScheduled(messageId: Long): Boolean =
+            withContext(ioDispatcher) {
+                val message = messageDao.getById(messageId) ?: return@withContext false
+                if (!message.isOutgoing || message.deliveryStatus != DeliveryStatus.SCHEDULED) {
+                    return@withContext false
+                }
+                val now = System.currentTimeMillis()
+                val providerUri = telephonyWriter.writeSent(message.sender, message.body, now)
+                val systemSmsId = providerUri?.lastPathSegment?.toLongOrNull()
+                val claimed = messageDao.markDispatchedFromSchedule(messageId, now, systemSmsId)
+                if (claimed == 0) {
+                    // A concurrent cancel/fire won; take back the provider row.
+                    systemSmsId?.let { telephonyWriter.deleteBySystemIds(listOf(it)) }
+                    return@withContext false
+                }
+                dispatch(messageId, message.sender, message.body, providerUri?.toString(), message.subscriptionId)
+                true
+            }
+
+        /**
          * Hands the message to the radio. A synchronous throw is recorded as
          * FAILED on the row and swallowed - the persisted status IS the
          * failure signal callers observe (via [MessageDao.observeDeliveryStatus]).

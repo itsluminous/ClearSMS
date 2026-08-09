@@ -29,6 +29,7 @@ import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
+import app.clearsms.work.MessageScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -152,6 +153,7 @@ class ConversationViewModel
         private val sentMessageWatcher: SentMessageWatcher,
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
+        private val messageScheduler: MessageScheduler,
         settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -340,6 +342,48 @@ class ConversationViewModel
                 resolve(messageId)
             }
         }
+
+        // region scheduled sends
+
+        /**
+         * Schedules [body] for [scheduledAtMs] instead of sending: the row
+         * lands in the thread as a "scheduled" bubble (paging invalidation)
+         * with the currently chosen SIM, and an alarm fires it later.
+         */
+        fun scheduleSend(
+            body: String,
+            scheduledAtMs: Long,
+        ) {
+            val destination = uiState.value.address
+            if (destination.isBlank() || body.isBlank()) return
+            viewModelScope.launch(ioDispatcher) {
+                messageScheduler.schedule(destination, body, chosenSim.value, scheduledAtMs)
+                scrollToBottomSignal.trySend(Unit)
+            }
+        }
+
+        /** Moves a pending schedule to a new time. */
+        fun editSchedule(
+            messageId: Long,
+            scheduledAtMs: Long,
+        ) {
+            viewModelScope.launch(ioDispatcher) { messageScheduler.reschedule(messageId, scheduledAtMs) }
+        }
+
+        /** Fires a pending schedule immediately; outcome via the send snackbar. */
+        fun sendScheduledNow(messageId: Long) {
+            viewModelScope.launch(ioDispatcher) {
+                messageScheduler.sendNow(messageId)
+                resolve(messageId)
+            }
+        }
+
+        /** Cancels a pending schedule (bubble disappears; nothing was sent). */
+        fun cancelSchedule(messageId: Long) {
+            viewModelScope.launch(ioDispatcher) { messageScheduler.cancel(messageId) }
+        }
+
+        // endregion
 
         private suspend fun resolve(messageId: Long) {
             val status = sentMessageWatcher.await(messageId)

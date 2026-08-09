@@ -16,6 +16,9 @@ object MessageMetadata {
         /** The send failed: the tap offers Retry / Delete for the message. */
         OFFER_RETRY,
 
+        /** Scheduled: the tap offers Send now / Edit time / Cancel. */
+        OFFER_SCHEDULE_ACTIONS,
+
         /** Default: the tap toggles the metadata/details expansion. */
         TOGGLE_DETAILS,
     }
@@ -25,7 +28,9 @@ object MessageMetadata {
      * toggling selection there). Outside it, a FAILED outgoing bubble - the
      * red "Not sent" - offers Retry/Delete on tap instead of expanding
      * metadata: recovering the message is what the user wants from that
-     * bubble, and its status is already visible without expansion.
+     * bubble, and its status is already visible without expansion. A
+     * SCHEDULED bubble likewise offers its actions (send now / edit time /
+     * cancel) - editing the schedule is the only reason to tap it.
      */
     fun tapAction(
         selectionActive: Boolean,
@@ -35,6 +40,7 @@ object MessageMetadata {
         when {
             selectionActive -> TapAction.TOGGLE_SELECTION
             outgoing && deliveryStatus == DeliveryStatus.FAILED -> TapAction.OFFER_RETRY
+            outgoing && deliveryStatus == DeliveryStatus.SCHEDULED -> TapAction.OFFER_SCHEDULE_ACTIONS
             else -> TapAction.TOGGLE_DETAILS
         }
 

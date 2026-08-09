@@ -153,7 +153,7 @@ class SendReportRecorder
                         report.providerUri?.let { sideEffects.mirrorDelivered(it) }
                     }
                 }
-                DeliveryStatus.SENDING -> Unit
+                DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED -> Unit
             }
         }
     }

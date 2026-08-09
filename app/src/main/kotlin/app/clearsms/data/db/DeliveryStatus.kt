@@ -5,6 +5,10 @@ package app.clearsms.data.db
  *
  * Transitions, all recorded against the row so they survive restarts:
  *
+ * - [SCHEDULED] - written when the user schedules the message for a later
+ *   time instead of sending; [app.clearsms.work.MessageScheduler] fires it
+ *   into the normal dispatch path at the chosen time (row flips to
+ *   [SENDING]). Cancelling a schedule deletes the row - it was never sent.
  * - [SENDING] - written at dispatch by [app.clearsms.sms.SmsSender].
  * - [SENT] - the radio's sent report came back OK
  *   ([app.clearsms.receiver.SmsSentReceiver]), or no failure was recorded
@@ -14,4 +18,4 @@ package app.clearsms.data.db
  *   is otherwise honestly left at [SENT], never upgraded speculatively.
  * - [FAILED] - the send call threw or the radio reported a failure.
  */
-enum class DeliveryStatus { SENDING, SENT, DELIVERED, FAILED }
+enum class DeliveryStatus { SCHEDULED, SENDING, SENT, DELIVERED, FAILED }

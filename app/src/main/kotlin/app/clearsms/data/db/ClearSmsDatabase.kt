@@ -26,7 +26,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -86,6 +86,10 @@ import java.time.ZoneId
         // message travelled over on dual-SIM devices. Pure addition; existing
         // rows read as unknown (no SIM tag shown).
         AutoMigration(from = 12, to = 13),
+        // v13 -> v14: adds messages.scheduledAt (nullable) - the fire time of
+        // a SCHEDULED outgoing message. Pure addition; existing rows have no
+        // schedule.
+        AutoMigration(from = 13, to = 14),
     ],
 )
 @TypeConverters(Converters::class)

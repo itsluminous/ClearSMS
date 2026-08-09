@@ -90,4 +90,11 @@ data class MessageEntity(
      * per-bubble "SIM n" tag and lets a resend keep its original SIM.
      */
     val subscriptionId: Int? = null,
+    /**
+     * When a [DeliveryStatus.SCHEDULED] outgoing message should be sent.
+     * Null on every other row. The row's [timestamp] mirrors this while
+     * scheduled (the bubble sits at its future position in the thread) and
+     * is rewritten to the actual send time when the schedule fires.
+     */
+    val scheduledAt: Long? = null,
 )
