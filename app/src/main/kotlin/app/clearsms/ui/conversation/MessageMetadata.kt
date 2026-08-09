@@ -1,5 +1,6 @@
 package app.clearsms.ui.conversation
 
+import app.clearsms.data.db.DeliveryStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -7,6 +8,36 @@ import java.util.Locale
 
 /** Pure helpers behind the tap-to-reveal metadata line under a bubble. */
 object MessageMetadata {
+    /** Where a bubble tap is routed (see [tapAction]). */
+    enum class TapAction {
+        /** Multi-select is active: the tap toggles the message's selection. */
+        TOGGLE_SELECTION,
+
+        /** The send failed: the tap offers Retry / Delete for the message. */
+        OFFER_RETRY,
+
+        /** Default: the tap toggles the metadata/details expansion. */
+        TOGGLE_DETAILS,
+    }
+
+    /**
+     * Routes a bubble tap. Selection mode always wins (taps must keep
+     * toggling selection there). Outside it, a FAILED outgoing bubble - the
+     * red "Not sent" - offers Retry/Delete on tap instead of expanding
+     * metadata: recovering the message is what the user wants from that
+     * bubble, and its status is already visible without expansion.
+     */
+    fun tapAction(
+        selectionActive: Boolean,
+        outgoing: Boolean,
+        deliveryStatus: DeliveryStatus?,
+    ): TapAction =
+        when {
+            selectionActive -> TapAction.TOGGLE_SELECTION
+            outgoing && deliveryStatus == DeliveryStatus.FAILED -> TapAction.OFFER_RETRY
+            else -> TapAction.TOGGLE_DETAILS
+        }
+
     private val date = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
     private val time24 = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
     private val time12 = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)

@@ -51,6 +51,8 @@
     <string name="conversation_sending">Sending…</string>
     <string name="conversation_sent">Sent</string>
     <string name="conversation_not_sent">Not sent</string>
+    <string name="conversation_failed_dialog_title">Message not sent</string>
+    <string name="conversation_failed_dialog_message">Retry sending this message, or delete it?</string>
     <string name="conversation_delivered">Delivered</string>
     <string name="conversation_show_message_details">Show message details</string>
     <string name="conversation_hide_message_details">Hide message details</string>

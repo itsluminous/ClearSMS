@@ -104,6 +104,10 @@ fun ConversationScreen(
     val clipboard = LocalClipboardManager.current
     var draft by rememberSaveable { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
+
+    // Failed outgoing message whose Retry/Delete dialog is open (from a
+    // bubble tap); survives rotation so the choice is never silently lost.
+    var failedMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -289,10 +293,17 @@ fun ConversationScreen(
                         showDetails = state.showTransactionDetails,
                         expanded = expandedId == item.id,
                         onClick = {
-                            if (selection.active) {
-                                viewModel.toggleSelection(item.id)
-                            } else {
-                                expandedId = MessageMetadata.onTap(expandedId, item.id, selectionActive = false)
+                            when (
+                                MessageMetadata.tapAction(
+                                    selectionActive = selection.active,
+                                    outgoing = item.outgoing,
+                                    deliveryStatus = item.deliveryStatus,
+                                )
+                            ) {
+                                MessageMetadata.TapAction.TOGGLE_SELECTION -> viewModel.toggleSelection(item.id)
+                                MessageMetadata.TapAction.OFFER_RETRY -> failedMessageId = item.id
+                                MessageMetadata.TapAction.TOGGLE_DETAILS ->
+                                    expandedId = MessageMetadata.onTap(expandedId, item.id, selectionActive = false)
                             }
                         },
                         onLongClick = { viewModel.enterSelection(item.id) },
@@ -301,6 +312,35 @@ fun ConversationScreen(
                 }
             }
         }
+    }
+
+    // Retry/Delete choice for a tapped failed bubble. Retry re-dispatches
+    // the SAME row through the normal send path (the bubble flips back to
+    // Sending in place, no duplicate); Delete stages an undoable delete like
+    // every other delete in the app. Matches the screen's existing dialog
+    // pattern (see the selection-delete confirmation below).
+    failedMessageId?.let { messageId ->
+        AlertDialog(
+            onDismissRequest = { failedMessageId = null },
+            title = { Text(stringResource(R.string.conversation_failed_dialog_title)) },
+            text = { Text(stringResource(R.string.conversation_failed_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        failedMessageId = null
+                        viewModel.retry(messageId)
+                    },
+                ) { Text(stringResource(R.string.action_retry)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        failedMessageId = null
+                        viewModel.delete(messageId)
+                    },
+                ) { Text(stringResource(R.string.ui_action_delete)) }
+            },
+        )
     }
 
     if (confirmDelete) {

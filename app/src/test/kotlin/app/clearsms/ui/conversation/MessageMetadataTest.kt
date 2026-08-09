@@ -1,5 +1,6 @@
 package app.clearsms.ui.conversation
 
+import app.clearsms.data.db.DeliveryStatus
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.time.ZoneId
@@ -56,5 +57,35 @@ class MessageMetadataTest {
             .isEqualTo(7L)
         assertThat(MessageMetadata.onTap(expandedId = null, tappedId = 9L, selectionActive = true))
             .isNull()
+    }
+
+    @Test
+    fun `tapping a failed outgoing bubble offers retry`() {
+        assertThat(
+            MessageMetadata.tapAction(selectionActive = false, outgoing = true, deliveryStatus = DeliveryStatus.FAILED),
+        ).isEqualTo(MessageMetadata.TapAction.OFFER_RETRY)
+    }
+
+    @Test
+    fun `selection mode wins over the failed bubble - tap keeps toggling selection`() {
+        assertThat(
+            MessageMetadata.tapAction(selectionActive = true, outgoing = true, deliveryStatus = DeliveryStatus.FAILED),
+        ).isEqualTo(MessageMetadata.TapAction.TOGGLE_SELECTION)
+    }
+
+    @Test
+    fun `non-failed outgoing bubbles keep the details toggle`() {
+        for (status in listOf(DeliveryStatus.SENDING, DeliveryStatus.SENT, DeliveryStatus.DELIVERED, null)) {
+            assertThat(
+                MessageMetadata.tapAction(selectionActive = false, outgoing = true, deliveryStatus = status),
+            ).isEqualTo(MessageMetadata.TapAction.TOGGLE_DETAILS)
+        }
+    }
+
+    @Test
+    fun `incoming bubbles never offer retry`() {
+        assertThat(
+            MessageMetadata.tapAction(selectionActive = false, outgoing = false, deliveryStatus = DeliveryStatus.FAILED),
+        ).isEqualTo(MessageMetadata.TapAction.TOGGLE_DETAILS)
     }
 }
