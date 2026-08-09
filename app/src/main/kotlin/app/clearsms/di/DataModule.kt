@@ -33,8 +33,13 @@ import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.notification.NotificationDismisser
+import app.clearsms.receiver.DefaultSendReportSideEffects
+import app.clearsms.receiver.SendReportSideEffects
 import app.clearsms.sms.SystemSentSmsSource
 import app.clearsms.sms.TelephonyWriter
+import app.clearsms.work.BackupDocumentStore
+import app.clearsms.work.SafBackupDocumentStore
+import dagger.Binds
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.Provides
@@ -69,6 +74,19 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 internal interface DataOptionalBindings {
     @BindsOptionalOf
     fun contactLookup(): ContactLookup
+}
+
+/** Interface bindings for the data layer. */
+@Module
+@InstallIn(SingletonComponent::class)
+internal interface DataBindings {
+    /** SAF-backed document access for the periodic backup worker. */
+    @Binds
+    fun backupDocumentStoreFactory(impl: SafBackupDocumentStore.Factory): BackupDocumentStore.Factory
+
+    /** Provider mirroring + failure notification for outgoing send reports. */
+    @Binds
+    fun sendReportSideEffects(impl: DefaultSendReportSideEffects): SendReportSideEffects
 }
 
 /** Hilt wiring for the data and domain layers. */

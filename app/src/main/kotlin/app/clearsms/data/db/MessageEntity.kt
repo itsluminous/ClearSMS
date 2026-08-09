@@ -53,6 +53,20 @@ data class MessageEntity(
     /** Send lifecycle for outgoing messages; always null on incoming rows. */
     val deliveryStatus: DeliveryStatus? = null,
     /**
+     * Number of SMS parts the outgoing body was divided into (1 for a short
+     * message, always 1 on incoming rows). Set at dispatch, it is the
+     * denominator for the multipart worst-part status aggregation: DELIVERED
+     * is only recorded once [deliveredParts] reaches this count.
+     */
+    @ColumnInfo(defaultValue = "1") val partCount: Int = 1,
+    /**
+     * How many parts of an outgoing multipart message have a carrier
+     * delivery report so far. Reset to 0 on (re)dispatch; the message is
+     * promoted to DELIVERED only when this reaches [partCount] — a partially
+     * delivered multipart message honestly stays at SENT.
+     */
+    @ColumnInfo(defaultValue = "0") val deliveredParts: Int = 0,
+    /**
      * Soft-delete marker: null for live messages; the deletion timestamp for
      * messages the user deleted. A non-null value hides the row from every
      * read path (inbox, conversation, search, counts) — first for the

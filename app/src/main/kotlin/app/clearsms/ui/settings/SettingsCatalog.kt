@@ -65,6 +65,7 @@ enum class SettingsItem(
     BACKUP_SETTINGS(SettingsSection.BACKUP, R.string.settings_backup_settings),
     RESTORE_SETTINGS(SettingsSection.BACKUP, R.string.settings_restore_settings),
     BACKUP_FREQUENCY(SettingsSection.BACKUP, R.string.settings_backup_frequency),
+    BACKUP_LOCATION(SettingsSection.BACKUP, R.string.settings_backup_location),
     MANAGE_RULES(SettingsSection.RULES, R.string.settings_manage_rules),
     SIGNATURE(SettingsSection.SIGNATURE, R.string.settings_signature),
     VERSION(SettingsSection.ABOUT, R.string.settings_version),

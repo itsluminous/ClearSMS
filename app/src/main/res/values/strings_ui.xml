@@ -203,6 +203,12 @@
     <string name="settings_restore">Restore</string>
     <string name="settings_restore_summary">Replace current data from a backup file</string>
     <string name="settings_backup_frequency">Backup frequency</string>
+    <string name="settings_backup_frequency_summary">%1$s · %2$s</string>
+    <string name="settings_backup_location">Backup location</string>
+    <string name="settings_backup_location_summary">Folder where automatic backups are saved</string>
+    <string name="settings_backup_location_not_set">No folder chosen</string>
+    <string name="settings_backup_dir_declined">Automatic backups stay off — no folder was chosen</string>
+    <string name="settings_backup_dir_error">Last automatic backup failed: the backup folder is missing or access was revoked. Choose the folder again.</string>
     <string name="settings_backup_done">Backup saved</string>
     <string name="settings_backup_failed">Backup failed</string>
     <string name="settings_restore_done_counts">Restored %1$d messages, %2$d transactions, %3$d accounts, %4$d rules, %5$d reminders.</string>
@@ -218,7 +224,7 @@
     <string name="settings_restore_settings_done">Applied %1$d settings.</string>
     <string name="settings_restore_settings_skipped">Skipped %1$d unrecognized entries.</string>
     <string name="settings_restore_settings_failed">That file is not a settings backup</string>
-    <string name="settings_auto_backup_note">Automatic backups are stored unencrypted in this app\'s private storage. Other apps cannot read them without root.</string>
+    <string name="settings_auto_backup_note">Automatic backups save your messages and settings as unencrypted files in the folder you choose. Anyone with access to that folder can read them.</string>
     <string name="settings_pill_order">Pill order</string>
     <string name="settings_pill_order_summary">Reorder the filter chips on this screen</string>
     <string name="pill_order_move_up">Move %1$s up</string>

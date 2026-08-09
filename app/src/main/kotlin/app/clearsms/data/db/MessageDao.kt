@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import app.clearsms.domain.model.Category
 import kotlinx.coroutines.flow.Flow
@@ -294,8 +295,72 @@ interface MessageDao {
     @Query("SELECT deliveryStatus FROM messages WHERE id = :id")
     fun observeDeliveryStatus(id: Long): Flow<DeliveryStatus?>
 
+    /**
+     * Records the number of radio parts an outgoing message was divided into
+     * and resets the delivered-part tally for a fresh dispatch.
+     */
+    @Query("UPDATE messages SET partCount = :partCount, deliveredParts = 0 WHERE id = :id")
+    suspend fun setPartCount(
+        id: Long,
+        partCount: Int,
+    )
+
+    /**
+     * Worst-part failure: any part's failure report marks the whole message
+     * FAILED, overwriting SENT/DELIVERED (a message with a lost part was not
+     * delivered). Returns the number of rows changed — 0 when the row was
+     * already FAILED, so callers can notify the user exactly once even when
+     * several parts of one message fail.
+     */
+    @Query(
+        """
+        UPDATE messages SET deliveryStatus = :failed
+        WHERE systemSmsId = :systemSmsId
+          AND (deliveryStatus IS NULL OR deliveryStatus != :failed)
+        """,
+    )
+    suspend fun markFailedBySystemId(
+        systemSmsId: Long,
+        failed: DeliveryStatus = DeliveryStatus.FAILED,
+    ): Int
+
+    @Query("UPDATE messages SET deliveredParts = deliveredParts + 1 WHERE systemSmsId = :systemSmsId")
+    suspend fun incrementDeliveredParts(systemSmsId: Long)
+
+    @Query(
+        """
+        UPDATE messages SET deliveryStatus = :delivered
+        WHERE systemSmsId = :systemSmsId
+          AND deliveredParts >= partCount
+          AND deliveryStatus IN (:promotable)
+        """,
+    )
+    suspend fun promoteDeliveredIfComplete(
+        systemSmsId: Long,
+        delivered: DeliveryStatus = DeliveryStatus.DELIVERED,
+        promotable: List<DeliveryStatus> = listOf(DeliveryStatus.SENDING, DeliveryStatus.SENT),
+    ): Int
+
+    /**
+     * Records one part's carrier delivery report and applies the worst-part
+     * rule: the message becomes DELIVERED only when EVERY part has reported
+     * delivery AND no part has failed (FAILED is never upgraded). Returns
+     * true when this report completed the delivery — the moment to mirror
+     * `STATUS_COMPLETE` to the system provider row.
+     */
+    @Transaction
+    suspend fun recordPartDelivered(systemSmsId: Long): Boolean {
+        incrementDeliveredParts(systemSmsId)
+        return promoteDeliveredIfComplete(systemSmsId) > 0
+    }
+
     /** Rewrites a failed row for re-dispatch: back to SENDING on a fresh provider row. */
-    @Query("UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId WHERE id = :id")
+    @Query(
+        """
+        UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId, deliveredParts = 0
+        WHERE id = :id
+        """,
+    )
     suspend fun resetForResend(
         id: Long,
         systemSmsId: Long?,

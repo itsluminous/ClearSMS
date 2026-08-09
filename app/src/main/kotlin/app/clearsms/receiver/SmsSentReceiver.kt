@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.net.toUri
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
@@ -15,61 +16,36 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
- * Target of the sent / delivery-report [android.app.PendingIntent]s attached
- * by [app.clearsms.sms.SmsSender].
- *
- * The intent data carries the system provider row uri of the outgoing
- * message, whose id is also the Room row's `systemSmsId` — so each radio
- * report is recorded BOTH places: the provider row (failed sends become
- * `MESSAGE_TYPE_FAILED`, delivery reports set `STATUS_COMPLETE`) and the
- * local message's persisted [DeliveryStatus], which the conversation UI
- * renders. A sent-OK report only promotes SENDING → SENT (compare-and-set),
- * so a late one can never downgrade an already-DELIVERED message.
+ * Target of the per-part sent / delivery-report [android.app.PendingIntent]s
+ * attached by [app.clearsms.sms.SmsSender]. Each intent carries the part
+ * index and total part count; the actual aggregation lives in
+ * [SendReportRecorder] so the worst-part rules are unit-testable without
+ * broadcasting anything.
  */
 @AndroidEntryPoint
 class SmsSentReceiver : BroadcastReceiver() {
     @Inject
-    lateinit var telephonyWriter: TelephonyWriter
-
-    @Inject
-    lateinit var messageNotifier: MessageNotifier
-
-    @Inject
-    lateinit var messageDao: MessageDao
+    lateinit var recorder: SendReportRecorder
 
     override fun onReceive(
         context: Context,
         intent: Intent,
     ) {
-        val providerUri = intent.getStringExtra(EXTRA_PROVIDER_URI)?.toUri()
-        val systemSmsId = providerUri?.lastPathSegment?.toLongOrNull()
-        val destination = intent.getStringExtra(EXTRA_DESTINATION).orEmpty()
-        val status = SendReportMapper.statusFor(intent.action, resultCode == Activity.RESULT_OK) ?: return
-
-        when (status) {
-            DeliveryStatus.FAILED -> {
-                providerUri?.let { telephonyWriter.markFailed(it) }
-                messageNotifier.notifySendFailure(destination)
-            }
-            DeliveryStatus.DELIVERED -> providerUri?.let { telephonyWriter.markDelivered(it) }
-            else -> Unit
-        }
-
-        if (systemSmsId == null) return
+        val report =
+            SendPartReport(
+                status = SendReportMapper.statusFor(intent.action, resultCode == Activity.RESULT_OK) ?: return,
+                providerUri = intent.getStringExtra(EXTRA_PROVIDER_URI)?.toUri(),
+                destination = intent.getStringExtra(EXTRA_DESTINATION).orEmpty(),
+                partIndex = intent.getIntExtra(EXTRA_PART_INDEX, 0),
+                partCount = intent.getIntExtra(EXTRA_PART_COUNT, 1),
+            )
         val pending = goAsync()
         receiverScope.launch {
             try {
-                when (status) {
-                    DeliveryStatus.SENT ->
-                        messageDao.promoteDeliveryStatusBySystemId(
-                            systemSmsId,
-                            expected = DeliveryStatus.SENDING,
-                            newStatus = DeliveryStatus.SENT,
-                        )
-                    else -> messageDao.setDeliveryStatusBySystemId(systemSmsId, status)
-                }
+                recorder.record(report)
             } finally {
                 pending.finish()
             }
@@ -81,10 +57,106 @@ class SmsSentReceiver : BroadcastReceiver() {
         const val ACTION_SMS_DELIVERED = "app.clearsms.action.SMS_DELIVERED"
         const val EXTRA_DESTINATION = "destination"
         const val EXTRA_PROVIDER_URI = "provider_uri"
+        const val EXTRA_PART_INDEX = "part_index"
+        const val EXTRA_PART_COUNT = "part_count"
 
         private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 }
+
+/** One radio report for one part of an outgoing message. */
+data class SendPartReport(
+    val status: DeliveryStatus,
+    val providerUri: Uri?,
+    val destination: String,
+    val partIndex: Int,
+    val partCount: Int,
+)
+
+/**
+ * The non-database consequences of a radio report — provider-row mirroring
+ * and the user-facing failure notification — behind a seam so the worst-part
+ * aggregation in [SendReportRecorder] is unit-testable.
+ */
+interface SendReportSideEffects {
+    fun mirrorFailed(providerUri: Uri)
+
+    fun mirrorDelivered(providerUri: Uri)
+
+    fun notifyFailure(destination: String)
+}
+
+/** Production side effects: system SMS provider columns + failure notification. */
+@Singleton
+class DefaultSendReportSideEffects
+    @Inject
+    constructor(
+        private val telephonyWriter: TelephonyWriter,
+        private val messageNotifier: MessageNotifier,
+    ) : SendReportSideEffects {
+        override fun mirrorFailed(providerUri: Uri) = telephonyWriter.markFailed(providerUri)
+
+        override fun mirrorDelivered(providerUri: Uri) = telephonyWriter.markDelivered(providerUri)
+
+        override fun notifyFailure(destination: String) = messageNotifier.notifySendFailure(destination)
+    }
+
+/**
+ * Applies a per-part radio report to the outgoing message's persisted
+ * [DeliveryStatus] (worst-part semantics) and mirrors terminal transitions to
+ * the system provider row:
+ *
+ * - FAILED (any part): the whole message fails, overwriting SENT/DELIVERED —
+ *   a message with a lost part was not delivered. Provider row is marked
+ *   `MESSAGE_TYPE_FAILED` and the user is notified exactly once per message
+ *   even when several parts fail.
+ * - SENT: only the LAST part's OK report promotes SENDING → SENT
+ *   (compare-and-set). The radio hands parts over sequentially, so
+ *   last-part-OK means every earlier part was handed over too — unless one
+ *   already failed, in which case the row is FAILED and the promote is a
+ *   no-op. This is the honest granularity `sendMultipartTextMessage` offers
+ *   for "sent" without per-part persistence.
+ * - DELIVERED: counted per part; the message is promoted to DELIVERED only
+ *   when EVERY part has a carrier delivery report and no part has failed.
+ *   `STATUS_COMPLETE` is mirrored to the provider only on that completing
+ *   report. A partially delivered multipart message stays at SENT.
+ */
+@Singleton
+class SendReportRecorder
+    @Inject
+    constructor(
+        private val messageDao: MessageDao,
+        private val sideEffects: SendReportSideEffects,
+    ) {
+        suspend fun record(report: SendPartReport) {
+            val systemSmsId = report.providerUri?.lastPathSegment?.toLongOrNull()
+            when (report.status) {
+                DeliveryStatus.FAILED -> {
+                    val newlyFailed =
+                        if (systemSmsId != null) messageDao.markFailedBySystemId(systemSmsId) > 0 else true
+                    if (newlyFailed) {
+                        report.providerUri?.let { sideEffects.mirrorFailed(it) }
+                        sideEffects.notifyFailure(report.destination)
+                    }
+                }
+                DeliveryStatus.SENT -> {
+                    if (systemSmsId != null && report.partIndex == report.partCount - 1) {
+                        messageDao.promoteDeliveryStatusBySystemId(
+                            systemSmsId,
+                            expected = DeliveryStatus.SENDING,
+                            newStatus = DeliveryStatus.SENT,
+                        )
+                    }
+                }
+                DeliveryStatus.DELIVERED -> {
+                    if (systemSmsId != null && messageDao.recordPartDelivered(systemSmsId)) {
+                        report.providerUri?.let { sideEffects.mirrorDelivered(it) }
+                    }
+                }
+                DeliveryStatus.SENDING -> Unit
+            }
+        }
+    }
 
 /** Pure mapping from a radio report to the [DeliveryStatus] it records. */
 object SendReportMapper {

@@ -90,8 +90,16 @@ class SettingsCatalogTest {
         assertThat(bySection["Alerts"]).containsExactly("Pill order")
         assertThat(bySection["Startup"]).containsExactly("Default screen")
         assertThat(bySection["Backup & restore"])
-            .containsExactly("Back up now", "Restore", "Back up settings", "Restore settings", "Backup frequency")
-            .inOrder()
+            .containsExactly(
+                "Back up now",
+                "Restore",
+                "Back up settings",
+                "Restore settings",
+                "Backup frequency",
+                // Directly under the frequency it gates: the user-chosen SAF
+                // directory both automatic exports land in.
+                "Backup location",
+            ).inOrder()
         assertThat(bySection["Rules"]).containsExactly("Manage rules")
         assertThat(bySection["Signature"]).containsExactly("SMS signature")
         assertThat(bySection["About"]).containsExactly("Version", "Source code").inOrder()
@@ -147,10 +155,13 @@ class SettingsCatalogTest {
                 // Messages section, right after Archived: the recycle bin
                 // toggle + entry point (30-day retention, default OFF).
                 "Recycle bin",
+                // Backup & restore: the automatic-backup directory row that
+                // gates the backup frequency.
+                "Backup location",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 6 additions = 38 rows.
+        // No row lost, none dropped: 32 survivors + 8 additions = 40 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)
@@ -183,6 +194,14 @@ class SettingsCatalogTest {
         assertThat(messagesRows.indexOf(SettingsItem.RECYCLE_BIN))
             .isEqualTo(messagesRows.indexOf(SettingsItem.ARCHIVED) + 1)
         assertThat(search("recycle bin")).containsExactly(SettingsItem.RECYCLE_BIN)
+    }
+
+    @Test
+    fun `backup location row sits directly after Backup frequency and is searchable`() {
+        val backupRows = SettingsItem.entries.filter { it.section == SettingsSection.BACKUP }
+        assertThat(backupRows.indexOf(SettingsItem.BACKUP_LOCATION))
+            .isEqualTo(backupRows.indexOf(SettingsItem.BACKUP_FREQUENCY) + 1)
+        assertThat(search("backup location")).containsExactly(SettingsItem.BACKUP_LOCATION)
     }
 
     @Test

@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -58,6 +59,38 @@ class UiPrefs
             dataStore.edit { it[KEY_BACKUP_FREQUENCY] = value.name }
         }
 
+        /**
+         * SAF tree uri of the user-chosen automatic-backup directory (a
+         * persistable-permission grant taken at pick time), null until the
+         * user has picked one. DAILY/WEEKLY only activate once this is set.
+         */
+        val backupDirectoryUri: Flow<String?> = dataStore.data.map { it[KEY_BACKUP_DIRECTORY_URI] }
+
+        suspend fun setBackupDirectoryUri(value: String?) {
+            dataStore.edit { prefs ->
+                if (value == null) prefs.remove(KEY_BACKUP_DIRECTORY_URI) else prefs[KEY_BACKUP_DIRECTORY_URI] = value
+            }
+        }
+
+        /**
+         * Raised by the backup worker when the chosen directory is gone or
+         * its permission was revoked; surfaced as a warning in Settings (the
+         * fix — re-picking the directory — lives there) and cleared on the
+         * next successful run or re-pick.
+         */
+        val backupDirectoryError: Flow<Boolean> = dataStore.data.map { it[KEY_BACKUP_DIRECTORY_ERROR] ?: false }
+
+        suspend fun setBackupDirectoryError(value: Boolean) {
+            dataStore.edit { it[KEY_BACKUP_DIRECTORY_ERROR] = value }
+        }
+
+        /** Wall-clock time of the last successful automatic backup (WEEKLY throttle). */
+        val lastAutoBackupMs: Flow<Long> = dataStore.data.map { it[KEY_LAST_AUTO_BACKUP_MS] ?: 0L }
+
+        suspend fun setLastAutoBackupMs(value: Long) {
+            dataStore.edit { it[KEY_LAST_AUTO_BACKUP_MS] = value }
+        }
+
         /** Senders the user blocked, mirrored here so the block list screen can display them. */
         val blockedSenders: Flow<Set<String>> = dataStore.data.map { it[KEY_BLOCKED_SENDERS] ?: emptySet() }
 
@@ -94,6 +127,9 @@ class UiPrefs
             val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
             val KEY_DELIVERY_REPORTS = booleanPreferencesKey("delivery_reports")
             val KEY_BACKUP_FREQUENCY = stringPreferencesKey("backup_frequency")
+            val KEY_BACKUP_DIRECTORY_URI = stringPreferencesKey("backup_directory_uri")
+            val KEY_BACKUP_DIRECTORY_ERROR = booleanPreferencesKey("backup_directory_error")
+            val KEY_LAST_AUTO_BACKUP_MS = longPreferencesKey("last_auto_backup_ms")
             val KEY_BLOCKED_SENDERS = stringSetPreferencesKey("blocked_senders")
             val KEY_DISABLED_RULES = stringSetPreferencesKey("disabled_rules")
         }

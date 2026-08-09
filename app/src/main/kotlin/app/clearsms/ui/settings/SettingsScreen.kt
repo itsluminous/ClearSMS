@@ -1,5 +1,6 @@
 package app.clearsms.ui.settings
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -168,6 +169,25 @@ fun SettingsScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) viewModel.restoreSettingsFrom(uri)
         }
+    // Automatic-backup directory: the grant must outlive this Activity, so
+    // the persistable permission is taken here, before the ViewModel ever
+    // stores the uri — a stored uri is always a usable one.
+    val backupDirectoryLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+            viewModel.onBackupDirectoryPicked(uri?.toString())
+        }
+    // First-time DAILY/WEEKLY selection with no directory yet: the ViewModel
+    // parks the requested frequency and this launches the picker for it.
+    val pendingBackupFrequency by viewModel.pendingBackupFrequency.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingBackupFrequency) {
+        if (pendingBackupFrequency != null) backupDirectoryLauncher.launch(null)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
@@ -175,6 +195,8 @@ fun SettingsScreen(
                 when (event) {
                     SettingsEvent.BackupDone -> backupDone
                     SettingsEvent.BackupFailed -> backupFailed
+                    SettingsEvent.BackupDirectoryDeclined ->
+                        context.getString(R.string.settings_backup_dir_declined)
                     is SettingsEvent.RestoreDone -> {
                         val r = event.result
                         buildString {
@@ -248,6 +270,7 @@ fun SettingsScreen(
             onRestore = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             onBackupSettings = { settingsBackupLauncher.launch("clearsms-settings.json") },
             onRestoreSettings = { settingsRestoreLauncher.launch(arrayOf("application/json", "text/plain")) },
+            onPickBackupLocation = { backupDirectoryLauncher.launch(null) },
             onManageRules = onManageRules,
             onArchived = onArchived,
             onRecycleBin = onRecycleBin,
@@ -560,7 +583,7 @@ fun SettingsScreen(
                 options = BackupFrequency.entries.map { it to backupFrequencyLabel(it) },
                 selected = state.backupFrequency,
                 onSelect = {
-                    viewModel.setBackupFrequency(it)
+                    viewModel.requestBackupFrequency(it)
                     dialog = null
                 },
                 onDismiss = { dialog = null },
@@ -614,6 +637,7 @@ private fun settingsRowEntries(
     onRestore: () -> Unit,
     onBackupSettings: () -> Unit,
     onRestoreSettings: () -> Unit,
+    onPickBackupLocation: () -> Unit,
     onManageRules: () -> Unit,
     onArchived: () -> Unit,
     onRecycleBin: () -> Unit,
@@ -867,7 +891,17 @@ private fun settingsRowEntries(
             SettingsItem.RESTORE_SETTINGS ->
                 row(section, title, stringResource(R.string.settings_restore_settings_summary), onRestoreSettings)
             SettingsItem.BACKUP_FREQUENCY -> {
-                val backupFrequencySummary = backupFrequencyLabel(state.backupFrequency)
+                val frequencyLabel = backupFrequencyLabel(state.backupFrequency)
+                val directoryName = backupDirectoryDisplayName(state.backupDirectoryUri)
+                // The chosen directory rides along in the summary once
+                // automatic backups are active, so where the data lands is
+                // visible without opening anything.
+                val backupFrequencySummary =
+                    if (state.backupFrequency != BackupFrequency.OFF && directoryName != null) {
+                        stringResource(R.string.settings_backup_frequency_summary, frequencyLabel, directoryName)
+                    } else {
+                        frequencyLabel
+                    }
                 val autoBackupNote = stringResource(R.string.settings_auto_backup_note)
                 SettingsRowEntry(section, title, backupFrequencySummary) {
                     SettingRow(
@@ -875,6 +909,14 @@ private fun settingsRowEntries(
                         subtitle = backupFrequencySummary,
                         onClick = { openDialog(SettingsDialog.BACKUP_FREQUENCY) },
                     )
+                    if (state.backupDirectoryError) {
+                        Text(
+                            text = stringResource(R.string.settings_backup_dir_error),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
                     Text(
                         text = autoBackupNote,
                         style = MaterialTheme.typography.bodySmall,
@@ -883,6 +925,14 @@ private fun settingsRowEntries(
                     )
                 }
             }
+            SettingsItem.BACKUP_LOCATION ->
+                row(
+                    section,
+                    title,
+                    backupDirectoryDisplayName(state.backupDirectoryUri)
+                        ?: stringResource(R.string.settings_backup_location_not_set),
+                    onPickBackupLocation,
+                )
             SettingsItem.MANAGE_RULES ->
                 row(section, title, stringResource(R.string.settings_manage_rules_summary), onManageRules)
             SettingsItem.SIGNATURE ->

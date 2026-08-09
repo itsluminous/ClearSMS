@@ -2,6 +2,7 @@ package app.clearsms.work
 
 import android.content.Context
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -9,6 +10,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.clearsms.data.backup.BackupManager
+import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
@@ -19,22 +21,26 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Periodic local backup: exports the database as JSON into APP-PRIVATE
- * internal storage ([Context.filesDir]). Nothing is uploaded anywhere.
+ * Periodic local backup into the directory the user chose via SAF when
+ * enabling the backup frequency (a persisted `ACTION_OPEN_DOCUMENT_TREE`
+ * grant). Each run writes BOTH exports under stable names, overwriting the
+ * previous copies:
  *
- * Internal storage is deliberate: `getExternalFilesDir` is readable by any
- * app holding READ_EXTERNAL_STORAGE on Android 6–10 (and over USB/MTP), which
- * would expose every message body and OTP without the reader holding
- * READ_SMS. User-initiated exports still go through SAF to a location the
- * user explicitly picks — that is a deliberate user action.
+ * - [MESSAGES_FILE_NAME] — the full database export ([BackupManager])
+ * - [SETTINGS_FILE_NAME] — the settings export ([SettingsBackupManager])
+ *
+ * Nothing is uploaded anywhere. The frequency setting cannot reach
+ * DAILY/WEEKLY without a granted directory (Settings gates it), so a missing
+ * uri here means the grant was lost: the run fails and raises the
+ * directory-error flag that Settings surfaces as a "choose the folder again"
+ * warning — chosen over a notification because the fix lives in Settings,
+ * needs no POST_NOTIFICATIONS permission, and stays visible until resolved
+ * instead of being swiped away.
  *
  * The automatic backup honors the OTP auto-delete policy: OTP messages older
  * than the retention cutoff are excluded, and because the file is rewritten
  * on every run, OTPs removed by [OtpAutoDeleteWorker] age out of the backup
  * instead of being resurrected by a restore.
- *
- * TODO: encrypt the automatic backup at rest. Until then Settings carries a
- *  note that automatic backups are stored unencrypted in app-private storage.
  */
 @HiltWorker
 class BackupWorker
@@ -43,61 +49,85 @@ class BackupWorker
         @Assisted appContext: Context,
         @Assisted params: WorkerParameters,
         private val backupManager: BackupManager,
+        private val settingsBackupManager: SettingsBackupManager,
         private val uiPrefs: UiPrefs,
         private val settingsRepository: SettingsRepository,
+        private val documentStoreFactory: BackupDocumentStore.Factory,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
-            deleteLegacyExternalBackup(applicationContext)
+            deleteLegacyLocalBackups(applicationContext)
 
             val frequency = uiPrefs.backupFrequency.first()
-            val dir = File(applicationContext.filesDir, BACKUP_DIR)
-            val target = File(dir, BACKUP_FILE_NAME)
             if (frequency == BackupFrequency.OFF) {
-                // The user turned automatic backups off: produce nothing,
-                // remove any previous automatic export, and cancel the
-                // periodic schedule (defense in depth for schedules enqueued
-                // before the setting was read, e.g. at boot).
-                target.delete()
+                // The user turned automatic backups off: produce nothing and
+                // cancel the periodic schedule (defense in depth for schedules
+                // enqueued before the setting was read, e.g. at boot).
                 WorkManager.getInstance(applicationContext).cancelUniqueWork(WORK_NAME)
                 return Result.success()
             }
+            val now = System.currentTimeMillis()
             if (frequency == BackupFrequency.WEEKLY &&
-                target.exists() &&
-                System.currentTimeMillis() - target.lastModified() < WEEKLY_MIN_AGE_MS
+                now - uiPrefs.lastAutoBackupMs.first() < WEEKLY_MIN_AGE_MS
             ) {
                 return Result.success()
             }
 
-            val otpPolicy = settingsRepository.otpAutoDeletePolicy.first()
-            val otpCutoffMs = OtpAutoDeleteWorker.cutoffFor(otpPolicy, System.currentTimeMillis())
+            val treeUri = uiPrefs.backupDirectoryUri.first()?.toUri()
+            if (treeUri == null) {
+                // Settings never lets DAILY/WEEKLY activate without a granted
+                // directory, so reaching here means the grant was lost.
+                uiPrefs.setBackupDirectoryError(true)
+                return Result.failure()
+            }
+            val store = documentStoreFactory.create(treeUri)
 
-            if (!dir.exists() && !dir.mkdirs()) return Result.retry()
-            val temp = File(dir, "$BACKUP_FILE_NAME.tmp")
+            val otpPolicy = settingsRepository.otpAutoDeletePolicy.first()
+            val otpCutoffMs = OtpAutoDeleteWorker.cutoffFor(otpPolicy, now)
+
             return try {
-                temp.outputStream().use { backupManager.exportTo(it, otpCutoffMs = otpCutoffMs) }
-                if (!temp.renameTo(target)) {
-                    temp.copyTo(target, overwrite = true)
-                    temp.delete()
+                val messagesOut = store.openForWrite(MESSAGES_FILE_NAME)
+                val settingsOut = messagesOut?.let { store.openForWrite(SETTINGS_FILE_NAME) }
+                if (messagesOut == null || settingsOut == null) {
+                    messagesOut?.close()
+                    // Directory deleted or permission revoked: fail (don't
+                    // retry into the same wall) and surface the fix in Settings.
+                    uiPrefs.setBackupDirectoryError(true)
+                    return Result.failure()
                 }
+                messagesOut.use { backupManager.exportTo(it, otpCutoffMs = otpCutoffMs) }
+                settingsOut.use { settingsBackupManager.exportTo(it) }
+                uiPrefs.setBackupDirectoryError(false)
+                uiPrefs.setLastAutoBackupMs(now)
                 Result.success()
             } catch (e: Exception) {
+                // Transient I/O trouble (storage full, provider hiccup):
+                // worth retrying, unlike a lost grant.
                 Log.w(TAG, "Scheduled backup failed", e)
-                temp.delete()
                 Result.retry()
             }
         }
 
-        /** Removes the plaintext export a previous app version wrote to external storage. */
-        private fun deleteLegacyExternalBackup(context: Context) {
-            val legacyDir = context.getExternalFilesDir(BACKUP_DIR) ?: return
-            File(legacyDir, BACKUP_FILE_NAME).delete()
-            File(legacyDir, "$BACKUP_FILE_NAME.tmp").delete()
+        /**
+         * Removes the exports previous app versions wrote to app-private
+         * internal and external storage — automatic backups now live only in
+         * the user-chosen directory.
+         */
+        private fun deleteLegacyLocalBackups(context: Context) {
+            val internalDir = File(context.filesDir, LEGACY_BACKUP_DIR)
+            File(internalDir, LEGACY_BACKUP_FILE_NAME).delete()
+            File(internalDir, "$LEGACY_BACKUP_FILE_NAME.tmp").delete()
+            context.getExternalFilesDir(LEGACY_BACKUP_DIR)?.let { legacyDir ->
+                File(legacyDir, LEGACY_BACKUP_FILE_NAME).delete()
+                File(legacyDir, "$LEGACY_BACKUP_FILE_NAME.tmp").delete()
+            }
         }
 
         companion object {
             const val WORK_NAME = "periodic_backup"
-            const val BACKUP_DIR = "backups"
-            const val BACKUP_FILE_NAME = "clearsms-backup.json"
+            const val MESSAGES_FILE_NAME = "clearsms-backup-messages.json"
+            const val SETTINGS_FILE_NAME = "clearsms-backup-settings.json"
+            const val LEGACY_BACKUP_DIR = "backups"
+            const val LEGACY_BACKUP_FILE_NAME = "clearsms-backup.json"
             private const val TAG = "BackupWorker"
 
             /** WEEKLY runs skip the export while the last one is younger than ~6.5 days. */

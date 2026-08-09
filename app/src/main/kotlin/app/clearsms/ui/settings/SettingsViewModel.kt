@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -66,6 +67,10 @@ data class SettingsUiState(
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
     val signature: String = "",
     val backupFrequency: BackupFrequency = BackupFrequency.OFF,
+    /** SAF tree uri of the automatic-backup directory; null until the user picks one. */
+    val backupDirectoryUri: String? = null,
+    /** Raised by the worker when the chosen directory vanished or its grant was revoked. */
+    val backupDirectoryError: Boolean = false,
     val blockedSenders: List<String> = emptyList(),
     /** Non-null while a manual re-sort is enqueued/running (drives the inline progress row). */
     val sortProgress: SortProgress? = null,
@@ -83,6 +88,9 @@ sealed interface SettingsEvent {
     data object BackupDone : SettingsEvent
 
     data object BackupFailed : SettingsEvent
+
+    /** Directory picker cancelled while enabling a frequency: automatic backups stay off. */
+    data object BackupDirectoryDeclined : SettingsEvent
 
     /** Restore succeeded; carries per-table counts and any defaulted/skipped tallies. */
     data class RestoreDone(
@@ -255,8 +263,24 @@ class SettingsViewModel
             )
         private val otp =
             combine(settings.otpAutoCopy, settings.otpAutoDeletePolicy, settings.otpDisplaySize, ::Triple)
+
+        private data class OtherState(
+            val signature: String,
+            val backupFrequency: BackupFrequency,
+            val blockedSenders: Set<String>,
+            val backupDirectoryUri: String?,
+            val backupDirectoryError: Boolean,
+        )
+
         private val other =
-            combine(settings.signature, uiPrefs.backupFrequency, uiPrefs.blockedSenders, ::Triple)
+            combine(
+                settings.signature,
+                uiPrefs.backupFrequency,
+                uiPrefs.blockedSenders,
+                uiPrefs.backupDirectoryUri,
+                uiPrefs.backupDirectoryError,
+                ::OtherState,
+            )
 
         val uiState: StateFlow<SettingsUiState> =
             combine(
@@ -269,7 +293,7 @@ class SettingsViewModel
                     (appearanceState, gestures),
                     notificationState,
                     (autoCopy, autoDelete, size),
-                    (signature, backupFreq, blocked),
+                    otherState,
                     (sortState, isBusy),
                 ->
                 SettingsUiState(
@@ -291,9 +315,11 @@ class SettingsViewModel
                     otpAutoCopy = autoCopy,
                     otpAutoDeletePolicy = autoDelete,
                     otpDisplaySize = size,
-                    signature = signature,
-                    backupFrequency = backupFreq,
-                    blockedSenders = blocked.sorted(),
+                    signature = otherState.signature,
+                    backupFrequency = otherState.backupFrequency,
+                    backupDirectoryUri = otherState.backupDirectoryUri,
+                    backupDirectoryError = otherState.backupDirectoryError,
+                    blockedSenders = otherState.blockedSenders.sorted(),
                     sortProgress = sortState,
                     busy = isBusy,
                 )
@@ -371,13 +397,61 @@ class SettingsViewModel
 
         fun setSignature(value: String) = launchIo { settings.setSignature(value) }
 
-        fun setBackupFrequency(value: BackupFrequency) =
+        /** Non-null while the directory picker is out for a frequency the user just requested. */
+        private val pendingBackupFrequencyFlow = MutableStateFlow<BackupFrequency?>(null)
+        val pendingBackupFrequency: StateFlow<BackupFrequency?> = pendingBackupFrequencyFlow
+
+        /**
+         * Frequency dialog selection: DAILY/WEEKLY only activate once a
+         * backup directory is granted. With no directory yet, the setting is
+         * NOT written — the screen launches the tree picker and the outcome
+         * of [onBackupDirectoryPicked] decides.
+         */
+        fun requestBackupFrequency(value: BackupFrequency) {
             launchIo {
-                uiPrefs.setBackupFrequency(value)
-                // The setting is only honored if it actually drives the
-                // schedule: OFF cancels the periodic work, DAILY/WEEKLY enqueue it.
-                BackupWorker.applyFrequency(context, value)
+                val hasDirectory = uiPrefs.backupDirectoryUri.first() != null
+                when (val outcome = BackupDirectoryGate.onFrequencySelected(value, hasDirectory)) {
+                    is BackupDirectoryGate.FrequencyOutcome.Apply -> applyBackupFrequency(outcome.frequency)
+                    is BackupDirectoryGate.FrequencyOutcome.NeedDirectory ->
+                        pendingBackupFrequencyFlow.value = outcome.pending
+                }
             }
+        }
+
+        /**
+         * Result of the SAF tree picker (the screen has already taken the
+         * persistable permission for a non-null [treeUri]). A grant stores
+         * the directory, clears any stale worker error, and activates the
+         * pending frequency; a cancel leaves the frequency at OFF and tells
+         * the user why.
+         */
+        fun onBackupDirectoryPicked(treeUri: String?) {
+            val pending = pendingBackupFrequencyFlow.value
+            pendingBackupFrequencyFlow.value = null
+            launchIo {
+                when (val outcome = BackupDirectoryGate.onDirectoryPicked(treeUri != null, pending)) {
+                    is BackupDirectoryGate.PickOutcome.ActivatePending -> {
+                        uiPrefs.setBackupDirectoryUri(treeUri)
+                        uiPrefs.setBackupDirectoryError(false)
+                        applyBackupFrequency(outcome.frequency)
+                    }
+                    BackupDirectoryGate.PickOutcome.LocationUpdated -> {
+                        uiPrefs.setBackupDirectoryUri(treeUri)
+                        uiPrefs.setBackupDirectoryError(false)
+                    }
+                    BackupDirectoryGate.PickOutcome.RevertedToOff ->
+                        events.emit(SettingsEvent.BackupDirectoryDeclined)
+                    BackupDirectoryGate.PickOutcome.Dismissed -> Unit
+                }
+            }
+        }
+
+        private suspend fun applyBackupFrequency(value: BackupFrequency) {
+            uiPrefs.setBackupFrequency(value)
+            // The setting is only honored if it actually drives the
+            // schedule: OFF cancels the periodic work, DAILY/WEEKLY enqueue it.
+            BackupWorker.applyFrequency(context, value)
+        }
 
         fun blockSender(sender: String) =
             launchIo {

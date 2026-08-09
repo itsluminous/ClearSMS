@@ -30,8 +30,11 @@ import javax.inject.Singleton
  * it — status survives restarts instead of living in screen state. Delivery
  * report requests are gated on the user's delivery-reports setting.
  *
- * Long bodies are divided into parts and sent as one multipart message; the
- * report [PendingIntent]s are attached to the last part only.
+ * Long bodies are divided into parts and sent as one multipart message; every
+ * part carries its own sent / delivery report [PendingIntent] (tagged with the
+ * part index) so [SmsSentReceiver] can aggregate worst-part status: any part
+ * failing fails the message, and DELIVERED requires a delivery report for all
+ * parts.
  */
 @Singleton
 class SmsSender
@@ -94,27 +97,46 @@ class SmsSender
             try {
                 val smsManager = smsManager()
                 val parts = smsManager.divideMessage(body)
-                val sentIntent =
-                    resultPendingIntent(SmsSentReceiver.ACTION_SMS_SENT, destination, providerUri)
-                // No delivery-report request when the setting is off: the
-                // message then honestly caps at Sent, never shows Delivered.
-                val deliveredIntent =
-                    if (uiPrefs.deliveryReports.first()) {
-                        resultPendingIntent(SmsSentReceiver.ACTION_SMS_DELIVERED, destination, providerUri)
-                    } else {
-                        null
+                // Worst-part status aggregation needs the denominator on the
+                // row before any report can arrive.
+                messageDao.setPartCount(messageId, parts.size)
+                val requestDeliveryReports = uiPrefs.deliveryReports.first()
+                // Every part carries its own report intents (tagged with its
+                // index) so the receiver can apply worst-part semantics: any
+                // part's failure fails the message, and DELIVERED is only
+                // recorded once every part has a delivery report. With the
+                // delivery-reports setting off no delivery intent is attached
+                // at all: the message then honestly caps at Sent.
+                val sentIntents =
+                    ArrayList<PendingIntent>(parts.size).apply {
+                        repeat(parts.size) { index ->
+                            add(partPendingIntent(SmsSentReceiver.ACTION_SMS_SENT, destination, providerUri, index, parts.size))
+                        }
                     }
-                // Attach the report intents to the last part only so a single
-                // multipart message produces exactly one sent/delivery report.
-                val sentIntents = arrayOfNulls<PendingIntent>(parts.size).also { it[parts.size - 1] = sentIntent }
                 val deliveredIntents =
-                    arrayOfNulls<PendingIntent>(parts.size).also { it[parts.size - 1] = deliveredIntent }
+                    ArrayList<PendingIntent?>(parts.size).apply {
+                        repeat(parts.size) { index ->
+                            add(
+                                if (requestDeliveryReports) {
+                                    partPendingIntent(
+                                        SmsSentReceiver.ACTION_SMS_DELIVERED,
+                                        destination,
+                                        providerUri,
+                                        index,
+                                        parts.size,
+                                    )
+                                } else {
+                                    null
+                                },
+                            )
+                        }
+                    }
                 smsManager.sendMultipartTextMessage(
                     destination,
                     null,
                     parts,
-                    ArrayList(sentIntents.toList()),
-                    ArrayList(deliveredIntents.toList()),
+                    sentIntents,
+                    deliveredIntents,
                 )
             } catch (_: Exception) {
                 messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
@@ -145,16 +167,20 @@ class SmsSender
             )
         }
 
-        private fun resultPendingIntent(
+        private fun partPendingIntent(
             action: String,
             destination: String,
             providerUri: String?,
+            partIndex: Int,
+            partCount: Int,
         ): PendingIntent {
             val intent =
                 Intent(context, SmsSentReceiver::class.java)
                     .setAction(action)
                     .putExtra(SmsSentReceiver.EXTRA_DESTINATION, destination)
                     .putExtra(SmsSentReceiver.EXTRA_PROVIDER_URI, providerUri)
+                    .putExtra(SmsSentReceiver.EXTRA_PART_INDEX, partIndex)
+                    .putExtra(SmsSentReceiver.EXTRA_PART_COUNT, partCount)
             return PendingIntent.getBroadcast(
                 context,
                 REQUEST_CODE.getAndIncrement(),

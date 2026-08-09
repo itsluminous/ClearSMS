@@ -26,7 +26,7 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -77,6 +77,11 @@ import java.time.ZoneId
         // committed after the undo window or on next launch), and an index
         // on deletedAt for the read-path filters. Pure additions.
         AutoMigration(from = 10, to = 11),
+        // v11 -> v12: adds messages.partCount (default 1) and
+        // messages.deliveredParts (default 0) — per-part bookkeeping for the
+        // multipart worst-part delivery aggregation. Pure additions; existing
+        // rows read as single-part with no delivery reports counted.
+        AutoMigration(from = 11, to = 12),
     ],
 )
 @TypeConverters(Converters::class)

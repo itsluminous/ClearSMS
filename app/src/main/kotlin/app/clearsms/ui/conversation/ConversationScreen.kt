@@ -612,14 +612,7 @@ private fun MessageMetadataLine(item: ConversationItem) {
     val timestamp = remember(item.id) { MessageMetadata.timestampLabel(item.timestamp, is24Hour) }
     val detail =
         if (item.outgoing) {
-            when (item.deliveryStatus) {
-                DeliveryStatus.SENDING -> stringResource(R.string.conversation_sending)
-                DeliveryStatus.DELIVERED -> stringResource(R.string.conversation_delivered)
-                DeliveryStatus.FAILED -> stringResource(R.string.conversation_not_sent)
-                // No failure recorded and no delivery report (reports off, or
-                // the carrier sent none): honestly "Sent", never "Delivered".
-                DeliveryStatus.SENT, null -> stringResource(R.string.conversation_sent)
-            }
+            stringResource(deliveryStatusLabelRes(item.deliveryStatus))
         } else {
             item.message?.let { message ->
                 message.subCategory?.let { categoryLabel(it.name) }
@@ -633,6 +626,20 @@ private fun MessageMetadataLine(item: ConversationItem) {
         modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
     )
 }
+
+/**
+ * The bubble status line for an outgoing message, from its PERSISTED status —
+ * never derived from the tap or the passage of time. No failure recorded and
+ * no delivery report (reports off, or the carrier sent none) reads honestly
+ * as "Sent", never "Delivered".
+ */
+internal fun deliveryStatusLabelRes(status: DeliveryStatus?): Int =
+    when (status) {
+        DeliveryStatus.SENDING -> R.string.conversation_sending
+        DeliveryStatus.DELIVERED -> R.string.conversation_delivered
+        DeliveryStatus.FAILED -> R.string.conversation_not_sent
+        DeliveryStatus.SENT, null -> R.string.conversation_sent
+    }
 
 /** "BANK_ALERT" → "Bank alert" (enum names are already user-meaningful). */
 private fun categoryLabel(name: String): String = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
