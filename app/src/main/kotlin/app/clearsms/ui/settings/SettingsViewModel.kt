@@ -48,8 +48,8 @@ data class SettingsUiState(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val showTransactionDetails: Boolean = true,
-    /** Recycle bin for deleted messages (30-day retention); default OFF. */
-    val recycleBinEnabled: Boolean = false,
+    /** Recycle bin for deleted messages (30-day retention); default ON. */
+    val recycleBinEnabled: Boolean = true,
     val showRichAvatars: Boolean = true,
     /** Privacy gate: false masks Finance balances behind the device lock. */
     val showBalance: Boolean = true,
@@ -215,7 +215,7 @@ class SettingsViewModel
             /** Filled by the second combine stage (combine() maxes out at 5 flows). */
             val logoBackground: LogoBackground = LogoBackground.NONE,
             /** Filled by the third combine stage. */
-            val recycleBinEnabled: Boolean = false,
+            val recycleBinEnabled: Boolean = true,
         )
 
         private data class NotificationState(

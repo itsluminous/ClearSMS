@@ -62,7 +62,7 @@ class SettingsRepositoryImpl(
     }
 
     override val recycleBinEnabled: Flow<Boolean> =
-        dataStore.data.map { it[KEY_RECYCLE_BIN_ENABLED] ?: false }
+        dataStore.data.map { it[KEY_RECYCLE_BIN_ENABLED] ?: true }
 
     override suspend fun setRecycleBinEnabled(value: Boolean) {
         dataStore.edit { it[KEY_RECYCLE_BIN_ENABLED] = value }

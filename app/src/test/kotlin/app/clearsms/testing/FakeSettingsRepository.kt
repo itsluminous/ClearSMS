@@ -39,7 +39,7 @@ open class FakeSettingsRepository : SettingsRepository {
         showTransactionDetails.value = value
     }
 
-    override val recycleBinEnabled = MutableStateFlow(false)
+    override val recycleBinEnabled = MutableStateFlow(true)
 
     override suspend fun setRecycleBinEnabled(value: Boolean) {
         recycleBinEnabled.value = value
