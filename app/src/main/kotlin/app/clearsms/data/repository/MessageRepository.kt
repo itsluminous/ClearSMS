@@ -2,6 +2,7 @@ package app.clearsms.data.repository
 
 import androidx.paging.PagingSource
 import app.clearsms.data.db.CategoryUnreadCount
+import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import kotlinx.coroutines.flow.Flow
@@ -31,7 +32,23 @@ interface MessageRepository {
     fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, MessageEntity>
+    ): PagingSource<Int, InboxThreadRow>
+
+    // region drafts
+
+    /** The thread's saved draft text, or null when it has none. */
+    suspend fun draftFor(threadId: Long): String?
+
+    /**
+     * Saves [text] as the thread's draft; blank text deletes the draft
+     * (sending, scheduling or clearing the compose field all clear it).
+     */
+    suspend fun saveDraft(
+        threadId: Long,
+        text: String,
+    )
+
+    // endregion
 
     /** Paged thread messages, newest first (rendered reversed). */
     fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity>

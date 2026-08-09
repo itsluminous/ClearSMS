@@ -6,6 +6,8 @@ import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
+import app.clearsms.data.db.DraftEntity
+import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.TransactionEntity
@@ -74,6 +76,7 @@ class MessageRepositoryImpl(
     private val transactionDao get() = database.transactionDao()
     private val reminderDao get() = database.reminderDao()
     private val ruleDao get() = database.ruleDao()
+    private val draftDao get() = database.draftDao()
 
     /**
      * Test seam: invoked inside the ingestion transaction after the derived
@@ -92,7 +95,20 @@ class MessageRepositoryImpl(
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, MessageEntity> = messageDao.pagingInbox(category, unreadOnly)
+    ): PagingSource<Int, InboxThreadRow> = messageDao.pagingInbox(category, unreadOnly)
+
+    override suspend fun draftFor(threadId: Long): String? = draftDao.forThread(threadId)?.text
+
+    override suspend fun saveDraft(
+        threadId: Long,
+        text: String,
+    ) {
+        if (text.isBlank()) {
+            draftDao.delete(threadId)
+        } else {
+            draftDao.upsert(DraftEntity(threadId = threadId, text = text, updatedAt = System.currentTimeMillis()))
+        }
+    }
 
     override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = messageDao.pagingThread(threadId)
 

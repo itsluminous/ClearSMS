@@ -109,7 +109,9 @@ fun ConversationScreen(
     val items = viewModel.pagedItems.collectAsLazyPagingItems()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
-    var draft by rememberSaveable { mutableStateOf("") }
+    // Draft lives in the ViewModel (persisted per thread): leaving and
+    // reopening the conversation restores unsent text.
+    val draft by viewModel.draft.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
 
     // Failed outgoing message whose Retry/Delete dialog is open (from a
@@ -267,12 +269,12 @@ fun ConversationScreen(
                 state.repliable ->
                     ReplyComposer(
                         draft = draft,
-                        onDraftChange = { draft = it },
+                        onDraftChange = viewModel::setDraft,
                         onSend = {
-                            // Optimistic: the field clears immediately and the
-                            // bubble tracks the send state.
+                            // Optimistic: the ViewModel clears the field (and
+                            // the saved draft) immediately; the bubble tracks
+                            // the send state.
                             viewModel.send(draft)
-                            draft = ""
                         },
                         sim = simState,
                         onCycleSim = {
@@ -409,8 +411,8 @@ fun ConversationScreen(
                 showSchedulePicker = false
                 val target = scheduleEditTarget
                 if (target == null) {
+                    // scheduleSend consumes the draft like a send does.
                     viewModel.scheduleSend(draft, atMs)
-                    draft = ""
                 } else {
                     viewModel.editSchedule(target, atMs)
                 }

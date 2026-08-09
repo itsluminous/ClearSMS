@@ -49,10 +49,10 @@ class MessagePagingSourceTest {
         category = category,
     )
 
-    private suspend fun load(
-        source: PagingSource<Int, MessageEntity>,
+    private suspend fun <T : Any> load(
+        source: PagingSource<Int, T>,
         loadSize: Int,
-    ): List<MessageEntity> {
+    ): List<T> {
         val result =
             source.load(
                 PagingSource.LoadParams.Refresh(key = null, loadSize = loadSize, placeholdersEnabled = false),
@@ -85,7 +85,7 @@ class MessagePagingSourceTest {
 
             val page = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
 
-            assertThat(page.map { it.id }).isEqualTo(listOf(3L, 2L, 4L))
+            assertThat(page.map { it.message.id }).isEqualTo(listOf(3L, 2L, 4L))
         }
 
     @Test
@@ -100,6 +100,43 @@ class MessagePagingSourceTest {
 
             val page = load(dao.pagingInbox(category = Category.IMPORTANT, unreadOnly = false), loadSize = 10)
 
-            assertThat(page.map { it.id }).containsExactly(2L)
+            assertThat(page.map { it.message.id }).containsExactly(2L)
+        }
+
+    @Test
+    fun `inbox rows carry their thread's draft text`() =
+        runBlocking<Unit> {
+            dao.insertAll(
+                listOf(
+                    message(1, threadId = 1, timestamp = 100),
+                    message(2, threadId = 2, timestamp = 200),
+                ),
+            )
+            db.draftDao().upsert(DraftEntity(threadId = 1, text = "half-typed reply", updatedAt = 1L))
+
+            val page = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+
+            assertThat(page.first { it.message.threadId == 1L }.draftText).isEqualTo("half-typed reply")
+            assertThat(page.first { it.message.threadId == 2L }.draftText).isNull()
+        }
+
+    @Test
+    fun `a draft never changes inbox order or the unread filter`() =
+        runBlocking<Unit> {
+            // Thread 1 is older and read; giving it a draft must not float it
+            // above thread 2 or surface it under the unread-only filter.
+            dao.insertAll(
+                listOf(
+                    message(1, threadId = 1, timestamp = 100).copy(isRead = true),
+                    message(2, threadId = 2, timestamp = 200),
+                ),
+            )
+            db.draftDao().upsert(DraftEntity(threadId = 1, text = "draft", updatedAt = 1L))
+
+            val all = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+            assertThat(all.map { it.message.threadId }).isEqualTo(listOf(2L, 1L))
+
+            val unread = load(dao.pagingInbox(category = null, unreadOnly = true), loadSize = 10)
+            assertThat(unread.map { it.message.threadId }).containsExactly(2L)
         }
 }

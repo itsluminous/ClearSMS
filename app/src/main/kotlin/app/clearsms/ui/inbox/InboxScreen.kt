@@ -589,14 +589,29 @@ private fun InboxRow(
         },
         supportingContent = {
             Column {
-                Text(
-                    text = message.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                val draft = item.draftText
+                if (draft != null) {
+                    // Draft preview replaces the last-message snippet (mail-app
+                    // convention); the tertiary tone marks it as YOUR unsent
+                    // text, not an incoming message. Presence never bolds the
+                    // row or moves it - unread/sort come from messages only.
+                    Text(
+                        text = stringResource(R.string.inbox_draft_preview, draft),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                } else {
+                    Text(
+                        text = message.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (showCategoryTag) {
                     Spacer(Modifier.height(4.dp))
                     CategoryBadge(category = message.category)

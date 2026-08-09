@@ -7,6 +7,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
@@ -78,6 +79,11 @@ data class InboxItem(
     val display: SenderDisplay,
     val glyph: BrandGlyph,
     val timeLabel: String,
+    /**
+     * The thread's unsent draft, or null. Shown as a "Draft: …" preview in
+     * place of the last-message snippet; never affects unread state or sort.
+     */
+    val draftText: String? = null,
 )
 
 /** Most recent OTP eligible for the top banner. */
@@ -345,13 +351,14 @@ class InboxViewModel
 
         // endregion
 
-        private fun MessageEntity.toInboxItem(): InboxItem {
-            val display = resolveDisplay(sender)
+        private fun InboxThreadRow.toInboxItem(): InboxItem {
+            val display = resolveDisplay(message.sender)
             return InboxItem(
-                message = this,
+                message = message,
                 display = display,
-                glyph = brandGlyphFor(subCategory, display.name),
-                timeLabel = RelativeTime.format(timestamp),
+                glyph = brandGlyphFor(message.subCategory, display.name),
+                timeLabel = RelativeTime.format(message.timestamp),
+                draftText = draftText?.takeIf { it.isNotBlank() },
             )
         }
 

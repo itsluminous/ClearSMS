@@ -160,6 +160,18 @@ class ConversationViewModel
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
 
+        /**
+         * Per-thread draft: restores the saved compose text on open and
+         * persists edits, so leaving the thread (or process death) never
+         * loses unsent text. Sending or scheduling consumes it.
+         */
+        private val conversationDraft =
+            ConversationDraft(threadId, messageRepository, viewModelScope, ioDispatcher)
+        val draft: StateFlow<String> = conversationDraft.text
+
+        /** Compose-field edit; blank text clears the saved draft. */
+        fun setDraft(value: String) = conversationDraft.set(value)
+
         /** Active SIMs, primed once in init; empty on single-SIM devices. */
         @Volatile
         private var activeSims: List<SimInfo> = emptyList()
@@ -315,6 +327,9 @@ class ConversationViewModel
         fun send(body: String) {
             val destination = uiState.value.address
             if (destination.isBlank() || body.isBlank()) return
+            // Sending consumes the compose text: the field clears
+            // immediately and the saved draft is deleted with it.
+            conversationDraft.consume()
             viewModelScope.launch(ioDispatcher) {
                 val messageId =
                     try {
@@ -356,6 +371,9 @@ class ConversationViewModel
         ) {
             val destination = uiState.value.address
             if (destination.isBlank() || body.isBlank()) return
+            // Scheduling consumes the compose text exactly like sending
+            // does - no leftover draft next to the scheduled bubble.
+            conversationDraft.consume()
             viewModelScope.launch(ioDispatcher) {
                 messageScheduler.schedule(destination, body, chosenSim.value, scheduledAtMs)
                 scrollToBottomSignal.trySend(Unit)

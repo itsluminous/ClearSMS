@@ -25,8 +25,9 @@ import java.time.ZoneId
         TransactionEntity::class,
         RuleEntity::class,
         ReminderEntity::class,
+        DraftEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -90,6 +91,9 @@ import java.time.ZoneId
         // a SCHEDULED outgoing message. Pure addition; existing rows have no
         // schedule.
         AutoMigration(from = 13, to = 14),
+        // v14 -> v15: adds the drafts table (unsent per-thread compose text).
+        // Pure addition; existing threads simply have no draft.
+        AutoMigration(from = 14, to = 15),
     ],
 )
 @TypeConverters(Converters::class)
@@ -103,6 +107,8 @@ abstract class ClearSmsDatabase : RoomDatabase() {
     abstract fun ruleDao(): RuleDao
 
     abstract fun reminderDao(): ReminderDao
+
+    abstract fun draftDao(): DraftDao
 
     /**
      * The auto migration creates the empty `messages_fts` virtual table;

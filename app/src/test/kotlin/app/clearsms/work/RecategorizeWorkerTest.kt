@@ -12,6 +12,7 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.clearsms.data.db.CategoryUnreadCount
+import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
@@ -59,7 +60,14 @@ class RecategorizeWorkerTest {
             override fun pagedInbox(
                 category: Category?,
                 unreadOnly: Boolean,
-            ): PagingSource<Int, MessageEntity> = throw UnsupportedOperationException()
+            ): PagingSource<Int, InboxThreadRow> = throw UnsupportedOperationException()
+
+            override suspend fun draftFor(threadId: Long): String? = null
+
+            override suspend fun saveDraft(
+                threadId: Long,
+                text: String,
+            ) = Unit
 
             override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = throw UnsupportedOperationException()
 

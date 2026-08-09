@@ -50,16 +50,22 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC")
     fun observeThread(threadId: Long): Flow<List<MessageEntity>>
 
-    /** Paged variant of [observeInbox]: same latest-per-thread rows, loaded incrementally. */
+    /**
+     * Paged variant of [observeInbox]: same latest-per-thread rows, loaded
+     * incrementally, each joined with its thread's draft. Draft presence
+     * never changes the ordering or the unread state - it only decorates the
+     * row's preview.
+     */
     @Query(
         """
-        SELECT m.* FROM messages m
+        SELECT m.*, d.text AS draftText FROM messages m
         INNER JOIN (
             SELECT threadId, MAX(timestamp) AS maxTs, MAX(id) AS maxId
             FROM messages
             WHERE deletedAt IS NULL
             GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        LEFT JOIN drafts d ON d.threadId = m.threadId
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
@@ -69,7 +75,7 @@ interface MessageDao {
     fun pagingInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, MessageEntity>
+    ): PagingSource<Int, InboxThreadRow>
 
     /**
      * Paged conversation, NEWEST first (rendered with `reverseLayout`), so the

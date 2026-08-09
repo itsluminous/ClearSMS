@@ -3,6 +3,7 @@ package app.clearsms.testing
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import app.clearsms.data.db.CategoryUnreadCount
+import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
@@ -29,7 +30,19 @@ open class FakeMessageRepository : MessageRepository {
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, MessageEntity> = ListPagingSource(inbox.value)
+    ): PagingSource<Int, InboxThreadRow> = InboxRowPagingSource(inbox.value.map { InboxThreadRow(it, draftText = drafts[it.threadId]) })
+
+    /** In-memory drafts keyed by threadId. */
+    val drafts = mutableMapOf<Long, String>()
+
+    override suspend fun draftFor(threadId: Long): String? = drafts[threadId]
+
+    override suspend fun saveDraft(
+        threadId: Long,
+        text: String,
+    ) {
+        if (text.isBlank()) drafts.remove(threadId) else drafts[threadId] = text
+    }
 
     override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = ListPagingSource(emptyList())
 
@@ -147,6 +160,16 @@ open class FakeMessageRepository : MessageRepository {
         override fun getRefreshKey(state: PagingState<Int, MessageEntity>): Int? = null
 
         override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MessageEntity> =
+            LoadResult.Page(data = items, prevKey = null, nextKey = null)
+    }
+
+    /** Single-page source over fixed joined inbox rows. */
+    class InboxRowPagingSource(
+        private val items: List<InboxThreadRow>,
+    ) : PagingSource<Int, InboxThreadRow>() {
+        override fun getRefreshKey(state: PagingState<Int, InboxThreadRow>): Int? = null
+
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, InboxThreadRow> =
             LoadResult.Page(data = items, prevKey = null, nextKey = null)
     }
 }

@@ -2,6 +2,7 @@ package app.clearsms.data.repository
 
 import androidx.paging.PagingSource
 import app.clearsms.data.db.CategoryUnreadCount
+import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import com.google.common.truth.Truth.assertThat
@@ -243,7 +244,14 @@ class UndoManagerTest {
         override fun pagedInbox(
             category: Category?,
             unreadOnly: Boolean,
-        ): PagingSource<Int, MessageEntity> = error("unused")
+        ): PagingSource<Int, InboxThreadRow> = error("unused")
+
+        override suspend fun draftFor(threadId: Long): String? = null
+
+        override suspend fun saveDraft(
+            threadId: Long,
+            text: String,
+        ) = Unit
 
         override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = error("unused")
 
