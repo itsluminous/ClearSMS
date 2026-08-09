@@ -281,10 +281,11 @@ Each entry looks like:
 The APK ships real logo artwork for 27 of the curated brands under
 `app/src/main/assets/logos/` (~180 KB total, PNG, max 256 px). The images
 are assembled by [`scripts/build_logo_pack.py`](scripts/build_logo_pack.py)
-`--bundle` from two MIT-licensed projects pinned to exact commits
+`--bundle` from the latest commits of two MIT-licensed projects
 ([auraveni/global-bank-logos](https://github.com/auraveni/global-bank-logos)
-and [cashfree/payments-icons-library](https://github.com/cashfree/payments-icons-library)),
-so the committed asset set is reproducible by re-running that command.
+and [cashfree/payments-icons-library](https://github.com/cashfree/payments-icons-library));
+the exact commits each build used are recorded in the manifest, so the
+committed asset set stays traceable.
 Per-file provenance lives in `app/src/main/assets/logos/MANIFEST.md`; the
 upstream MIT licence texts are reproduced in [NOTICE](NOTICE).
 

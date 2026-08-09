@@ -5,9 +5,11 @@ Single output mode:
 
   --bundle    Write the normalized PNGs (plus a provenance MANIFEST.md)
               into `app/src/main/assets/logos/`, the artwork the APK
-              ships. The committed asset set is reproducible: re-running
-              this mode against the pinned commits regenerates it
-              byte-comparably (any stale PNGs are removed first).
+              ships. Each run fetches the LATEST upstream commits; the
+              exact commits used are recorded in MANIFEST.md, so any
+              committed asset set can be traced (and reproduced by
+              checking out those recorded commits by hand). Stale PNGs
+              are removed first.
 
 (The former `--out` mode, which built a standalone zip for the removed
 user-supplied logo pack setting, is gone with that feature.)
@@ -17,7 +19,8 @@ covers their packaging of the files - the marks themselves remain the
 property of the banks and merchants they identify. Clear SMS bundles them
 solely to label message senders; see NOTICE and the in-asset MANIFEST.md.
 
-Upstream sources (both MIT, pinned to exact commits for reproducibility):
+Upstream sources (both MIT, latest default-branch HEAD at build time;
+the resolved commits are written to MANIFEST.md for provenance):
 
   1. https://github.com/auraveni/global-bank-logos
      In-repo SVG bank logos. Converted to PNG when an SVG rasterizer
@@ -25,7 +28,9 @@ Upstream sources (both MIT, pinned to exact commits for reproducibility):
   2. https://github.com/cashfree/payments-icons-library
      An MIT-licensed JS library that maps payment-instrument names to
      PNG icons hosted on Cashfree's public CDN. We download the 128 px
-     PNGs at the URLs the pinned commit of that library constructs.
+     PNGs at the URLs the library constructs. The CDN base URL is
+     verified against the fetched source at build time, so an upstream
+     change fails loudly instead of guessing.
 
 Output file names follow the app's bundled-logo matching rules
 (app/src/main/kotlin/app/clearsms/ui/components/BundledLogos.kt): the
@@ -55,15 +60,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BRANDS_JSON = REPO_ROOT / "rules" / "brands" / "brands.json"
 
 # ---------------------------------------------------------------------------
-# Pinned upstreams. Bump the SHAs deliberately; never track a moving branch.
+# Upstreams, tracked at their latest default-branch HEAD. The commit each
+# build resolved is recorded in MANIFEST.md, keeping provenance auditable
+# without freezing the artwork on stale pins.
 # ---------------------------------------------------------------------------
 AURAVENI_REPO = "https://github.com/auraveni/global-bank-logos.git"
-AURAVENI_COMMIT = "ad33060ca976397a9fcb46dd40c2d77bce5ce7e1"
 
 CASHFREE_REPO = "https://github.com/cashfree/payments-icons-library.git"
-CASHFREE_COMMIT = "39862391f964bbb263008b5a1d9802be6589864c"
-# IMAGE_URL constant from src/utility.js at CASHFREE_COMMIT (verified at
-# clone time below so a drifting pin fails loudly instead of silently).
+# IMAGE_URL constant expected in src/utility.js (verified against the
+# fetched source below so an upstream change fails loudly, not silently).
 CASHFREE_CDN = "https://cashfreelogo.cashfree.com/assets_images/pg"
 
 MAX_TILE = 256  # px, longest edge for rasterized SVGs
@@ -141,13 +146,18 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
         fail(f"command failed: {' '.join(cmd)}\n{proc.stderr.strip()}")
 
 
-def clone_pinned(url: str, commit: str, dest: Path) -> None:
-    """Fetch exactly one pinned commit (no branch tracking)."""
-    dest.mkdir(parents=True)
-    run(["git", "init", "--quiet", str(dest)])
-    run(["git", "remote", "add", "origin", url], cwd=dest)
-    run(["git", "fetch", "--quiet", "--depth", "1", "origin", commit], cwd=dest)
-    run(["git", "checkout", "--quiet", "FETCH_HEAD"], cwd=dest)
+def clone_latest(url: str, dest: Path) -> str:
+    """Shallow-clone the default branch HEAD; returns the resolved commit."""
+    run(["git", "clone", "--quiet", "--depth", "1", url, str(dest)])
+    proc = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=dest,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        fail(f"could not resolve HEAD of {url}")
+    return proc.stdout.strip()
 
 
 def is_png(data: bytes) -> bool:
@@ -241,18 +251,21 @@ def main() -> None:
 
     work = Path(tempfile.mkdtemp(prefix="clearsms-logo-pack-"))
     try:
-        log(f"Cloning global-bank-logos @ {AURAVENI_COMMIT[:12]} ...")
+        log("Cloning global-bank-logos @ latest ...")
         aura = work / "global-bank-logos"
-        clone_pinned(AURAVENI_REPO, AURAVENI_COMMIT, aura)
+        aura_commit = clone_latest(AURAVENI_REPO, aura)
+        log(f"  resolved {aura_commit[:12]}")
 
-        log(f"Cloning payments-icons-library @ {CASHFREE_COMMIT[:12]} ...")
+        log("Cloning payments-icons-library @ latest ...")
         cash = work / "payments-icons-library"
-        clone_pinned(CASHFREE_REPO, CASHFREE_COMMIT, cash)
+        cash_commit = clone_latest(CASHFREE_REPO, cash)
+        log(f"  resolved {cash_commit[:12]}")
         utility_js = (cash / "src" / "utility.js").read_text()
         if CASHFREE_CDN not in utility_js:
             fail(
-                "pinned payments-icons-library no longer declares the expected "
-                f"IMAGE_URL ({CASHFREE_CDN}); refusing to guess CDN URLs",
+                "latest payments-icons-library no longer declares the expected "
+                f"IMAGE_URL ({CASHFREE_CDN}); refusing to guess CDN URLs - "
+                "update CASHFREE_CDN after checking upstream",
             )
 
         images = work / "images"
@@ -268,11 +281,11 @@ def main() -> None:
                     png = images / f"{key}.png"
                     if svg_to_png(converter, svg, png) and is_png(png.read_bytes()):
                         covered[key] = (
-                            f"global-bank-logos@{AURAVENI_COMMIT[:12]} {svg_rel}"
+                            f"global-bank-logos@{aura_commit[:12]} {svg_rel}"
                         )
                         continue
                     png.unlink(missing_ok=True)
-            # Fall back to the CDN PNG referenced by the pinned library.
+            # Fall back to the CDN PNG referenced by the library.
             cdn = CASHFREE_MAP.get(key)
             if cdn:
                 mode, icon = cdn
@@ -281,7 +294,7 @@ def main() -> None:
                 if data and is_png(data) and len(data) <= MAX_BYTES:
                     (images / f"{key}.png").write_bytes(data)
                     covered[key] = (
-                        f"payments-icons-library@{CASHFREE_COMMIT[:12]} {url}"
+                        f"payments-icons-library@{cash_commit[:12]} {url}"
                     )
 
         uncovered = [k for k in brand_keys if k not in covered]
@@ -304,14 +317,14 @@ def main() -> None:
         manifest = ["# Bundled sender logo artwork - provenance manifest", ""]
         manifest.append(
             "Generated by `python3 scripts/build_logo_pack.py --bundle` from "
-            "two MIT-licensed upstreams pinned to exact commits. Re-running "
-            "that command regenerates this directory. See NOTICE at the "
+            "the latest commits of two MIT-licensed upstreams; the exact "
+            "commits this build used are recorded below. See NOTICE at the "
             "repository root for the full licence texts and trademark notice.",
         )
         manifest.append("")
-        manifest.append(f"- global-bank-logos pinned commit: `{AURAVENI_COMMIT}`")
+        manifest.append(f"- global-bank-logos commit at build time: `{aura_commit}`")
         manifest.append(
-            f"- payments-icons-library pinned commit: `{CASHFREE_COMMIT}`",
+            f"- payments-icons-library commit at build time: `{cash_commit}`",
         )
         manifest.append("")
         manifest.append("| File | Brand | Source |")
