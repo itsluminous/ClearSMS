@@ -1,6 +1,5 @@
 package app.clearsms.ui.common
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -8,8 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
+import app.clearsms.di.UiSettingsDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -22,8 +20,6 @@ enum class BackupFrequency {
     WEEKLY,
 }
 
-private val Context.uiPrefsDataStore: DataStore<Preferences> by preferencesDataStore(name = "ui_settings")
-
 /**
  * UI-owned preferences that sit outside the core settings contract:
  * dynamic color, delivery reports, backup frequency and the block list mirror.
@@ -32,10 +28,8 @@ private val Context.uiPrefsDataStore: DataStore<Preferences> by preferencesDataS
 class UiPrefs
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @UiSettingsDataStore private val dataStore: DataStore<Preferences>,
     ) {
-        private val dataStore = context.uiPrefsDataStore
-
         val dynamicColor: Flow<Boolean> = dataStore.data.map { it[KEY_DYNAMIC_COLOR] ?: true }
 
         suspend fun setDynamicColor(value: Boolean) {

@@ -91,8 +91,8 @@ class SettingsCatalogTest {
         assertThat(bySection["Startup"]).containsExactly("Default screen")
         assertThat(bySection["Backup & restore"])
             .containsExactly(
-                "Back up now",
-                "Restore",
+                "Back up messages",
+                "Restore messages",
                 "Back up settings",
                 "Restore settings",
                 "Backup frequency",
@@ -113,8 +113,8 @@ class SettingsCatalogTest {
             listOf(
                 "Archived messages",
                 "Block & allow list",
-                "Back up now",
-                "Restore",
+                "Back up messages",
+                "Restore messages",
                 "Backup frequency",
                 "Theme",
                 "Dynamic color",

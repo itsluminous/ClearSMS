@@ -1,7 +1,6 @@
 package app.clearsms.ui.rules
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import app.clearsms.data.rules.RuleAction
 import app.clearsms.data.rules.RuleDefinition
 import app.clearsms.data.rules.RuleMatch
@@ -10,8 +9,11 @@ import app.clearsms.data.rules.toEntity
 import app.clearsms.testing.FakeRuleRepository
 import app.clearsms.ui.common.UiPrefs
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -25,6 +27,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
 
 /**
  * Tapping a BUNDLED rule opens a read-only detail (pattern, priority,
@@ -55,17 +58,24 @@ class RulesViewModelDetailTest {
 
     private lateinit var repository: FakeRuleRepository
     private lateinit var uiPrefs: UiPrefs
+    private val storeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeRuleRepository(initial = listOf(bundledRule.toEntity(json, RuleSources.BUILTIN)))
-        uiPrefs = UiPrefs(ApplicationProvider.getApplicationContext<Context>())
+        uiPrefs =
+            UiPrefs(
+                PreferenceDataStoreFactory.create(scope = storeScope) {
+                    File.createTempFile("ui_settings", ".preferences_pb")
+                },
+            )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        storeScope.cancel()
     }
 
     private fun viewModel() =

@@ -60,7 +60,18 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class IoDispatcher
 
+/**
+ * Qualifier for the UI-preferences DataStore ("ui_settings") as opposed to
+ * the core settings DataStore. Injected so tests can substitute an isolated
+ * store — binding the process-wide delegate inside UiPrefs made Robolectric
+ * test classes poison each other through the cached static singleton.
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class UiSettingsDataStore
+
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+private val Context.uiPrefsDataStore: DataStore<Preferences> by preferencesDataStore(name = "ui_settings")
 
 /**
  * Optional bindings satisfied by other layers.
@@ -139,6 +150,13 @@ object DataModule {
     fun provideSettingsDataStore(
         @ApplicationContext context: Context,
     ): DataStore<Preferences> = context.settingsDataStore
+
+    @Provides
+    @Singleton
+    @UiSettingsDataStore
+    fun provideUiSettingsDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = context.uiPrefsDataStore
 
     @Provides
     @Singleton

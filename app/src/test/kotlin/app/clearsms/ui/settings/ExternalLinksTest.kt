@@ -33,7 +33,7 @@ class ExternalLinksTest {
     fun `paypal row builds a view intent from the string resource`() {
         val intent = ExternalLinks.intent(context.getString(R.string.url_donate_paypal))
         assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
-        assertThat(intent.dataString).isEqualTo("https://paypal.me/itsluminous")
+        assertThat(intent.dataString).isEqualTo("https://paypal.me/prakashait")
     }
 
     @Test
@@ -41,7 +41,7 @@ class ExternalLinksTest {
         val intent = ExternalLinks.intent(context.getString(R.string.url_donate_upi))
         assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
         assertThat(intent.data?.scheme).isEqualTo("upi")
-        assertThat(intent.dataString).isEqualTo("upi://pay?pa=itsluminous@upi&cn=ClearSMS")
+        assertThat(intent.dataString).isEqualTo("upi://pay?pa=electricprakash@axisb&cn=ClearSMS")
     }
 
     @Test

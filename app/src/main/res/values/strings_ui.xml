@@ -198,9 +198,9 @@
     <string name="settings_block_add">Block</string>
     <string name="settings_unblock">Unblock</string>
     <string name="settings_section_backup">Backup &amp; restore</string>
-    <string name="settings_backup_now">Back up now</string>
+    <string name="settings_backup_now">Back up messages</string>
     <string name="settings_backup_now_summary">Save all data to a local file you control</string>
-    <string name="settings_restore">Restore</string>
+    <string name="settings_restore">Restore messages</string>
     <string name="settings_restore_summary">Replace current data from a backup file</string>
     <string name="settings_backup_frequency">Backup frequency</string>
     <string name="settings_backup_frequency_summary">%1$s · %2$s</string>

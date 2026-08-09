@@ -78,7 +78,12 @@ class BackupWorkerTest {
                 .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        uiPrefs = UiPrefs(context)
+        uiPrefs =
+            UiPrefs(
+                PreferenceDataStoreFactory.create {
+                    File.createTempFile("ui_settings", ".preferences_pb")
+                },
+            )
         settingsDataStore =
             PreferenceDataStoreFactory.create {
                 File.createTempFile("settings", ".preferences_pb")
