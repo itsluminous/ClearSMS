@@ -167,6 +167,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_LOGO_BACKGROUND] = value.name }
     }
 
+    override val scheduleSendTipShown: Flow<Boolean> =
+        dataStore.data.map { it[KEY_SCHEDULE_SEND_TIP_SHOWN] ?: false }
+
+    override suspend fun setScheduleSendTipShown(value: Boolean) {
+        dataStore.edit { it[KEY_SCHEDULE_SEND_TIP_SHOWN] = value }
+    }
+
     override val handledOtpMessageId: Flow<Long> =
         dataStore.data.map { it[KEY_HANDLED_OTP_MESSAGE_ID] ?: 0L }
 
@@ -246,6 +253,7 @@ class SettingsRepositoryImpl(
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
         val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
+        val KEY_SCHEDULE_SEND_TIP_SHOWN = booleanPreferencesKey("schedule_send_tip_shown")
         val KEY_INBOX_PILL_ORDER = stringPreferencesKey("inbox_pill_order")
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")

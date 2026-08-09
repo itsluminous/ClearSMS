@@ -23,6 +23,7 @@ import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
@@ -143,6 +144,7 @@ class ConversationViewModel
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
         private val messageScheduler: MessageScheduler,
+        private val scheduleTipGate: ScheduleTipGate,
         settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -248,6 +250,10 @@ class ConversationViewModel
         private val sendEvents = Channel<SendEvent>(Channel.BUFFERED)
         val events: Flow<SendEvent> = sendEvents.receiveAsFlow()
 
+        /** Fires once per install: the first send earns the long-press-to-schedule tip. */
+        private val scheduleTipEvents = Channel<Unit>(Channel.BUFFERED)
+        val scheduleTipFlow: Flow<Unit> = scheduleTipEvents.receiveAsFlow()
+
         /** One-shot undo snackbar requests (a delete was just staged). */
         private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
         val undoEventFlow: Flow<UndoUiEvent> = undoEvents.receiveAsFlow()
@@ -330,6 +336,7 @@ class ConversationViewModel
                         return@launch
                     }
                 scrollToBottomSignal.trySend(Unit)
+                if (scheduleTipGate.shouldShowTip()) scheduleTipEvents.send(Unit)
                 resolve(messageId)
             }
         }
@@ -366,6 +373,8 @@ class ConversationViewModel
             conversationDraft.consume()
             viewModelScope.launch(ioDispatcher) {
                 messageScheduler.schedule(destination, body, chosenSim.value, scheduledAtMs)
+                // Whoever schedules knows about long-press - never tip them.
+                scheduleTipGate.markShown()
                 scrollToBottomSignal.trySend(Unit)
             }
         }

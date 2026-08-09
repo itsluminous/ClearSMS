@@ -10,6 +10,7 @@ import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
+import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.components.SimUiState
 import app.clearsms.ui.conversation.SendStatus
 import app.clearsms.ui.conversation.SentMessageWatcher
@@ -18,6 +19,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +29,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -55,6 +59,7 @@ class ComposeMessageViewModel
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
         private val messageScheduler: MessageScheduler,
+        private val scheduleTipGate: ScheduleTipGate,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val state =
@@ -77,6 +82,10 @@ class ComposeMessageViewModel
 
         private val simUi = MutableStateFlow(SimUiState())
         val simState: StateFlow<SimUiState> = simUi.asStateFlow()
+
+        /** Fires once per install: the first send earns the long-press-to-schedule tip. */
+        private val scheduleTipEvents = Channel<Unit>(Channel.BUFFERED)
+        val scheduleTipFlow: Flow<Unit> = scheduleTipEvents.receiveAsFlow()
 
         /**
          * The in-flight per-recipient SIM lookup. Tracked so a manual
@@ -187,6 +196,7 @@ class ComposeMessageViewModel
             if (current.sendStatus == SendStatus.SENDING) return
             state.value = current.copy(sendStatus = SendStatus.SENDING)
             viewModelScope.launch(ioDispatcher) {
+                if (scheduleTipGate.shouldShowTip()) scheduleTipEvents.send(Unit)
                 val status =
                     try {
                         val messageId =
@@ -216,6 +226,8 @@ class ComposeMessageViewModel
                     subscriptionId = chosenSim.value,
                     scheduledAtMs = scheduledAtMs,
                 )
+                // Whoever schedules knows about long-press - never tip them.
+                scheduleTipGate.markShown()
                 state.value = state.value.copy(scheduled = true)
             }
         }

@@ -138,13 +138,17 @@ internal object SettingsBackupCatalog {
      *   onboarding the new device still needs;
      * - `handled_otp_message_id` - device-bound: message ids are local to
      *   this install's database, so the value is meaningless elsewhere and
-     *   restoring it could hide a live OTP banner.
+     *   restoring it could hide a live OTP banner;
+     * - `schedule_send_tip_shown` - per-install education state (the
+     *   one-time "long-press Send to schedule" tip), like
+     *   `onboarding_complete`: each install teaches its own user once.
      */
     val excludedKeys: Set<String> =
         setOf(
             "show_balance",
             "onboarding_complete",
             "handled_otp_message_id",
+            "schedule_send_tip_shown",
         )
 }
 

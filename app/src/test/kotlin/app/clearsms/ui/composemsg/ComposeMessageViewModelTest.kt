@@ -16,6 +16,7 @@ import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.testing.FakeSmsGateway
+import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.ui.conversation.SentMessageWatcher
 import app.clearsms.work.MessageScheduler
@@ -109,6 +110,7 @@ class ComposeMessageViewModelTest {
             subscriptionSource = subscriptions,
             simChoiceStore = simChoiceStore,
             messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), Dispatchers.Unconfined),
+            scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
             ioDispatcher = Dispatchers.Unconfined,
         )
     }

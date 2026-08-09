@@ -66,6 +66,11 @@ interface SettingsRepository {
 
     suspend fun setOnboardingComplete(value: Boolean)
 
+    /** Whether the one-time "long-press Send to schedule" tip was already shown. */
+    val scheduleSendTipShown: Flow<Boolean>
+
+    suspend fun setScheduleSendTipShown(value: Boolean)
+
     /** Show contact photos and sender brand marks instead of plain icon/monogram avatars. */
     val showRichAvatars: Flow<Boolean>
 

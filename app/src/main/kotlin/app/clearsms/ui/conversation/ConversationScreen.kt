@@ -141,6 +141,13 @@ fun ConversationScreen(
         }
     }
 
+    // One-time discoverability nudge: the first send from any compose bar
+    // (per install) points at the invisible long-press-to-schedule.
+    val scheduleTip = stringResource(R.string.conversation_schedule_tip)
+    LaunchedEffect(Unit) {
+        viewModel.scheduleTipFlow.collect { snackbarHostState.showSnackbar(scheduleTip) }
+    }
+
     // Deletes are undoable: the snackbar's UNDO reverts the staged action
     // before its deferred provider commit (see UndoManager).
     val undoLabel = stringResource(R.string.undo_action)

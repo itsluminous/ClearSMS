@@ -2,6 +2,7 @@ package app.clearsms.ui.components
 
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,10 +10,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SimCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -116,35 +121,58 @@ fun MessageComposerBar(
         }
         // Send: tap sends now, long-press opens the schedule picker. A
         // custom surface because FilledIconButton exposes no long-press.
-        val enabled = draft.isNotBlank()
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color =
-                if (enabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            modifier =
-                Modifier.combinedClickable(
-                    enabled = enabled,
-                    onClick = onSend,
-                    onClickLabel = stringResource(R.string.action_send),
-                    onLongClick = onScheduleSend,
-                    onLongClickLabel = stringResource(R.string.conversation_schedule_send),
-                ),
-        ) {
-            Icon(
-                Icons.AutoMirrored.Outlined.Send,
-                contentDescription = stringResource(R.string.action_send),
-                tint =
+        // While there is text to send, a small clock rides the button's
+        // top-start corner hinting that Send has a long-press behind it.
+        val enabled = scheduleHintVisible(draft)
+        Box {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color =
                     if (enabled) {
-                        MaterialTheme.colorScheme.onPrimary
+                        MaterialTheme.colorScheme.primary
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.surfaceVariant
                     },
-                modifier = Modifier.padding(10.dp),
-            )
+                modifier =
+                    Modifier.combinedClickable(
+                        enabled = enabled,
+                        onClick = onSend,
+                        onClickLabel = stringResource(R.string.action_send),
+                        onLongClick = onScheduleSend,
+                        onLongClickLabel = stringResource(R.string.conversation_schedule_send),
+                    ),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.Send,
+                    contentDescription = stringResource(R.string.action_send),
+                    tint =
+                        if (enabled) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    modifier = Modifier.padding(10.dp),
+                )
+            }
+            if (enabled) {
+                Icon(
+                    Icons.Outlined.Schedule,
+                    contentDescription = stringResource(R.string.conversation_schedule_send),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = (-4).dp, y = (-4).dp)
+                            .size(14.dp)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape),
+                )
+            }
         }
     }
 }
+
+/**
+ * Whether the schedule affordances (clock badge; reachable long-press) are
+ * live: exactly when the compose field has something to send.
+ */
+internal fun scheduleHintVisible(draft: String): Boolean = draft.isNotBlank()

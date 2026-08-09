@@ -262,6 +262,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setOnboardingComplete(value: Boolean) = Unit
 
+    override val scheduleSendTipShown = MutableStateFlow(false)
+
+    override suspend fun setScheduleSendTipShown(value: Boolean) = Unit
+
     override val showRichAvatars = MutableStateFlow(true)
 
     override suspend fun setShowRichAvatars(value: Boolean) = Unit
