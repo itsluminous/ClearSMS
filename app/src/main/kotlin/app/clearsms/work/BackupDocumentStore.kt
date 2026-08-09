@@ -18,11 +18,16 @@ import javax.inject.Singleton
 interface BackupDocumentStore {
     /**
      * Opens the named child document for writing, creating it if absent and
-     * truncating any previous content (stable filenames: every run overwrites
-     * the last backup). Returns null when the directory no longer exists or
-     * access was revoked.
+     * truncating any previous content. Returns null when the directory no
+     * longer exists or access was revoked.
      */
     fun openForWrite(fileName: String): OutputStream?
+
+    /** Display names of the tree's children; empty when inaccessible. */
+    fun listFileNames(): List<String>
+
+    /** Deletes the named child; false when absent or inaccessible. */
+    fun delete(fileName: String): Boolean
 
     interface Factory {
         fun create(treeUri: Uri): BackupDocumentStore
@@ -40,6 +45,40 @@ class SafBackupDocumentStore(
     private val context: Context,
     private val treeUri: Uri,
 ) : BackupDocumentStore {
+    override fun listFileNames(): List<String> =
+        try {
+            val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
+            val childrenUri =
+                DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocumentId)
+            buildList {
+                context.contentResolver
+                    .query(
+                        childrenUri,
+                        arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                        null,
+                        null,
+                        null,
+                    )?.use { cursor ->
+                        while (cursor.moveToNext()) add(cursor.getString(0))
+                    }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Backup directory unavailable for listing", e)
+            emptyList()
+        }
+
+    override fun delete(fileName: String): Boolean =
+        try {
+            val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
+            val treeDocumentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocumentId)
+            findChildByName(treeDocumentUri, fileName)
+                ?.let { DocumentsContract.deleteDocument(context.contentResolver, it) }
+                ?: false
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not delete old backup $fileName", e)
+            false
+        }
+
     override fun openForWrite(fileName: String): OutputStream? =
         try {
             val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)

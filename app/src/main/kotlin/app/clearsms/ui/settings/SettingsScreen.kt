@@ -65,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.BuildConfig
 import app.clearsms.R
+import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -268,9 +269,9 @@ fun SettingsScreen(
             state = state,
             viewModel = viewModel,
             openDialog = { dialog = it },
-            onBackupNow = { backupLauncher.launch("clearsms-backup.json") },
+            onBackupNow = { backupLauncher.launch(BackupFileNames.manualMessages(System.currentTimeMillis())) },
             onRestore = { restoreLauncher.launch(arrayOf("application/json", "text/plain")) },
-            onBackupSettings = { settingsBackupLauncher.launch("clearsms-settings.json") },
+            onBackupSettings = { settingsBackupLauncher.launch(BackupFileNames.manualSettings(System.currentTimeMillis())) },
             onRestoreSettings = { settingsRestoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             onPickBackupLocation = { backupDirectoryLauncher.launch(null) },
             onManageRules = onManageRules,

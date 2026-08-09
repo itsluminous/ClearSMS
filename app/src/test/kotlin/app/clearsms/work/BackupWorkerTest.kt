@@ -15,6 +15,7 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
+import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.db.ClearSmsDatabase
@@ -62,6 +63,10 @@ class BackupWorkerTest {
             // A fresh buffer per open mirrors the "wt" truncate semantics.
             return ByteArrayOutputStream().also { documents[fileName] = it }
         }
+
+        override fun listFileNames(): List<String> = documents.keys.toList()
+
+        override fun delete(fileName: String): Boolean = documents.remove(fileName) != null
     }
 
     private val storeFactory =
@@ -137,6 +142,12 @@ class BackupWorkerTest {
         category = Category.OTP,
     )
 
+    private fun soleDocument(prefix: String): String {
+        val names = fakeStore.documents.keys.filter { BackupFileNames.matches(prefix, it) }
+        assertThat(names).hasSize(1)
+        return fakeStore.documents.getValue(names.single()).toString(Charsets.UTF_8.name())
+    }
+
     @Test
     fun `writes BOTH the messages and the settings backup into the chosen directory`() =
         runBlocking {
@@ -145,15 +156,57 @@ class BackupWorkerTest {
             val result = buildWorker().doWork()
 
             assertThat(result).isEqualTo(ListenableWorker.Result.success())
-            assertThat(fakeStore.documents.keys)
-                .containsExactly(BackupWorker.MESSAGES_FILE_NAME, BackupWorker.SETTINGS_FILE_NAME)
-            // Each document is the right export: the DB backup carries the
-            // schema marker, the settings backup its own document marker.
-            assertThat(fakeStore.documents.getValue(BackupWorker.MESSAGES_FILE_NAME).toString(Charsets.UTF_8.name()))
-                .contains("\"messages\"")
-            assertThat(fakeStore.documents.getValue(BackupWorker.SETTINGS_FILE_NAME).toString(Charsets.UTF_8.name()))
-                .contains("\"settings\"")
+            assertThat(fakeStore.documents).hasSize(2)
+            // Each document is the right export under a timestamped name: the
+            // DB backup carries the schema marker, the settings backup its own
+            // document marker.
+            assertThat(soleDocument(BackupFileNames.AUTO_MESSAGES_PREFIX)).contains("\"messages\"")
+            assertThat(soleDocument(BackupFileNames.AUTO_SETTINGS_PREFIX)).contains("\"settings\"")
         }
+
+    @Test
+    fun `prunes each kind down to the newest three after a successful run`() =
+        runBlocking {
+            uiPrefs.setBackupFrequency(BackupFrequency.DAILY)
+            // Pre-existing older backups, oldest first; unrelated files survive.
+            for (stamp in listOf("202601010101", "202602020202", "202603030303")) {
+                fakeStore.documents["clearsms-backup-messages-$stamp.json"] = ByteArrayOutputStream()
+                fakeStore.documents["clearsms-backup-settings-$stamp.json"] = ByteArrayOutputStream()
+            }
+            fakeStore.documents["unrelated.json"] = ByteArrayOutputStream()
+
+            assertThat(buildWorker().doWork()).isEqualTo(ListenableWorker.Result.success())
+
+            val messages =
+                fakeStore.documents.keys
+                    .filter { BackupFileNames.matches(BackupFileNames.AUTO_MESSAGES_PREFIX, it) }
+            val settings =
+                fakeStore.documents.keys
+                    .filter { BackupFileNames.matches(BackupFileNames.AUTO_SETTINGS_PREFIX, it) }
+            assertThat(messages).hasSize(BackupWorker.KEEP_PER_KIND)
+            assertThat(settings).hasSize(BackupWorker.KEEP_PER_KIND)
+            // The oldest of each kind is what got pruned; the new run's file remains.
+            assertThat(fakeStore.documents.keys).doesNotContain("clearsms-backup-messages-202601010101.json")
+            assertThat(fakeStore.documents.keys).doesNotContain("clearsms-backup-settings-202601010101.json")
+            assertThat(fakeStore.documents.keys).contains("unrelated.json")
+        }
+
+    @Test
+    fun `timestamped name format and prefix matching are exact`() {
+        val name = BackupFileNames.manualSettings(0L)
+        assertThat(name).startsWith("clearsms-settings-")
+        assertThat(name).endsWith(".json")
+        assertThat(BackupFileNames.matches("clearsms-settings", name)).isTrue()
+        // A manual messages backup never matches the auto-messages prefix and
+        // vice versa: the remainder must be exactly the 12-digit stamp.
+        assertThat(
+            BackupFileNames.matches("clearsms-backup", "clearsms-backup-messages-202608091011.json"),
+        ).isFalse()
+        assertThat(
+            BackupFileNames.matches("clearsms-backup-messages", "clearsms-backup-202608091011.json"),
+        ).isFalse()
+        assertThat(BackupFileNames.matches("clearsms-backup", "clearsms-backup-2026.json")).isFalse()
+    }
 
     @Test
     fun `no directory chosen fails the run and raises the settings warning flag`() =
@@ -271,7 +324,7 @@ class BackupWorkerTest {
 
             buildWorker().doWork()
 
-            val text = fakeStore.documents.getValue(BackupWorker.MESSAGES_FILE_NAME).toString(Charsets.UTF_8.name())
+            val text = soleDocument(BackupFileNames.AUTO_MESSAGES_PREFIX)
             assertThat(text).contains("FRESH-OTP-222222")
             assertThat(text).doesNotContain("STALE-OTP-111111")
         }

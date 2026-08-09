@@ -9,6 +9,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.prefs.SettingsRepository
@@ -26,8 +27,12 @@ import java.util.concurrent.TimeUnit
  * grant). Each run writes BOTH exports under stable names, overwriting the
  * previous copies:
  *
- * - [MESSAGES_FILE_NAME] - the full database export ([BackupManager])
- * - [SETTINGS_FILE_NAME] - the settings export ([SettingsBackupManager])
+ * - `clearsms-backup-messages-<yyyyMMddHHmm>.json` ([BackupManager])
+ * - `clearsms-backup-settings-<yyyyMMddHHmm>.json` ([SettingsBackupManager])
+ *
+ * Timestamped names never overwrite each other; after a successful run the
+ * worker prunes each kind down to the [KEEP_PER_KIND] newest files so the
+ * folder cannot grow without bound.
  *
  * Nothing is uploaded anywhere. The frequency setting cannot reach
  * DAILY/WEEKLY without a granted directory (Settings gates it), so a missing
@@ -85,8 +90,8 @@ class BackupWorker
             val otpCutoffMs = OtpAutoDeleteWorker.cutoffFor(otpPolicy, now)
 
             return try {
-                val messagesOut = store.openForWrite(MESSAGES_FILE_NAME)
-                val settingsOut = messagesOut?.let { store.openForWrite(SETTINGS_FILE_NAME) }
+                val messagesOut = store.openForWrite(BackupFileNames.autoMessages(now))
+                val settingsOut = messagesOut?.let { store.openForWrite(BackupFileNames.autoSettings(now)) }
                 if (messagesOut == null || settingsOut == null) {
                     messagesOut?.close()
                     // Directory deleted or permission revoked: fail (don't
@@ -98,6 +103,7 @@ class BackupWorker
                 settingsOut.use { settingsBackupManager.exportTo(it) }
                 uiPrefs.setBackupDirectoryError(false)
                 uiPrefs.setLastAutoBackupMs(now)
+                pruneOldBackups(store)
                 Result.success()
             } catch (e: Exception) {
                 // Transient I/O trouble (storage full, provider hiccup):
@@ -112,6 +118,17 @@ class BackupWorker
          * internal and external storage - automatic backups now live only in
          * the user-chosen directory.
          */
+        private fun pruneOldBackups(store: BackupDocumentStore) {
+            val names = store.listFileNames()
+            for (prefix in listOf(BackupFileNames.AUTO_MESSAGES_PREFIX, BackupFileNames.AUTO_SETTINGS_PREFIX)) {
+                names
+                    .filter { BackupFileNames.matches(prefix, it) }
+                    .sortedDescending() // timestamp suffix: lexicographic == chronological
+                    .drop(KEEP_PER_KIND)
+                    .forEach { store.delete(it) }
+            }
+        }
+
         private fun deleteLegacyLocalBackups(context: Context) {
             val internalDir = File(context.filesDir, LEGACY_BACKUP_DIR)
             File(internalDir, LEGACY_BACKUP_FILE_NAME).delete()
@@ -124,8 +141,9 @@ class BackupWorker
 
         companion object {
             const val WORK_NAME = "periodic_backup"
-            const val MESSAGES_FILE_NAME = "clearsms-backup-messages.json"
-            const val SETTINGS_FILE_NAME = "clearsms-backup-settings.json"
+
+            /** Automatic backups retained per kind after a successful run. */
+            const val KEEP_PER_KIND = 3
             const val LEGACY_BACKUP_DIR = "backups"
             const val LEGACY_BACKUP_FILE_NAME = "clearsms-backup.json"
             private const val TAG = "BackupWorker"
