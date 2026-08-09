@@ -130,6 +130,7 @@ open class FakeMessageRepository : MessageRepository {
         sender: String,
         body: String,
         timestampMs: Long,
+        systemSmsId: Long?,
     ): MessageEntity = throw UnsupportedOperationException()
 
     override suspend fun recategorizeAll(onProgress: suspend (Int, Int) -> Unit): Int = 0

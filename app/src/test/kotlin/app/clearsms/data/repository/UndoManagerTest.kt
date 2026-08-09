@@ -316,6 +316,7 @@ class UndoManagerTest {
             sender: String,
             body: String,
             timestampMs: Long,
+            systemSmsId: Long?,
         ): MessageEntity = error("unused")
 
         override suspend fun recategorizeAll(onProgress: suspend (Int, Int) -> Unit): Int = 0

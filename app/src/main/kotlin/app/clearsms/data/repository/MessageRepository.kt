@@ -194,6 +194,12 @@ interface MessageRepository {
         sender: String,
         body: String,
         timestampMs: Long,
+        /**
+         * The system-provider row id (`content://sms/<id>`) the default-app
+         * write produced, when known. Linking it lets delete commits remove
+         * the provider row too, instead of silently no-oping.
+         */
+        systemSmsId: Long? = null,
     ): MessageEntity
 
     /**

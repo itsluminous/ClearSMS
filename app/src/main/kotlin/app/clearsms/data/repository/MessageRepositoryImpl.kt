@@ -401,6 +401,7 @@ class MessageRepositoryImpl(
         sender: String,
         body: String,
         timestampMs: Long,
+        systemSmsId: Long?,
     ): MessageEntity {
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
@@ -423,6 +424,7 @@ class MessageRepositoryImpl(
                     normalizedSender = normalized,
                     body = body,
                     timestamp = timestampMs,
+                    systemSmsId = systemSmsId,
                     category = enriched.result.category,
                     subCategory = enriched.result.subCategory,
                     extractedOtp = enriched.otpCode,

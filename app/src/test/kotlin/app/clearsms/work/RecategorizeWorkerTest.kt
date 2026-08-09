@@ -157,6 +157,7 @@ class RecategorizeWorkerTest {
                 sender: String,
                 body: String,
                 timestampMs: Long,
+                systemSmsId: Long?,
             ): MessageEntity = throw UnsupportedOperationException()
 
             override suspend fun setBlocked(

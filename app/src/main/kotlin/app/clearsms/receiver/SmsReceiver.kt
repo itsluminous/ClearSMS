@@ -91,8 +91,15 @@ class SmsReceiver : BroadcastReceiver() {
         context: Context,
         merged: Part,
     ) {
-        telephonyWriter.writeInbox(merged.sender, merged.body, merged.timestampMs)
-        val entity = messageRepository.insertIncoming(merged.sender, merged.body, merged.timestampMs)
+        // Keep the provider row id: without it a later delete commit cannot
+        // remove the provider copy, resurrecting the message in other apps.
+        val systemSmsId =
+            telephonyWriter
+                .writeInbox(merged.sender, merged.body, merged.timestampMs)
+                ?.lastPathSegment
+                ?.toLongOrNull()
+        val entity =
+            messageRepository.insertIncoming(merged.sender, merged.body, merged.timestampMs, systemSmsId)
         reminderAlarmScheduler.scheduleForMessage(entity.id)
         if (entity.isBlockedSender) return
 
