@@ -4,6 +4,7 @@ import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.RuleEntity
+import app.clearsms.data.db.ThreadPinEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.domain.model.AccountType
@@ -24,6 +25,12 @@ data class BackupDocument(
     val transactions: List<TransactionBackup> = emptyList(),
     val rules: List<RuleBackup> = emptyList(),
     val reminders: List<ReminderBackup> = emptyList(),
+    /**
+     * Pinned conversations, keyed by normalized sender (thread ids are not
+     * stable across restores). Optional with a default so format-1 backups
+     * written before pins existed restore cleanly with none.
+     */
+    val pins: List<PinBackup> = emptyList(),
 ) {
     companion object {
         /**
@@ -102,6 +109,12 @@ data class ReminderBackup(
     val bankName: String? = null,
     val rawSmsId: Long,
     val createdAt: Long,
+)
+
+@Serializable
+data class PinBackup(
+    val normalizedSender: String,
+    val pinnedAt: Long,
 )
 
 /**
@@ -250,6 +263,10 @@ internal fun RuleBackup.toUserEntity() =
 
 internal fun ReminderEntity.toBackup() =
     ReminderBackup(id, type.name, dueDate, totalDue, minDue, accountLast4, bankName, rawSmsId, createdAt)
+
+internal fun ThreadPinEntity.toBackup() = PinBackup(normalizedSender, pinnedAt)
+
+internal fun PinBackup.toEntity() = ThreadPinEntity(normalizedSender = normalizedSender, pinnedAt = pinnedAt)
 
 internal fun ReminderBackup.toEntity(issues: RestoreIssues) =
     ReminderEntity(

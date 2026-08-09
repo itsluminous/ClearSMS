@@ -10,6 +10,7 @@ import app.clearsms.data.db.DraftEntity
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.ReminderEntity
+import app.clearsms.data.db.ThreadPinEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.prefs.BlockedKeywords
 import app.clearsms.data.rules.BundledRuleLoader
@@ -90,6 +91,7 @@ class MessageRepositoryImpl(
     private val reminderDao get() = database.reminderDao()
     private val ruleDao get() = database.ruleDao()
     private val draftDao get() = database.draftDao()
+    private val threadPinDao get() = database.threadPinDao()
 
     /**
      * Test seam: invoked inside the ingestion transaction after the derived
@@ -121,6 +123,29 @@ class MessageRepositoryImpl(
         } else {
             draftDao.upsert(DraftEntity(threadId = threadId, text = text, updatedAt = System.currentTimeMillis()))
         }
+    }
+
+    override suspend fun setPinned(
+        threadIds: List<Long>,
+        pinned: Boolean,
+    ) {
+        if (threadIds.isEmpty()) return
+        val senders =
+            SqliteChunker.chunk(threadIds).flatMap { messageDao.normalizedSendersForThreads(it) }.distinct()
+        if (senders.isEmpty()) return
+        if (pinned) {
+            val now = System.currentTimeMillis()
+            threadPinDao.upsertAll(senders.map { ThreadPinEntity(normalizedSender = it, pinnedAt = now) })
+        } else {
+            SqliteChunker.chunk(senders).forEach { threadPinDao.deleteBySenders(it) }
+        }
+    }
+
+    override suspend fun pinnedCountInThreads(threadIds: List<Long>): Int {
+        if (threadIds.isEmpty()) return 0
+        val senders =
+            SqliteChunker.chunk(threadIds).flatMap { messageDao.normalizedSendersForThreads(it) }.distinct()
+        return SqliteChunker.chunk(senders).sumOf { threadPinDao.countBySenders(it) }
     }
 
     override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = messageDao.pagingThread(threadId)

@@ -84,6 +84,8 @@ data class InboxItem(
      * place of the last-message snippet; never affects unread state or sort.
      */
     val draftText: String? = null,
+    /** Whether the thread is pinned (sorted above everything, pin glyph). */
+    val pinned: Boolean = false,
 )
 
 /** Most recent OTP eligible for the top banner. */
@@ -349,6 +351,16 @@ class InboxViewModel
             }
         }
 
+        /** Pins when anything selected is unpinned, otherwise unpins - same shape as [toggleReadSelected]. */
+        fun togglePinSelected() {
+            val ids = selectionState.value.selected.toList()
+            exitSelection()
+            viewModelScope.launch(ioDispatcher) {
+                val pinnedCount = messageRepository.pinnedCountInThreads(ids)
+                messageRepository.setPinned(ids, pinned = pinnedCount < ids.size)
+            }
+        }
+
         // endregion
 
         private fun InboxThreadRow.toInboxItem(): InboxItem {
@@ -359,6 +371,7 @@ class InboxViewModel
                 glyph = brandGlyphFor(message.subCategory, display.name),
                 timeLabel = RelativeTime.format(message.timestamp),
                 draftText = draftText?.takeIf { it.isNotBlank() },
+                pinned = pinned,
             )
         }
 

@@ -12,4 +12,8 @@ data class InboxThreadRow(
     @Embedded val message: MessageEntity,
     /** Unsent compose text of the thread, or null when it has no draft. */
     val draftText: String?,
-)
+    /** When the thread was pinned, or null when unpinned. */
+    val pinnedAt: Long? = null,
+) {
+    val pinned: Boolean get() = pinnedAt != null
+}

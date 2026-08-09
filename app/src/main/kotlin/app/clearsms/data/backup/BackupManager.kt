@@ -65,6 +65,7 @@ class BackupManager(
                 transactions = database.transactionDao().getAll().map { it.toBackup() },
                 rules = database.ruleDao().getBySource(RuleSources.USER).map { it.toBackup() },
                 reminders = database.reminderDao().getAll().map { it.toBackup() },
+                pins = database.threadPinDao().getAll().map { it.toBackup() },
             )
         json.encodeToStream(BackupDocument.serializer(), document, output)
     }
@@ -116,6 +117,7 @@ class BackupManager(
                 .filter { it.source == RuleSources.USER }
                 .map { it.toUserEntity() }
         val reminders = document.reminders.map { it.toEntity(issues) }
+        val pins = document.pins.map { it.toEntity() }
 
         database.withTransaction {
             database.messageDao().deleteAll()
@@ -124,12 +126,16 @@ class BackupManager(
             // Bundled/community rules stay: only the user's own rules are replaced.
             database.ruleDao().deleteBySource(RuleSources.USER)
             database.reminderDao().deleteAll()
+            database.threadPinDao().deleteAll()
 
             database.messageDao().insertAll(messages)
             database.accountDao().insertAll(accounts)
             database.transactionDao().insertAll(transactions)
             database.ruleDao().insertAll(rules)
             database.reminderDao().insertAll(reminders)
+            // Pins are keyed by normalized sender, so they reattach to
+            // whatever thread ids the restored messages carry.
+            database.threadPinDao().upsertAll(pins)
         }
         return RestoreResult(
             messages = messages.size,

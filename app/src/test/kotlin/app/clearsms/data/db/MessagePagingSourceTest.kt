@@ -139,4 +139,71 @@ class MessagePagingSourceTest {
             val unread = load(dao.pagingInbox(category = null, unreadOnly = true), loadSize = 10)
             assertThat(unread.map { it.message.threadId }).containsExactly(2L)
         }
+
+    @Test
+    fun `pinned threads sort above everything, recency order within each group`() =
+        runBlocking<Unit> {
+            dao.insertAll(
+                listOf(
+                    message(1, threadId = 1, timestamp = 100),
+                    message(2, threadId = 2, timestamp = 200),
+                    message(3, threadId = 3, timestamp = 300),
+                    message(4, threadId = 4, timestamp = 400),
+                ),
+            )
+            // Pin the two OLDEST threads; within pinned, recency still rules.
+            db.threadPinDao().upsertAll(
+                listOf(
+                    ThreadPinEntity(normalizedSender = "sender-1", pinnedAt = 10L),
+                    ThreadPinEntity(normalizedSender = "sender-2", pinnedAt = 20L),
+                ),
+            )
+
+            val page = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+
+            assertThat(page.map { it.message.threadId }).isEqualTo(listOf(2L, 1L, 4L, 3L))
+            assertThat(page.map { it.pinned }).isEqualTo(listOf(true, true, false, false))
+        }
+
+    @Test
+    fun `pill filters still apply to pinned threads`() =
+        runBlocking<Unit> {
+            dao.insertAll(
+                listOf(
+                    message(1, threadId = 1, category = Category.PROMOTIONAL),
+                    message(2, threadId = 2, category = Category.IMPORTANT),
+                ),
+            )
+            db.threadPinDao().upsertAll(
+                listOf(ThreadPinEntity(normalizedSender = "sender-1", pinnedAt = 10L)),
+            )
+
+            // Under the Important pill the pinned promotional thread is absent.
+            val important = load(dao.pagingInbox(category = Category.IMPORTANT, unreadOnly = false), loadSize = 10)
+            assertThat(important.map { it.message.threadId }).containsExactly(2L)
+
+            // Under the Promotional pill it shows (and is pinned).
+            val promos = load(dao.pagingInbox(category = Category.PROMOTIONAL, unreadOnly = false), loadSize = 10)
+            assertThat(promos.single().pinned).isTrue()
+        }
+
+    @Test
+    fun `search results ignore pinning - relevance (recency) order only`() =
+        runBlocking<Unit> {
+            dao.insertAll(
+                listOf(
+                    message(1, threadId = 1, timestamp = 100),
+                    message(2, threadId = 2, timestamp = 200),
+                ),
+            )
+            // Pin the older thread; a search must NOT float it.
+            db.threadPinDao().upsertAll(
+                listOf(ThreadPinEntity(normalizedSender = "sender-1", pinnedAt = 10L)),
+            )
+
+            val results =
+                load(dao.pagingSearch(match = "body*", category = null, cutoffMs = null), loadSize = 10)
+
+            assertThat(results.map { it.id }).isEqualTo(listOf(2L, 1L))
+        }
 }

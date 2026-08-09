@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MarkEmailRead
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenu
@@ -195,6 +196,7 @@ fun InboxScreen(
                     onDelete = { confirmDelete = true },
                     onArchive = viewModel::archiveSelected,
                     onToggleRead = viewModel::toggleReadSelected,
+                    onTogglePin = viewModel::togglePinSelected,
                     onSelectAll = viewModel::selectAll,
                     onBlock = { sender ->
                         viewModel.block(sender)
@@ -357,6 +359,7 @@ private fun InboxSelectionBar(
     onDelete: () -> Unit,
     onArchive: () -> Unit,
     onToggleRead: () -> Unit,
+    onTogglePin: () -> Unit,
     onSelectAll: () -> Unit,
     onBlock: (sender: String) -> Unit,
     onChangeCategory: (sender: String, body: String) -> Unit,
@@ -380,6 +383,14 @@ private fun InboxSelectionBar(
                 Icon(
                     Icons.Outlined.MarkEmailRead,
                     contentDescription = stringResource(R.string.action_mark_read_unread),
+                )
+            }
+            // Pin/Unpin: pins when anything selected is unpinned, unpins
+            // when everything already is. Multiple pins are allowed.
+            IconButton(onClick = onTogglePin) {
+                Icon(
+                    Icons.Outlined.PushPin,
+                    contentDescription = stringResource(R.string.action_pin_unpin),
                 )
             }
             IconButton(onClick = onSelectAll) {
@@ -620,16 +631,27 @@ private fun InboxRow(
         },
         trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = item.timeLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color =
-                        if (unread) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (item.pinned) {
+                        Icon(
+                            Icons.Outlined.PushPin,
+                            contentDescription = stringResource(R.string.inbox_pinned),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = item.timeLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color =
+                            if (unread) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                    )
+                }
                 if (unread) {
                     Spacer(Modifier.height(6.dp))
                     Surface(

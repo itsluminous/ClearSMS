@@ -44,6 +44,18 @@ open class FakeMessageRepository : MessageRepository {
         if (text.isBlank()) drafts.remove(threadId) else drafts[threadId] = text
     }
 
+    /** In-memory pinned thread ids. */
+    val pinnedThreads = mutableSetOf<Long>()
+
+    override suspend fun setPinned(
+        threadIds: List<Long>,
+        pinned: Boolean,
+    ) {
+        if (pinned) pinnedThreads += threadIds else pinnedThreads -= threadIds.toSet()
+    }
+
+    override suspend fun pinnedCountInThreads(threadIds: List<Long>): Int = threadIds.count { it in pinnedThreads }
+
     override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = ListPagingSource(emptyList())
 
     override suspend fun firstInThread(threadId: Long): MessageEntity? = null

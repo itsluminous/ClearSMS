@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.RuleEntity
+import app.clearsms.data.db.ThreadPinEntity
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.domain.model.Category
 import com.google.common.truth.Truth.assertThat
@@ -45,6 +46,51 @@ class BackupRestoreSafetyTest {
     }
 
     private fun document(body: String): InputStream = ByteArrayInputStream(body.toByteArray())
+
+    @Test
+    fun `pins survive the backup and restore cycle`() =
+        runBlocking {
+            db.messageDao().insert(message(1))
+            db.threadPinDao().upsertAll(
+                listOf(ThreadPinEntity(normalizedSender = "TEST", pinnedAt = 99L)),
+            )
+            val bytes = ByteArrayOutputStream().also { manager.exportTo(it) }.toByteArray()
+
+            // Restore into a fresh database: the pin reattaches by sender.
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val target =
+                Room
+                    .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
+                    .allowMainThreadQueries()
+                    .build()
+            try {
+                BackupManager(target, json).importFrom(ByteArrayInputStream(bytes))
+                val pins = target.threadPinDao().getAll()
+                assertThat(pins).hasSize(1)
+                assertThat(pins.single().normalizedSender).isEqualTo("TEST")
+                assertThat(target.messageDao().getAll()).hasSize(1)
+            } finally {
+                target.close()
+            }
+        }
+
+    @Test
+    fun `a pre-pins backup restores cleanly with no pins`() =
+        runBlocking {
+            val backup =
+                """
+                {"formatVersion":1,"createdAt":1,
+                 "messages":[],"accounts":[],"transactions":[],"rules":[],"reminders":[]}
+                """.trimIndent()
+            db.threadPinDao().upsertAll(
+                listOf(ThreadPinEntity(normalizedSender = "STALE", pinnedAt = 1L)),
+            )
+
+            manager.importFrom(document(backup))
+
+            // Restore replaces state: stale pins are gone, none restored.
+            assertThat(db.threadPinDao().getAll()).isEmpty()
+        }
 
     private fun message(
         id: Long,

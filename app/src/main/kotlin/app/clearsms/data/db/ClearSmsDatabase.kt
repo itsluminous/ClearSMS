@@ -26,8 +26,9 @@ import java.time.ZoneId
         RuleEntity::class,
         ReminderEntity::class,
         DraftEntity::class,
+        ThreadPinEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -94,6 +95,9 @@ import java.time.ZoneId
         // v14 -> v15: adds the drafts table (unsent per-thread compose text).
         // Pure addition; existing threads simply have no draft.
         AutoMigration(from = 14, to = 15),
+        // v15 -> v16: adds the thread_pins table (pinned conversations,
+        // keyed by normalized sender). Pure addition; nothing is pinned.
+        AutoMigration(from = 15, to = 16),
     ],
 )
 @TypeConverters(Converters::class)
@@ -109,6 +113,8 @@ abstract class ClearSmsDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
 
     abstract fun draftDao(): DraftDao
+
+    abstract fun threadPinDao(): ThreadPinDao
 
     /**
      * The auto migration creates the empty `messages_fts` virtual table;

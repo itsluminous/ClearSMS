@@ -50,6 +50,23 @@ interface MessageRepository {
 
     // endregion
 
+    // region pinned conversations
+
+    /**
+     * Pins or unpins the given threads. Pins are stored per normalized
+     * sender (threads are derived, sender identity is stable), so a pin
+     * survives message backup/restore and thread-id reassignment.
+     */
+    suspend fun setPinned(
+        threadIds: List<Long>,
+        pinned: Boolean,
+    )
+
+    /** How many of the given threads are currently pinned. */
+    suspend fun pinnedCountInThreads(threadIds: List<Long>): Int
+
+    // endregion
+
     /** Paged thread messages, newest first (rendered reversed). */
     fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity>
 

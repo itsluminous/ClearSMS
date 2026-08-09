@@ -52,13 +52,17 @@ interface MessageDao {
 
     /**
      * Paged variant of [observeInbox]: same latest-per-thread rows, loaded
-     * incrementally, each joined with its thread's draft. Draft presence
-     * never changes the ordering or the unread state - it only decorates the
-     * row's preview.
+     * incrementally, each joined with its thread's draft and pin. Draft
+     * presence never changes the ordering or the unread state - it only
+     * decorates the preview. Pinned threads sort ABOVE everything else
+     * (normal recency order within each group), and the category / unread
+     * filters still apply to them - a pinned promotional thread only shows
+     * under pills that would show it anyway. Search deliberately ignores
+     * pins (see [pagingSearch]).
      */
     @Query(
         """
-        SELECT m.*, d.text AS draftText FROM messages m
+        SELECT m.*, d.text AS draftText, p.pinnedAt AS pinnedAt FROM messages m
         INNER JOIN (
             SELECT threadId, MAX(timestamp) AS maxTs, MAX(id) AS maxId
             FROM messages
@@ -66,16 +70,21 @@ interface MessageDao {
             GROUP BY threadId
         ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
         LEFT JOIN drafts d ON d.threadId = m.threadId
+        LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
-        ORDER BY m.timestamp DESC
+        ORDER BY (p.pinnedAt IS NOT NULL) DESC, m.timestamp DESC
         """,
     )
     fun pagingInbox(
         category: Category?,
         unreadOnly: Boolean,
     ): PagingSource<Int, InboxThreadRow>
+
+    /** Distinct normalized senders of the given threads (pin toggling). */
+    @Query("SELECT DISTINCT normalizedSender FROM messages WHERE threadId IN (:threadIds)")
+    suspend fun normalizedSendersForThreads(threadIds: List<Long>): List<String>
 
     /**
      * Paged conversation, NEWEST first (rendered with `reverseLayout`), so the

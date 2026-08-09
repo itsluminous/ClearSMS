@@ -248,6 +248,13 @@ class UndoManagerTest {
 
         override suspend fun draftFor(threadId: Long): String? = null
 
+        override suspend fun setPinned(
+            threadIds: List<Long>,
+            pinned: Boolean,
+        ) = Unit
+
+        override suspend fun pinnedCountInThreads(threadIds: List<Long>): Int = 0
+
         override suspend fun saveDraft(
             threadId: Long,
             text: String,
