@@ -33,7 +33,7 @@ data class RuleMatch(
      * Ids of named guards (guard library or rule-guard extensions) that must
      * ALL be absent from the body: the rule does not apply if any listed
      * guard matches. A rule referencing an unknown guard id is skipped and
-     * logged at evaluation — applying it without its veto would be worse.
+     * logged at evaluation - applying it without its veto would be worse.
      */
     @SerialName("guards_none") val guardsNone: List<String> = emptyList(),
 )
@@ -49,7 +49,7 @@ data class RuleAction(
      * Explicit extract types, overriding the type inferred from the extract
      * key (see [RuleEngine]'s inference table). Values are one of `amount`,
      * `date`, `merchant`, `transaction_type`, `text`. Only needed where
-     * inference is wrong or ambiguous — well-known keys such as `amount` or
+     * inference is wrong or ambiguous - well-known keys such as `amount` or
      * `due_date` type themselves.
      */
     @SerialName("extract_types") val extractTypes: Map<String, String> = emptyMap(),

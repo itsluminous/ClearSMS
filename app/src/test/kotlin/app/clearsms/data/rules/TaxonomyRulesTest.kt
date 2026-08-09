@@ -31,7 +31,7 @@ class TaxonomyRulesTest {
         body: String,
     ) = engine.evaluate(rules, sender, body)
 
-    // region T3b — INFORMATIONAL
+    // region T3b - INFORMATIONAL
 
     @Test
     fun `cibil score access notice is informational`() {
@@ -113,7 +113,7 @@ class TaxonomyRulesTest {
 
     // endregion
 
-    // region T3c — investments (SIP / NPS)
+    // region T3c - investments (SIP / NPS)
 
     @Test
     fun `sip purchase amount-first shape is an investment debit titled by fund`() {
@@ -177,7 +177,7 @@ class TaxonomyRulesTest {
         assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
         assertThat(result?.extracted?.get("amount")).isEqualTo("44,236.00")
-        // Units credited INTO the retirement account are money received —
+        // Units credited INTO the retirement account are money received -
         // an employer contribution never debits a tracked bank account.
         assertThat(result?.extracted?.get("type")).isEqualTo("credit")
         assertThat(result?.extracted?.get("merchant")).isEqualTo("NPS")
@@ -196,7 +196,7 @@ class TaxonomyRulesTest {
 
     // endregion
 
-    // region T3d/T3e — recharge and OTP
+    // region T3d/T3e - recharge and OTP
 
     @Test
     fun `prepaid recharge success is an important recharge debit`() {

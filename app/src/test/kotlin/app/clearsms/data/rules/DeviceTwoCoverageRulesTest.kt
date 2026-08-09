@@ -11,7 +11,7 @@ import java.io.File
  * Coverage tests for the second wave of sender-specific rules (ICICI UPI
  * shapes, Meesho/Shadowfax/XpressBees logistics, Unity SFB, HSBC, Amex,
  * SBI Card, NPS and marketing-blast displacement). Every message here is
- * SYNTHETIC — shapes only, no real corpus text. Each representative rule is
+ * SYNTHETIC - shapes only, no real corpus text. Each representative rule is
  * asserted to match its intended shape with the documented capture order
  * and to reject a near-miss, and the two confirmed misfires (offer blasts
  * hitting the delivery and scam fallbacks) are pinned as fixed.

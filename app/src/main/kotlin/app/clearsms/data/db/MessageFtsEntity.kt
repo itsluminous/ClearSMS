@@ -11,7 +11,7 @@ import androidx.room.Fts4
  * `LIKE '%q%'` full-table scan: the LIKE form can never use an index, so on
  * a ~14.5k-row inbox every keystroke re-read the whole table. The trade-off
  * is FTS matches token *prefixes* ("sal" finds "Salary", but "alary" does
- * not) — the right behaviour for search-as-you-type.
+ * not) - the right behaviour for search-as-you-type.
  */
 @Fts4(contentEntity = MessageEntity::class)
 @Entity(tableName = "messages_fts")

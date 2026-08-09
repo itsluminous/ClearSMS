@@ -28,7 +28,7 @@ import org.robolectric.RobolectricTestRunner
 /**
  * Marking a message read must propagate to the system SMS provider (by
  * provider `_id`), so the read-state survives a re-import / reinstall and
- * stays in sync with other SMS apps — not just the app's own Room copy.
+ * stays in sync with other SMS apps - not just the app's own Room copy.
  */
 @RunWith(RobolectricTestRunner::class)
 class ReadStateProviderSyncTest {

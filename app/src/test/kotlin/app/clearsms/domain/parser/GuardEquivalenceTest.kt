@@ -12,8 +12,8 @@ import java.io.File
  * Proves the data-driven guards are EXACTLY equivalent to the Kotlin regex
  * constants they replaced. [FROZEN] holds verbatim copies of the deleted
  * constants; every guard must agree with its frozen original on a fixture
- * set that exercises each pattern, and — when a device corpus is present at
- * [CORPUS] (kept under /tmp, never in the repo) — on every real message
+ * set that exercises each pattern, and - when a device corpus is present at
+ * [CORPUS] (kept under /tmp, never in the repo) - on every real message
  * body. Any disagreement is a bug in the migration, not a rounding error.
  */
 class GuardEquivalenceTest {
@@ -80,7 +80,7 @@ class GuardEquivalenceTest {
                 .that(disagreements)
                 .isEqualTo(0)
         }
-        // Counts only — never message content.
+        // Counts only - never message content.
         File(corpus.parentFile, "refactor2-guard-counts.txt").writeText(report.toString())
     }
 

@@ -13,7 +13,7 @@ import org.junit.Test
 /**
  * Post-condition invariants of [MessageCategorizer]:
  * an extracted transaction is never PROMOTIONAL, and an extractable OTP code
- * always beats a promotional classification — with narrow, deliberate
+ * always beats a promotional classification - with narrow, deliberate
  * exceptions for scam results and UPI-mandate lifecycle notices.
  */
 class CategorizerInvariantsTest {

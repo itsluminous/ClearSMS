@@ -10,7 +10,7 @@ import java.io.File
 /**
  * Coverage tests for the rules added from real-corpus analysis (wallets,
  * travel, health, utilities, telecom services, IT alerts, refunds and the
- * branded-OTP variant). Every message here is SYNTHETIC — the patterns were
+ * branded-OTP variant). Every message here is SYNTHETIC - the patterns were
  * derived from message *shapes*, and these tests assert each representative
  * new pattern matches its intended shape and rejects a near-miss.
  */

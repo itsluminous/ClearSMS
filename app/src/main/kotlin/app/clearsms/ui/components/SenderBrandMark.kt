@@ -88,7 +88,7 @@ fun SenderBrandMark(
 
 /**
  * The small category badge drawn over an avatar's bottom-end corner. Shared
- * by every avatar variant so the glyph is always present — including on
+ * by every avatar variant so the glyph is always present - including on
  * contact photos, bundled logos and the plain letter avatar shown when
  * "Show logos and contact photos" is off.
  */

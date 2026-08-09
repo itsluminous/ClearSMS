@@ -10,7 +10,7 @@ class ClearOtpRangeTest {
     @Test
     fun `all range has no lower bound`() {
         // Long.MAX_VALUE with the DAO's strict `timestamp < cutoff` matches
-        // every real timestamp — "All" deletes regardless of age.
+        // every real timestamp - "All" deletes regardless of age.
         assertThat(ClearOtpRange.ALL.cutoffMs(now)).isEqualTo(Long.MAX_VALUE)
     }
 

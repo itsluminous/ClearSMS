@@ -6,7 +6,7 @@ import java.time.Duration
  * Splits finance entities into active and dormant by their last-updated
  * timestamp. An account or card with no update for over [STALE_AFTER] is
  * hidden behind a collapsed "Show older" control instead of cluttering the
- * active list — "no update" means no transaction/balance SMS has touched
+ * active list - "no update" means no transaction/balance SMS has touched
  * the row's `lastUpdated` within the window.
  */
 object StaleAccounts {

@@ -6,7 +6,7 @@ and reports how many are confidently categorized:
 
   1. Bundled rules (``app/src/main/assets/default_rules.json``), evaluated
      with the exact RuleEngine semantics: rules sorted by priority descending,
-     first match wins; a rule matches when ALL present conditions hold —
+     first match wins; a rule matches when ALL present conditions hold -
      ``sender_pattern`` found in the sender, ``body_pattern`` found in the
      body (``Regex.find`` semantics, i.e. match anywhere), every
      ``body_must_contain`` term present (case-insensitive), no
@@ -37,7 +37,7 @@ Input is either a JSONL file (one ``{"sender": ..., "body": ...}`` object
 per line) or ``--from-device``, which pulls the corpus from a connected
 Android device via ``adb shell content query --uri content://sms``.
 
-PRIVACY: output is redacted by default — digits in printed examples are
+PRIVACY: output is redacted by default - digits in printed examples are
 masked as ``X`` and bodies are truncated. Nothing is ever written back to
 the repository; keep raw corpora outside the repo (e.g. under /tmp).
 
@@ -368,7 +368,7 @@ def main():
 
     if args.generic_breakdown and generic_hits:
         total_generic = sum(len(v) for v in generic_hits.values())
-        print(f"\ngeneric-* rule breakdown ({total_generic} hits — "
+        print(f"\ngeneric-* rule breakdown ({total_generic} hits - "
               "each sender below is a candidate for a specific rule):")
         for rid in sorted(generic_hits, key=lambda r: -len(generic_hits[r])):
             msgs = generic_hits[rid]

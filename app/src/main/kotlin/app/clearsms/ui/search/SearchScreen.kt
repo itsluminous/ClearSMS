@@ -220,7 +220,7 @@ fun SearchScreen(
 
 /**
  * Bolds and tints all case-insensitive occurrences of each query token
- * within [text] — token-based to mirror the FTS prefix matching.
+ * within [text] - token-based to mirror the FTS prefix matching.
  */
 @Composable
 private fun highlight(

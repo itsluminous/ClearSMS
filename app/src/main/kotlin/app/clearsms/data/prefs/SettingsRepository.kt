@@ -36,7 +36,7 @@ interface SettingsRepository {
     suspend fun setShowTransactionDetails(value: Boolean)
 
     /**
-     * Recycle bin for deleted messages. Default OFF — deletes stay
+     * Recycle bin for deleted messages. Default OFF - deletes stay
      * permanent exactly as before. When ON, a committed delete keeps the
      * message in an in-app bin for 30 days (the system-provider copy is
      * still removed) instead of dropping the row.
@@ -48,10 +48,10 @@ interface SettingsRepository {
     /**
      * Privacy gate for the Finance tab: when false, balances (account
      * balances, card outstanding, the month summary) are masked until the
-     * user authenticates with the device screen lock. Default FALSE —
+     * user authenticates with the device screen lock. Default FALSE -
      * privacy-first: balances stay hidden until the user deliberately
      * reveals them (users who never touched the toggle get the hidden
-     * default too). Display-only — nothing sensitive is
+     * default too). Display-only - nothing sensitive is
      * stored because of this flag.
      */
     val showBalance: Flow<Boolean>
@@ -119,8 +119,8 @@ interface SettingsRepository {
     /**
      * Id of the newest OTP message the user has handled (copied or dismissed)
      * from the inbox banner; 0 when none. Message ids are monotonically
-     * increasing, so the banner hides this id and everything older forever —
-     * across navigation, restarts and re-categorization — while a newer OTP
+     * increasing, so the banner hides this id and everything older forever -
+     * across navigation, restarts and re-categorization - while a newer OTP
      * still surfaces.
      */
     val handledOtpMessageId: Flow<Long>

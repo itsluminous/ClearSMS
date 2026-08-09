@@ -56,7 +56,7 @@ class SenderBankResolutionTest {
     fun `chain step 2 - sender id resolves via the institution table`() {
         assertThat(SenderNameResolver.bankNameFor("TM-CITIBA", "Spent on card xx0310")).isEqualTo("Citi")
         assertThat(SenderNameResolver.bankNameFor("VD-Pluxee-S", "Spent from wallet")).isEqualTo("Pluxee")
-        // Sodexo was rebranded to Pluxee — both ids are the same wallet.
+        // Sodexo was rebranded to Pluxee - both ids are the same wallet.
         assertThat(SenderNameResolver.bankNameFor("VD-SODEXO", "Spent from wallet")).isEqualTo("Pluxee")
     }
 

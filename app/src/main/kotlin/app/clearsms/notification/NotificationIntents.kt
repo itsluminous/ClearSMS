@@ -9,7 +9,7 @@ import android.app.PendingIntent
  * Every action intent is explicit (targets a class in this package) and
  * immutable. The ONE documented exception is the direct-reply action: a
  * `RemoteInput` result can only be attached by the system if the intent is
- * mutable, so the reply action — and only the reply action — uses
+ * mutable, so the reply action - and only the reply action - uses
  * [PendingIntent.FLAG_MUTABLE].
  */
 object NotificationIntents {

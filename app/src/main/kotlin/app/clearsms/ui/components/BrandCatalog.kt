@@ -8,8 +8,8 @@ import kotlinx.serialization.json.Json
 /**
  * Curated brand identity table (see `rules/brands/brands.json`).
  *
- * Each entry carries only *facts* about a brand — its name, the sender IDs it
- * uses, and its widely-published primary color — never artwork. The app draws
+ * Each entry carries only *facts* about a brand - its name, the sender IDs it
+ * uses, and its widely-published primary color - never artwork. The app draws
  * an original mark (colored tile + monogram + category glyph) from these
  * facts; no third-party logo files are bundled.
  */
@@ -18,7 +18,7 @@ data class Brand(
     val key: String,
     val name: String,
     val category: BrandCategory = BrandCategory.OTHER,
-    /** The brand's primary color as `#RRGGBB` — a factual attribute, not artwork. */
+    /** The brand's primary color as `#RRGGBB` - a factual attribute, not artwork. */
     val color: String,
     /** 1–3 character monogram drawn on the tile. */
     val monogram: String,
@@ -69,8 +69,8 @@ class BrandIndex(
         }
 
     /**
-     * Resolves [senderOrName] — a raw sender address like `VM-HDFCBK` or an
-     * already-resolved display name like `HDFC Bank` — to a curated brand.
+     * Resolves [senderOrName] - a raw sender address like `VM-HDFCBK` or an
+     * already-resolved display name like `HDFC Bank` - to a curated brand.
      */
     fun resolve(senderOrName: String): Brand? {
         val normalized = normalizeSenderId(senderOrName)
@@ -147,7 +147,7 @@ fun contrastRatio(
 
 /**
  * Picks white or black monogram text for a tile [background], whichever has
- * the higher WCAG contrast ratio — keeps every brand tile AA-legible.
+ * the higher WCAG contrast ratio - keeps every brand tile AA-legible.
  */
 fun monogramColorFor(background: Color): Color =
     if (contrastRatio(background, Color.White) >= contrastRatio(background, Color.Black)) {
@@ -196,7 +196,7 @@ object BrandCatalog {
                     .use { it.readText() }
             BrandIndex.parse(json)
         } catch (_: Exception) {
-            // A malformed table must never break avatars — fall back to letters.
+            // A malformed table must never break avatars - fall back to letters.
             BrandIndex.EMPTY
         }
 }

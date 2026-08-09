@@ -29,7 +29,7 @@ enum class RevealButtonState {
     /** Unlocked this session: show a quiet "Hide balances" affordance. */
     SHOW_HIDE,
 
-    /** Setting is ON — nothing is masked, so no control at all. */
+    /** Setting is ON - nothing is masked, so no control at all. */
     NONE,
 }
 
@@ -52,8 +52,8 @@ object BalanceRevealButton {
  * empty app-bar space and was too easy to miss).
  *
  * - Hidden state: a filled "Show balances" button. Colors deliberately swap
- *   the container pair — onPrimaryContainer fill with primaryContainer
- *   content — because Material guarantees that pair legible contrast on the
+ *   the container pair - onPrimaryContainer fill with primaryContainer
+ *   content - because Material guarantees that pair legible contrast on the
  *   card's primaryContainer surface in BOTH light and dark themes.
  * - Revealed state: a quiet "Hide balances" text button. It stays (rather
  *   than disappearing) because with the top-bar eye gone this is the only

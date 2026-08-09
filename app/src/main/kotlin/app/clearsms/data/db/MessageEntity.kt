@@ -46,8 +46,8 @@ data class MessageEntity(
     /**
      * True for messages the user sent, false for received ones. A boolean
      * (not an enum) because SMS has exactly two directions, and the SQL
-     * `DEFAULT 0` makes every pre-upgrade or unmatched row incoming — the
-     * safe reading — without a converter. Drives bubble alignment.
+     * `DEFAULT 0` makes every pre-upgrade or unmatched row incoming - the
+     * safe reading - without a converter. Drives bubble alignment.
      */
     @ColumnInfo(defaultValue = "0") val isOutgoing: Boolean = false,
     /** Send lifecycle for outgoing messages; always null on incoming rows. */
@@ -62,14 +62,14 @@ data class MessageEntity(
     /**
      * How many parts of an outgoing multipart message have a carrier
      * delivery report so far. Reset to 0 on (re)dispatch; the message is
-     * promoted to DELIVERED only when this reaches [partCount] — a partially
+     * promoted to DELIVERED only when this reaches [partCount] - a partially
      * delivered multipart message honestly stays at SENT.
      */
     @ColumnInfo(defaultValue = "0") val deliveredParts: Int = 0,
     /**
      * Soft-delete marker: null for live messages; the deletion timestamp for
      * messages the user deleted. A non-null value hides the row from every
-     * read path (inbox, conversation, search, counts) — first for the
+     * read path (inbox, conversation, search, counts) - first for the
      * transient undo window, and after commit as the recycle-bin resting
      * state (when the bin is enabled). Also the 30-day purge clock.
      */

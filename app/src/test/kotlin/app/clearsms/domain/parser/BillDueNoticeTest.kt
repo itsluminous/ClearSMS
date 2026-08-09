@@ -12,7 +12,7 @@ import java.time.LocalDate
  * obligation. Its trailing "Ignore if paid" advisory satisfies the debit
  * keyword heuristics, so before the guard it surfaced as a bogus DEBIT
  * transaction (user-reported, screenshot-confirmed). It must instead yield a
- * CREDIT_CARD reminder carrying the total due, minimum due and due date —
+ * CREDIT_CARD reminder carrying the total due, minimum due and due date -
  * and zero transaction rows.
  */
 class BillDueNoticeTest {
@@ -64,7 +64,7 @@ class BillDueNoticeTest {
 
     @Test
     fun `biller bill-due notice is not a transaction either`() {
-        // Same class from a telecom biller — "please pay before the due date"
+        // Same class from a telecom biller - "please pay before the due date"
         // must not move money.
         val body =
             "Hi, a payment of Rs. 599 is due on 15-09-26 for your Airtel Mobile " +

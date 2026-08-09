@@ -17,8 +17,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The notification icon must follow the SAME fallback chain as the in-app
- * avatars — contact photo → bundled asset logo → generated brand tile →
- * category tile → letter tile — always render circular, cache per key, and
+ * avatars - contact photo → bundled asset logo → generated brand tile →
+ * category tile → letter tile - always render circular, cache per key, and
  * degrade (never crash) on corrupt or missing artwork.
  */
 @RunWith(RobolectricTestRunner::class)

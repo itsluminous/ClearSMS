@@ -24,8 +24,8 @@ object OtpBannerPolicy {
      * [app.clearsms.data.prefs.SettingsRepository.handledOtpMessageId]).
      * Because message ids grow monotonically, hiding every id at or below it
      * keeps a handled OTP gone across navigation, app restarts and
-     * re-categorization (ids survive recategorize), while a newer OTP —
-     * which always gets a higher id — still appears.
+     * re-categorization (ids survive recategorize), while a newer OTP -
+     * which always gets a higher id - still appears.
      */
     fun select(
         messages: List<MessageEntity>,

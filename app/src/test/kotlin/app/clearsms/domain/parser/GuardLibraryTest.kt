@@ -11,7 +11,7 @@ import java.io.File
  * must correspond exactly (and every id must be consulted somewhere in
  * production code), each guard must fire on the message shapes that motivated
  * it, and a malformed document, an invalid pattern, or a pattern violating
- * the ReDoS rules must degrade to a guard that never matches — never crash.
+ * the ReDoS rules must degrade to a guard that never matches - never crash.
  */
 class GuardLibraryTest {
     // region rules/ <-> assets identity and id coverage
@@ -223,7 +223,7 @@ class GuardLibraryTest {
         for (id in GuardId.entries) {
             // A guard whose patterns were all rejected would silently stop
             // vetoing; catch that here rather than in the field.
-            assertWithMessage("guard '${id.id}' fires on nothing at all — patterns rejected at load?")
+            assertWithMessage("guard '${id.id}' fires on nothing at all - patterns rejected at load?")
                 .that(sampleFor(id).any { matches(id, it) })
                 .isTrue()
         }

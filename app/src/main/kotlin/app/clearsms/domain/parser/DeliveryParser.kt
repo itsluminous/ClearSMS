@@ -49,7 +49,7 @@ class DeliveryParser {
      * arrive from someone else's sender id (a bank announcing "your Debit
      * Card will be delivered via Blue Dart" from HDFCBK, a food chain via a
      * generic shortcode) with the courier named only in the text. In those
-     * cases the courier is shown as the DELIVERY AGENT on the Alerts card —
+     * cases the courier is shown as the DELIVERY AGENT on the Alerts card -
      * the message itself stays attributed to its real sender (the bank), and
      * nothing here reclassifies the message: this parser only ever runs on
      * messages already categorized as deliveries.
@@ -120,7 +120,7 @@ class DeliveryParser {
 
         /**
          * Courier / merchant lookup keys, matched against BOTH the sender id
-         * and the body text (uppercased, substring match) — several couriers
+         * and the body text (uppercased, substring match) - several couriers
          * only ever appear in the body ("via Blue Dart", "? INDIAPOST",
          * "Nimbuspost Courier"). The rows live in
          * `rules/tables/couriers.json` (community-editable; "DOMINO" there

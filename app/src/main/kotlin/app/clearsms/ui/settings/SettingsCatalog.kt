@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 import app.clearsms.R
 
 /**
- * Settings sections in display order — enum declaration order IS the screen
+ * Settings sections in display order - enum declaration order IS the screen
  * order, so tests can assert the layout without composing anything.
  */
 enum class SettingsSection(
@@ -21,12 +21,12 @@ enum class SettingsSection(
     BACKUP(R.string.settings_section_backup),
     RULES(R.string.settings_section_rules),
     SIGNATURE(R.string.settings_section_signature),
-    ABOUT(R.string.settings_section_about),
     DONATE(R.string.settings_section_donate),
+    ABOUT(R.string.settings_section_about),
 }
 
 /**
- * Every settings row in display order — the single source of truth the
+ * Every settings row in display order - the single source of truth the
  * screen renders (and the search filters). [section] is null for the three
  * standalone entries that trail all sections without a header; they must
  * stay last so the null group renders as one block below the sections.
@@ -68,10 +68,10 @@ enum class SettingsItem(
     BACKUP_LOCATION(SettingsSection.BACKUP, R.string.settings_backup_location),
     MANAGE_RULES(SettingsSection.RULES, R.string.settings_manage_rules),
     SIGNATURE(SettingsSection.SIGNATURE, R.string.settings_signature),
-    VERSION(SettingsSection.ABOUT, R.string.settings_version),
-    SOURCE_CODE(SettingsSection.ABOUT, R.string.settings_source_code),
     PAYPAL(SettingsSection.DONATE, R.string.settings_donate_paypal),
     UPI(SettingsSection.DONATE, R.string.settings_donate_upi),
+    VERSION(SettingsSection.ABOUT, R.string.settings_version),
+    SOURCE_CODE(SettingsSection.ABOUT, R.string.settings_source_code),
     PERMISSIONS(null, R.string.settings_permissions),
     PRIVACY_POLICY(null, R.string.settings_privacy_policy),
     LICENSES(null, R.string.settings_licenses),

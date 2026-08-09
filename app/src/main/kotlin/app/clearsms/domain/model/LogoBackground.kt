@@ -10,13 +10,13 @@ package app.clearsms.domain.model
  *
  * Note: a handful of bundled logos ship with an opaque background baked into
  * the image (no alpha channel). Those look the same whichever option is
- * chosen — the setting can only control the plate WE draw.
+ * chosen - the setting can only control the plate WE draw.
  */
 enum class LogoBackground {
-    /** White plate — brand-accurate, always legible. The default. */
+    /** White plate - brand-accurate, always legible. The default. */
     WHITE,
 
-    /** Dark plate — blends into dark themes; keeps light marks readable. */
+    /** Dark plate - blends into dark themes; keeps light marks readable. */
     DARK,
 
     /** Material You tinted plate that follows the app's color scheme. */

@@ -57,7 +57,7 @@ class BalanceRevealButtonStateTest {
         val visibility = BalanceVisibility()
         visibility.reveal()
         // SettingsViewModel.setShowBalance conceals before every write, then
-        // gated flips to false — the control disappears entirely.
+        // gated flips to false - the control disappears entirely.
         visibility.conceal()
         assertThat(BalanceRevealButton.state(gated = false, revealed = visibility.revealed.value))
             .isEqualTo(RevealButtonState.NONE)

@@ -6,7 +6,7 @@ import app.clearsms.ui.components.BrandGlyph
 
 /**
  * Which name a transaction row's avatar (and brand resolution) uses: the
- * merchant where known, otherwise the bank — never blank.
+ * merchant where known, otherwise the bank - never blank.
  */
 fun financeTransactionAvatarName(
     merchantName: String?,

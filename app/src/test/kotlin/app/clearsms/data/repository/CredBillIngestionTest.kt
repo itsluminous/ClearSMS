@@ -33,7 +33,7 @@ import java.time.ZoneId
 /**
  * CRED bill-generated messages (CR3): a FALLBACK source of card due amounts.
  * The message must yield a CREDIT_CARD reminder carrying the issuing bank,
- * card tail, total and due date — and when the issuing bank's own statement
+ * card tail, total and due date - and when the issuing bank's own statement
  * SMS already produced a reminder for the same card and due day, reminder
  * deduplication must collapse the two (the bank's message contributing the
  * minimum due, which CRED lacks). The pay link must not trip the scam
@@ -120,7 +120,7 @@ class CredBillIngestionTest {
             assertThat(deduped).hasSize(1)
             val merged = deduped.single()
             assertThat(merged.totalDue).isEqualTo(17206.53)
-            // The bank's minimum due survives the merge — CRED lacks it.
+            // The bank's minimum due survives the merge - CRED lacks it.
             assertThat(merged.minDue).isEqualTo(861.0)
             assertThat(merged.accountLast4).isEqualTo("9024")
         }

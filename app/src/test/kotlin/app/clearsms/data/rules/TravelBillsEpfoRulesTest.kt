@@ -32,7 +32,7 @@ class TravelBillsEpfoRulesTest {
         body: String,
     ) = engine.evaluate(rules, sender, body)
 
-    // region U1 — flights
+    // region U1 - flights
 
     @Test
     fun `flight booking confirmation with PNR is informational travel`() {
@@ -161,7 +161,7 @@ class TravelBillsEpfoRulesTest {
 
     // endregion
 
-    // region U1 — trains
+    // region U1 - trains
 
     @Test
     fun `train running late notice is informational travel`() {
@@ -209,7 +209,7 @@ class TravelBillsEpfoRulesTest {
 
     // endregion
 
-    // region U2 — bills vs receipts
+    // region U2 - bills vs receipts
 
     @Test
     fun `bill generated with due date is an important bill`() {
@@ -286,7 +286,7 @@ class TravelBillsEpfoRulesTest {
 
     // endregion
 
-    // region U3 — EPFO
+    // region U3 - EPFO
 
     @Test
     fun `epf passbook contribution is an important investment deposit`() {

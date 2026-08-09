@@ -41,7 +41,7 @@ class BackupManager(
      * them (their ids are public in the repository).
      *
      * @param otpCutoffMs when set, OTP messages older than this timestamp are
-     * excluded — automatic backups pass the user's OTP auto-delete cutoff so
+     * excluded - automatic backups pass the user's OTP auto-delete cutoff so
      * a backup can never resurrect OTPs the retention policy already deleted.
      */
     @OptIn(ExperimentalSerializationApi::class)
@@ -53,7 +53,7 @@ class BackupManager(
             database.messageDao().getAll().filter { message ->
                 // Deleted messages never travel: neither rows inside the
                 // transient undo window nor recycle-bin residents belong in
-                // a backup — restoring one must not resurrect deletions.
+                // a backup - restoring one must not resurrect deletions.
                 message.deletedAt == null &&
                     (otpCutoffMs == null || message.category != Category.OTP || message.timestamp >= otpCutoffMs)
             }
@@ -75,7 +75,7 @@ class BackupManager(
      * Safety properties:
      * - the ENTIRE document is decoded and mapped to entities BEFORE any
      *   mutation, so a malformed file leaves the database untouched;
-     * - unknown enum values never throw — they are defaulted or their row is
+     * - unknown enum values never throw - they are defaulted or their row is
      *   skipped, tallied in the returned [RestoreResult];
      * - delete + insert run in one transaction, so a mid-restore failure
      *   rolls back to the pre-restore state;
@@ -105,7 +105,7 @@ class BackupManager(
         // Format 1 is the only released format so far; when FORMAT_VERSION is
         // bumped, migrate older documents here before mapping.
 
-        // Map everything up front — validation failures happen with the
+        // Map everything up front - validation failures happen with the
         // database untouched.
         val issues = RestoreIssues()
         val messages = document.messages.map { it.toEntity(issues) }

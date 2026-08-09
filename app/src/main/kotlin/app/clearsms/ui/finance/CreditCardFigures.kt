@@ -24,14 +24,14 @@ data class CardFigures(
     val level: UtilizationLevel,
 )
 
-/** What the card's headline slot shows — exactly one of these, never a fabricated zero. */
+/** What the card's headline slot shows - exactly one of these, never a fabricated zero. */
 sealed interface CardHeadline {
-    /** The issuer-reported available limit — the primary, always-preferred figure. */
+    /** The issuer-reported available limit - the primary, always-preferred figure. */
     data class AvailableLimit(
         val amount: Double,
     ) : CardHeadline
 
-    /** Outstanding only (no available limit known) — legacy issuer-balance data. */
+    /** Outstanding only (no available limit known) - legacy issuer-balance data. */
     data class Outstanding(
         val amount: Double,
     ) : CardHeadline
@@ -45,7 +45,7 @@ object CreditCardFigures {
     /**
      * @param availableLimit issuer-reported available limit ("Avl Limit: INR ...").
      * @param lastKnownBalance legacy issuer-reported balance (treated as outstanding
-     *   ONLY when no available limit exists — the semantics differ and must not mix).
+     *   ONLY when no available limit exists - the semantics differ and must not mix).
      * @param totalLimit the SMS-derived total credit limit (issuer limit-change statements).
      */
     fun compute(
@@ -61,14 +61,14 @@ object CreditCardFigures {
                 // limit routinely come from the same figure (a "your new limit
                 // is X" statement stores the total while a payment alert stores
                 // the same X as available), so their difference carries no
-                // spending information — asserting "Outstanding ₹0" there is a
+                // spending information - asserting "Outstanding ₹0" there is a
                 // lie. A KNOWN zero exists only on the legacy path below, where
                 // the issuer explicitly reported the outstanding figure itself.
                 availableLimit != null && totalLimit != null && totalLimit > 0.0 ->
                     (totalLimit - availableLimit).takeIf { it > 0.0 }
                 // Available limit known but no total: outstanding is underivable.
                 availableLimit != null -> null
-                // Legacy rows: an issuer-reported balance is the outstanding —
+                // Legacy rows: an issuer-reported balance is the outstanding -
                 // a 0.0 here is issuer-asserted (a genuinely paid-off card).
                 else -> lastKnownBalance
             }

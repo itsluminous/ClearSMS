@@ -13,7 +13,7 @@
 
     <string name="settings_recycle_bin">Recycle bin</string>
     <string name="settings_recycle_bin_summary_on">Deleted messages are kept here for 30 days. Tap to open.</string>
-    <string name="settings_recycle_bin_summary_off">Off — deleted messages are removed permanently. Tap to open.</string>
+    <string name="settings_recycle_bin_summary_off">Off - deleted messages are removed permanently. Tap to open.</string>
 
     <string name="bin_title">Recycle bin</string>
     <string name="bin_empty_title">Recycle bin is empty</string>
@@ -22,7 +22,7 @@
     <string name="bin_delete_forever">Delete forever</string>
     <string name="bin_empty_bin">Empty bin</string>
     <string name="bin_restored">Message restored</string>
-    <string name="bin_restored_app_only">Restored in Clear SMS only — could not write it back to the system SMS store</string>
+    <string name="bin_restored_app_only">Restored in Clear SMS only - could not write it back to the system SMS store</string>
     <string name="bin_delete_forever_title">Delete forever?</string>
     <string name="bin_delete_forever_message">This message will be permanently removed. This cannot be undone.</string>
     <string name="bin_empty_confirm_title">Empty recycle bin?</string>

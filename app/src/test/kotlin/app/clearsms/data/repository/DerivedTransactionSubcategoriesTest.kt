@@ -165,7 +165,7 @@ class DerivedTransactionSubcategoriesTest {
             // carries no merchant and the UI keeps its generic wording.
             assertThat(tx.merchantName).isNull()
             assertThat(tx.category).isEqualTo(MerchantCategory.RECHARGE)
-            // Recharges carry no account tail — no account row may appear.
+            // Recharges carry no account tail - no account row may appear.
             assertThat(db.accountDao().getAll()).isEmpty()
         }
 

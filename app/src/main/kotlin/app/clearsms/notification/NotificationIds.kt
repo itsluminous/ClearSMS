@@ -4,7 +4,7 @@ package app.clearsms.notification
  * Single source of truth for shade notification ids and group keys.
  *
  * Posting (the notifiers) and cancellation ([NotificationDismisser]) MUST both
- * derive ids from here — the original defect was exactly a missing cancel path
+ * derive ids from here - the original defect was exactly a missing cancel path
  * that could not know which ids the post path had used. Each notifier family
  * gets a disjoint id range so a message's OTP, transaction and scam
  * notifications never collide with each other or with per-thread message

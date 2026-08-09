@@ -13,8 +13,8 @@ import java.io.File
 /**
  * The reminder evidence table: the bundled asset must be byte-identical to
  * the `rules/tables/` master, the data-driven classifier must reproduce the
- * deleted Kotlin evidence constants EXACTLY (fixtures per type plus — when a
- * device corpus is present under /tmp — every real message), scoring and
+ * deleted Kotlin evidence constants EXACTLY (fixtures per type plus - when a
+ * device corpus is present under /tmp - every real message), scoring and
  * tie-break must be unchanged, and a malformed table must degrade to
  * fallback-only classification without crashing.
  */
@@ -63,7 +63,7 @@ class ReminderEvidenceTableTest {
 
     @Test
     fun `tier premium disqualifier suppresses insurance evidence from data`() {
-        // "LIV Premium subscription" must never count as premium evidence —
+        // "LIV Premium subscription" must never count as premium evidence -
         // the not_if_guard row in the data table carries the suppression.
         assertThat(classify("LIVCNF", "Your LIV Premium subscription renews on 05-08-26"))
             .isEqualTo(ReminderType.SUBSCRIPTION)
@@ -180,7 +180,7 @@ class ReminderEvidenceTableTest {
             if (old != null) classified++
         }
         assumeTrue("corpus empty", checked > 0)
-        // Counts only — never message content.
+        // Counts only - never message content.
         File(corpus.parentFile, "refactor345-reminder-golden.txt")
             .writeText("reminder golden: $checked messages, $classified typed, 0 disagreements\n")
     }
@@ -225,7 +225,7 @@ class ReminderEvidenceTableTest {
             var s = 0
             if (FROZEN_BILL_PHRASE.containsMatchIn(body)) s += 3
             // Round T: an upcoming autopay/mandate/standing-instruction debit
-            // is bill evidence — future tense means an obligation, not a move.
+            // is bill evidence - future tense means an obligation, not a move.
             if (FROZEN_UPCOMING_DEBIT.containsMatchIn(body)) s += 3
             if (ParserTables.billers.billDomainRegex.containsMatchIn(body)) s += 3
             val knownBiller = ParserTables.billers.knownBillerSenderRegex.containsMatchIn(sender)

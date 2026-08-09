@@ -77,7 +77,7 @@ private val SUB_CATEGORY_OPTIONS =
 
 /**
  * Guided rule-creation wizard: the source message is analyzed into tappable
- * tokens and the app composes the regex — no hand-written patterns required.
+ * tokens and the app composes the regex - no hand-written patterns required.
  * An "Advanced: edit pattern" escape hatch remains for power users.
  */
 @OptIn(ExperimentalMaterial3Api::class)

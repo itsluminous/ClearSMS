@@ -113,7 +113,7 @@ class AccountGuardrailTest {
             )
             val account = db.accountDao().getAll().single()
             assertThat(account.bankName).isEqualTo("ICICI Bank")
-            // Exactly one named bank holds *4001 — the payment attaches to it.
+            // Exactly one named bank holds *4001 - the payment attaches to it.
             val payment = db.transactionDao().getAll().first { it.type.name == "CREDIT" }
             assertThat(payment.accountId).isEqualTo(account.id)
             assertThat(payment.bankName).isEmpty()

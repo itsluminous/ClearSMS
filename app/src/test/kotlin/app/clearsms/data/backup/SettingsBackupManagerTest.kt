@@ -129,7 +129,7 @@ class SettingsBackupManagerTest {
      *    a preference without touching the backup fails here;
      * 2. keys: after exercising every setter, every key physically present
      *    in the DataStore must be claimed by the catalog or the exclusion
-     *    list — catching a stored name that drifted from the catalog's.
+     *    list - catching a stored name that drifted from the catalog's.
      */
     @Test
     fun `backup catalog covers every settings preference or excludes it explicitly`() =

@@ -31,7 +31,7 @@ import org.robolectric.RobolectricTestRunner
  * digit-less card spends land on ONE issuer-keyed Scapia card, declines and
  * notices never become transactions, the statement becomes a card bill
  * reminder, and a counterparty bank in IMPS narration never steals an HDFC
- * credit — nor do CIBIL/CERSAI mentions create a Federal Bank account.
+ * credit - nor do CIBIL/CERSAI mentions create a Federal Bank account.
  */
 @RunWith(RobolectricTestRunner::class)
 class ScapiaCardIngestionTest {

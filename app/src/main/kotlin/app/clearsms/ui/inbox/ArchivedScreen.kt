@@ -59,7 +59,7 @@ import app.clearsms.ui.components.SenderAvatar
 
 /**
  * Archived conversations, with per-row and multi-select unarchive / delete.
- * Reached from Settings — archived threads never appear in
+ * Reached from Settings - archived threads never appear in
  * the inbox or its unread counts.
  */
 @OptIn(ExperimentalMaterial3Api::class)

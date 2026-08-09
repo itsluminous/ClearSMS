@@ -12,7 +12,7 @@ import java.io.File
  * unconditionally. These are source-level contracts (the repo has no
  * Compose UI test infrastructure) in the same file-reading style as
  * `StringFormatResourcesTest`: they fail if someone reuses the inbox
- * visibility flag — or any other condition — around these badges.
+ * visibility flag - or any other condition - around these badges.
  */
 class CategoryTagSurfacesTest {
     private fun source(path: String) = File("src/main/kotlin/app/clearsms/$path").readText()

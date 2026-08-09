@@ -98,7 +98,7 @@ class BalancePrivacyViewModelTest {
             val vm = viewModel()
             val job = launch { vm.uiState.collect {} }
 
-            // BalanceUnlock only calls onReveal on success — cancel/error/
+            // BalanceUnlock only calls onReveal on success - cancel/error/
             // lockout never do, so the state simply never changes.
             assertThat(vm.uiState.value.balancesRevealed).isFalse()
             job.cancel()

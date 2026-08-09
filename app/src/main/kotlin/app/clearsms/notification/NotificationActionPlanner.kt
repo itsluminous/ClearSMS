@@ -9,7 +9,7 @@ import app.clearsms.sms.SenderRepliability
  *
  * Ordering: the selection is persisted as an unordered set, so "the user's
  * selected order" is defined as the [NotificationAction] declaration order
- * restricted to the selected entries — deterministic across processes.
+ * restricted to the selected entries - deterministic across processes.
  *
  * The platform renders at most three actions ([MAX_ACTIONS]); anything
  * beyond that is dropped from the end.
@@ -20,7 +20,7 @@ object NotificationActionPlanner {
 
     /**
      * Actions for a plain message or transaction notification. OTP-only
-     * actions never apply here. REPLY is offered only when [repliable] —
+     * actions never apply here. REPLY is offered only when [repliable] -
      * see [isRepliableAddress].
      */
     fun forMessage(
@@ -40,7 +40,7 @@ object NotificationActionPlanner {
     /**
      * Actions for an OTP notification. Copy is ALWAYS first and always
      * available regardless of the selection (it is the whole point of the
-     * notification); the rest honor the user's selection. REPLY is skipped —
+     * notification); the rest honor the user's selection. REPLY is skipped -
      * OTP senders are one-way short codes. SHARE is skipped too: OTP
      * notifications already have the dedicated SHARE_OTP action, and two
      * share buttons on one notification would be confusing.

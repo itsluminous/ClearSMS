@@ -27,7 +27,7 @@ class BalanceUnlockTest {
     @Test
     fun `nothing enrolled means no device lock at all`() {
         // With DEVICE_CREDENTIAL in the allowed set, NONE_ENROLLED can only
-        // mean the user has no screen lock of any kind — the UI must explain
+        // mean the user has no screen lock of any kind - the UI must explain
         // and offer security settings, never silently reveal.
         assertThat(BalanceUnlock.decide(BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED))
             .isEqualTo(UnlockDecision.NO_DEVICE_LOCK)

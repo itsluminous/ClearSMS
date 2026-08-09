@@ -10,6 +10,6 @@ package app.clearsms.ui.finance
  * against a wall of per-row icon buttons.
  */
 object FinanceRowLayout {
-    /** Names get up to two lines before ellipsizing — never three. */
+    /** Names get up to two lines before ellipsizing - never three. */
     const val MAX_NAME_LINES = 2
 }

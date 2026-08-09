@@ -9,7 +9,7 @@ import javax.inject.Singleton
  * contact?") and display ("what is this contact's name/photo?") share one
  * provider query path and one cache.
  *
- * Alphanumeric sender IDs are rejected up front — TRAI-route senders like
+ * Alphanumeric sender IDs are rejected up front - TRAI-route senders like
  * "VM-HDFCBK" can never be a contact, so no provider query is made for them.
  */
 @Singleton

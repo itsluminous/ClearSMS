@@ -5,7 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 /**
- * The display-name mapping is an exhaustive `when` — this test locks the
+ * The display-name mapping is an exhaustive `when` - this test locks the
  * label of the new INFORMATIONAL category and guards every entry against
  * blank labels (chips, badges and the settings filter picker all render it).
  */

@@ -14,7 +14,7 @@ import java.io.File
  * categorization (an authorization request quotes an amount, a card and a
  * merchant, but nothing has moved), mirroring the existing OTP-beats-
  * promotional invariant. The bare six-digits-near-a-context-word fallback
- * never reclassifies — a spend alert whose advisory merely says "PIN/OTP"
+ * never reclassifies - a spend alert whose advisory merely says "PIN/OTP"
  * must stay a transaction.
  */
 class OtpTransactionPrecedenceTest {
@@ -59,7 +59,7 @@ class OtpTransactionPrecedenceTest {
     @Test
     fun `anchored otp beats a rule-matched transaction and drops its money extracts`() {
         // A hypothetical bank rule without the otp_mention guard matches the
-        // authorization text as a "transaction" — the invariant must undo it.
+        // authorization text as a "transaction" - the invariant must undo it.
         val rule =
             json.decodeFromString(
                 app.clearsms.data.rules.RuleDefinition

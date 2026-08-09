@@ -173,7 +173,7 @@ class GuardsNoneTest {
         assertThat(debit).isNotNull()
         assertThat(debit!!.matchedRuleId).doesNotContain("otp")
         // The same shape quoting an OTP must not match any converted debit
-        // rule — the generic OTP rule takes it instead.
+        // rule - the generic OTP rule takes it instead.
         val otp =
             engine.evaluate(
                 document.rules,

@@ -44,13 +44,13 @@ data class FinanceUiState(
     val monthExcludedCount: Int = 0,
     val monthExcludedTotal: Double = 0.0,
     val bankAccounts: List<AccountEntity> = emptyList(),
-    /** Accounts with no update for over a year — behind "Show older". */
+    /** Accounts with no update for over a year - behind "Show older". */
     val staleBankAccounts: List<AccountEntity> = emptyList(),
     val creditCards: List<CreditCardItem> = emptyList(),
-    /** Cards with no update for over a year — behind "Show older". */
+    /** Cards with no update for over a year - behind "Show older". */
     val staleCreditCards: List<CreditCardItem> = emptyList(),
     val cardsAboveSafeLimit: Int = 0,
-    /** Bounded page of newest transactions — grows via "load more". */
+    /** Bounded page of newest transactions - grows via "load more". */
     val latestTransactions: List<TransactionEntity> = emptyList(),
     /** All prepaid-recharge transactions, newest first (Recharges pill). */
     val rechargeTransactions: List<TransactionEntity> = emptyList(),
@@ -113,7 +113,7 @@ class FinanceViewModel
         }
 
         /**
-         * "Show older" disclosure per section — deliberately NOT persisted:
+         * "Show older" disclosure per section - deliberately NOT persisted:
          * dormant rows should re-collapse on the next session, the state
          * only survives recomposition and config changes within one.
          */
@@ -143,7 +143,7 @@ class FinanceViewModel
                             buildState(transactions, accounts, page)
                         }
                     }.onEach { state ->
-                        // The requested page arrived (or the list is exhausted) — clear the pending flag.
+                        // The requested page arrived (or the list is exhausted) - clear the pending flag.
                         val satisfied = state.latestTransactions.size >= txLimit.value || !state.hasMoreTransactions
                         if (satisfied) loadingMore.value = false
                     },

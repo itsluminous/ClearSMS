@@ -15,7 +15,7 @@ import java.time.LocalDate
  *   invariant totalDue >= minDue holds.
  * - A FUTURE-tense debit ("will be debited for Rs 59.00 on 03-Jul-26") is an
  *   upcoming obligation: a REMINDER carrying the amount, the date and the
- *   payee — never a completed transaction. The settled-payment guard's bare
+ *   payee - never a completed transaction. The settled-payment guard's bare
  *   "debited" must not veto it.
  * - An insurance premium whose amount follows the policy number ("policy no.
  *   H4847657 of Rs. 1250") still yields the amount, the plan label and the
@@ -28,7 +28,7 @@ class RoundTDefectsParserTest {
     private val transactionParser = TransactionParser()
     private val otpParser = OtpParser()
 
-    // region defect 1+2 — card bill: total headline, minimum secondary
+    // region defect 1+2 - card bill: total headline, minimum secondary
 
     private val axisCardBill =
         "Payment of INR 14683.41 for Axis Bank Credit Card no. XX5106 is due on 04-08-26 " +
@@ -58,7 +58,7 @@ class RoundTDefectsParserTest {
 
     // endregion
 
-    // region defect 3 — upcoming UPI autopay mandate debit
+    // region defect 3 - upcoming UPI autopay mandate debit
 
     private val iciciAutopay =
         "ICICI Bank SAVINGS Account XX222 will be debited for Rs 59.00 on 03-Jul-26 towards " +
@@ -80,7 +80,7 @@ class RoundTDefectsParserTest {
 
     @Test
     fun `upcoming autopay debit never becomes a transaction`() {
-        // "will be debited" is future tense — nothing has moved.
+        // "will be debited" is future tense - nothing has moved.
         assertThat(transactionParser.parse("VM-ICICIB", iciciAutopay)).isNull()
     }
 
@@ -138,7 +138,7 @@ class RoundTDefectsParserTest {
 
     // endregion
 
-    // region defect 4 — premium amount after the policy number
+    // region defect 4 - premium amount after the policy number
 
     private val iciciPruPremium =
         "Dear valued customer, premium due on 15-Jul-26 for your ICICIPru policy ICICI Pru iProtect Smart " +
@@ -180,7 +180,7 @@ class RoundTDefectsParserTest {
 
     // endregion
 
-    // region defect 5 — transaction OTPs
+    // region defect 5 - transaction OTPs
 
     private val axisTxnOtp =
         "413423 is SECRET OTP for txn of INR 1205.23 on Axis Bank card XX0266 at AIRTEL PAY on " +

@@ -41,7 +41,7 @@ private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 33
  * curated brand tile (bundled brand table, matched on [sender] and [name]) →
  * category-glyph monogram tile for directory-known senders → plain letter
  * avatar. With the setting off, always the plain letter avatar. Unknown
- * senders always get a letter — never a blank tile. The small category
+ * senders always get a letter - never a blank tile. The small category
  * badge ([GlyphBadge]) renders on every variant in both settings states:
  * it identifies the sender kind (bank / wallet / telecom / government…),
  * so turning off logos and photos must not hide it.
@@ -118,7 +118,7 @@ fun SenderAvatar(
                 // The plate behind the artwork: brand-accurate white by default,
                 // a Material You tint, or none (transparent artwork sits on the
                 // row). Logos that ship with an opaque background baked into the
-                // image look the same either way — see LogoBackground.
+                // image look the same either way - see LogoBackground.
                 val plate =
                     when (LocalLogoBackground.current) {
                         LogoBackground.WHITE -> Color.White

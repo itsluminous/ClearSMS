@@ -24,8 +24,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * A recharge or bill payment has no third-party merchant — the biller IS the
- * sender — so the transaction is titled with the resolved sender brand
+ * A recharge or bill payment has no third-party merchant - the biller IS the
+ * sender - so the transaction is titled with the resolved sender brand
  * ("Airtel") instead of a generic phrase like "Prepaid Recharge".
  */
 @RunWith(RobolectricTestRunner::class)

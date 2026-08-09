@@ -27,7 +27,7 @@ import org.robolectric.RobolectricTestRunner
 /**
  * Rule-supplied merchant extracts go through the SAME normalization as the
  * parser's own narration cleanup, exercised through the rule-first production
- * path (real bundled rules) — the earlier parser-only test missed exactly this
+ * path (real bundled rules) - the earlier parser-only test missed exactly this
  * path, which is how the raw "XX6894- RD Installment-Jul 2026" title shipped.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -81,7 +81,7 @@ class RuleMerchantPrecedenceTest {
             assertThat(tx.type).isEqualTo(TransactionType.DEBIT)
             assertThat(tx.accountNumber).isEqualTo("8709")
             assertThat(tx.bankName).isEqualTo("HDFC Bank")
-            // The stored extract audit trail must carry the CLEAN title too —
+            // The stored extract audit trail must carry the CLEAN title too -
             // the raw capture used to be re-injected into extractedDataJson.
             assertThat(message.extractedDataJson).contains("\"merchant\":\"RD Installment\"")
             assertThat(message.extractedDataJson).doesNotContain("6894")
@@ -97,7 +97,7 @@ class RuleMerchantPrecedenceTest {
                 1_000L,
             )
             val tx = db.transactionDao().getAll().single()
-            // "UPI-519876543210" is a reference, not a merchant — the raw
+            // "UPI-519876543210" is a reference, not a merchant - the raw
             // capture must never surface as a title.
             assertThat(tx.merchantName ?: "").doesNotContain("519876543210")
         }

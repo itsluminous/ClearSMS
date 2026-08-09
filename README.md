@@ -8,21 +8,21 @@
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
 organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
 extracts transactions into a personal finance dashboard, surfaces bill reminders, and
-handles OTPs intelligently — all completely offline, on your device.
+handles OTPs intelligently - all completely offline, on your device.
 
 ## Features
 
-- **Smart inbox** — messages are automatically sorted into Important, Promotional,
+- **Smart inbox** - messages are automatically sorted into Important, Promotional,
   Personal, Unknown, and OTP using a transparent, regex-based rules engine (no ML black box).
-- **Finance dashboard** — debit/credit transactions are extracted from bank SMS into
+- **Finance dashboard** - debit/credit transactions are extracted from bank SMS into
   accounts, credit cards, and spend summaries with hand-rolled Compose charts.
-- **Bills & reminders** — upcoming bills and payment due dates in one Alerts view.
-- **OTP handling** — big, copyable OTP notifications, optional auto-copy, and
+- **Bills & reminders** - upcoming bills and payment due dates in one Alerts view.
+- **OTP handling** - big, copyable OTP notifications, optional auto-copy, and
   configurable auto-delete (24h / 3d / 7d / never).
-- **Scam awareness** — heuristic flagging of likely scam/fraud messages.
-- **Material You** — dynamic color on Android 12+, with a curated teal/indigo palette
+- **Scam awareness** - heuristic flagging of likely scam/fraud messages.
+- **Material You** - dynamic color on Android 12+, with a curated teal/indigo palette
   on older devices. Light, dark, and system themes.
-- **Community rules** — categorization rules are plain JSON, bundled with the app and
+- **Community rules** - categorization rules are plain JSON, bundled with the app and
   maintained by the community in this repository.
 
 ## Screenshots
@@ -42,7 +42,7 @@ handles OTPs intelligently — all completely offline, on your device.
 ## Privacy Principles
 
 - **100% offline.** No network calls at runtime. No servers, no telemetry, no analytics.
-- **No proprietary dependencies.** No Firebase, no Play Services — pure AOSP compatible.
+- **No proprietary dependencies.** No Firebase, no Play Services - pure AOSP compatible.
 - **Your data stays on your device.** Backups are local files you control.
 - **Transparent categorization.** Every rule is human-readable JSON you can inspect,
   edit, export, and contribute back.
@@ -94,11 +94,11 @@ auditable.
 ## Release signing (CI)
 
 CI builds release APKs on every push. If signing secrets are **not** configured
-(e.g. on forks), it still succeeds and produces unsigned APKs — signed
+(e.g. on forks), it still succeeds and produces unsigned APKs - signed
 publishing activates automatically once the secrets exist.
 
 One-time keystore generation (keep this file and its passwords private; it is
-never committed — `*.jks` is gitignored):
+never committed - `*.jks` is gitignored):
 
 ```bash
 keytool -genkeypair -v -keystore clearsms-release.jks -alias clearsms \
@@ -131,17 +131,17 @@ attached, with auto-generated release notes.
 ## Contributing Rules
 
 Categorization rules live under [`rules/`](rules/) and are bundled into the APK at
-build time — every app update ships the latest community rules. See [docs/adding-rules.md](docs/adding-rules.md) for a step-by-step
+build time - every app update ships the latest community rules. See [docs/adding-rules.md](docs/adding-rules.md) for a step-by-step
 walkthrough and [CONTRIBUTING.md](CONTRIBUTING.md) for the JSON schema.
 
 Two ways to contribute:
 
-1. **Pull request** — add or edit a JSON file under `rules/<region>/<category>/` and
+1. **Pull request** - add or edit a JSON file under `rules/<region>/<category>/` and
    open a PR (use the "Rule contribution" issue template if you prefer filing an issue).
-2. **Email from the app** — in the app, go to *Settings → Rules → Share rules with
+2. **Email from the app** - in the app, go to *Settings → Rules → Share rules with
    developer*. This composes an email with your exported rules JSON attached; reviewed
    submissions are incorporated into the next release. There are no runtime rule
-   downloads — the app stays fully offline.
+   downloads - the app stays fully offline.
 
 ### Finding missing rules using your own messages
 
@@ -173,17 +173,17 @@ output is safe to share.
 python3 scripts/audit_rule_coverage.py --from-device
 ```
 
-The script reads your SMS through `adb` into memory only — it writes no copy of
+The script reads your SMS through `adb` into memory only - it writes no copy of
 your messages anywhere. Expect it to take a minute or two on a large inbox.
 
 **4. Read the report**
 
-- **Coverage** — the share of messages that got a confident category.
-- **Per-rule hit counts** — which rules are doing the work.
-- **Unmatched messages** — grouped by sender and body shape, ranked by how often
+- **Coverage** - the share of messages that got a confident category.
+- **Per-rule hit counts** - which rules are doing the work.
+- **Unmatched messages** - grouped by sender and body shape, ranked by how often
   they occur. This is the list worth reporting: the senders at the top are the
   biggest gaps.
-- **`generic-*` rule breakdown** — messages caught only by the catch-all rules,
+- **`generic-*` rule breakdown** - messages caught only by the catch-all rules,
   listed per sender. Generic rules are a last-resort safety net, so anything here
   ideally deserves a sender-specific rule.
 
@@ -197,7 +197,7 @@ Open an issue using the **Rule contribution** template and paste the *unmatched
 groups* and *generic breakdown* sections. Before posting, read what you are about
 to share:
 
-- Digits are masked as `X`, but **check the text anyway** — names, email
+- Digits are masked as `X`, but **check the text anyway** - names, email
   addresses, URLs and order references are not masked.
 - Never pass `--no-redact` on anything you post publicly.
 - Do not attach a full corpus dump, and keep any corpus file outside this
@@ -205,7 +205,7 @@ to share:
 - Better still, send a pull request: rules are plain JSON under `rules/`, and the
   schema is documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Rules must contain only generic patterns and public brand/sender names — never
+Rules must contain only generic patterns and public brand/sender names - never
 your account numbers, amounts or personal details.
 
 If you would rather not use a computer at all, the app can do a simpler version of
@@ -247,11 +247,11 @@ directory, so they always win for the same normalized sender ID.
 
 Sender avatars for well-known brands are drawn from a curated table at
 [`rules/brands/brands.json`](rules/brands/brands.json), bundled into the APK as
-`app/src/main/assets/brands.json` (a unit test keeps the two copies identical —
+`app/src/main/assets/brands.json` (a unit test keeps the two copies identical -
 edit the `rules/brands/` master and copy it over). For brands without bundled
 logo artwork (see below) the app renders an **original** mark from these
-facts — a circular tile in the brand's published primary color, a short
-monogram, and a category badge — with text color chosen by WCAG luminance so
+facts - a circular tile in the brand's published primary color, a short
+monogram, and a category badge - with text color chosen by WCAG luminance so
 it stays legible.
 
 Each entry looks like:
@@ -268,13 +268,13 @@ Each entry looks like:
 }
 ```
 
-- `key` — unique lowercase identifier (also the bundled-logo filename key).
-- `category` — one of `BANK`, `CARD`, `WALLET`, `TELECOM`, `ECOMMERCE`,
+- `key` - unique lowercase identifier (also the bundled-logo filename key).
+- `category` - one of `BANK`, `CARD`, `WALLET`, `TELECOM`, `ECOMMERCE`,
   `DELIVERY`, `GOVERNMENT`, `UTILITY`, `INVESTMENT`, `HEALTH`, `TRAVEL`, `OTHER`.
-- `color` — the brand's widely-published primary color as `#RRGGBB`.
-- `monogram` — 1–3 characters drawn on the tile.
-- `senders` — exact sender IDs after TRAI normalization (`VM-HDFCBK` → `HDFCBK`).
-- `aliases` — whole-word names matched against resolved display names.
+- `color` - the brand's widely-published primary color as `#RRGGBB`.
+- `monogram` - 1–3 characters drawn on the tile.
+- `senders` - exact sender IDs after TRAI normalization (`VM-HDFCBK` → `HDFCBK`).
+- `aliases` - whole-word names matched against resolved display names.
 
 ### Bundled sender logos
 
@@ -289,7 +289,7 @@ Per-file provenance lives in `app/src/main/assets/logos/MANIFEST.md`; the
 upstream MIT licence texts are reproduced in [NOTICE](NOTICE).
 
 On the legal position: the upstream MIT licences cover those projects'
-packaging of the files — the logos themselves remain trademarks of the
+packaging of the files - the logos themselves remain trademarks of the
 banks and merchants they identify, and are bundled solely to label message
 senders in your own inbox. Logos are never fetched at runtime (the app
 requests no network permission); brands without bundled artwork get the

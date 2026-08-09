@@ -6,8 +6,8 @@ package app.clearsms.ui.navigation
  * - pills are rendered in the [configured] order;
  * - duplicates are collapsed to their first occurrence;
  * - entries not in [all] (unknown, or values removed in a later version) are
- *   dropped — never a crash;
- * - anything [all] contains that [configured] omits is appended at the end —
+ *   dropped - never a crash;
+ * - anything [all] contains that [configured] omits is appended at the end -
  *   never a hidden pill. An empty [configured] therefore yields [all]
  *   (the enum's declaration order) unchanged.
  */

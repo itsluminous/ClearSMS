@@ -23,7 +23,7 @@ data class ComposedBody(
  * Safety invariants (see the ReDoS regression tests around the rule engine):
  * - literal context is regex-escaped; whitespace runs become `\s+`, digit runs
  *   become bounded `\d{n,m}` groups,
- * - NEVER emits a leading/trailing `.*` / `[\s\S]*` catch-all wrapper — the
+ * - NEVER emits a leading/trailing `.*` / `[\s\S]*` catch-all wrapper - the
  *   engine uses `find()` so wrappers only add catastrophic backtracking risk,
  * - never emits unbounded nested quantifiers.
  */

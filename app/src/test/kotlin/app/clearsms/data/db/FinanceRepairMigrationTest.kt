@@ -14,7 +14,7 @@ import org.robolectric.RobolectricTestRunner
  *   RD-as-EMI mis-typing is corrected, thank-you-for-payment junk is gone),
  * - accounts are canonicalized ("SBI" == "State Bank of India"), blank bank
  *   names are backfilled from the account's transactions, and duplicates
- *   merge into one row — while a last-4 shared by two REAL institutions
+ *   merge into one row - while a last-4 shared by two REAL institutions
  *   stays two rows,
  * - transactions get the same names so they keep pointing at the survivor.
  */
@@ -66,7 +66,7 @@ class FinanceRepairMigrationTest {
         val db = helper.runMigrationsAndValidate(TEST_DB, 5, true)
 
         db.query("SELECT type, totalDue, label, rawSmsId FROM reminders").use { cursor ->
-            // Only the RD reminder survives — re-typed, with amount and label.
+            // Only the RD reminder survives - re-typed, with amount and label.
             assertThat(cursor.count).isEqualTo(1)
             assertThat(cursor.moveToFirst()).isTrue()
             assertThat(cursor.getString(0)).isEqualTo("DEPOSIT")
@@ -144,7 +144,7 @@ class FinanceRepairMigrationTest {
     @Test
     fun `migrate 4 to 5 keeps a last-4 shared by two institutions as two accounts`() {
         helper.createDatabase(TEST_DB, 4).apply {
-            // The same last-4 exists at a wallet AND at a bank — last-4 alone
+            // The same last-4 exists at a wallet AND at a bank - last-4 alone
             // must never be the merge key.
             insertMessage(
                 this,

@@ -13,7 +13,7 @@ import javax.inject.Singleton
  * Seam over SAF tree-document access so [BackupWorker] can be unit-tested
  * without a real documents provider. One store targets one granted backup
  * tree; [openForWrite] returns null when the tree is gone or the persisted
- * permission was revoked — the worker's failure signal.
+ * permission was revoked - the worker's failure signal.
  */
 interface BackupDocumentStore {
     /**
@@ -30,7 +30,7 @@ interface BackupDocumentStore {
 }
 
 /**
- * Production [BackupDocumentStore] over [DocumentsContract] (framework API —
+ * Production [BackupDocumentStore] over [DocumentsContract] (framework API -
  * no androidx.documentfile dependency): looks the child up by display name
  * among the tree's children, creates it when missing, and opens it in "wt"
  * (write-truncate) mode so a shorter new backup can never leave trailing

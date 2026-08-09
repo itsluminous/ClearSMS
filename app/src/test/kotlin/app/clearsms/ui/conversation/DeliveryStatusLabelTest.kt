@@ -6,7 +6,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 /**
- * The bubble status line maps each persisted [DeliveryStatus] to its label —
+ * The bubble status line maps each persisted [DeliveryStatus] to its label -
  * and a message with no delivery report (delivery reports off, or the
  * carrier sent none) reads "Sent", never "Delivered".
  */

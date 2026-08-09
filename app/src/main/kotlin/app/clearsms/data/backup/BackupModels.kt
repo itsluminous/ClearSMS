@@ -200,7 +200,7 @@ internal fun TransactionEntity.toBackup() =
 
 /**
  * Maps a transaction row, or returns null (counted as skipped) when the
- * debit/credit type is unknown — guessing a direction would corrupt the
+ * debit/credit type is unknown - guessing a direction would corrupt the
  * finance dashboard, so the row is dropped instead.
  */
 internal fun TransactionBackup.toEntityOrNull(issues: RestoreIssues): TransactionEntity? {

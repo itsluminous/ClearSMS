@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * SMS-derived TOTAL credit limits populate accounts.creditLimit — the sole
+ * SMS-derived TOTAL credit limits populate accounts.creditLimit - the sole
  * source of the figure now that the manual "Set card limit" entry is gone.
  * No transaction row may ever come out of a limit statement, and a
  * marketing limit-increase OFFER must leave the account untouched.

@@ -8,7 +8,7 @@ import android.telephony.PhoneNumberUtils
  * Alphanumeric TRAI sender ids ("VM-HDFCBK", "AD-AMAZON", "AX-AMZNIN") and
  * short codes ("56767") are one-way routes: replying to them is impossible,
  * so the conversation composer and the notification REPLY action are hidden
- * for such senders. This is the single shared predicate — the notification
+ * for such senders. This is the single shared predicate - the notification
  * planner delegates here instead of keeping its own copy.
  */
 object SenderRepliability {

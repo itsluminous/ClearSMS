@@ -15,7 +15,7 @@ data class SenderDisplay(
 /**
  * Resolves how a sender is displayed, in priority order:
  *
- * 1. a saved contact (name + photo) — people always win,
+ * 1. a saved contact (name + photo) - people always win,
  * 2. the bundled sender ID directory (brand name),
  * 3. the raw address unchanged.
  *

@@ -16,14 +16,14 @@ import javax.inject.Inject
  * Single-activity, edge-to-edge entry point.
  *
  * Extends [FragmentActivity] (itself a ComponentActivity, so Compose is
- * unaffected) because `androidx.biometric.BiometricPrompt` — the device-lock
- * gate behind Settings → Privacy → Show balance — requires a fragment host.
+ * unaffected) because `androidx.biometric.BiometricPrompt` - the device-lock
+ * gate behind Settings → Privacy → Show balance - requires a fragment host.
  *
  * Intent triage (see [IntentTriage]):
  * - ACTION_SEND / ACTION_SENDTO with sms:/smsto:/mms:/mmsto: URIs (default
  *   SMS app requirement) open the compose screen with recipient/body.
  * - ACTION_VIEW `clearsms://` deep links (notification taps) are handled by
- *   the navigation graph only — they must never leak into the compose screen.
+ *   the navigation graph only - they must never leak into the compose screen.
  * - Hostile or malformed deep links from third-party apps are stripped before
  *   they reach the navigation controller.
  */
@@ -70,7 +70,7 @@ internal data class SendIntent(
  * Pure intent-classification helpers for [MainActivity], extracted for
  * testability.
  *
- * Security note: everything arriving here is untrusted — the activity is
+ * Security note: everything arriving here is untrusted - the activity is
  * exported (launcher + default-SMS-app contract), so a co-installed app can
  * send arbitrary actions, schemes, and extras. Nothing in this object may
  * trigger a send or navigation by itself; it only classifies and validates.

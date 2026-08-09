@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * Round-T: bill reminders render through the SAME parsed notification as
- * transactions — informational blue treatment, NO sign (a bill is money
+ * transactions - informational blue treatment, NO sign (a bill is money
  * owed, not money moved), the invariant-checked TOTAL as the headline with
  * the minimum secondary, and the due date visible on the detail line.
  */
@@ -87,7 +87,7 @@ class BillNotificationContentTest {
     }
 
     @Test
-    fun `a debit still renders signed and red — bills changed nothing for transactions`() {
+    fun `a debit still renders signed and red - bills changed nothing for transactions`() {
         val content = build(mapOf("amount" to "1299.0", "type" to "debit", "merchant" to "Swiggy"))!!
         assertThat(content.kind).isEqualTo(Content.Kind.DEBIT)
         assertThat(content.title).isEqualTo("− ₹1,299")

@@ -22,7 +22,7 @@ python3 scripts/audit_rule_coverage.py --from-device
 
 Read the **unmatched** groups and the **`generic-*` rule breakdown**: those are the
 gaps. Digits are masked by default, but the output can still contain names and
-URLs — read it before pasting it anywhere. Full instructions, including enabling
+URLs - read it before pasting it anywhere. Full instructions, including enabling
 USB debugging, are in the README under
 *Finding missing rules using your own messages*.
 
@@ -37,10 +37,10 @@ Before touching a regex, answer three questions:
 |---|---|
 | Did money actually move? | a transaction (`sub_category: transaction`) |
 | Is money *going to be* owed? | a reminder (`bill`, and a `due_date`) |
-| Neither — it is a notice? | `important` with a descriptive sub-category |
+| Neither - it is a notice? | `important` with a descriptive sub-category |
 
 Getting this wrong is the most common mistake. A "your bill of ₹1,178 is due on
-10-Jun" message is a **reminder**, not a transaction — nothing has been paid yet.
+10-Jun" message is a **reminder**, not a transaction - nothing has been paid yet.
 A "payment failed" message is **neither**: no money moved.
 
 ## 3. Pick the file
@@ -53,7 +53,7 @@ rules/india/wallets/paytm.json       rules/india/utilities/electricity.json
 rules/india/ecommerce/amazon.json    rules/india/generic/transactions.json
 ```
 
-Add to an existing institution file when one exists — one institution per file,
+Add to an existing institution file when one exists - one institution per file,
 with related debit/credit/balance rules grouped together. Only create a new file
 for a genuinely new institution.
 
@@ -101,7 +101,7 @@ Points worth copying:
   amount and handles `1,23,456.78` itself. Same for `due_date`, `merchant` and
   `type`. See *Typed extracts* in CONTRIBUTING.md.
 - **`guards_none` beats hand-rolled exclusions.** `["otp_mention"]` is better than
-  `body_must_not_contain: ["OTP","otp"]` — the guard is maintained centrally and
+  `body_must_not_contain: ["OTP","otp"]` - the guard is maintained centrally and
   already knows the phrasings. Guard ids come from `rules/guards.json` (the
   app's own guards) and `rules/rule_guards.json` (guards written for rules to
   use, such as `otp_mention`).
@@ -111,15 +111,15 @@ Points worth copying:
 ## 5. Write patterns that cannot hang the app
 
 This matters more than it sounds. Rule patterns run against **every incoming
-SMS**, and a badly shaped regex does not merely run slowly — it can hang for
+SMS**, and a badly shaped regex does not merely run slowly - it can hang for
 minutes. This project shipped one once: a pattern wrapped in `.*` took **423
 seconds** on a single long message. Patterns are now validated at load and a
 pattern breaking these rules is rejected and logged:
 
 - **No leading or trailing `.*` / `[\s\S]*`.** The engine already searches
   anywhere in the body, so wrappers add nothing and are what caused the 423 s
-  bug. Write `debited\s+from` — never `.*debited.*from.*`.
-- **No nested unbounded quantifiers** — no `(\d+)*`, `(\s*\w*)+`.
+  bug. Write `debited\s+from` - never `.*debited.*from.*`.
+- **No nested unbounded quantifiers** - no `(\d+)*`, `(\s*\w*)+`.
 - **Bound your gaps.** Use `[^\n]{0,40}?` rather than `.*` between two anchors.
 - **No variable-length lookbehind**, and `(?i)` is the only inline flag.
 - Escape literals: `A/c`, `Rs\.`, `\$`.
@@ -140,7 +140,7 @@ coverage went up rather than sideways.
 
 **It does not steal other messages.** The most damaging rules are over-broad
 ones. Check a near-miss deliberately: for the rule above, an *OTP* message from
-HDFC mentioning "debited" must not match — that is what `guards_none` is for.
+HDFC mentioning "debited" must not match - that is what `guards_none` is for.
 
 If you can run the app's tests, add a fixture to the matching
 `app/src/test/kotlin/app/clearsms/data/rules/*RulesTest.kt`, using a **synthetic**
@@ -161,7 +161,7 @@ The app ships one merged file. After editing anything under `rules/`:
 python3 scripts/audit_rule_coverage.py corpus.jsonl   # validates ids/patterns
 ```
 
-`app/src/main/assets/default_rules.json` must be the union of `rules/**` — a unit
+`app/src/main/assets/default_rules.json` must be the union of `rules/**` - a unit
 test enforces this, so commit both your rule file and the regenerated asset.
 
 ## 8. Open the PR
@@ -172,7 +172,7 @@ Include:
 - a **redacted** sample (mask digits as `X`; strip names, emails, order refs);
 - the coverage numbers before and after, if you ran the audit.
 
-Never include a real account number, phone number, balance or name — in the rule,
+Never include a real account number, phone number, balance or name - in the rule,
 the tests, or the PR description. Rules must contain only generic patterns and
 public brand names.
 
@@ -200,4 +200,4 @@ amount grammar, date-format normalization, merchant cleanup, how competing
 reminder types are scored, transaction de-duplication, and the guardrails that
 decide what becomes an account. Rules supply **knowledge**; the app supplies
 **algorithms and safety**. If a fix seems to need one of those changed, say so in
-an issue — it is a code change, not a rule change.
+an issue - it is a code change, not a rule change.

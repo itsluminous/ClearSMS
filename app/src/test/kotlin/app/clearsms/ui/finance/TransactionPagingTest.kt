@@ -32,7 +32,7 @@ class TransactionPagingTest {
     fun `page satisfied when limit or end of data reached`() {
         assertThat(TransactionPaging.pageSatisfied(requested = 60, shown = 60, total = 95)).isTrue()
         assertThat(TransactionPaging.pageSatisfied(requested = 60, shown = 30, total = 95)).isFalse()
-        // Fewer rows than the limit exist — end of data satisfies the page.
+        // Fewer rows than the limit exist - end of data satisfies the page.
         assertThat(TransactionPaging.pageSatisfied(requested = 120, shown = 95, total = 95)).isTrue()
     }
 }

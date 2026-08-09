@@ -7,7 +7,7 @@ import java.time.LocalDate
 class DeliveryParserTest {
     private val parser = DeliveryParser()
 
-    /** The date of the SMS — relative phrases must resolve against THIS, not the clock. */
+    /** The date of the SMS - relative phrases must resolve against THIS, not the clock. */
     private val messageDate = LocalDate.of(2026, 7, 20)
 
     @Test
@@ -75,7 +75,7 @@ class DeliveryParserTest {
     fun `bank sender delivering a card via blue dart shows the courier not the bank`() {
         // Defect P1d: the SENDER is HDFC Bank; Blue Dart is the delivery
         // agent named in the body. The courier is what the Alerts card shows
-        // as the agent — the message itself remains the bank's.
+        // as the agent - the message itself remains the bank's.
         val result =
             parser.parse(
                 "VM-HDFCBK",

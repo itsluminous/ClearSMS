@@ -9,11 +9,11 @@ import java.util.logging.Logger
  * ("this rule does not apply if any listed guard matches the body").
  *
  * Two sources resolve, in order:
- * 1. the [GuardLibrary] — every parser guard id (`settled_payment`,
+ * 1. the [GuardLibrary] - every parser guard id (`settled_payment`,
  *    `statement_notice`, ...) is referencable from rules as-is;
  * 2. the rule-guard extension document (`rules/rule_guards.json`, mirrored
  *    at `app/src/main/assets/guards/rule_guards.json`; identity enforced by
- *    a unit test) — guards that exist purely for rules, like `otp_mention`,
+ *    a unit test) - guards that exist purely for rules, like `otp_mention`,
  *    which no Kotlin call site consults. Its id namespace is open: adding a
  *    guard here needs no code change, so shared negative knowledge (an OTP
  *    exclusion repeated across a hundred bank rules) lives in ONE editable

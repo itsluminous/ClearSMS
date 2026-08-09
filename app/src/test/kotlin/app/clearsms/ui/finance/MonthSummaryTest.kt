@@ -89,7 +89,7 @@ class MonthSummaryTest {
 
     @Test
     fun `credits onto a credit card are never income`() {
-        // Bill payment received, refund, cashback — all the user's own money
+        // Bill payment received, refund, cashback - all the user's own money
         // or a reduction of spend already counted as "out".
         assertThat(MonthSummary.isExcluded(tx(161_849.0, TransactionType.CREDIT, account = "5106", merchant = null), cards)).isTrue()
         assertThat(MonthSummary.isExcluded(tx(49_499.0, TransactionType.CREDIT, account = "5106", merchant = "AMAZON"), cards)).isTrue()
@@ -132,15 +132,15 @@ class MonthSummaryTest {
         // activity.
         val monthTxs =
             listOf(
-                // Genuine activity — must be counted:
+                // Genuine activity - must be counted:
                 tx(75_000.0, TransactionType.CREDIT, account = "0502", merchant = "SALARY"),
                 tx(40_303.0, TransactionType.DEBIT, account = "5106", merchant = "Flipkart In"),
                 tx(13_000.0, TransactionType.DEBIT, merchant = "RD Installment", category = MerchantCategory.INVESTMENT),
-                // The triple-counted card bill — all excluded:
+                // The triple-counted card bill - all excluded:
                 tx(161_849.0, TransactionType.DEBIT, merchant = "CRED", category = MerchantCategory.TRANSFER),
                 tx(161_849.0, TransactionType.CREDIT, account = "5106", merchant = null),
                 tx(161_849.0, TransactionType.DEBIT, account = "5106", merchant = null),
-                // A transfer between the user's own accounts — excluded:
+                // A transfer between the user's own accounts - excluded:
                 tx(9_480.0, TransactionType.CREDIT, category = MerchantCategory.TRANSFER),
             )
         val totals = MonthSummary.compute(monthTxs, cards)

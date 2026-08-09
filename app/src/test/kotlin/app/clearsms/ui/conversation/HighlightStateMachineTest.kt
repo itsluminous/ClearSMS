@@ -7,7 +7,7 @@ import org.junit.Test
 /**
  * The scroll-to-and-highlight state machine. The paged conversation loads
  * asynchronously, so the machine must keep waiting across page loads until
- * the target message is actually in the loaded window — and must fire the
+ * the target message is actually in the loaded window - and must fire the
  * scroll exactly once.
  */
 class HighlightStateMachineTest {

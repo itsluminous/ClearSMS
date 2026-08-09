@@ -9,7 +9,7 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * A malformed `SMS_DELIVER` broadcast (missing, null or garbage PDUs) must
- * decode to zero parts — never throw — because [SmsReceiver.onReceive] runs
+ * decode to zero parts - never throw - because [SmsReceiver.onReceive] runs
  * the decode directly and a throw there crashes the process on every
  * redelivery of the same message.
  */

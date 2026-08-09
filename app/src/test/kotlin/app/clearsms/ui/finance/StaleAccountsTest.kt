@@ -20,7 +20,7 @@ class StaleAccountsTest {
     }
 
     @Test
-    fun `exactly a year is still active — staleness is strictly over`() {
+    fun `exactly a year is still active - staleness is strictly over`() {
         assertThat(StaleAccounts.isStale(now - year, now)).isFalse()
     }
 

@@ -89,7 +89,7 @@ import app.clearsms.ui.navigation.orderedPills
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 
-/** Finance dashboard: monthly net, then one pill-selected section — accounts, credit cards or latest transactions. */
+/** Finance dashboard: monthly net, then one pill-selected section - accounts, credit cards or latest transactions. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
@@ -317,13 +317,13 @@ private fun LazyListScope.accountsSection(
 }
 
 /**
- * One bank account / wallet row — shared by the active and older lists.
+ * One bank account / wallet row - shared by the active and older lists.
  *
  * Layout contract: the trailing amount measures FIRST at its natural width
  * (never squeezed), the name column takes the remaining width and wraps to
  * at most [FinanceRowLayout.MAX_NAME_LINES] lines before ellipsizing. The
  * per-row eye and open-in-new buttons are gone: revealing is screen-level
- * (top-bar eye) and the whole card opens the account detail — the source
+ * (top-bar eye) and the whole card opens the account detail - the source
  * message stays reachable via long-press and from the detail screen's rows.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -388,7 +388,7 @@ private fun BankAccountCard(
                     revealed = revealed,
                 )
             } ?: Text(
-                text = "—",
+                text = "-",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -523,7 +523,7 @@ private fun LazyListScope.transactionsSection(
     }
 }
 
-/** Prepaid recharges only — same row rendering as the transactions pill. */
+/** Prepaid recharges only - same row rendering as the transactions pill. */
 private fun LazyListScope.rechargesSection(
     state: FinanceUiState,
     onOpenTransaction: (TransactionEntity) -> Unit,
@@ -651,15 +651,15 @@ private fun SectionHeader(
  * The big monthly figure, now interactive: tapping expands an inline
  * breakdown (money in / money out with counts) in place. Expansion was chosen
  * over navigating to the transactions list because the list has no
- * month-scoped filter — jumping there would show *latest* transactions, not
- * "this month" — and expanding in place leaves the persisted pill selection
+ * month-scoped filter - jumping there would show *latest* transactions, not
+ * "this month" - and expanding in place leaves the persisted pill selection
  * untouched, so the banner never fights the pill row's own state.
  *
  * The totals exclude self-transfers and credit-card bill payments (see
  * [MonthSummary]); the expanded breakdown says so, with the excluded sum.
  *
  * When balances are gated this card also hosts the labelled reveal button
- * ([BalanceRevealCardButton]) right under the masked figure — the button
+ * ([BalanceRevealCardButton]) right under the masked figure - the button
  * consumes its own taps, so the card's expand tap and chevron are unaffected.
  */
 @Composable
@@ -681,7 +681,7 @@ private fun MonthSummaryCard(
     val amountColors = LocalSemanticAmountColors.current
     // The month net is a balance-like aggregate, so the privacy gate masks
     // it (and its in/out breakdown) along with account balances. Transaction
-    // counts stay visible — they carry no amounts.
+    // counts stay visible - they carry no amounts.
     val masked = BalanceMask.isMasked(gated, revealed)
     val creditsText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(credits)
     val debitsText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(debits)
@@ -820,7 +820,7 @@ private fun SummaryBreakdownRow(
 
 /**
  * One credit card. The headline figure is the issuer-reported AVAILABLE
- * LIMIT (see [CreditCardFigures.headline]) — never a fabricated ₹0 balance.
+ * LIMIT (see [CreditCardFigures.headline]) - never a fabricated ₹0 balance.
  * When both the total limit and the available limit are known, outstanding
  * (total − available) is shown as a secondary line and drives the
  * utilization bar. Tap opens the account detail; long-press opens the

@@ -13,7 +13,7 @@ import java.util.Locale
  * Precision rules:
  * - A reminder MUST carry a due date, and the due-context keyword must be
  *   anchored to that date ("due on <date>", "pay by <date>", ...). A bare
- *   "due"/"bill"/"expir" somewhere in the body is not enough — that gate
+ *   "due"/"bill"/"expir" somewhere in the body is not enough - that gate
  *   previously flooded Alerts with unrelated messages.
  * - Completed / settled events (payments received, thank-you-for-payment
  *   confirmations, refunds, reimbursement claims, debit/credit
@@ -21,14 +21,14 @@ import java.util.Locale
  *   premium or a due date.
  * - A reminder needs a payment OBLIGATION: marketing/investment pitches and
  *   voucher/coupon expiries are rejected outright (the `marketing_pitch`
- *   and `voucher` guards) — a date plus a financial-sounding word obligates
+ *   and `voucher` guards) - a date plus a financial-sounding word obligates
  *   nothing.
  * - The TYPE is decided by [ReminderTypeClassifier], which scores anchored
- *   evidence per type (see its KDoc table) instead of first-keyword-wins —
+ *   evidence per type (see its KDoc table) instead of first-keyword-wins -
  *   so identical bills from one biller always land in one bucket.
  *
  * Beyond the due date every reminder tries to carry the amount due (total
- * plus minimum where present — see [TOTAL_DUE_PATTERNS]) and a short human
+ * plus minimum where present - see [TOTAL_DUE_PATTERNS]) and a short human
  * [ParsedReminder.label] describing what the bill is for, falling back to a
  * digit-masked excerpt of the message when nothing structured is found.
  */
@@ -43,7 +43,7 @@ class ReminderParser {
         if (GuardLibrary.matches(GuardId.SETTLED_PAYMENT, body)) return null
         // A reminder needs a payment OBLIGATION on the user's own product.
         // Marketing pitches (investment upsells) and voucher/coupon expiries
-        // carry dates and financial words but obligate nothing — they must
+        // carry dates and financial words but obligate nothing - they must
         // never surface in Alerts.
         if (GuardLibrary.matches(GuardId.MARKETING_PITCH, body)) return null
         if (GuardLibrary.matches(GuardId.VOUCHER, body)) return null
@@ -140,7 +140,7 @@ class ReminderParser {
      * Short human description of what the reminder is for: a structured
      * extract (deposit reference, biller product, policy plan, card product,
      * subscription plan) when one is recognizable, else a digit-masked
-     * excerpt of the message — an excerpt is far better than a bare date.
+     * excerpt of the message - an excerpt is far better than a bare date.
      */
     private fun extractLabel(body: String): String? {
         structuredLabel(body)?.let { return clip(it) }
@@ -270,7 +270,7 @@ class ReminderParser {
         const val AMOUNT = "(?:INR\\.?|Rs\\.?|\\u20b9)\\s*(?:Dr\\.?\\s*)?([\\d,]+(?:\\.\\d{1,2})?)"
 
         /**
-         * Amount with the currency symbol OPTIONAL — for phrasings where banks
+         * Amount with the currency symbol OPTIONAL - for phrasings where banks
          * omit it after a very strong money anchor ("EMI DUE : 4131",
          * "Due: 1162.3"). The trailing `(?![-/])` stops a date's day being read
          * as the amount ("Due: 15-AUG-23" -> 15 is rejected), so this must only
@@ -281,7 +281,7 @@ class ReminderParser {
 
         /**
          * Due-context keywords anchored to a date. The keyword being merely
-         * present somewhere in the body is NOT a signal — "due" and "expir"
+         * present somewhere in the body is NOT a signal - "due" and "expir"
          * match too much unrelated text.
          */
         val DUE_DATE_ANCHORS =
@@ -300,7 +300,7 @@ class ReminderParser {
                 // be debited for Rs 59.00 on 03-Jul-26", "will be debited on
                 // 12/08/2026 from HDFC Bank Card", "will be debited from
                 // your bank a/c on 15-08-2026". Future tense IS the due
-                // signal — the debit has not happened yet, and the date is
+                // signal - the debit has not happened yet, and the date is
                 // when it will. Bounded gap; a Tata Neu/CRED collect request
                 // ("will be debited from your account. To authorise, click
                 // ...") carries no date and never anchors.
@@ -308,7 +308,7 @@ class ReminderParser {
             ).map { Regex("(?i)$it") }
 
         /**
-         * "Pay <up to 100 chars> by <date>" — gated on the body mentioning
+         * "Pay <up to 100 chars> by <date>" - gated on the body mentioning
          * "due". Dots are allowed in the gap (amounts like Rs 1,234.56 sit
          * between "Pay" and "by" in real card statements).
          */
@@ -339,7 +339,7 @@ class ReminderParser {
         val TOTAL_DUE_PATTERNS =
             listOf(
                 // "Total due Rs.15,240", "Total amount due: INR Dr. 4,255.00",
-                // "pay total due of Rs 4444.55" — and the statement style
+                // "pay total due of Rs 4444.55" - and the statement style
                 // where "due" only follows the MINIMUM line: "Total amt:
                 // INR  Dr. 12374.57". "due" is required after a bare "total"
                 // but optional once "amt"/"amount" anchors the phrase, so
@@ -366,7 +366,7 @@ class ReminderParser {
                 // and the variant with the amount AFTER the policy number,
                 // introduced by "of": "... policy no. H4847657 of Rs. 1250".
                 "(?:premium|policy)[^\\n]{0,120}?\\b(?:for|of)\\s+$AMOUNT",
-                // Upcoming autopay/standing-instruction debits — future tense,
+                // Upcoming autopay/standing-instruction debits - future tense,
                 // so this is an obligation, not a movement (the transaction
                 // parser rejects the same phrasing): "will be debited for
                 // Rs 59.00 on 03-Jul-26" and "INR 649.00 will be debited on
@@ -375,7 +375,7 @@ class ReminderParser {
                 "$AMOUNT\\s+will\\s+be\\s+debited\\b",
                 // "Bill amount Rs 890", "bill of Rs.2,340".
                 "bill\\s+(?:amount|of)\\s*:?\\s*$AMOUNT",
-                // "Your bill for JUL-26 on A/C xx1550 is INR 1178.82" — the
+                // "Your bill for JUL-26 on A/C xx1550 is INR 1178.82" - the
                 // amount stated with "is" after a bill/statement phrase. The
                 // gap is bounded and the currency must follow "is" directly,
                 // so an unrelated amount elsewhere in the body never binds.
@@ -383,7 +383,7 @@ class ReminderParser {
                 // "Amount Due" then the value (often on the next line):
                 // "Amount Due\nRs.4961 on HDFC Bank Credit Card 2863".
                 "\\bamount\\s+due\\s*:?\\s*$AMOUNT_LOOSE",
-                // "EMI DUE : 4131" — currency frequently omitted. Won't match
+                // "EMI DUE : 4131" - currency frequently omitted. Won't match
                 // "EMI Due date:" (no number follows the colon there).
                 "\\bEMI\\s+due\\s*:?\\s*$AMOUNT_LOOSE",
                 // Generic "Due: 1162.3" fallback. Colon REQUIRED (never matches
@@ -408,8 +408,8 @@ class ReminderParser {
 
         /**
          * Account/card tail. `\d*?` lets a LONG account number ("A/C
-         * 102017641550") yield its last 4 digits as the stored masked tail —
-         * the same shape other billers produce — without changing how short
+         * 102017641550") yield its last 4 digits as the stored masked tail -
+         * the same shape other billers produce - without changing how short
          * masked tails ("XX0266") are captured.
          */
         val ACCOUNT_REGEX =
@@ -419,23 +419,23 @@ class ReminderParser {
 
         // region label patterns
 
-        /** "RD 12345", "FD no 987654" — deposit reference. */
+        /** "RD 12345", "FD no 987654" - deposit reference. */
         val DEPOSIT_REF_REGEX = Regex("(?i)\\b(RD|FD)\\s*(?:no\\.?\\s*)?(\\d{3,})")
 
-        /** "Bill for your Airtel Mobile 98xxx" — the biller product. */
+        /** "Bill for your Airtel Mobile 98xxx" - the biller product. */
         val BILL_FOR_REGEX =
             Regex("(?i)bill\\s+for\\s+your\\s+([A-Za-z][A-Za-z ]{2,30}?)(?=\\s*(?:\\d|x{2,}|no\\b|number|is\\b|:|,|\\.))")
 
-        /** "your ACT Fibernet Broadband bill of Rs.X" — the biller product. */
+        /** "your ACT Fibernet Broadband bill of Rs.X" - the biller product. */
         val BILLER_BILL_OF_REGEX = Regex("(?i)your\\s+([A-Za-z][A-Za-z0-9 ]{2,34}?)\\s+bill\\s+of\\b")
 
-        /** "your <brand> policy <PLAN NAME> policy no H123" — the plan name. */
+        /** "your <brand> policy <PLAN NAME> policy no H123" - the plan name. */
         val POLICY_PLAN_REGEX = Regex("(?i)policy\\s+([A-Za-z][A-Za-z0-9 .&'-]{3,38}?)\\s+policy\\s+no\\b")
 
-        /** "for your <NAME> policy" — the policy descriptor. */
+        /** "for your <NAME> policy" - the policy descriptor. */
         val POLICY_FOR_REGEX = Regex("(?i)for\\s+your\\s+([A-Za-z][A-Za-z0-9 .&'-]{2,38}?)\\s+policy\\b")
 
-        /** "<Product> Credit Card" — the card product incl. bank. */
+        /** "<Product> Credit Card" - the card product incl. bank. */
         val CARD_PRODUCT_REGEX =
             Regex("(?i)(?:\\b(?:your|for|the|on)\\s+)?\\b([A-Z][A-Za-z ]{2,33}?)\\s+credit\\s+card\\b")
 
@@ -443,7 +443,7 @@ class ReminderParser {
         val PLAN_REGEX =
             Regex("(?i)your\\s+([A-Za-z][A-Za-z0-9 ]{2,30}?)\\s+(plan|subscription|membership|pack|postpaid)\\b")
 
-        /** "towards Autopay for YouTube," — the autopay payee. */
+        /** "towards Autopay for YouTube," - the autopay payee. */
         val AUTOPAY_PAYEE_REGEX =
             Regex("(?i)\\btowards\\s+Autopay\\s+for\\s+([A-Za-z][A-Za-z0-9 &.'-]{1,29}?)(?=[,.\\n]|$)")
 

@@ -40,12 +40,12 @@ object PlatformModule {
 
     /**
      * Last-line exception handler for the application scope. A SupervisorJob
-     * only stops failures from cancelling sibling jobs — it does NOT swallow
+     * only stops failures from cancelling sibling jobs - it does NOT swallow
      * an exception thrown by a root `launch`; without a handler it would
      * reach the thread's default handler and crash the process. Work in this
      * scope is triggered by incoming broadcasts (attacker-influenced data),
      * so an unexpected failure must degrade into a logged, dropped unit of
-     * work — never a crash of the user's default SMS app.
+     * work - never a crash of the user's default SMS app.
      */
     private fun ingestionExceptionHandler(): CoroutineExceptionHandler =
         CoroutineExceptionHandler { _, throwable ->

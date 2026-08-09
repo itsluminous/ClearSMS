@@ -6,7 +6,7 @@ import org.junit.Test
 /**
  * Attribution precedence: the account's OWN bank (named next to the account)
  * outranks a bank named in remittance narration, and the sender outranks a
- * mere mention — while the aggregator case (the body naming the real card's
+ * mere mention - while the aggregator case (the body naming the real card's
  * bank) keeps winning over the sending app.
  */
 class BankAttributionPrecedenceTest {
@@ -100,7 +100,7 @@ class BankAttributionPrecedenceTest {
     fun `cibil and cersai mentions of federal bank resolve as weak mentions only`() {
         // These notices merely MENTION the bank; nothing downstream may
         // create an account from them (proved end-to-end in the ingestion
-        // tests) — but the resolution itself must not claim an own-account
+        // tests) - but the resolution itself must not claim an own-account
         // match either. With an unrecognized sender the mention is all that
         // is left, which is fine for display purposes.
         val cibil =

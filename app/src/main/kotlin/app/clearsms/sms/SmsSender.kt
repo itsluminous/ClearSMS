@@ -27,7 +27,7 @@ import javax.inject.Singleton
  * The Room row is written with `isOutgoing = true` and
  * [DeliveryStatus.SENDING], plus the provider row's id as `systemSmsId`, so
  * [SmsSentReceiver] can record the radio's sent / delivery reports against
- * it — status survives restarts instead of living in screen state. Delivery
+ * it - status survives restarts instead of living in screen state. Delivery
  * report requests are gated on the user's delivery-reports setting.
  *
  * Long bodies are divided into parts and sent as one multipart message; every
@@ -85,7 +85,7 @@ class SmsSender
 
         /**
          * Hands the message to the radio. A synchronous throw is recorded as
-         * FAILED on the row and swallowed — the persisted status IS the
+         * FAILED on the row and swallowed - the persisted status IS the
          * failure signal callers observe (via [MessageDao.observeDeliveryStatus]).
          */
         private suspend fun dispatch(

@@ -13,7 +13,7 @@ import java.time.LocalDate
 
 /**
  * Typed rule extracts: the engine resolves each capture ONCE to a typed
- * value using the shared parsing algorithms — the type inferred from the
+ * value using the shared parsing algorithms - the type inferred from the
  * well-known extract key, or declared via `extract_types` where inference
  * would be wrong. Raw capture text is always preserved unchanged; a value
  * that fails to parse as its type degrades to raw-only; a rule declaring an

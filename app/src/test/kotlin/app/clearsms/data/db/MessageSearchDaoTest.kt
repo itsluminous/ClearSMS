@@ -76,7 +76,7 @@ class MessageSearchDaoTest {
         }
 
     @Test
-    fun `infix substrings do not match — prefix semantics`() =
+    fun `infix substrings do not match - prefix semantics`() =
         runBlocking<Unit> {
             dao.insert(message(1, "Salary credited"))
 

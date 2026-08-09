@@ -254,7 +254,7 @@ private fun ReminderCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     // Same avatar chain as the inbox: bundled logo → brand
-                    // tile → category glyph → letter, gated by the setting —
+                    // tile → category glyph → letter, gated by the setting -
                     // at the compact diameter so the logo sits level with
                     // the card's label text instead of dominating the row.
                     SenderAvatar(

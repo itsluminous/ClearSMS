@@ -19,7 +19,7 @@ import java.util.Formatter
 class StringFormatResourcesTest {
     private val valuesDir = File("src/main/res/values")
 
-    /** `%1$s`, `%2$d`, `%1$.2f` … — a positional argument reference. */
+    /** `%1$s`, `%2$d`, `%1$.2f` … - a positional argument reference. */
     private val positional = Regex("""%\d+\$[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]""")
 
     @Test

@@ -14,14 +14,14 @@ import java.io.File
  * Round-AA defect: an IRCTC verification message shaped "NNNNNN is OTP for
  * Mobile number verification of User ..." was filed as a plain service
  * update, not an OTP. Both the parser ([OtpParser]) and the generic OTP
- * rules already understood the leading-code shape (the round-T Axis fix) —
+ * rules already understood the leading-code shape (the round-T Axis fix) -
  * the miss was the body-less `irctc-info-01` sender catch-all (priority
  * 200) shadowing the generic OTP rules (priority ≤ 55). The fix follows
  * the established data-layer precedent: the catch-all now declares
  * `guards_none: ["otp_mention"]`, stepping aside whenever the body
  * mentions an OTP so the OTP rules can claim the message.
  *
- * All fixtures are SYNTHETIC — usernames, codes and timestamps are made up.
+ * All fixtures are SYNTHETIC - usernames, codes and timestamps are made up.
  */
 class IrctcOtpRulesTest {
     private val json = Json { ignoreUnknownKeys = true }

@@ -8,9 +8,9 @@ import java.io.File
  * Source-level invariants for the de-cramped Finance rows (in the spirit of
  * BalancePrivacyConventionTest):
  *
- * 1. The reveal control is SCREEN-level — the labelled button in the
+ * 1. The reveal control is SCREEN-level - the labelled button in the
  *    Finance summary card ([BalanceRevealCardButton]) and one top-bar eye
- *    on the account detail — never one per row. The reveal state machine
+ *    on the account detail - never one per row. The reveal state machine
  *    machine itself is unchanged (see BalancePrivacyViewModelTest); this
  *    pins that every row reads the same shared (gated, revealed) pair.
  * 2. No per-row open-in-new icon: the card itself navigates, and the source

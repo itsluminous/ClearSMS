@@ -8,7 +8,7 @@ import org.junit.Test
 /**
  * Balance-only statement parsing: state reported, no money moved. The exact
  * user-reported HDFC shape previously matched zero rules AND the parser's
- * balance regex — these tests pin every phrasing the statement parser must
+ * balance regex - these tests pin every phrasing the statement parser must
  * recognize, and the near-misses it must leave to the transaction path.
  */
 class BalanceStatementParserTest {

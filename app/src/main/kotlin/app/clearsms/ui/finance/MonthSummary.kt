@@ -30,28 +30,28 @@ data class MonthTotals(
  * of them counted the same money two or three times (observed on a real
  * inbox: one card bill inflated the month by ~₹4.8L across three rows).
  *
- * Excluded from the totals — never from the transaction list:
+ * Excluded from the totals - never from the transaction list:
  * 1. [MerchantCategory.TRANSFER] rows, either direction. Transfers between
  *    the user's own accounts and payments routed via intermediaries (CRED,
  *    UPI card-bill flows) move money, they are not spend or income.
  * 2. CREDITS onto a credit-card account. A card is never paid BY someone
  *    else's money: these are the user's own bill payments (already a bank
  *    debit or a TRANSFER), refunds of spends already counted as "out", or
- *    cashback — none of them income.
+ *    cashback - none of them income.
  * 3. Merchant-less DEBITS on a credit-card account. Genuine card purchases
  *    always carry the merchant from the "Spent … at X" alert; a debit row
  *    on a card with no merchant is a bill-due / statement figure that
  *    leaked in as a transaction, not money moving.
  *
  * Deliberately still counted: investment contributions (SIP/RD/NPS) as
- * "out" — money genuinely left the account this month even if it bought an
- * asset — and ordinary card spends (real expenditure at a merchant).
+ * "out" - money genuinely left the account this month even if it bought an
+ * asset - and ordinary card spends (real expenditure at a merchant).
  */
 object MonthSummary {
     /**
      * Identity of the known credit cards for exclusion checks. Keyed by
      * account row id (for linked transactions) plus the exact
-     * (last-4, bank) pair (for unlinked legacy rows) — never the last-4
+     * (last-4, bank) pair (for unlinked legacy rows) - never the last-4
      * alone, which would misclassify a savings transaction whose tail a
      * card at another bank happens to share.
      */

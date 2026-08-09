@@ -26,26 +26,26 @@ interface SentSmsSource {
 
 /**
  * v6→v7 backfill: the schema change adds `messages.isOutgoing` (DEFAULT 0)
- * and `messages.deliveryStatus`, but every pre-upgrade row — including
- * messages the user sent — defaults to incoming, which would render the
+ * and `messages.deliveryStatus`, but every pre-upgrade row - including
+ * messages the user sent - defaults to incoming, which would render the
  * whole history left-aligned. The system SMS provider knows the truth
  * (`type` = 2 marks sent rows), so this reconciles against it:
  *
- * 1. **By stored provider id** — imported rows carry `systemSmsId`; any row
+ * 1. **By stored provider id** - imported rows carry `systemSmsId`; any row
  *    whose id appears in the provider's sent box becomes outgoing.
- * 2. **By exact sender + timestamp + body** — replies sent from the app
+ * 2. **By exact sender + timestamp + body** - replies sent from the app
  *    before this release were persisted without `systemSmsId`, but with the
  *    same address, body and millisecond timestamp as their provider row.
  *
  * Matched rows get `deliveryStatus` SENT, or DELIVERED when the provider row
- * carries a completed delivery report. Rows matching neither pass — and
- * everything when the provider is unreadable — keep the column defaults and
+ * carries a completed delivery report. Rows matching neither pass - and
+ * everything when the provider is unreadable - keep the column defaults and
  * stay incoming: the safe, explicit fallback.
  *
  * Room instantiates this spec itself; the provider hook is the static
  * [sentSmsSource] (assigned before the production database is built) rather
  * than a `@ProvidedAutoMigrationSpec` constructor parameter, because a
- * provided spec must be handed to EVERY database build — including the many
+ * provided spec must be handed to EVERY database build - including the many
  * in-memory builders across the test suite that never migrate. Unset (as in
  * those tests) the backfill is a no-op.
  */

@@ -15,7 +15,7 @@ class AvatarGlyphVisibilityTest {
     @Test
     fun `badge glyph is independent of the rich-avatars setting`() {
         // Every avatar style the setting toggle can produce for the same
-        // sender resolves the same badge input — no brand data is available
+        // sender resolves the same badge input - no brand data is available
         // with the setting off, so the message-derived glyph must carry.
         for (rich in richStates) {
             assertThat(avatarBadgeGlyph(brandCategory = null, glyph = BrandGlyph.BANK))

@@ -36,7 +36,7 @@ class TransactionAttributionFixesTest {
     @Test
     fun `foreign currency spend keeps the foreign amount and records the currency`() {
         val result = parser.parse("AXISBK", axisUsdSpend)
-        // The amount is the USD figure — NOT the INR available limit.
+        // The amount is the USD figure - NOT the INR available limit.
         assertThat(result!!.amount).isEqualTo(40.95)
         // "Avl Limit" is credit headroom, never a balance.
         assertThat(result.balance).isNull()

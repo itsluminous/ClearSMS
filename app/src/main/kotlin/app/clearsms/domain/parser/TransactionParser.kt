@@ -20,7 +20,7 @@ class TransactionParser {
         // A FAILED payment moved no money. Its narration routinely carries
         // completed-tense verbs ("done", "if debited") that satisfy the
         // debit heuristics, so failure language rejects the whole message
-        // up front — no transaction row, ever. Refund credits arrive as
+        // up front - no transaction row, ever. Refund credits arrive as
         // their own later message and parse on their own.
         if (isFailedPayment(body)) return null
         // A statement / bill notice ("Statement is sent...", "E-statement of
@@ -31,7 +31,7 @@ class TransactionParser {
         // debit/credit verb and the message stays a reminder only.
         val effectiveBody = GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body)
         // "Payment of INR X ... is due (on <date>)" announces a FUTURE
-        // obligation — a bill reminder, never a completed debit. The trailing
+        // obligation - a bill reminder, never a completed debit. The trailing
         // "Ignore if paid" advisory carries a completed-tense verb ("paid")
         // that satisfies the debit heuristics, so the whole notice is
         // rejected up front; the reminder pipeline extracts the total /
@@ -91,7 +91,7 @@ class TransactionParser {
 
     /**
      * Parses a standalone balance statement ("Available Bal in HDFC Bank
-     * A/c XX8709 as on yesterday:27-JUL-26 is INR 40,194.56") — state
+     * A/c XX8709 as on yesterday:27-JUL-26 is INR 40,194.56") - state
      * reported, no money moved. Returns null whenever the body carries a
      * real transaction: there the balance is a secondary field of the
      * transaction, never a balance-only update. The bank survives only when
@@ -119,7 +119,7 @@ class TransactionParser {
     }
 
     /**
-     * Parses a TOTAL credit-limit statement — the issuer confirming what the
+     * Parses a TOTAL credit-limit statement - the issuer confirming what the
      * card's overall limit now is ("The credit limit for your ... Credit
      * Card 1234X5678 has been changed from INR 100000 to INR 150000",
      * "Credit Limit Increased! ... Your new limit is ₹150000", "Total
@@ -160,7 +160,7 @@ class TransactionParser {
 
     /**
      * Masked-card tail for limit statements. The inline-masked shape
-     * "Credit Card 4375X9012" (BIN, mask char, tail — no separators) must
+     * "Credit Card 4375X9012" (BIN, mask char, tail - no separators) must
      * yield the LAST digit group; the generic account regex would capture
      * the BIN. Falls back to the shared tail extraction otherwise.
      */
@@ -171,7 +171,7 @@ class TransactionParser {
     /**
      * True for statement / bill notices ("Statement is sent to ...",
      * "E-statement ... has been mailed", "Statement is generated") and for
-     * bill-due notices ("Payment of INR X ... is due on <date>") — these
+     * bill-due notices ("Payment of INR X ... is due on <date>") - these
      * report money OWED, not money moved, so they must never yield a
      * transaction, from the parser OR from rule extracts.
      */
@@ -180,7 +180,7 @@ class TransactionParser {
 
     /**
      * True when the body reports a FAILED / declined / unsuccessful payment.
-     * No money moved, so such a message must never yield a transaction —
+     * No money moved, so such a message must never yield a transaction -
      * from the parser OR from rule extracts. (If the amount was provisionally
      * debited, the refund arrives as its own message and parses then.)
      */
@@ -210,8 +210,8 @@ class TransactionParser {
     /**
      * Picks the earlier of the first debit / first credit keyword occurrence.
      * Future / conditional phrasings ("will be deducted", "shall be
-     * charged") describe money that has NOT moved yet — an upcoming premium
-     * or standing instruction is a reminder, never a transaction — so those
+     * charged") describe money that has NOT moved yet - an upcoming premium
+     * or standing instruction is a reminder, never a transaction - so those
      * matches are skipped entirely.
      */
     private fun detectType(body: String): TransactionType? {
@@ -231,8 +231,8 @@ class TransactionParser {
      *
      * 1. The card-network template "Txn Rs.X / On <Bank> Card <n> / At
      *    <merchant/VPA>". Issuers only send this shape for OUTGOING
-     *    authorizations — incoming money always announces itself with an
-     *    explicit verb ("credited", "refund", "payment received") — so a
+     *    authorizations - incoming money always announces itself with an
+     *    explicit verb ("credited", "refund", "payment received") - so a
      *    verbless card Txn at a merchant is money out: DEBIT.
      * 2. A biller confirming "payment of Rs.X ... successful/done/completed":
      *    the user paid out. (Payments RECEIVED say "received", an explicit
@@ -262,7 +262,7 @@ class TransactionParser {
 
     /**
      * Account type implied by the body's own wording ("credit card",
-     * "wallet") — shared with rule-derived transactions, so a rule that
+     * "wallet") - shared with rule-derived transactions, so a rule that
      * matches a card spend the parser's verbs miss still lands on the
      * card, not on a phantom savings account.
      */
@@ -272,7 +272,7 @@ class TransactionParser {
         when {
             // Money spent FROM a wallet ("from Reimbursement Wallet linked to
             // your Pluxee Card") is a wallet transaction even though a card
-            // number is quoted — the card is just the wallet's plastic.
+            // number is quoted - the card is just the wallet's plastic.
             WALLET_SOURCE_REGEX.containsMatchIn(body) -> AccountType.WALLET
             CREDIT_CARD_REGEX.containsMatchIn(body) -> AccountType.CREDIT_CARD
             WALLET_REGEX.containsMatchIn(body) -> AccountType.WALLET
@@ -281,7 +281,7 @@ class TransactionParser {
 
     /**
      * Masked-card tail. Grouped formats ("4315-81XX-XXXX-4001") must yield
-     * the LAST group — the generic account regex would capture the first
+     * the LAST group - the generic account regex would capture the first
      * four digits (the BIN), attributing the payment to a card that does
      * not exist.
      */
@@ -298,7 +298,7 @@ class TransactionParser {
             if (URL_START_REGEX.containsMatchIn(candidate)) continue
             // "Click <url> to know the transaction status": a "to"/"at" that
             // directly follows a link introduces an instruction, never a
-            // merchant. Guard both ways — a URL right before the preposition,
+            // merchant. Guard both ways - a URL right before the preposition,
             // and a candidate that starts with an instruction verb.
             val precedingWindow = body.substring(maxOf(0, match.range.first - URL_LOOKBEHIND), match.range.first)
             if (PRECEDING_URL_REGEX.containsMatchIn(precedingWindow)) continue
@@ -322,7 +322,7 @@ class TransactionParser {
     /**
      * Merchant from its own segment in the multi-line card-spend shape:
      * "Spent <CUR> <amt> / <Bank> Card no. XX#### / <timestamp> /
-     * <MERCHANT>" — no preposition ever precedes the merchant there.
+     * <MERCHANT>" - no preposition ever precedes the merchant there.
      * Segments are separated by newlines OR by a "/" adjacent to whitespace
      * (both delivery formats exist in the wild); a slash embedded in a date
      * or phone number ("12/07/26", "18002586161/SMS") never splits.
@@ -353,12 +353,12 @@ class TransactionParser {
      * aggregator/processor prefix from what follows:
      *
      * - "PTM*ZOMATO" / "RAZ*Zomato": a REAL merchant follows the star. The
-     *   token is kept WHOLE, verbatim — the star is a separator, never a
+     *   token is kept WHOLE, verbatim - the star is a separator, never a
      *   truncation boundary. (The part after the star is the meaningful
      *   merchant; the whole token is kept because it is what the statement
      *   shows and what the user asked to see.)
      * - "UBER * PEND": a STATUS tail (PEND/PENDING/POS/ECOM) follows the
-     *   star — noise, stripped; the merchant is the part before it,
+     *   star - noise, stripped; the merchant is the part before it,
      *   normalized from SHOUTING-CASE ("UBER * PEND" -> "Uber").
      */
     private fun cleanCardNetworkNoise(line: String): String? {
@@ -384,7 +384,7 @@ class TransactionParser {
     }
 
     /**
-     * Human descriptor from an "Info:" narration field — "Info:
+     * Human descriptor from an "Info:" narration field - "Info:
      * XXXXXXXXXX6894- RD Installment-Jul 2026" -> "RD Installment". Used
      * only when no real merchant exists: a deposit installment titled "RD
      * Installment" beats a title showing the bank's own name.
@@ -404,7 +404,7 @@ class TransactionParser {
      * null when nothing presentable remains. Applied to EVERY rule-supplied
      * merchant extract as well as the parser's own "Info:" narration, so a
      * raw capture like "XXXXXXXXXX6894- RD Installment-Jul 2026" always
-     * becomes "RD Installment" — regardless of whether a bundled rule or the
+     * becomes "RD Installment" - regardless of whether a bundled rule or the
      * parser produced it. Clean names ("Uber", "HDFC Flexi Cap Fund") pass
      * through unchanged.
      */
@@ -418,7 +418,7 @@ class TransactionParser {
                 .trim()
         if (descriptor.length < 2 || !descriptor.first().isLetter()) return null
         // A leftover long digit run means the field was a reference, not a
-        // description — never surface that as a title.
+        // description - never surface that as a title.
         if (LONG_DIGIT_RUN_REGEX.containsMatchIn(descriptor)) return null
         return descriptor
     }
@@ -450,7 +450,7 @@ class TransactionParser {
 
         /**
          * "Avl Limit: INR 286368.5" / "Avl Lmt INR 98,701.00" / "Available
-         * Credit Limit is Rs.40,000" — credit headroom, not an amount. The
+         * Credit Limit is Rs.40,000" - credit headroom, not an amount. The
          * captured figure feeds [ParsedTransaction.availableLimit]; the
          * matched span is also excluded from amount detection. Phrasings per
          * the audited device corpora: avl/avbl/available, optional "credit",
@@ -469,7 +469,7 @@ class TransactionParser {
 
         /**
          * "credit limit for your ... Card ... has been changed from INR X to
-         * INR Y" — the NEW total is the second amount (after "to").
+         * INR Y" - the NEW total is the second amount (after "to").
          */
         val TOTAL_LIMIT_CHANGED_REGEX =
             Regex(
@@ -480,7 +480,7 @@ class TransactionParser {
 
         /**
          * "Your new limit is ₹150000" after a processed enhancement. The
-         * currency marker tolerates "?" — a common mojibake of "₹" in real
+         * currency marker tolerates "?" - a common mojibake of "₹" in real
          * issuer SMS ("Your new limit is ?1500000").
          */
         val TOTAL_LIMIT_NEW_REGEX =
@@ -497,7 +497,7 @@ class TransactionParser {
                     "(?:is|:|of)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
             )
 
-        /** "Rs. XX lacs/lakhs" — a rounded marketing figure, never a card total. */
+        /** "Rs. XX lacs/lakhs" - a rounded marketing figure, never a card total. */
         val LAKH_SUFFIX_REGEX = Regex("(?i)^\\s*(?:lacs?|lakhs?)\\b")
 
         /**
@@ -512,7 +512,7 @@ class TransactionParser {
         val CREDIT_KEYWORDS = Regex("(?i)\\b(?:credited|received|deposited|refund(?:ed)?)\\b")
 
         /**
-         * "Txn Rs.55.00" header of the verbless card-network template — the
+         * "Txn Rs.55.00" header of the verbless card-network template - the
          * word "Txn" immediately followed by a currency amount at the start
          * of the message or a line. "txn of Rs X" (OTP narration) has "of"
          * in between and never matches.
@@ -549,7 +549,7 @@ class TransactionParser {
             Regex("(?<!\\d)\\d{4}[- ][\\dXx*]{2,4}[- ][\\dXx*]{2,4}[- ][Xx*]*(\\d{4})(?!\\d)")
 
         /**
-         * "debited from HDFC Bank XX8709" — a masked tail right after the
+         * "debited from HDFC Bank XX8709" - a masked tail right after the
          * bank name, with no a/c or card keyword. Lowest-priority fallback.
          */
         val BANK_MASKED_REGEX = Regex("(?i)\\bbank\\s+[Xx*]{2,}(\\d{3,4})(?!\\d)")
@@ -588,7 +588,7 @@ class TransactionParser {
 
         val MERCHANT_REGEX = Regex("(?i)\\b(?:to|at|towards)\\s+((?:[A-Za-z][A-Za-z0-9@._&'*-]*)(?:\\s+[A-Za-z0-9@._&'*-]+){0,3})")
 
-        /** A candidate that is (the start of) a URL — never a merchant. */
+        /** A candidate that is (the start of) a URL - never a merchant. */
         val URL_START_REGEX = Regex("(?i)^(?:https?\\b|www\\.)")
 
         /** Words that end a merchant name and start trailing narration. */
@@ -620,7 +620,7 @@ class TransactionParser {
         /** Trailing card-network status tokens on a merchant line. */
         val TRAILING_STATUS_REGEX = Regex("(?i)\\s+(?:PEND(?:ING)?|POS|ECOM)\\s*$")
 
-        /** A bare status token — noise after "*", never a merchant. */
+        /** A bare status token - noise after "*", never a merchant. */
         val STATUS_TOKEN_REGEX = Regex("(?i)^(?:PEND(?:ING)?|POS|ECOM|AUTH|RATE)$")
 
         /**
@@ -655,7 +655,7 @@ class TransactionParser {
 
 /**
  * A standalone account-balance statement: the reported balance plus the
- * account it belongs to. Deliberately NOT a [ParsedTransaction] — no money
+ * account it belongs to. Deliberately NOT a [ParsedTransaction] - no money
  * moved, so it must never create a transaction row; it only refreshes the
  * account's last known balance.
  */

@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Handles `SMS_DELIVER` — the broadcast the platform sends only to the
+ * Handles `SMS_DELIVER` - the broadcast the platform sends only to the
  * default SMS app for every incoming message.
  *
  * Multipart messages arrive as several PDUs in one intent; parts are merged
@@ -77,7 +77,7 @@ class SmsReceiver : BroadcastReceiver() {
                     mergeParts(parts),
                     onError = { _, e ->
                         // Convention: never log message content, OTPs or phone
-                        // numbers/sender ids — this line must stay content-free.
+                        // numbers/sender ids - this line must stay content-free.
                         Log.e(TAG, "Failed to process an incoming message", e)
                     },
                 ) { merged -> process(context, merged) }
@@ -107,8 +107,8 @@ class SmsReceiver : BroadcastReceiver() {
             // they are one parsed-finance surface rendered by one notifier
             // with one semantic color scheme, and a second toggle would add
             // a confusing third state for the same notification style. When
-            // the setting is off — or the message has no renderable parsed
-            // data (notify returns false) — control falls through to the
+            // the setting is off - or the message has no renderable parsed
+            // data (notify returns false) - control falls through to the
             // plain message notification below, i.e. today's behavior.
             (
                 entity.subCategory == SubCategory.TRANSACTION ||
@@ -120,7 +120,7 @@ class SmsReceiver : BroadcastReceiver() {
             entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
                 messageNotifier.notify(entity, selectedActions)
             // Promotions always post to their own "Promotions" channel, which
-            // is created BLOCKED (IMPORTANCE_NONE) — so nothing is shown until
+            // is created BLOCKED (IMPORTANCE_NONE) - so nothing is shown until
             // the user enables the category in Android's notification settings.
             // Posting unconditionally is what makes that switch meaningful: an
             // extra in-app gate would silently swallow them and the Android
@@ -191,7 +191,7 @@ class SmsReceiver : BroadcastReceiver() {
          * Runs [process] for each merged message, isolating failures: one
          * message that throws (bad parse, database error, notification
          * failure) is logged via [onError] and must never abort the rest of
-         * the batch — or escape and crash the process.
+         * the batch - or escape and crash the process.
          */
         internal suspend fun processIsolating(
             merged: List<Part>,
@@ -212,7 +212,7 @@ class SmsReceiver : BroadcastReceiver() {
          * earliest timestamp of each group.
          *
          * The platform does not expose the multipart reference number on
-         * [android.telephony.SmsMessage], so segments are grouped by sender —
+         * [android.telephony.SmsMessage], so segments are grouped by sender -
          * but only CONTIGUOUS runs from the same sender are merged. This keeps
          * genuine multipart messages (delivered as adjacent PDUs in one
          * intent) intact while two distinct messages from the same sender that

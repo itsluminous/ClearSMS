@@ -28,7 +28,7 @@ import javax.inject.Singleton
  *
  * LOCKSCREEN: the OTP digits are the title, so the notification is
  * [NotificationCompat.VISIBILITY_PRIVATE] with a digit-free public version
- * ("New OTP from <sender>"). This is the default with no setting — leaking
+ * ("New OTP from <sender>"). This is the default with no setting - leaking
  * codes to anyone who can see the locked screen defeats the point of an OTP,
  * so private-by-default is the safer choice.
  */
@@ -171,7 +171,7 @@ class OtpNotifier
             }
 
             /**
-             * Relative digit scale per option — strictly increasing, with the
+             * Relative digit scale per option - strictly increasing, with the
              * default (Option 2) at the platform's native title size.
              */
             internal fun scaleFor(displaySize: OtpDisplaySize): Float =

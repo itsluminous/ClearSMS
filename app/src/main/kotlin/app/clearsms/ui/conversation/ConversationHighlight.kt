@@ -3,7 +3,7 @@ package app.clearsms.ui.conversation
 /**
  * Resolves the list index to scroll to for a highlight [targetId] carried by
  * the navigation (search result tap or notification deep link). Returns null
- * when there is nothing to highlight — no target, or the target message is
+ * when there is nothing to highlight - no target, or the target message is
  * not (or no longer) in the thread.
  */
 fun highlightIndexFor(
@@ -24,7 +24,7 @@ fun highlightTargetOf(rawMessageIdArg: Long?): Long? = rawMessageIdArg?.takeIf {
  * The paged conversation loads asynchronously, so the target message may
  * only appear in the loaded window after one or more page loads:
  * [onItemsLoaded] is fed every change of the loaded snapshot and stays
- * PENDING until the target shows up (never consuming the highlight early —
+ * PENDING until the target shows up (never consuming the highlight early -
  * the previous implementation was a one-shot race against the first page).
  *
  * ```
@@ -42,7 +42,7 @@ class MessageHighlightState(
 
     /**
      * Feed the currently loaded message ids. Returns the index to scroll to
-     * exactly once — on the load where the target first became visible.
+     * exactly once - on the load where the target first became visible.
      */
     fun onItemsLoaded(messageIds: List<Long>): Int? {
         if (phase != Phase.PENDING) return null

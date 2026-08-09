@@ -39,12 +39,12 @@ import kotlin.math.abs
  * ([BundledLogoCache], which also memoizes misses so a corrupt or missing
  * asset costs one attempt); generated tiles are rendered at most once per
  * (monogram, color, badge) signature. Contact photos are deliberately not
- * memoized — the photo and the READ_CONTACTS grant can both change.
+ * memoized - the photo and the READ_CONTACTS grant can both change.
  *
  * Callers must invoke this off the main thread (every notifier is driven
  * from the receiver's IO-dispatched scope): the first lookup per key decodes
- * from assets or renders to a canvas. Any failure — corrupt asset, unknown
- * brand, unreadable photo — degrades to the next tier, never a crash, never
+ * from assets or renders to a canvas. Any failure - corrupt asset, unknown
+ * brand, unreadable photo - degrades to the next tier, never a crash, never
  * a blank icon.
  */
 @Singleton
@@ -85,7 +85,7 @@ class SenderIconFactory internal constructor(
         }
 
     /**
-     * Which tier of the chain [sender] lands on — decided by the SAME
+     * Which tier of the chain [sender] lands on - decided by the SAME
      * [avatarStyleFor] the UI uses, so notification and in-app identity can
      * never disagree on precedence. Internal so tests can pin the order.
      */
@@ -122,7 +122,7 @@ class SenderIconFactory internal constructor(
         return tiles.computeIfAbsent(key) { tileBitmap(it.monogram, it.colorArgb, it.badge) }
     }
 
-    /** Everything a generated tile draws — the render-cache key. */
+    /** Everything a generated tile draws - the render-cache key. */
     internal data class TileKey(
         val monogram: String,
         val colorArgb: Int,
@@ -144,7 +144,7 @@ class SenderIconFactory internal constructor(
             ColorUtils.HSLToColor(floatArrayOf(FALLBACK_HUES[abs(name.hashCode()) % FALLBACK_HUES.size], 0.55f, 0.38f))
 
         /**
-         * The category badge letter drawn on generated brand tiles —
+         * The category badge letter drawn on generated brand tiles -
          * the notification-canvas stand-in for the UI's glyph badge.
          */
         internal fun badgeCharFor(category: BrandCategory?): Char? =
@@ -200,7 +200,7 @@ class SenderIconFactory internal constructor(
 
         /**
          * Draws the monogram tile: colored circle plus bold centered text in
-         * white or black — whichever contrasts better (WCAG luminance).
+         * white or black - whichever contrasts better (WCAG luminance).
          */
         internal fun monogramBitmap(
             monogram: String,
@@ -229,7 +229,7 @@ class SenderIconFactory internal constructor(
         }
 
         /**
-         * Bundled logo on a circular white plate — the notification twin of
+         * Bundled logo on a circular white plate - the notification twin of
          * the in-app BUNDLED avatar (white background, logo fit whole inside
          * padding, everything clipped to the circle).
          */

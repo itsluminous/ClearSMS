@@ -33,7 +33,7 @@ data class SettingsRestoreResult(
 /**
  * One preference the settings backup covers: its stored DataStore key name
  * plus how its value maps to and from JSON. Only the TYPE is validated on
- * import — value-level sanity (unknown enum names, stale pill orders) is
+ * import - value-level sanity (unknown enum names, stale pill orders) is
  * already handled leniently by [app.clearsms.data.prefs.SettingsRepositoryImpl]'s
  * readers, so duplicating that validation here would only drift out of sync.
  */
@@ -96,7 +96,7 @@ internal sealed class SettingsBackupEntry(
 /**
  * The complete inventory of settings the backup covers, plus the explicit
  * exclusion list. Every key written by SettingsRepositoryImpl MUST appear in
- * exactly one of the two — a test enforces this so a future preference can
+ * exactly one of the two - a test enforces this so a future preference can
  * never be silently forgotten.
  */
 internal object SettingsBackupCatalog {
@@ -127,15 +127,15 @@ internal object SettingsBackupCatalog {
 
     /**
      * Keys deliberately NEVER backed up or restored:
-     * - `show_balance` — security-sensitive: it gates financial balances
+     * - `show_balance` - security-sensitive: it gates financial balances
      *   behind the device screen lock, so a restored file must not be able
      *   to silently disable that protection (and enabling it goes through
      *   [app.clearsms.ui.finance.BalanceVisibility.conceal], which a raw
      *   DataStore write would bypass);
-     * - `onboarding_complete` — device lifecycle state: restoring `true`
+     * - `onboarding_complete` - device lifecycle state: restoring `true`
      *   onto a fresh install would skip the permission/default-app
      *   onboarding the new device still needs;
-     * - `handled_otp_message_id` — device-bound: message ids are local to
+     * - `handled_otp_message_id` - device-bound: message ids are local to
      *   this install's database, so the value is meaningless elsewhere and
      *   restoring it could hide a live OTP banner.
      */
@@ -149,13 +149,13 @@ internal object SettingsBackupCatalog {
 
 /**
  * Local backup and restore of the app's settings (the Preferences DataStore)
- * as a single JSON document — the settings sibling of [BackupManager], which
+ * as a single JSON document - the settings sibling of [BackupManager], which
  * covers the database. Backups are plain files the user controls; nothing
  * ever leaves the device.
  *
  * Unlike the database restore, a document with a NEWER format version is not
  * rejected: settings are independent key/value pairs, so the recognised
- * entries are applied and the rest reported as skipped — the honest best
+ * entries are applied and the rest reported as skipped - the honest best
  * effort for a file from a future app version.
  */
 class SettingsBackupManager(
@@ -194,7 +194,7 @@ class SettingsBackupManager(
      * Safety properties:
      * - the ENTIRE document is decoded and every entry validated BEFORE any
      *   mutation, so an unparseable or non-settings file changes nothing;
-     * - unknown keys, excluded keys and wrong-typed values never throw —
+     * - unknown keys, excluded keys and wrong-typed values never throw -
      *   they are skipped and tallied in the returned [SettingsRestoreResult];
      * - all recognised entries land in one [DataStore.edit], so the apply is
      *   atomic and every settings Flow picks the change up immediately.

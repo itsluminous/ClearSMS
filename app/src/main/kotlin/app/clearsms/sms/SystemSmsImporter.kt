@@ -22,13 +22,13 @@ import javax.inject.Singleton
  * (`content://sms`) into the local database.
  *
  * Designed to survive interruption and re-runs:
- * - **Resumable** — rows are read in `_id` order in pages of [PAGE_SIZE];
+ * - **Resumable** - rows are read in `_id` order in pages of [PAGE_SIZE];
  *   after each page's transaction commits, a durable [SyncCheckpointStore]
  *   checkpoint advances. A killed or retried import resumes from the
  *   checkpoint and redoes at most one page.
- * - **Idempotent** — every imported row carries its system `_id`, guarded by
+ * - **Idempotent** - every imported row carries its system `_id`, guarded by
  *   a unique index; re-processing a row can never duplicate it.
- * - **Parallel** — pages are read by a single reader on the IO dispatcher,
+ * - **Parallel** - pages are read by a single reader on the IO dispatcher,
  *   classification (CPU-bound regex work) fans out across a bounded
  *   [Dispatchers.Default] slice, and results are batch-inserted in one
  *   transaction per page. The decoded rule set is snapshotted once for the

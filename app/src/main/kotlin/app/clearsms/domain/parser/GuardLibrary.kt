@@ -7,8 +7,8 @@ import java.util.logging.Logger
 /**
  * Named guards consulted by the parsers and the categorizer.
  *
- * A guard is a body of NEGATIVE knowledge — "this phrasing means no money
- * moved", "this is an offer, not a statement" — whose pattern CONTENT is
+ * A guard is a body of NEGATIVE knowledge - "this phrasing means no money
+ * moved", "this is an offer, not a statement" - whose pattern CONTENT is
  * community-editable data (`rules/guards.json`, mirrored at
  * `app/src/main/assets/guards/guards.json`; identity enforced by a unit
  * test). The SEMANTICS stay in Kotlin: where each guard is consulted, and
@@ -18,31 +18,31 @@ import java.util.logging.Logger
 enum class GuardId(
     val id: String,
 ) {
-    /** Statement delivery notices — scrubbed before transaction parsing. */
+    /** Statement delivery notices - scrubbed before transaction parsing. */
     STATEMENT_NOTICE("statement_notice"),
 
-    /** "Payment of INR X ... is due" — a future obligation, never a debit. */
+    /** "Payment of INR X ... is due" - a future obligation, never a debit. */
     BILL_DUE_NOTICE("bill_due_notice"),
 
-    /** Failed / declined payments — no money moved, never a transaction. */
+    /** Failed / declined payments - no money moved, never a transaction. */
     FAILED_PAYMENT("failed_payment"),
 
-    /** Completed / settled / refunded events — never a reminder. */
+    /** Completed / settled / refunded events - never a reminder. */
     SETTLED_PAYMENT("settled_payment"),
 
-    /** Investment / upsell pitch language — never a reminder. */
+    /** Investment / upsell pitch language - never a reminder. */
     MARKETING_PITCH("marketing_pitch"),
 
-    /** Voucher / coupon / gift-card grants — never a reminder. */
+    /** Voucher / coupon / gift-card grants - never a reminder. */
     VOUCHER("voucher"),
 
-    /** UPI mandate lifecycle notices — never promoted as a transaction. */
+    /** UPI mandate lifecycle notices - never promoted as a transaction. */
     MANDATE_NOTICE("mandate_notice"),
 
-    /** Credit-limit increase offers — never a card's total limit. */
+    /** Credit-limit increase offers - never a card's total limit. */
     LIMIT_OFFER("limit_offer"),
 
-    /** "Premium" as a product tier — suppresses insurance evidence. */
+    /** "Premium" as a product tier - suppresses insurance evidence. */
     TIER_PREMIUM("tier_premium"),
 
     /** Future-tense window before a debit/credit keyword. */
@@ -56,7 +56,7 @@ enum class GuardId(
  * Loads, validates and evaluates the bundled guard library.
  *
  * Loading mirrors [ParserTables]: once per process, from a classpath
- * resource, and it must never crash — a malformed or missing document, an
+ * resource, and it must never crash - a malformed or missing document, an
  * unknown guard id, or an invalid pattern degrades (with a logged warning)
  * to a guard that never matches, so a bad community edit can at worst lose
  * a veto, never the app.
@@ -65,7 +65,7 @@ enum class GuardId(
  * rule-engine's ReDoS discipline at load time ([validate]): oversized
  * patterns, leading/trailing `.*`/`[\s\S]*` wrappers (the shape behind a
  * past 423-second catastrophic-backtracking incident), nested unbounded
- * quantifiers and variable-length lookbehinds are all rejected — skipped
+ * quantifiers and variable-length lookbehinds are all rejected - skipped
  * and logged, never fatal. Evaluation is additionally bounded by the same
  * wall-clock budget the rule engine uses (checked between patterns) and by
  * the categorizer's input-length cap.
@@ -105,7 +105,7 @@ object GuardLibrary {
         val start = nanoTime()
         for (regex in patterns) {
             if (regex.containsMatchIn(text)) {
-                // Attribution, id only — message content never reaches logs.
+                // Attribution, id only - message content never reaches logs.
                 LOG.fine("guard $id hit")
                 return true
             }
@@ -174,7 +174,7 @@ object GuardLibrary {
      * the pattern is acceptable. Same discipline as the rule importer, plus
      * the shapes it bans only by convention:
      * - length cap ([MAX_PATTERN_LENGTH], shared with the rule importer);
-     * - leading or trailing `.*` / `.+` / `[\s\S]*` wrappers — redundant
+     * - leading or trailing `.*` / `.+` / `[\s\S]*` wrappers - redundant
      *   (matching already searches anywhere) and catastrophic under
      *   backtracking;
      * - unbounded quantifier applied to a group that itself contains an
@@ -195,7 +195,7 @@ object GuardLibrary {
 
     /**
      * Detects an unbounded quantifier (`*`, `+`, `{n,}`) applied to a group
-     * whose body contains an unbounded quantifier — the catastrophic
+     * whose body contains an unbounded quantifier - the catastrophic
      * backtracking shape. Escapes and character classes are skipped, so
      * `[\w&+.]+` (a literal `+` inside a class) is not a false positive;
      * bounded repetitions (`{0,60}`, `?`) never count as unbounded.
@@ -275,7 +275,7 @@ object GuardLibrary {
     /** A lookbehind whose body contains any quantifier. */
     private val VARIABLE_LOOKBEHIND = Regex("""\(\?<[=!][^)]*[*+{]""")
 
-    /** `{n,}` — an unbounded counted repetition. */
+    /** `{n,}` - an unbounded counted repetition. */
     private val UNBOUNDED_BRACE = Regex("""\{\d+,\}""")
 
     private val FORMAT = Json { ignoreUnknownKeys = true }

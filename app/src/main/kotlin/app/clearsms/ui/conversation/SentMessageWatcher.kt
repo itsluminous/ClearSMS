@@ -31,7 +31,7 @@ class SentMessageWatcher
          * report, otherwise [SendStatus.SENT] once [RESULT_WINDOW_MS] passes
          * without one (the radio reports failures within a couple of
          * seconds, so a quiet window means the carrier accepted the message
-         * — honesty-by-absence, not proof of delivery; the row is then also
+         * - honesty-by-absence, not proof of delivery; the row is then also
          * promoted to SENT so the bubble stops saying "Sending").
          */
         suspend fun await(

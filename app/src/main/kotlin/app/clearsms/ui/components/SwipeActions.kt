@@ -10,7 +10,7 @@ enum class SwipeDirection {
 
 /**
  * Maps a completed swipe to the user's configured action for that direction.
- * [SwipeAction.NONE] means the direction is disabled — the caller must not
+ * [SwipeAction.NONE] means the direction is disabled - the caller must not
  * perform anything (and should not have allowed the dismissal at all).
  */
 fun resolveSwipeAction(

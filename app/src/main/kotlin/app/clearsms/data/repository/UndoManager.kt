@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
  *
  * Delete uses the repository's deferred-commit design: the app database is
  * soft-deleted immediately (UI updates at once), while the system-provider
- * deletion is deferred until the undo window closes — undo then only flips
+ * deletion is deferred until the undo window closes - undo then only flips
  * flags and never has to re-insert provider rows. A new destructive action
  * commits the previous pending one first, and any staged deletion that
  * outlives the process is committed by [onAppStart] on the next launch, so
@@ -23,7 +23,7 @@ import kotlinx.coroutines.sync.withLock
  * Archive undo is a trivial flag revert; committing an archive is a no-op.
  *
  * Bulk/background deletions (OTP auto-delete, "Clear older OTPs") do NOT go
- * through this manager — they keep committing immediately.
+ * through this manager - they keep committing immediately.
  */
 class UndoManager(
     private val repository: MessageRepository,

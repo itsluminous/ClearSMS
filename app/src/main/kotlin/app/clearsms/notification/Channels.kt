@@ -17,8 +17,8 @@ object Channels {
      *
      * Versioned on purpose: v0.5.2 shipped this channel as `promotions` with
      * IMPORTANCE_LOW, which Android surfaces as ON. A channel's importance is
-     * user-owned once created — re-creating the same id with a lower importance
-     * is ignored — so the only way to actually ship "off by default" to devices
+     * user-owned once created - re-creating the same id with a lower importance
+     * is ignored - so the only way to actually ship "off by default" to devices
      * that already have it is a NEW id. [LEGACY_PROMOTIONS] is deleted below so
      * users aren't left with two Promotions entries in system settings.
      */
@@ -59,7 +59,7 @@ object Channels {
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply { description = context.getString(R.string.channel_messages_desc) },
                 // Promotions are OFF by default and controlled solely from
-                // Android's notification settings for the app — there is no
+                // Android's notification settings for the app - there is no
                 // in-app toggle. IMPORTANCE_NONE creates the category in a
                 // blocked state, so it is visible (and switchable on) in system
                 // settings while showing nothing until the user asks for it.

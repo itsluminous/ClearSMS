@@ -8,8 +8,8 @@ import androidx.compose.ui.unit.dp
 /**
  * The single source of truth for avatar geometry.
  *
- * Every avatar in the app — contact photos, bundled logos, generated brand
- * tiles, category-glyph tiles and letter avatars — clips to [shape] at one
+ * Every avatar in the app - contact photos, bundled logos, generated brand
+ * tiles, category-glyph tiles and letter avatars - clips to [shape] at one
  * of exactly two sanctioned diameters: [size] for list rows and headers,
  * and [compactSize] for dense card corners (the Alerts reminder cards),
  * where a full-size avatar overwhelms the label text next to it. CIRCULAR
@@ -30,7 +30,7 @@ object AvatarDefaults {
 
     /**
      * The compact diameter for avatars sitting inline with label-size card
-     * text (Alerts reminder cards) — same circle, smaller visual weight.
+     * text (Alerts reminder cards) - same circle, smaller visual weight.
      */
     val compactSize: Dp = 28.dp
 

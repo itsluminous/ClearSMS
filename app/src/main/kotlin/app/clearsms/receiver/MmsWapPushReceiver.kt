@@ -53,7 +53,7 @@ class MmsWapPushReceiver : BroadcastReceiver() {
                 }
             } catch (e: Exception) {
                 // A storage or notification failure must never crash the
-                // process — the default SMS app has to survive every
+                // process - the default SMS app has to survive every
                 // incoming broadcast.
                 Log.e(TAG, "Failed to record incoming MMS notification", e)
             } finally {

@@ -27,7 +27,7 @@ data class TransactionEntity(
     val bankName: String,
     /**
      * Row id of the owning [AccountEntity], resolved ONCE at ingestion by
-     * (canonical bank, last-4). Null when no confident owner exists — a
+     * (canonical bank, last-4). Null when no confident owner exists - a
      * last-4 alone is NOT an identity: the same tail can legitimately
      * exist at several banks, and matching on it cross-contaminated
      * account screens. Read paths key on this id and only fall back to

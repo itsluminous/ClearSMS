@@ -29,7 +29,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * The repository consumes the engine's TYPED extracts directly — amounts,
+ * The repository consumes the engine's TYPED extracts directly - amounts,
  * due dates and the debit/credit direction arrive parsed, and the repository
  * no longer re-parses the raw capture strings (its `toAmount` /
  * `toTransactionType` / date-reparse helpers are gone). These tests drive
@@ -94,7 +94,7 @@ class TypedExtractConsumptionTest {
             )
             repository.insertIncoming("VM-TSTBNK", "You paid Rs.2,499.00 from Acme Bank card 1234 today", 1_000L)
             val tx = db.transactionDao().getAll().single()
-            // Parsed once by the engine's amount grammar — commas handled there.
+            // Parsed once by the engine's amount grammar - commas handled there.
             assertThat(tx.amount).isEqualTo(2499.0)
             assertThat(tx.type).isEqualTo(TransactionType.DEBIT)
             assertThat(tx.accountNumber).isEqualTo("1234")
@@ -124,7 +124,7 @@ class TypedExtractConsumptionTest {
                     .toEpochMilli()
             assertThat(reminder.dueDate).isEqualTo(expected)
             // The amount extract backs the minimum due when no min_due exists.
-            // A rule's generic "amount" is the amount DUE — the headline
+            // A rule's generic "amount" is the amount DUE - the headline
             // total, never the minimum.
             assertThat(reminder.totalDue).isEqualTo(850.0)
             assertThat(reminder.minDue).isNull()

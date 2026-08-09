@@ -154,7 +154,7 @@ fun ConversationScreen(
     // A message id arriving via navigation (search result, Alerts/Finance
     // card or notification tap) is scrolled to and briefly highlighted. The
     // state machine keeps waiting across page loads until the target is in
-    // the loaded window — the target id is read straight from the ViewModel
+    // the loaded window - the target id is read straight from the ViewModel
     // (NOT from the async uiState, which raced the first page load and
     // silently dropped the highlight).
     val highlight = remember { MessageHighlightState(viewModel.highlightTarget) }
@@ -461,12 +461,12 @@ private fun DateSeparator(timestamp: Long) {
 /**
  * One chat bubble. Alignment and colors come from the PERSISTED direction
  * ([ConversationItem.outgoing]): outgoing right / `primaryContainer`,
- * incoming left / `surfaceVariant` — stable across app restarts.
+ * incoming left / `surfaceVariant` - stable across app restarts.
  *
  * Tapping (outside selection mode) toggles ONE expansion region below the
  * bubble holding the metadata line (exact timestamp; delivery status for
  * outgoing, category for incoming) and, when the message has parsed
- * extraction details, the detail card — a single expander, so metadata and
+ * extraction details, the detail card - a single expander, so metadata and
  * the transaction/OTP card never fight over the tap.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -497,7 +497,7 @@ private fun MessageBubble(
 
     // Background behind the opened message. The screen holds `highlighted`
     // true for HIGHLIGHT_HOLD_MS, then this fades to transparent. The tint is
-    // a primary-color wash — the previous secondaryContainer was visually
+    // a primary-color wash - the previous secondaryContainer was visually
     // indistinguishable from the message bubbles, so the "highlight" was
     // invisible in practice.
     val highlightColor by animateColorAsState(
@@ -628,7 +628,7 @@ private fun MessageMetadataLine(item: ConversationItem) {
 }
 
 /**
- * The bubble status line for an outgoing message, from its PERSISTED status —
+ * The bubble status line for an outgoing message, from its PERSISTED status -
  * never derived from the tap or the passage of time. No failure recorded and
  * no delivery report (reports off, or the carrier sent none) reads honestly
  * as "Sent", never "Delivered".

@@ -31,7 +31,7 @@ import java.io.File
 
 /**
  * Tapping a BUNDLED rule opens a read-only detail (pattern, priority,
- * extracts, guards) — never an editor — and the enable/disable toggle keeps
+ * extracts, guards) - never an editor - and the enable/disable toggle keeps
  * its park/restore behaviour after the tap-to-edit wiring.
  */
 @OptIn(ExperimentalCoroutinesApi::class)

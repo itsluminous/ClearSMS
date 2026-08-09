@@ -12,7 +12,7 @@ import javax.inject.Singleton
  * [SentSmsSource] backed by the system SMS provider: every
  * `type = MESSAGE_TYPE_SENT` row of `content://sms`, with its delivery
  * status. Read failures (permission not yet granted, provider unavailable)
- * degrade to an empty list — the direction backfill then leaves every row
+ * degrade to an empty list - the direction backfill then leaves every row
  * incoming rather than crashing the migration.
  */
 @Singleton

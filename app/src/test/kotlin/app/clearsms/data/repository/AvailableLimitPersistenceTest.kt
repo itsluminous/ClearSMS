@@ -25,8 +25,8 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * End-to-end proof that a card-spend SMS carrying "Avl Limit" lands the
- * limit on the account row's dedicated `availableLimit` column — never on
- * `lastKnownBalance` (the semantics differ) — with the usual timestamp
+ * limit on the account row's dedicated `availableLimit` column - never on
+ * `lastKnownBalance` (the semantics differ) - with the usual timestamp
  * ordering: older messages never clobber a newer limit, and a newer message
  * without a limit keeps the existing one.
  */

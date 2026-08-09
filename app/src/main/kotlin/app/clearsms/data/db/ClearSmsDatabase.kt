@@ -36,39 +36,39 @@ import java.time.ZoneId
         AutoMigration(from = 2, to = 3),
         // v3 -> v4: adds reminders.label (delivery tracking reference) and
         // clears reminder rows violating the new "must have a due date"
-        // invariant — see [ClearSmsDatabase.DeleteUndatedReminders].
+        // invariant - see [ClearSmsDatabase.DeleteUndatedReminders].
         AutoMigration(from = 3, to = 4, spec = ClearSmsDatabase.DeleteUndatedReminders::class),
         // v4 -> v5: no schema change; re-derives every reminder (amounts,
         // labels, corrected types, stronger settled-payment guard) and
-        // consolidates duplicate / nameless finance accounts — see
+        // consolidates duplicate / nameless finance accounts - see
         // [ClearSmsDatabase.RebuildDerivedData].
         AutoMigration(from = 4, to = 5, spec = ClearSmsDatabase.RebuildDerivedData::class),
         // v5 -> v6: adds the messages_fts search index (external-content
-        // FTS4 over sender+body) and back-fills it from the existing rows —
+        // FTS4 over sender+body) and back-fills it from the existing rows -
         // see [ClearSmsDatabase.PopulateMessageFts].
         AutoMigration(from = 5, to = 6, spec = ClearSmsDatabase.PopulateMessageFts::class),
         // v6 -> v7: adds messages.isOutgoing (default 0 = incoming) and
         // messages.deliveryStatus, then reconciles existing rows against the
-        // system provider's sent box — see [BackfillMessageDirections]
+        // system provider's sent box - see [BackfillMessageDirections]
         // (provided at build time because it reads the SMS provider).
         AutoMigration(from = 6, to = 7, spec = BackfillMessageDirections::class),
-        // v7 -> v8: adds accounts.availableLimit (nullable) — the issuer-
+        // v7 -> v8: adds accounts.availableLimit (nullable) - the issuer-
         // reported available credit limit, kept apart from lastKnownBalance
         // because a card's headroom is not a balance. Existing rows keep
         // their data and start with NULL until the next card SMS arrives.
         AutoMigration(from = 7, to = 8),
-        // v8 -> v9: adds transactions.accountId (nullable) — an explicit
+        // v8 -> v9: adds transactions.accountId (nullable) - an explicit
         // link to the owning account row, resolved at ingestion by
         // (canonical bank, last-4) instead of re-matching string fields at
         // read time. The spec backfills it, leaving it NULL when no
         // confident owner exists, and cleans up nameless (blank-bank)
-        // account rows — see [ClearSmsDatabase.LinkTransactionsToAccounts].
+        // account rows - see [ClearSmsDatabase.LinkTransactionsToAccounts].
         AutoMigration(from = 8, to = 9, spec = ClearSmsDatabase.LinkTransactionsToAccounts::class),
         // v9 -> v10: adds the transactions.referenceNumber index (backs the
         // ingestion-time duplicate lookup) and collapses transaction rows
-        // that record the SAME payment more than once — banks send a spend
+        // that record the SAME payment more than once - banks send a spend
         // alert plus a later statement line for one transaction. Same
-        // two-tier identity the ingestion path now enforces — see
+        // two-tier identity the ingestion path now enforces - see
         // [ClearSmsDatabase.CollapseDuplicateTransactions].
         AutoMigration(from = 9, to = 10, spec = ClearSmsDatabase.CollapseDuplicateTransactions::class),
         // v10 -> v11: adds messages.deletedAt (soft-delete marker backing the
@@ -78,7 +78,7 @@ import java.time.ZoneId
         // on deletedAt for the read-path filters. Pure additions.
         AutoMigration(from = 10, to = 11),
         // v11 -> v12: adds messages.partCount (default 1) and
-        // messages.deliveredParts (default 0) — per-part bookkeeping for the
+        // messages.deliveredParts (default 0) - per-part bookkeeping for the
         // multipart worst-part delivery aggregation. Pure additions; existing
         // rows read as single-part with no delivery reports counted.
         AutoMigration(from = 11, to = 12),
@@ -317,7 +317,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
         /**
          * Majority institution over the senders/bodies of the account's
          * unresolved (blank-bank) transactions; null when the account has
-         * none — such a row is left untouched rather than merged blindly.
+         * none - such a row is left untouched rather than merged blindly.
          */
         private fun resolveFromTransactions(
             db: SupportSQLiteDatabase,
@@ -359,7 +359,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
      * 2. Every transaction gains an [TransactionEntity.accountId] owner:
      *    matched by (last-4, canonical bank); a transaction with a blank
      *    bank attaches only when exactly ONE named bank holds that tail.
-     *    Anything ambiguous stays NULL — read paths then fall back to the
+     *    Anything ambiguous stays NULL - read paths then fall back to the
      *    exact (accountNumber, bankName) pair, never the number alone.
      */
     class LinkTransactionsToAccounts : AutoMigrationSpec {
@@ -430,7 +430,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
 
         private fun backfillAccountIds(db: SupportSQLiteDatabase) {
             val accounts = loadAccounts(db).filter { it.bankName.isNotBlank() }
-            // Exact (accountNumber, bankName) matches — set-based, covers
+            // Exact (accountNumber, bankName) matches - set-based, covers
             // the overwhelming majority of rows.
             for (account in accounts) {
                 db.execSQL(

@@ -8,7 +8,7 @@ import android.net.Uri
 
 /**
  * Hands a URL to whatever app claims it (browser for https, a UPI app for
- * upi://). Uses a plain ACTION_VIEW intent — the app has no INTERNET
+ * upi://). Uses a plain ACTION_VIEW intent - the app has no INTERNET
  * permission and needs none to delegate a link to another app.
  */
 object ExternalLinks {

@@ -2,7 +2,7 @@ package app.clearsms.domain.model
 
 /**
  * Display size of OTP digits, from smallest [OPTION_1] to largest
- * [OPTION_5]. There is no separate "default" entry — [DEFAULT] points at
+ * [OPTION_5]. There is no separate "default" entry - [DEFAULT] points at
  * [OPTION_2], which every fresh install and every migrated legacy value
  * resolves to when nothing better matches.
  */
@@ -24,7 +24,7 @@ enum class OtpDisplaySize {
          * lettered options (A < Default < B < C < D by rendered size), so
          * each maps to the slot that keeps the user's chosen size:
          * A→1, Default→2, B→3, C→4, D→5. Null, blank or unknown values fall
-         * back to [DEFAULT] — never a crash, never an unset state.
+         * back to [DEFAULT] - never a crash, never an unset state.
          */
         fun fromStored(stored: String?): OtpDisplaySize =
             when (stored) {

@@ -39,7 +39,7 @@ enum class BrandGlyph {
 /**
  * Picks the avatar rendering. With rich avatars ON the fallback chain is:
  * contact photo → bundled asset logo → curated brand tile → category glyph
- * tile (directory-known sender) → plain letter avatar. OFF is always plain —
+ * tile (directory-known sender) → plain letter avatar. OFF is always plain -
  * no photos, no logos, no brand colors. Unknown senders always land on the
  * letter avatar, never a blank tile.
  */

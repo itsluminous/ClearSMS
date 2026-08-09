@@ -20,9 +20,9 @@ import java.time.LocalDate
  * Decisions encoded here:
  * - A card "Txn <amt> ... At <merchant>" notification carries no debit verb,
  *   but the shape only ever announces an outgoing authorization (credits use
- *   explicit "credited"/"refund" verbs) — so it is a DEBIT.
+ *   explicit "credited"/"refund" verbs) - so it is a DEBIT.
  * - A FAILED payment moved no money: it must yield NO transaction at all.
- * - A card-network merchant token like "PTM*ZOMATO" is kept WHOLE — the `*`
+ * - A card-network merchant token like "PTM*ZOMATO" is kept WHOLE - the `*`
  *   is a processor/merchant separator, never a truncation boundary. Only a
  *   status tail after `*` ("UBER * PEND") is stripped as noise.
  * - "bill of <amount> ... is due" announces money OWED, never money moved.
@@ -31,7 +31,7 @@ class ReportedParsingDefectsTest {
     private val parser = TransactionParser()
     private val reminderParser = ReminderParser()
 
-    // region P1 — multi-line HDFC card UPI txn
+    // region P1 - multi-line HDFC card UPI txn
 
     private val hdfcCardUpiTxn =
         "Txn Rs.55.00\n" +
@@ -72,7 +72,7 @@ class ReportedParsingDefectsTest {
 
     // endregion
 
-    // region P2 — failed payments are not debits
+    // region P2 - failed payments are not debits
 
     private val failedElectricityPayment =
         "Hi, Electricity payment of Rs. 412.03 done against Order ID: 7484065283350749184 has failed. " +
@@ -99,7 +99,7 @@ class ReportedParsingDefectsTest {
         assertThat(result.amount).isEqualTo(412.03)
         assertThat(result.merchantCategory).isEqualTo(MerchantCategory.UTILITY_BILL)
         // The words after "Click <url> to ..." are instructions, never a
-        // merchant — with them guarded, the title falls back to the sender
+        // merchant - with them guarded, the title falls back to the sender
         // brand (Airtel fronts the payment), which is the right label.
         assertThat(result.merchantName).isEqualTo("Airtel")
         assertThat(parser.isFailedPayment("payment is successful")).isFalse()
@@ -125,7 +125,7 @@ class ReportedParsingDefectsTest {
 
     // endregion
 
-    // region P3/P4/P5 — card-network merchant tokens are kept whole
+    // region P3/P4/P5 - card-network merchant tokens are kept whole
 
     @Test
     fun `ptm prefixed merchant token is kept whole`() {
@@ -170,7 +170,7 @@ class ReportedParsingDefectsTest {
     @Test
     fun `status tail after the star is still stripped as noise`() {
         // Reconciliation: "UBER * PEND" carries a card-network STATUS after
-        // the star, not a merchant — there the tail is noise and the
+        // the star, not a merchant - there the tail is noise and the
         // merchant is the part before it.
         val result =
             parser.parse(
@@ -194,7 +194,7 @@ class ReportedParsingDefectsTest {
 
     // endregion
 
-    // region P6 — broadband bill is a reminder, not a transaction
+    // region P6 - broadband bill is a reminder, not a transaction
 
     private val actFibernetBill =
         "Hi Prakashkumar, your ACT Fibernet Broadband bill of Rs.1178.82 for 102017641550 is due on " +

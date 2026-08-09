@@ -163,7 +163,7 @@ class SettingsViewModel
         val eventFlow: SharedFlow<SettingsEvent> = events
 
         /**
-         * The manual re-sort run, observed straight from WorkManager — the
+         * The manual re-sort run, observed straight from WorkManager - the
          * ViewModel never owns the work, so progress survives navigation and
          * process death exactly like the initial import.
          */
@@ -404,7 +404,7 @@ class SettingsViewModel
         /**
          * Frequency dialog selection: DAILY/WEEKLY only activate once a
          * backup directory is granted. With no directory yet, the setting is
-         * NOT written — the screen launches the tree picker and the outcome
+         * NOT written - the screen launches the tree picker and the outcome
          * of [onBackupDirectoryPicked] decides.
          */
         fun requestBackupFrequency(value: BackupFrequency) {
@@ -542,7 +542,7 @@ class SettingsViewModel
 
         /**
          * Settings → Sort: enqueues the re-categorization worker (unique,
-         * KEEP — a tap while one is running is a no-op). Progress flows back
+         * KEEP - a tap while one is running is a no-op). Progress flows back
          * through [sortWorkInfo]; this ViewModel never runs the work itself.
          */
         fun sortInboxAgain() {

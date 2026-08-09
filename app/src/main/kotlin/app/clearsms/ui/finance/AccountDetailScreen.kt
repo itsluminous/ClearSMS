@@ -338,7 +338,7 @@ private fun TransactionRow(
                         )
                     }
                     // The raw SMS body quotes the balance verbatim, so it
-                    // stays hidden while balances are masked — otherwise the
+                    // stays hidden while balances are masked - otherwise the
                     // gate would be trivially bypassed by expanding a row.
                     if (!BalanceMask.isMasked(balanceGated, balancesRevealed)) {
                         smsBody?.let { body ->

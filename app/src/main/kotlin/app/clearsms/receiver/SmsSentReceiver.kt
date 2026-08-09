@@ -74,8 +74,8 @@ data class SendPartReport(
 )
 
 /**
- * The non-database consequences of a radio report — provider-row mirroring
- * and the user-facing failure notification — behind a seam so the worst-part
+ * The non-database consequences of a radio report - provider-row mirroring
+ * and the user-facing failure notification - behind a seam so the worst-part
  * aggregation in [SendReportRecorder] is unit-testable.
  */
 interface SendReportSideEffects {
@@ -106,13 +106,13 @@ class DefaultSendReportSideEffects
  * [DeliveryStatus] (worst-part semantics) and mirrors terminal transitions to
  * the system provider row:
  *
- * - FAILED (any part): the whole message fails, overwriting SENT/DELIVERED —
+ * - FAILED (any part): the whole message fails, overwriting SENT/DELIVERED -
  *   a message with a lost part was not delivered. Provider row is marked
  *   `MESSAGE_TYPE_FAILED` and the user is notified exactly once per message
  *   even when several parts fail.
  * - SENT: only the LAST part's OK report promotes SENDING → SENT
  *   (compare-and-set). The radio hands parts over sequentially, so
- *   last-part-OK means every earlier part was handed over too — unless one
+ *   last-part-OK means every earlier part was handed over too - unless one
  *   already failed, in which case the row is FAILED and the promote is a
  *   no-op. This is the honest granularity `sendMultipartTextMessage` offers
  *   for "sent" without per-part persistence.

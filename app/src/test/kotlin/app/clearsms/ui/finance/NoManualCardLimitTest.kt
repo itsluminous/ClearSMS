@@ -8,7 +8,7 @@ import java.io.File
 /**
  * The manual "Set card limit" feature is REMOVED: the total limit now comes
  * only from issuer SMS (see TotalLimitExtractionTest). These tests pin the
- * removal at source level — no orphaned affordance, string, or unused API —
+ * removal at source level - no orphaned affordance, string, or unused API -
  * and the honest-display rules when no total is known: available limit only,
  * no fabricated outstanding, no meaningless 0% bar, no high-usage banner.
  */

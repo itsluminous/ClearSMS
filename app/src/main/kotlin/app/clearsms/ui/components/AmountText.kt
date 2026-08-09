@@ -13,8 +13,8 @@ import app.clearsms.ui.theme.ClearSmsTheme
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 
 /**
- * Amount rendered in its fixed semantic color — red for debits, green for
- * credits, blue for balance-only amounts — from
+ * Amount rendered in its fixed semantic color - red for debits, green for
+ * credits, blue for balance-only amounts - from
  * [app.clearsms.ui.theme.SemanticAmountColors], deliberately NOT the
  * Material `colorScheme` roles (which shift with the wallpaper on
  * Android 12+). Balances carry no +/− sign because no money moved.

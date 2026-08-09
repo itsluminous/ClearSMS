@@ -6,7 +6,7 @@ import java.io.File
 
 /**
  * `SenderNameResolver`'s institution table is GENERATED from
- * `rules/brands/brands.json` — the single source of truth — instead of being
+ * `rules/brands/brands.json` - the single source of truth - instead of being
  * a hand-maintained Kotlin duplicate kept in sync by a test. These tests lock
  * the generation: the bundled classpath copy is the master file, the
  * generated table carries the same names / sender keys / aliases / issuer

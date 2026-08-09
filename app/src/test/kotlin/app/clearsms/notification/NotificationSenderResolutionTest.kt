@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * The notifier resolves senders through the same chain the UI uses:
- * contact → sender-ID directory → curated brand table → raw address —
+ * contact → sender-ID directory → curated brand table → raw address -
  * degrading (never crashing) when a tier throws, e.g. READ_CONTACTS denied.
  */
 class NotificationSenderResolutionTest {

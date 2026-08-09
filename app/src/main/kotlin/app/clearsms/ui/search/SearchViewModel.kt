@@ -57,7 +57,7 @@ data class SearchResultItem(
 )
 
 /**
- * Chrome state only — results stream separately through [SearchViewModel.pagedResults]
+ * Chrome state only - results stream separately through [SearchViewModel.pagedResults]
  * so a keystroke never waits on result mapping before echoing in the field.
  */
 data class SearchUiState(
@@ -83,7 +83,7 @@ class SearchViewModel
     ) : ViewModel() {
         /**
          * The text field binds to this directly and [onQueryChange] updates
-         * it synchronously — the round trip through the debounced pipeline
+         * it synchronously - the round trip through the debounced pipeline
          * below never delays the echo of a keystroke (the previous design
          * routed the field value through the result-mapping combine on the
          * IO dispatcher, which lagged far enough to reorder fast typing).
@@ -107,7 +107,7 @@ class SearchViewModel
          * Paged results: keystrokes are debounced, gated on
          * [SearchQueryFormat.MIN_QUERY_LENGTH], and [flatMapLatest] cancels
          * the in-flight page load the moment a newer request arrives. Row
-         * mapping (sender resolution, glyph) happens here on IO — never
+         * mapping (sender resolution, glyph) happens here on IO - never
          * during composition.
          */
         val pagedResults: Flow<PagingData<SearchResultItem>> =

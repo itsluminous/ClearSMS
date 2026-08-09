@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Handles `RESPOND_VIA_MESSAGE` — the "reply with message" quick action the
+ * Handles `RESPOND_VIA_MESSAGE` - the "reply with message" quick action the
  * dialer sends when the user declines an incoming call with a canned text.
  * Required for default-SMS-app eligibility.
  */

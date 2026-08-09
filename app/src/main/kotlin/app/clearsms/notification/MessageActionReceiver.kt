@@ -19,7 +19,7 @@ import javax.inject.Inject
  * Handles the Mark read / Delete / Reply actions on message and transaction
  * notifications.
  *
- * SECURITY: this receiver is deliberately NOT exported (see the manifest) —
+ * SECURITY: this receiver is deliberately NOT exported (see the manifest) -
  * a third-party app must never be able to spoof a delete or mark-read for an
  * arbitrary message. All action intents are explicit and created in-process.
  */

@@ -43,7 +43,7 @@ class MessageNotifier
          * [selected] is the user's notification-action choice (defaults to
          * the settings default for callers without settings access, e.g. the
          * MMS placeholder path). REPLY is offered only for repliable
-         * addresses — see [NotificationActionPlanner.isRepliableAddress].
+         * addresses - see [NotificationActionPlanner.isRepliableAddress].
          */
         fun notify(
             message: MessageEntity,

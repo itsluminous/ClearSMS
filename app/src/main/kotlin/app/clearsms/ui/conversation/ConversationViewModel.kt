@@ -54,7 +54,7 @@ data class ConversationItem(
     val id: Long,
     val body: String,
     val timestamp: Long,
-    /** Persisted direction ([MessageEntity.isOutgoing]) — drives alignment. */
+    /** Persisted direction ([MessageEntity.isOutgoing]) - drives alignment. */
     val outgoing: Boolean,
     /** Backing entity (category, OTP, archive state for the selection bar). */
     val message: MessageEntity? = null,
@@ -107,7 +107,7 @@ data class ConversationUiState(
 
 /** One-shot send outcome consumed by the screen's snackbar. */
 sealed interface SendEvent {
-    /** The send resolved without a recorded failure — show "Message sent". */
+    /** The send resolved without a recorded failure - show "Message sent". */
     data object Sent : SendEvent
 
     /** The send failed; [messageId] identifies the row a Retry re-dispatches. */
@@ -149,7 +149,7 @@ class ConversationViewModel
         /**
          * Message to scroll to and briefly highlight, from search / Alerts /
          * Finance cards / notification taps; -1 (the nav default) means none.
-         * Exposed as a plain property — NOT through [uiState] — because the
+         * Exposed as a plain property - NOT through [uiState] - because the
          * state flow combine is asynchronous: the screen's highlight effect
          * used to race it and silently miss the target on most opens.
          */
@@ -176,7 +176,7 @@ class ConversationViewModel
          * `reverseLayout`), so a 14k-message thread only ever materializes the
          * visible window. Replies appear here too: sending persists the row
          * immediately, Room invalidates the pager, and the bubble renders
-         * from its PERSISTED direction and status — it stays right-aligned
+         * from its PERSISTED direction and status - it stays right-aligned
          * with its outcome after a restart, unlike the old session-state
          * bubbles. When navigation carries a highlight target, paging starts
          * at its position so the message is in the first load.
@@ -233,7 +233,7 @@ class ConversationViewModel
                     try {
                         smsSender.send(destination, body)
                     } catch (_: Exception) {
-                        // Persisting the message itself failed — nothing to retry against.
+                        // Persisting the message itself failed - nothing to retry against.
                         sendEvents.send(SendEvent.Failed(NO_MESSAGE))
                         return@launch
                     }

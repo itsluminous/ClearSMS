@@ -166,7 +166,7 @@ ksp {
 }
 
 // Size note: assets/sender_ids.db (44 MB raw) is deflate-compressed by AAPT2
-// inside the APK (~16.5 MB stored) — .db is not on the default noCompress
+// inside the APK (~16.5 MB stored) - .db is not on the default noCompress
 // list, so no androidResources tuning is required. The remaining size lever
 // (a more compact on-disk sender directory format) lives in the data layer.
 //
@@ -221,11 +221,11 @@ dependencies {
 
     // Device-lock gate for Settings → Privacy → Show balance. BIOMETRIC_WEAK
     // or DEVICE_CREDENTIAL: fingerprint/face AND PIN/pattern/password all
-    // unlock — purely local, no new permissions.
+    // unlock - purely local, no new permissions.
     implementation(libs.androidx.biometric)
 
     // Images + permissions. Coil renders contact photos from content:// URIs
-    // (ui/components/SenderAvatar.kt) — it never performs network I/O in this
+    // (ui/components/SenderAvatar.kt) - it never performs network I/O in this
     // app: no http(s) URLs are ever loaded, so the transitively-included
     // OkHttp engine is dormant. Revisit with a ContentResolver+BitmapFactory
     // loader if the dependency footprint becomes a concern.

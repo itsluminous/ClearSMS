@@ -34,8 +34,8 @@ data class RuleItem(
 
 /**
  * Read-only view of a rule's full definition, shown when a BUNDLED rule is
- * tapped. Bundled content is never edited in place — the bundled set must
- * stay identical to the shipped asset — so the only mutation offered is
+ * tapped. Bundled content is never edited in place - the bundled set must
+ * stay identical to the shipped asset - so the only mutation offered is
  * "duplicate as my rule".
  */
 data class RuleDetail(

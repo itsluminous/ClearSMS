@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Count of unread CONVERSATIONS for one category (badge counter). A
  * conversation counts as unread when its representative (latest) message is
- * unread — the same basis the inbox unread filter uses — so the badge always
+ * unread - the same basis the inbox unread filter uses - so the badge always
  * equals the number of rows shown when that filter is applied.
  */
 data class CategoryUnreadCount(
@@ -79,7 +79,7 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp DESC, id DESC")
     fun pagingThread(threadId: Long): PagingSource<Int, MessageEntity>
 
-    /** Oldest message of a thread — carries the sender for the header. */
+    /** Oldest message of a thread - carries the sender for the header. */
     @Query(
         "SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC, id ASC LIMIT 1",
     )
@@ -308,7 +308,7 @@ interface MessageDao {
     /**
      * Worst-part failure: any part's failure report marks the whole message
      * FAILED, overwriting SENT/DELIVERED (a message with a lost part was not
-     * delivered). Returns the number of rows changed — 0 when the row was
+     * delivered). Returns the number of rows changed - 0 when the row was
      * already FAILED, so callers can notify the user exactly once even when
      * several parts of one message fail.
      */
@@ -345,7 +345,7 @@ interface MessageDao {
      * Records one part's carrier delivery report and applies the worst-part
      * rule: the message becomes DELIVERED only when EVERY part has reported
      * delivery AND no part has failed (FAILED is never upgraded). Returns
-     * true when this report completed the delivery — the moment to mirror
+     * true when this report completed the delivery - the moment to mirror
      * `STATUS_COMPLETE` to the system provider row.
      */
     @Transaction
@@ -424,7 +424,7 @@ interface MessageDao {
     )
     suspend fun threadIdsWithUnread(threadIds: List<Long>): List<Long>
 
-    /** Unread message ids inside [threadIds] — the messages that may still own notifications. */
+    /** Unread message ids inside [threadIds] - the messages that may still own notifications. */
     @Query("SELECT id FROM messages WHERE threadId IN (:threadIds) AND isRead = 0 AND deletedAt IS NULL")
     suspend fun unreadMessageIdsInThreads(threadIds: List<Long>): List<Long>
 
@@ -500,7 +500,7 @@ interface MessageDao {
     /**
      * Restores one bin row to the inbox. [systemSmsId] is the freshly
      * re-inserted provider row id, or null when the re-insert failed or was
-     * skipped (not the default SMS app) — the stale pre-deletion id must not
+     * skipped (not the default SMS app) - the stale pre-deletion id must not
      * survive either way, because that provider row is gone.
      */
     @Query(

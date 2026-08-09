@@ -66,7 +66,7 @@ class TelephonyWriter
         /**
          * Re-inserts a restored incoming message (recycle-bin restore) into
          * the provider inbox, preserving its read state. Returns the fresh
-         * row id, or null when not the default app / on failure — the
+         * row id, or null when not the default app / on failure - the
          * in-app restore proceeds regardless.
          */
         override fun reinsertInbox(
@@ -121,7 +121,7 @@ class TelephonyWriter
          * Deletes provider rows by `_id`, in chunks below SQLite's variable
          * limit. No-ops when Clear SMS is not the default app (only the
          * default app may delete), and degrades to a logged warning on
-         * [SecurityException] — the local Room deletion has already
+         * [SecurityException] - the local Room deletion has already
          * succeeded, so the user-visible operation still completes.
          */
         override fun deleteBySystemIds(systemIds: List<Long>): Int {

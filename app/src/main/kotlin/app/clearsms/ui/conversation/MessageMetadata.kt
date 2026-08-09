@@ -27,7 +27,7 @@ object MessageMetadata {
 
     /**
      * Single-expansion toggle for the metadata line: at most one message is
-     * expanded at a time (an expansion replaces the previous one — chosen
+     * expanded at a time (an expansion replaces the previous one - chosen
      * because stacked open metadata lines add noise without value). Taps
      * while multi-select is active toggle SELECTION instead, so the expanded
      * message is left untouched.

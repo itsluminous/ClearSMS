@@ -14,8 +14,8 @@ import org.robolectric.Shadows.shadowOf
 
 /**
  * The Source code and Donate rows delegate their URLs (kept in string
- * resources, never inline in code) to other apps via ACTION_VIEW — no
- * INTERNET permission involved — and must not crash when nothing on the
+ * resources, never inline in code) to other apps via ACTION_VIEW - no
+ * INTERNET permission involved - and must not crash when nothing on the
  * device can handle the link.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -49,7 +49,7 @@ class ExternalLinksTest {
         val url = context.getString(R.string.url_release_notes, BuildConfig.VERSION_NAME)
         assertThat(url)
             .isEqualTo("https://github.com/itsluminous/ClearSMS/releases/tag/v${BuildConfig.VERSION_NAME}")
-        // The placeholder must be fully consumed — never a literal %1$s in the link.
+        // The placeholder must be fully consumed - never a literal %1$s in the link.
         assertThat(url).doesNotContain("%")
         assertThat(BuildConfig.VERSION_NAME).isNotEmpty()
     }

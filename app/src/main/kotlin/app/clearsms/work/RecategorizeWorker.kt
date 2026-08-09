@@ -26,9 +26,9 @@ import kotlinx.coroutines.CancellationException
 /**
  * Manual "Sort inbox again" re-categorization over the whole database.
  *
- * Mirrors [InitialSyncWorker]'s durability model — unique work with KEEP (a
+ * Mirrors [InitialSyncWorker]'s durability model - unique work with KEEP (a
  * second tap while one is running is a no-op), expedited with a foreground
- * fallback below Android 12, and an ongoing progress notification — so a
+ * fallback below Android 12, and an ongoing progress notification - so a
  * 14k-message re-sort survives navigation, screen-off and process death
  * instead of dying with a ViewModel scope.
  *

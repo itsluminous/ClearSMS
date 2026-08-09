@@ -12,9 +12,9 @@ import org.junit.Test
  * Two guarantees in one:
  *
  * 1. The "share rules with developer" payload is structurally incapable of
- *    carrying message content — [RuleDocument] has no field for message
+ *    carrying message content - [RuleDocument] has no field for message
  *    bodies, timestamps or senders' inbox data; only rule patterns.
- * 2. kotlinx.serialization round-trips the app's own @Serializable models —
+ * 2. kotlinx.serialization round-trips the app's own @Serializable models -
  *    run against the release-candidate classpath this catches a broken R8
  *    keep rule (missing `$$serializer` / Companion) as a hard failure.
  */

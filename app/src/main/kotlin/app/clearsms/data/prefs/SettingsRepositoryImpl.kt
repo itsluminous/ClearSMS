@@ -204,7 +204,7 @@ class SettingsRepositoryImpl(
      * Decodes a delimited list of enum names into a complete pill order:
      * unknown names are dropped, duplicates collapse to the first mention,
      * and every enum entry missing from the stored value is appended in
-     * declaration order — a future pill can therefore never be hidden by a
+     * declaration order - a future pill can therefore never be hidden by a
      * stale stored order. Null (nothing stored) yields declaration order.
      */
     private inline fun <reified T : Enum<T>> String?.toEnumOrder(): List<T> {
@@ -250,7 +250,7 @@ class SettingsRepositoryImpl(
         const val FILTER_ALL = "ALL"
 
         /**
-         * Default trio: Mark read + Reply + Delete — exactly fills the
+         * Default trio: Mark read + Reply + Delete - exactly fills the
          * platform's 3-action cap with the three most common triage moves
          * (acknowledge, respond, discard). Share exists as an option but is
          * OFF by default: forwarding message text is a deliberate opt-in.

@@ -9,7 +9,7 @@ import org.junit.Test
 
 /**
  * Bubble direction is derived from the PERSISTED [MessageEntity.isOutgoing]
- * flag — not from session state — so sent messages stay right-aligned with
+ * flag - not from session state - so sent messages stay right-aligned with
  * their status after an app restart.
  */
 class ConversationItemMappingTest {

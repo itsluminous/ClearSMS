@@ -19,7 +19,7 @@ import org.robolectric.Shadows.shadowOf
  * Every notification that identifies a sender must carry the sender's
  * identity in the large-icon slot (or the MessagingStyle Person icon),
  * resolved through the shared avatar chain. The small icon stays the app's
- * monochrome mark — Android requires it — so the brand goes here.
+ * monochrome mark - Android requires it - so the brand goes here.
  */
 @RunWith(RobolectricTestRunner::class)
 class NotifierLargeIconTest {

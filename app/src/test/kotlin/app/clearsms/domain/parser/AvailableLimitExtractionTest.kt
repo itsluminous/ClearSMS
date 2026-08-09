@@ -5,7 +5,7 @@ import org.junit.Test
 
 /**
  * Extraction of the issuer-reported available credit limit into
- * [app.clearsms.domain.model.ParsedTransaction.availableLimit] — the
+ * [app.clearsms.domain.model.ParsedTransaction.availableLimit] - the
  * dedicated field behind the credit-card headline. Phrasings mirror the
  * audited device corpora: "Avl Limit:", "Avl Lmt", "Avbl Limit:",
  * "Available limit is", "Available Credit Limit is". The limit must never
@@ -25,7 +25,7 @@ class AvailableLimitExtractionTest {
         assertThat(tx.amount).isEqualTo(2.00)
         assertThat(tx.availableLimit).isEqualTo(287185.45)
         assertThat(tx.accountLast4).isEqualTo("4001")
-        // The limit is NOT a balance — semantics differ, fields stay apart.
+        // The limit is NOT a balance - semantics differ, fields stay apart.
         assertThat(tx.balance).isNull()
     }
 

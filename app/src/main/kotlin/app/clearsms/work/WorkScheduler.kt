@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Enqueues all periodic background jobs as unique work. Safe to call on every
- * app start and after boot — existing schedules are kept.
+ * app start and after boot - existing schedules are kept.
  */
 object WorkScheduler {
     fun scheduleAll(context: Context) {

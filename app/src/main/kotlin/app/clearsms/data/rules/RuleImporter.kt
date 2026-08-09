@@ -48,7 +48,7 @@ class RuleImporter(
             "Rule '$ruleId': pattern is ${pattern.length} characters (maximum $MAX_PATTERN_LENGTH)"
         }
         require(!LEADING_WRAPPER.containsMatchIn(pattern)) {
-            "Rule '$ruleId': pattern must not start with '.*' or '[\\s\\S]*' — " +
+            "Rule '$ruleId': pattern must not start with '.*' or '[\\s\\S]*' - " +
                 "matching already searches anywhere in the message, and such wrappers " +
                 "cause catastrophic regex backtracking"
         }

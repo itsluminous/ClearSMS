@@ -77,7 +77,7 @@ class SenderIdCorrectionsTest {
         assertThat(asset).isEqualTo(master)
     }
 
-    /** Tests run from the app module dir or the repo root — try both. */
+    /** Tests run from the app module dir or the repo root - try both. */
     private fun repoFile(repoRelativePath: String): File =
         sequenceOf(
             File(repoRelativePath),

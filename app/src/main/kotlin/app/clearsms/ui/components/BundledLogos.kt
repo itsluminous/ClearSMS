@@ -20,7 +20,7 @@ internal const val BUNDLED_LOGO_DIR = "logos"
 private val LOGO_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
 
 /**
- * Returns the lookup key for a logo file name — the lowercase base name —
+ * Returns the lookup key for a logo file name - the lowercase base name -
  * or null when the extension isn't a supported image format. `HDFC.PNG`,
  * `hdfc.png` and `hdfc.webp` all key to `hdfc`.
  */
@@ -44,7 +44,7 @@ fun bundledLogoKeys(fileNames: List<String>): Set<String> =
         .toSet()
 
 /**
- * A decode-once cache: [load] runs at most once per key — successes and
+ * A decode-once cache: [load] runs at most once per key - successes and
  * failures alike are memoized, so a corrupt or missing asset costs one
  * attempt and then falls back forever instead of retrying every frame.
  * A throwing loader is treated as a miss, never propagated.
@@ -70,7 +70,7 @@ class BundledLogoCache<T : Any>(
  * Bundled sender logos shipped in `assets/logos/` (provenance in the
  * sibling MANIFEST.md and NOTICE). Files are named `<brandKey>.png`, so
  * resolution is keyed by the curated brand table. Listing and decoding
- * happen on [Dispatchers.IO] — never on the main thread — and every
+ * happen on [Dispatchers.IO] - never on the main thread - and every
  * bitmap is decoded once per process via [BundledLogoCache].
  */
 object BundledLogos {

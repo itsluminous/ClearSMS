@@ -18,11 +18,11 @@ import kotlinx.coroutines.launch
  *   the system preview masks the code and clipboard-history keyboards can
  *   honor it.
  * - On API 28+ the clip is cleared after [CLEAR_AFTER_MS] (best effort: the
- *   timer dies with the process) — but only if the clipboard still holds this
+ *   timer dies with the process) - but only if the clipboard still holds this
  *   app's OTP clip, so a value the user copied in the meantime is never wiped.
  *
  * Logging convention (applies to the whole codebase): message bodies, OTP
- * codes, amounts, account numbers and phone numbers must NEVER be logged —
+ * codes, amounts, account numbers and phone numbers must NEVER be logged -
  * diagnostics may reference ids, counts and categories only.
  */
 object OtpClipboard {

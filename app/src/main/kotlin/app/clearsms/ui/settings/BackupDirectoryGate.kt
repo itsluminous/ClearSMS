@@ -8,7 +8,7 @@ import app.clearsms.ui.common.BackupFrequency
  * is trivially testable:
  *
  * - Selecting DAILY/WEEKLY with no granted directory does NOT change the
- *   setting — it asks for the directory picker first, remembering the
+ *   setting - it asks for the directory picker first, remembering the
  *   requested frequency as pending.
  * - A granted pick activates the pending frequency (or just re-points the
  *   directory when no frequency was pending).

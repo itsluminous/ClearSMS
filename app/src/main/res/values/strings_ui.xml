@@ -207,7 +207,7 @@
     <string name="settings_backup_location">Backup location</string>
     <string name="settings_backup_location_summary">Folder where automatic backups are saved</string>
     <string name="settings_backup_location_not_set">No folder chosen</string>
-    <string name="settings_backup_dir_declined">Automatic backups stay off — no folder was chosen</string>
+    <string name="settings_backup_dir_declined">Automatic backups stay off - no folder was chosen</string>
     <string name="settings_backup_dir_error">Last automatic backup failed: the backup folder is missing or access was revoked. Choose the folder again.</string>
     <string name="settings_backup_done">Backup saved</string>
     <string name="settings_backup_failed">Backup failed</string>
@@ -474,7 +474,7 @@
     </plurals>
 
     <!-- Default-SMS-role banner -->
-    <string name="inbox_default_sms_banner">Clear SMS is not your default SMS app — new messages won\'t arrive here</string>
+    <string name="inbox_default_sms_banner">Clear SMS is not your default SMS app - new messages won\'t arrive here</string>
     <string name="inbox_default_sms_dismiss">Dismiss</string>
 
     <!-- Rule editing -->

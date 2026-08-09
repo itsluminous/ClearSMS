@@ -63,7 +63,7 @@ annotation class IoDispatcher
 /**
  * Qualifier for the UI-preferences DataStore ("ui_settings") as opposed to
  * the core settings DataStore. Injected so tests can substitute an isolated
- * store — binding the process-wide delegate inside UiPrefs made Robolectric
+ * store - binding the process-wide delegate inside UiPrefs made Robolectric
  * test classes poison each other through the cached static singleton.
  */
 @Qualifier

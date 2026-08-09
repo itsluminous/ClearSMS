@@ -20,8 +20,8 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * Send-status resolution over the PERSISTED [DeliveryStatus]: the recorded
- * radio reports decide the snackbar outcome, and a silent result window —
- * the delivery-reports-off / carrier-sends-nothing case — resolves honestly
+ * radio reports decide the snackbar outcome, and a silent result window -
+ * the delivery-reports-off / carrier-sends-nothing case - resolves honestly
  * to Sent (never Delivered).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -87,7 +87,7 @@ class SentMessageWatcherTest {
     fun `no report within the window resolves to sent and promotes the row`() =
         runBlocking {
             // Delivery reports off (or the carrier returned nothing): the row
-            // stays SENDING, so the window closes the send as Sent — the
+            // stays SENDING, so the window closes the send as Sent - the
             // status the brief mandates instead of a fabricated Delivered.
             val id = outgoing(DeliveryStatus.SENDING)
 

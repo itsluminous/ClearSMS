@@ -29,7 +29,7 @@ import org.robolectric.RobolectricTestRunner
 /**
  * Cross-bank UPI echo deduplication (CR2). When someone pays the user over a
  * UPI app, TWO banks text: the user's own bank AND the UPI app's provider
- * bank — same tail, amount, direction and UPI reference, minutes apart, but
+ * bank - same tail, amount, direction and UPI reference, minutes apart, but
  * attributed to different banks. Exactly ONE transaction must survive, under
  * the bank with the real account relationship, and the provider bank must
  * never gain a phantom account.
@@ -96,7 +96,7 @@ class CrossBankEchoDedupTest {
         runBlocking {
             seedHdfcHistory(1_000L)
             repository.insertIncoming("AD-HDFCBK-S", hdfcCredit, 10_000L)
-            // The provider echo lags well past the 90s near-dup window —
+            // The provider echo lags well past the 90s near-dup window -
             // the shared UPI reference alone must carry the match.
             repository.insertIncoming("JD-SBIUPI", sbiEcho, 10_000L + 20 * 60_000L)
 

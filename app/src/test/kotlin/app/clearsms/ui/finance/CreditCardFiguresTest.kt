@@ -7,7 +7,7 @@ import org.junit.Test
  * The credit-card headline and utilization rules:
  * available limit is always the preferred headline; outstanding is derived
  * (total − available) or falls back to legacy issuer-balance data; no data
- * yields a neutral state — a ₹0 balance is never fabricated.
+ * yields a neutral state - a ₹0 balance is never fabricated.
  */
 class CreditCardFiguresTest {
     @Test
@@ -26,7 +26,7 @@ class CreditCardFiguresTest {
 
     @Test
     fun `no data with a user-set total limit still yields the neutral state`() {
-        // The old code fed outstanding = balance ?: 0.0 into the bar — a
+        // The old code fed outstanding = balance ?: 0.0 into the bar - a
         // fabricated 0% utilization from a zero balance. No data means no bar.
         val figures = CreditCardFigures.compute(availableLimit = null, lastKnownBalance = null, totalLimit = 100_000.0)
         assertThat(CreditCardFigures.headline(figures)).isEqualTo(CardHeadline.NoData)
@@ -70,7 +70,7 @@ class CreditCardFiguresTest {
     fun `issuer-reported zero balance is a KNOWN zero and may be shown`() {
         // The legacy path is the issuer explicitly stating the outstanding
         // figure; 0.0 there is asserted data (a paid-off card), not a
-        // derivation artifact — this is how known-zero differs from unknown.
+        // derivation artifact - this is how known-zero differs from unknown.
         val figures = CreditCardFigures.compute(availableLimit = null, lastKnownBalance = 0.0, totalLimit = null)
         assertThat(figures.outstanding).isEqualTo(0.0)
         assertThat(CreditCardFigures.headline(figures)).isEqualTo(CardHeadline.Outstanding(0.0))
@@ -85,7 +85,7 @@ class CreditCardFiguresTest {
         val missing = CreditCardFigures.compute(availableLimit = 50_000.0, lastKnownBalance = null, totalLimit = null)
         assertThat(missing.outstanding).isNull()
         assertThat(missing.utilization).isNull()
-        // The headline is still the available limit — it needs no total.
+        // The headline is still the available limit - it needs no total.
         assertThat(CreditCardFigures.headline(missing)).isEqualTo(CardHeadline.AvailableLimit(50_000.0))
     }
 

@@ -15,7 +15,7 @@ import java.io.File
  * 2. `MainActivity` must re-mask when the app leaves the foreground
  *    (`onStop`), while sparing configuration changes.
  * 3. `showTransactionDetails` must actually be consumed by the conversation
- *    UI — it shipped write-only once; this pins the fix.
+ *    UI - it shipped write-only once; this pins the fix.
  * 4. The eye control must expose the state-dependent content descriptions.
  */
 class BalancePrivacyConventionTest {

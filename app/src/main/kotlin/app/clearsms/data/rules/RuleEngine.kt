@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap
  * - no guard named in `guards_none` matches the body ([RuleGuards]): a rule
  *   can veto itself declaratively against the shared negative-knowledge
  *   library instead of restating the patterns. A rule referencing an unknown
- *   guard id is skipped and logged — never applied without its veto.
+ *   guard id is skipped and logged - never applied without its veto.
  *
  * Regexes are compiled once and cached; rules with invalid patterns are skipped
  * (and reported through [log]) so one bad community rule cannot break the engine.
@@ -31,8 +31,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Extracts are resolved to TYPED values ([CategorizationResult.typed]): the
  * extract key infers the type (`amount` is an amount, `due_date` a date, ...),
  * a rule's `extract_types` map overrides the inference where it is wrong, and
- * the shared parsing algorithms — the amount grammar, the multi-format date
- * normalisation, merchant normalisation — are applied here, ONCE, instead of
+ * the shared parsing algorithms - the amount grammar, the multi-format date
+ * normalisation, merchant normalisation - are applied here, ONCE, instead of
  * ad hoc by every consumer. A capture that fails to parse as its type keeps
  * its raw string in [CategorizationResult.extracted] but yields no typed
  * value; a rule declaring an unknown type name is skipped and logged.
@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Evaluation is additionally bounded by a per-message wall-clock budget
  * ([evaluationBudgetNanos]): user-imported and community rules run against
  * EVERY incoming message, so a single pathological (catastrophically
- * backtracking) pattern must degrade into a skipped rule set — never a hung
+ * backtracking) pattern must degrade into a skipped rule set - never a hung
  * ingestion pipeline. When the budget is exceeded the engine logs the rule
  * that blew it and returns null, letting categorization fall through to the
  * next stage.
@@ -226,8 +226,8 @@ class RuleEngine(
 
     companion object {
         /**
-         * Per-message evaluation budget across ALL rules (250 ms). Generous —
-         * the full bundled set evaluates in single-digit milliseconds — but a
+         * Per-message evaluation budget across ALL rules (250 ms). Generous -
+         * the full bundled set evaluates in single-digit milliseconds - but a
          * hard stop against a future rule with catastrophic backtracking.
          */
         const val DEFAULT_EVALUATION_BUDGET_NANOS: Long = 250_000_000L

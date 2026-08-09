@@ -69,7 +69,7 @@ class UiPrefs
         /**
          * Raised by the backup worker when the chosen directory is gone or
          * its permission was revoked; surfaced as a warning in Settings (the
-         * fix — re-picking the directory — lives there) and cleared on the
+         * fix - re-picking the directory - lives there) and cleared on the
          * next successful run or re-pick.
          */
         val backupDirectoryError: Flow<Boolean> = dataStore.data.map { it[KEY_BACKUP_DIRECTORY_ERROR] ?: false }

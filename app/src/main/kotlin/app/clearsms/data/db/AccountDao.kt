@@ -19,15 +19,15 @@ interface AccountDao {
         bankName: String,
     ): AccountEntity?
 
-    /** Every account sharing a last-4 — a tail is NOT unique across banks. */
+    /** Every account sharing a last-4 - a tail is NOT unique across banks. */
     @Query("SELECT * FROM accounts WHERE accountNumber = :accountNumber")
     suspend fun findByNumber(accountNumber: String): List<AccountEntity>
 
-    /** Every account of one issuer — consulted for digit-less card spends. */
+    /** Every account of one issuer - consulted for digit-less card spends. */
     @Query("SELECT * FROM accounts WHERE bankName = :bankName")
     suspend fun findByBank(bankName: String): List<AccountEntity>
 
-    /** Legacy row created before bank resolution existed — claimed on next write. */
+    /** Legacy row created before bank resolution existed - claimed on next write. */
     @Query("SELECT * FROM accounts WHERE accountNumber = :accountNumber AND bankName = '' AND type = :type LIMIT 1")
     suspend fun findBlankBank(
         accountNumber: String,
@@ -50,7 +50,7 @@ interface AccountDao {
     suspend fun findById(id: Long): AccountEntity?
 
     /**
-     * Deletes ONE account row by id — used solely to reap the phantom
+     * Deletes ONE account row by id - used solely to reap the phantom
      * account a cross-bank UPI echo spawned, after the echo transaction has
      * been collapsed away and nothing else references the row.
      */

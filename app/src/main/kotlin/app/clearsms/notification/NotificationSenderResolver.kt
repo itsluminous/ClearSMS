@@ -25,7 +25,7 @@ data class NotificationSender(
     val monogram: String,
     /** Brand tile color (ARGB) when the sender maps to a curated brand; null → hash color. */
     val colorArgb: Int? = null,
-    /** Curated brand key — also the bundled logo asset key (`logos/<key>.png`). */
+    /** Curated brand key - also the bundled logo asset key (`logos/<key>.png`). */
     val brandKey: String? = null,
     /** Curated brand category; drives the badge on generated tiles. */
     val brandCategory: BrandCategory? = null,
@@ -39,7 +39,7 @@ data class NotificationSender(
  * curated brand table → the raw address unchanged.
  *
  * Every tier degrades instead of failing: a lookup that throws (for example
- * a contacts provider error, or READ_CONTACTS being denied — [ContactsSource]
+ * a contacts provider error, or READ_CONTACTS being denied - [ContactsSource]
  * already returns null in that case) simply falls through to the next tier,
  * so the notification always renders. Pure so the chain is unit-testable.
  */
@@ -83,7 +83,7 @@ internal fun parseHexColor(hex: String): Int? {
 /**
  * Injectable wrapper wiring [resolveNotificationSender] to the real sources.
  * Lookups may hit the contacts provider (cached with a short TTL), so callers
- * must invoke [resolve] off the main thread — every notifier is driven from
+ * must invoke [resolve] off the main thread - every notifier is driven from
  * the receiver's IO-dispatched application scope. Open so tests can stub the
  * chain without the asset-backed directory.
  */

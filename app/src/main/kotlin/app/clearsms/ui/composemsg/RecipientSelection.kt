@@ -6,7 +6,7 @@ package app.clearsms.ui.composemsg
  *
  * After picking a contact suggestion, [picked] carries the contact (name,
  * exact chosen number, photo) so the field renders the NAME with the number
- * as secondary text — while [destination] always holds the raw phone number
+ * as secondary text - while [destination] always holds the raw phone number
  * that is actually dialed by the SMS layer. A contact with several numbers
  * yields one suggestion per number, so [picked] records precisely which one
  * was chosen. Manual edits drop the pick and fall back to raw-number entry.
@@ -19,7 +19,7 @@ data class RecipientSelection(
     /** The chosen contact, when the destination came from a suggestion. */
     val picked: ContactSuggestion? = null,
 ) {
-    /** Manual typing always clears any previous pick — raw entry keeps working. */
+    /** Manual typing always clears any previous pick - raw entry keeps working. */
     fun edit(value: String): RecipientSelection = RecipientSelection(destination = value)
 
     /** Picking a suggestion: send to its exact number, display its name. */

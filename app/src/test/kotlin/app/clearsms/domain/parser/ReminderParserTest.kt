@@ -108,7 +108,7 @@ class ReminderParserTest {
     @Test
     fun `card statement with Total amt and Min amt due maps each to its own field`() {
         // Defect P1b: "Total amt:" (no "due") failed the total pattern while
-        // "Min amt due:" matched — the total was lost and only the min stored.
+        // "Min amt due:" matched - the total was lost and only the min stored.
         val result =
             parser.parse(
                 "AD-AXISBK",
@@ -130,7 +130,7 @@ class ReminderParserTest {
 
     @Test
     fun `total smaller than min is a mis-parse and is re-resolved to a valid total`() {
-        // The loose "total of" phrase grabs 100, which contradicts min=250 —
+        // The loose "total of" phrase grabs 100, which contradicts min=250 -
         // the parser must re-resolve to the statement amount instead.
         val result =
             parser.parse(

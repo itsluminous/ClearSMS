@@ -26,7 +26,7 @@ import app.clearsms.R
  * masked → consult [BalanceUnlock.decide]:
  * - [UnlockDecision.PROMPT]: system sheet; only success calls [onReveal].
  * - [UnlockDecision.NO_DEVICE_LOCK]: explains that a screen lock is required
- *   and offers the system security settings — no silent reveal, no dead end.
+ *   and offers the system security settings - no silent reveal, no dead end.
  * - [UnlockDecision.UNAVAILABLE]: honest "try again later" dialog.
  */
 @Composable
@@ -79,7 +79,7 @@ private fun NoScreenLockDialog(onDismiss: () -> Unit) {
             TextButton(
                 onClick = {
                     // Some restricted profiles hide this screen; failing to
-                    // resolve must not crash — the dialog text still explains.
+                    // resolve must not crash - the dialog text still explains.
                     runCatching { context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) }
                     onDismiss()
                 },

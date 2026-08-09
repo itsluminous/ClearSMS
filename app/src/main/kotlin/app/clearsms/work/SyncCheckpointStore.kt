@@ -14,7 +14,7 @@ import javax.inject.Singleton
  *
  * The import walks the system SMS provider ordered by `_id`; after each page
  * commits, the checkpoint advances to the last processed `_id`. A stopped,
- * retried or rebooted import resumes from here instead of starting over —
+ * retried or rebooted import resumes from here instead of starting over -
  * a mid-page kill redoes at most one page (which the unique `systemSmsId`
  * index then deduplicates).
  */

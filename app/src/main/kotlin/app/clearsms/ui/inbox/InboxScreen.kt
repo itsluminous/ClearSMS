@@ -130,7 +130,7 @@ fun InboxScreen(
 
     // Gmail-style transient undo: every delete/archive surfaces a snackbar
     // whose UNDO reverts the staged action (deletes commit to the system
-    // provider only after the window closes — see UndoManager).
+    // provider only after the window closes - see UndoManager).
     val undoLabel = stringResource(R.string.undo_action)
     val resources = LocalContext.current.resources
     LaunchedEffect(Unit) {

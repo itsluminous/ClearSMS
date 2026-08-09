@@ -9,23 +9,23 @@ import kotlinx.coroutines.flow.Flow
 interface FinanceRepository {
     fun observeTransactions(): Flow<List<TransactionEntity>>
 
-    /** Newest [limit] transactions — backs the growing "load more" list. */
+    /** Newest [limit] transactions - backs the growing "load more" list. */
     fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>>
 
-    /** Transactions of ONE account, identified by last-4 AND bank — never the number alone. */
+    /** Transactions of ONE account, identified by last-4 AND bank - never the number alone. */
     fun observeTransactionsByAccount(
         accountNumber: String,
         bankName: String,
     ): Flow<List<TransactionEntity>>
 
-    /** Newest [limit] transactions for one account — account-detail "load more" list. */
+    /** Newest [limit] transactions for one account - account-detail "load more" list. */
     fun observeTransactionsByAccount(
         accountNumber: String,
         bankName: String,
         limit: Int,
     ): Flow<List<TransactionEntity>>
 
-    /** The most recent transaction for an account/card — the message behind its latest update. */
+    /** The most recent transaction for an account/card - the message behind its latest update. */
     suspend fun latestTransactionForAccount(
         accountNumber: String,
         bankName: String,

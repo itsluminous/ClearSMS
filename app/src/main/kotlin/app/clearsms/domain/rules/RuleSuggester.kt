@@ -41,7 +41,7 @@ data class SuggestedToken(
  * Analyzes a concrete SMS and produces structured, tappable suggestions so the
  * user never has to write regex by hand: currency amounts, masked account
  * tails, OTP codes, dates, reference ids, balances, vendor-name candidates,
- * leftover digit groups and salient keywords — each with the exact regex
+ * leftover digit groups and salient keywords - each with the exact regex
  * fragment the composer will substitute for it.
  *
  * Pure Kotlin (no Android dependencies) so every detection path is unit-testable
@@ -228,7 +228,7 @@ object RuleSuggester {
     /**
      * Detects all candidate tokens in [body], sorted by position. Numeric spans
      * are claimed by at most one token (most specific kind wins) so every digit
-     * group is reported exactly once — either as a typed token or GENERIC_NUMBER.
+     * group is reported exactly once - either as a typed token or GENERIC_NUMBER.
      */
     fun suggest(body: String): List<SuggestedToken> {
         val claimed = mutableListOf<IntRange>()

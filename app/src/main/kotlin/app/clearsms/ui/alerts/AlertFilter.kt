@@ -10,7 +10,7 @@ import app.clearsms.domain.model.ReminderType
  * [ReminderType.OTHER]: the parser only ever emits OTHER through bill gates
  * (a recognized bill domain in the body, a known biller sender, a generic
  * instalment, or a bundled bill-reminder rule), so OTHER reminders are
- * bills by construction — the card badge already labels them "Bill". A
+ * bills by construction - the card badge already labels them "Bill". A
  * residual "Others" pill would therefore always be empty and is omitted
  * rather than split by an arbitrary label heuristic.
  */

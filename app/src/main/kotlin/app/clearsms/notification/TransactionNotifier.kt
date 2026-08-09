@@ -35,26 +35,26 @@ import kotlin.math.abs
  * Notification for a parsed bank transaction: the essentials up front
  * (signed amount, merchant, account, bank) instead of the raw SMS.
  *
- * Semantics mirror the Finance UI's three-way split — debit (red, "− ₹…"),
+ * Semantics mirror the Finance UI's three-way split - debit (red, "− ₹…"),
  * credit (green, "+ ₹…") and balance-only update (blue, unsigned "₹…"),
  * using the same fixed colors as
  * [app.clearsms.ui.theme.SemanticAmountColors] via `R.color.amount_*`
  * (day/night variants), deliberately independent of the Material dynamic
  * palette.
  *
- * The standard notification template cannot color its title —
- * [NotificationCompat.Builder.setColor] only tints the small icon/accent —
+ * The standard notification template cannot color its title -
+ * [NotificationCompat.Builder.setColor] only tints the small icon/accent -
  * so on API 24+ the amount is rendered through a custom content view
  * ([NotificationCompat.Builder.setCustomContentView] +
  * [NotificationCompat.DecoratedCustomViewStyle]) whose amount TextView gets
  * an explicit color; the expanded custom view carries the full original SMS
  * body. On API 23 (`minSdk`), where the decorated style does not exist, the
- * template title is a [SpannableString] with a [ForegroundColorSpan] — the
+ * template title is a [SpannableString] with a [ForegroundColorSpan] - the
  * platform templates on API 21–23 preserve title spans, so the amount stays
  * colored there too. Either way the text is never shipped uncolored.
  *
  * Tapping deep-links to the conversation at THAT message:
- * `clearsms://conversation/{threadId}?messageId={messageId}` — the query
+ * `clearsms://conversation/{threadId}?messageId={messageId}` - the query
  * parameter is named `messageId` and is also present as the "message_id"
  * intent extra ([MessageActionReceiver.EXTRA_MESSAGE_ID]) for the UI to
  * highlight the target message.
@@ -76,7 +76,7 @@ class TransactionNotifier
          * Posts a parsed-transaction notification for [message].
          *
          * @return false when the message's extracted data does not contain
-         *   enough to render (no amount+type and no balance) — the caller
+         *   enough to render (no amount+type and no balance) - the caller
          *   falls back to the plain message notification.
          */
         fun notify(
@@ -120,7 +120,7 @@ class TransactionNotifier
                     repliable = NotificationActionPlanner.isRepliableAddress(message.sender),
                 )
             val amountColor = ContextCompat.getColor(context, amountColorRes(content.kind))
-            // Bank identity via the shared avatar chain (logo / brand tile) —
+            // Bank identity via the shared avatar chain (logo / brand tile) -
             // resolution never throws, so the notification always renders.
             val largeIcon = iconFactory.largeIconFor(senderResolver.resolve(message.sender))
             val builder =
@@ -226,13 +226,13 @@ class TransactionNotifier
 
             /**
              * Detail keys written only for bill/payment reminders. Their
-             * presence forces the informational blue/no-sign treatment —
+             * presence forces the informational blue/no-sign treatment -
              * the notification twin of `isBillDetails` in the UI layer.
              */
             private val BILL_MARKER_KEYS = setOf("due_date", "total_due", "min_due")
 
             /**
-             * Fixed day/night color resource for a transaction kind — the
+             * Fixed day/night color resource for a transaction kind - the
              * notification twin of [app.clearsms.ui.theme.SemanticAmountColors].
              */
             @ColorRes
@@ -251,12 +251,12 @@ class TransactionNotifier
              *
              * Bill/reminder-derived amounts win first: any of the reminder
              * keys ("due_date", "total_due", "min_due") marks the message as
-             * a bill notice, which is informational — no money moved — so it
+             * a bill notice, which is informational - no money moved - so it
              * renders in the blue balance treatment with NO sign, never as a
              * red debit (even when a parser also stamped a debit "type" on
              * the same message). The bill HEADLINE is the invariant-checked
              * TOTAL due when present; a rule's generic "amount" or the
-             * minimum are only fallbacks — a card bill must lead with what
+             * minimum are only fallbacks - a card bill must lead with what
              * is owed, not the minimum. The detail line carries the due
              * date, the biller (merchant or reminder label), the account and
              * the bank, plus the minimum due as a secondary figure.
@@ -325,7 +325,7 @@ class TransactionNotifier
 
             /**
              * "2026-08-04" (the pipeline's normalized ISO due date) → "4 Aug".
-             * Null when the stored value is not ISO — a missing date is
+             * Null when the stored value is not ISO - a missing date is
              * better than a raw capture leaking into the notification.
              */
             internal fun formatDueDate(iso: String?): String? {

@@ -7,7 +7,7 @@ import java.time.LocalDate
  *
  * Exactly one of [explicitDate] / [relativeDays] is set. Relative phrases
  * ("arriving today", "out for delivery") are resolved against the DATE OF
- * THE MESSAGE — not the current clock — via [expectedDate], so importing an
+ * THE MESSAGE - not the current clock - via [expectedDate], so importing an
  * old message never produces a wrong future date.
  */
 data class ParsedDelivery(

@@ -76,7 +76,7 @@ class ReminderAlarmScheduler
             /**
              * The alarm fires one day before the due date (at the same
              * start-of-day instant). Returns null when that moment has
-             * already passed — there is nothing useful to schedule.
+             * already passed - there is nothing useful to schedule.
              */
             fun triggerTimeFor(
                 dueDateMs: Long,

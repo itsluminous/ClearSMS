@@ -11,7 +11,7 @@ import app.clearsms.R
  * its SMS, so its account row carries a stable synthetic key instead of a
  * last-4 (see the ingestion-side account-identity rules). That key is an
  * internal identifier: rendering it as "xxSCAPIAFEDERAL" would present
- * noise as a card number, so such accounts show no masked-number line —
+ * noise as a card number, so such accounts show no masked-number line -
  * the issuer name already identifies the card.
  */
 @Composable

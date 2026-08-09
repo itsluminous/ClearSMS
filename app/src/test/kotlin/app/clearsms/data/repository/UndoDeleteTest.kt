@@ -29,7 +29,7 @@ import org.robolectric.RobolectricTestRunner
 /**
  * The deferred-commit delete design: staging soft-deletes the app rows
  * immediately (hidden everywhere, notifications cancelled) while the
- * system-provider deletion waits for the commit — so undo is a pure flag
+ * system-provider deletion waits for the commit - so undo is a pure flag
  * revert and the provider is never touched inside the window.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -223,7 +223,7 @@ class UndoDeleteTest {
             val deleted = repository.deleteOtpOlderThan(cutoffMs = 5_000)
 
             assertThat(deleted).isEqualTo(1)
-            // Row hard-deleted AND provider synced in one step — nothing is
+            // Row hard-deleted AND provider synced in one step - nothing is
             // left pending for an undo window to revert.
             assertThat(db.messageDao().getAll().map { it.id }).containsExactly(2L)
             assertThat(deletedFromProvider.flatten()).containsExactly(101L)

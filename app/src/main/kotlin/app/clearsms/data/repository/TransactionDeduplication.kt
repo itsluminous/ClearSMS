@@ -7,13 +7,13 @@ import kotlin.math.abs
  * Collapses duplicate transaction rows born from repeated bank SMS for the
  * SAME payment (a spend alert plus a later statement / "payment received"
  * line), which inflated month totals. Two tiers, both deliberately
- * conservative — merging two genuinely distinct payments is worse than
+ * conservative - merging two genuinely distinct payments is worse than
  * leaving a duplicate:
  *
  * 1. **Reference match.** Same normalized reference (UTR/RRN/txn id) + same
  *    amount, type and account last-4, with compatible issuers (equal, or one
  *    blank where the alert never named the bank). References are globally
- *    unique per transaction, so the match holds at ANY time distance — a
+ *    unique per transaction, so the match holds at ANY time distance - a
  *    charge and its statement line days later are still one payment. A
  *    reference only counts when it looks like one: at least
  *    [MIN_REFERENCE_LENGTH] characters AND at least one digit. (Observed
@@ -21,7 +21,7 @@ import kotlin.math.abs
  *    references would otherwise chain unrelated payments together.)
  * 2. **Near-duplicate alert.** With no reference to lean on, two rows are
  *    the same payment only when amount, type and the exact
- *    (last-4, bank) account all match within [NEAR_DUPLICATE_WINDOW_MS] —
+ *    (last-4, bank) account all match within [NEAR_DUPLICATE_WINDOW_MS] -
  *    and nothing contradicts it. Window evidence from a real corpus:
  *    duplicate alerts for one payment overwhelmingly arrive within a
  *    minute of each other, while verified DISTINCT same-amount pairs with
@@ -34,11 +34,11 @@ import kotlin.math.abs
  *    valid references, or rows already linked to different accounts.
  *
  * Never merged across accounts or types. Merging across two different NAMED
- * banks — the same last-4 legitimately exists at several banks — is allowed
+ * banks - the same last-4 legitimately exists at several banks - is allowed
  * ONLY by the cross-bank echo tiers (1b/2b below), which exist because a UPI
  * payment is texted by BOTH the account's own bank and the UPI app's
  * provider bank: same tail, amount, direction and UPI reference, minutes
- * apart, but attributed to two banks — one event, and without these tiers a
+ * apart, but attributed to two banks - one event, and without these tiers a
  * phantom transaction plus a phantom account appear under the provider bank.
  */
 object TransactionDeduplication {
@@ -51,19 +51,19 @@ object TransactionDeduplication {
     /**
      * Cross-bank reference-echo window (tier 1b). When a UPI payment lands,
      * TWO banks can text the user: the account's own bank AND the UPI app's
-     * provider bank — same tail, amount, direction and UPI reference, but
+     * provider bank - same tail, amount, direction and UPI reference, but
      * attributed to different banks. The reference (a UPI RRN) is globally
      * unique per transaction, so equality is near-proof of one event; the
      * window exists only to bound the horizon over which RRNs could ever be
      * reused. Provider echoes usually arrive within minutes, but SMS
-     * delivery can lag hours (DND windows, queued delivery) — 24h keeps
+     * delivery can lag hours (DND windows, queued delivery) - 24h keeps
      * every real echo while a reused RRN months later stays distinct.
      */
     const val CROSS_BANK_REF_WINDOW_MS = 24 * 60 * 60 * 1000L
 
     /**
      * Canonical form of a reference: trimmed and uppercased. Returns null
-     * for tokens that cannot identify a transaction — too short, or with no
+     * for tokens that cannot identify a transaction - too short, or with no
      * digit at all (extraction noise like "details" / "Number").
      */
     fun normalizedReference(reference: String?): String? {
@@ -87,7 +87,7 @@ object TransactionDeduplication {
      * Tier 1b: the same payment texted by TWO different banks (the user's
      * own bank plus the UPI provider's bank). Requires the strongest
      * possible signal set: equal valid references, equal amount and
-     * direction, and the same NON-EMPTY account tail — a blank tail is no
+     * direction, and the same NON-EMPTY account tail - a blank tail is no
      * shared-account evidence at all. Both banks must actually be named
      * (a blank bank is tier 1's territory), and the account-link veto is
      * deliberately NOT applied: the phantom account the echo spawned is
@@ -111,7 +111,7 @@ object TransactionDeduplication {
      * reference. With no reference to lean on the window stays TIGHT
      * ([NEAR_DUPLICATE_WINDOW_MS]) and every tier-2 veto applies, plus one
      * more: rows already linked to two different accounts are two GENUINE
-     * accounts that happen to share a tail — the one false positive this
+     * accounts that happen to share a tail - the one false positive this
      * tier must never touch (ingestion additionally vetoes when both banks
      * hold independent transaction evidence for the tail; see
      * the repository's duplicate lookup).
@@ -138,8 +138,8 @@ object TransactionDeduplication {
 
     /**
      * Survivor of a cross-bank echo pair: the row whose bank has a REAL
-     * account relationship with the tail — measured by how many OTHER
-     * transactions are already attributed to that (bank, last-4) — wins;
+     * account relationship with the tail - measured by how many OTHER
+     * transactions are already attributed to that (bank, last-4) - wins;
      * the provider bank's echo has none. On a tie the richer row wins, and
      * on equal richness [a] (the already-persisted row) is kept.
      */
@@ -158,7 +158,7 @@ object TransactionDeduplication {
 
     /**
      * One row for a cross-bank echo pair, keeping the WINNER's identity
-     * wholesale — id, rawSmsId, timestamp, bank, account link — and filling
+     * wholesale - id, rawSmsId, timestamp, bank, account link - and filling
      * only the counterparty-description gaps from the loser. The loser's
      * balance is never copied: it describes the other bank's (usually
      * phantom) ledger, not the surviving account's.
@@ -215,8 +215,8 @@ object TransactionDeduplication {
 
     /**
      * One row carrying both alerts' knowledge. Keeps the identity (id,
-     * rawSmsId, timestamp) of the RICHER row — so the row always points at a
-     * real source message — fills its gaps from the other, and preserves
+     * rawSmsId, timestamp) of the RICHER row - so the row always points at a
+     * real source message - fills its gaps from the other, and preserves
      * user notes from BOTH rows.
      */
     fun collapse(
@@ -291,7 +291,7 @@ object TransactionDeduplication {
         val droppedIds = mutableListOf<Long>()
         var tier1 = 0
         var tier2 = 0
-        // Both tiers require equal amount+type+last4 — cluster inside those
+        // Both tiers require equal amount+type+last4 - cluster inside those
         // buckets only, keeping the pass linear over a large table.
         val buckets = rows.groupBy { Triple(it.amount, it.type, it.accountNumber) }
         for (bucket in buckets.values) {

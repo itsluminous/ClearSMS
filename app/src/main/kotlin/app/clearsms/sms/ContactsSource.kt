@@ -111,7 +111,7 @@ class ContactsSource
             /**
              * Format-insensitive cache key: the last 10 digits of the address,
              * so `+91 98765 43210`, `09876543210` and `9876543210` share one
-             * cache entry — mirroring how `PhoneLookup` matches them to the
+             * cache entry - mirroring how `PhoneLookup` matches them to the
              * same contact.
              */
             fun cacheKeyFor(address: String): String {

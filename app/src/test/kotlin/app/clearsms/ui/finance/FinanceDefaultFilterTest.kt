@@ -22,7 +22,7 @@ import org.junit.Test
 
 /**
  * Settings → Finance → Default Finance filter: the Finance screen opens on
- * the chosen pill, and tapping a pill only overrides the session — it never
+ * the chosen pill, and tapping a pill only overrides the session - it never
  * rewrites the stored default.
  */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -26,14 +26,14 @@ import java.util.concurrent.TimeUnit
  * grant). Each run writes BOTH exports under stable names, overwriting the
  * previous copies:
  *
- * - [MESSAGES_FILE_NAME] — the full database export ([BackupManager])
- * - [SETTINGS_FILE_NAME] — the settings export ([SettingsBackupManager])
+ * - [MESSAGES_FILE_NAME] - the full database export ([BackupManager])
+ * - [SETTINGS_FILE_NAME] - the settings export ([SettingsBackupManager])
  *
  * Nothing is uploaded anywhere. The frequency setting cannot reach
  * DAILY/WEEKLY without a granted directory (Settings gates it), so a missing
  * uri here means the grant was lost: the run fails and raises the
  * directory-error flag that Settings surfaces as a "choose the folder again"
- * warning — chosen over a notification because the fix lives in Settings,
+ * warning - chosen over a notification because the fix lives in Settings,
  * needs no POST_NOTIFICATIONS permission, and stays visible until resolved
  * instead of being swiped away.
  *
@@ -109,7 +109,7 @@ class BackupWorker
 
         /**
          * Removes the exports previous app versions wrote to app-private
-         * internal and external storage — automatic backups now live only in
+         * internal and external storage - automatic backups now live only in
          * the user-chosen directory.
          */
         private fun deleteLegacyLocalBackups(context: Context) {

@@ -72,7 +72,7 @@ class AccountLinkingTest {
 
     private fun ingestSharedTailCorpus() =
         runBlocking {
-            // HDFC savings *8709 — two UPI debits.
+            // HDFC savings *8709 - two UPI debits.
             repository.insertIncoming(
                 "AD-HDFCBK-S",
                 "Sent Rs.500.00 From HDFC Bank A/C *8709 To someone@okaxis On 01/05/26 Ref 123456789012 " +
@@ -85,14 +85,14 @@ class AccountLinkingTest {
                     "Not You? Call 18001234567/SMS BLOCK UPI to 7308080808",
                 2_000L,
             )
-            // SBI savings *8709 — one credit.
+            // SBI savings *8709 - one credit.
             repository.insertIncoming(
                 "AD-SBIUPI-S",
                 "Dear SBI User, your A/c X8709-credited by Rs.12000 on 03May26 transfer from SOME SENDER " +
                     "Ref No 123456789014 -SBI",
                 3_000L,
             )
-            // Federal savings *8709 — one debit with balance.
+            // Federal savings *8709 - one debit with balance.
             repository.insertIncoming(
                 "AD-FEDBNK-S",
                 "Rs 250.00 debited from your A/c XX8709 on 04-05-2026 via UPI. Avl Bal Rs 210012.98 - Federal Bank",
@@ -152,7 +152,7 @@ class AccountLinkingTest {
     fun `latest transaction for an account is never another bank's message`() =
         runBlocking {
             ingestSharedTailCorpus()
-            // The newest *8709 transaction overall is Federal's — SBI's
+            // The newest *8709 transaction overall is Federal's - SBI's
             // lookup must still surface its OWN latest, not fall back by tail.
             val latest = financeRepository.latestTransactionForAccount("8709", "State Bank of India")
             assertThat(latest?.bankName).isEqualTo("State Bank of India")

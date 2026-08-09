@@ -1,10 +1,10 @@
 {
   "version": "1.0",
-  "description": "Guards that exist purely for RULES to reference through their 'guards_none' clause ('this rule does not apply if any listed guard matches the body'). Rules may also reference every guard in guards.json by id; this file extends that set without any code change — ids here must not shadow guards.json ids. Same safety rules as guards.json: standalone regexes, (?i) for case-insensitivity, no leading/trailing .* wrappers, no nested quantifiers; unsafe patterns are skipped at load with a logged warning.",
+  "description": "Guards that exist purely for RULES to reference through their 'guards_none' clause ('this rule does not apply if any listed guard matches the body'). Rules may also reference every guard in guards.json by id; this file extends that set without any code change - ids here must not shadow guards.json ids. Same safety rules as guards.json: standalone regexes, (?i) for case-insensitivity, no leading/trailing .* wrappers, no nested quantifiers; unsafe patterns are skipped at load with a logged warning.",
   "guards": [
     {
       "id": "otp_mention",
-      "description": "Any mention of 'otp' anywhere in the body (case-insensitive substring — exactly the body_must_not_contain [\"OTP\", \"otp\"] clause it replaces). Referenced by bank transaction rules so an OTP message quoting an amount never matches a debit/credit shape.",
+      "description": "Any mention of 'otp' anywhere in the body (case-insensitive substring - exactly the body_must_not_contain [\"OTP\", \"otp\"] clause it replaces). Referenced by bank transaction rules so an OTP message quoting an amount never matches a debit/credit shape.",
       "patterns": [
         "(?i)otp"
       ]

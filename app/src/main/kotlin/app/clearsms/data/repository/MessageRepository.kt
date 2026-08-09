@@ -63,7 +63,7 @@ interface MessageRepository {
 
     /**
      * Paged full-text search with the category / date filters composed into
-     * the SQL. [query] is raw user input — sanitized here; an unsearchable
+     * the SQL. [query] is raw user input - sanitized here; an unsearchable
      * query yields an empty page source.
      */
     fun pagedSearch(
@@ -96,7 +96,7 @@ interface MessageRepository {
     /**
      * Soft-deletes [ids]: the rows disappear from every read path
      * immediately and their notifications are cancelled, but the system-
-     * provider deletion is DEFERRED until [commitStagedDelete] — so
+     * provider deletion is DEFERRED until [commitStagedDelete] - so
      * [undoStagedDelete] can restore them without re-inserting provider
      * rows.
      *
@@ -134,7 +134,7 @@ interface MessageRepository {
      */
     suspend fun restoreFromBin(ids: List<Long>): BinRestoreResult
 
-    /** Hard-deletes bin rows — exactly what [deleteMessages] does today. */
+    /** Hard-deletes bin rows - exactly what [deleteMessages] does today. */
     suspend fun deleteForever(ids: List<Long>)
 
     /**

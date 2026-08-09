@@ -4,7 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 /**
- * Unit contract of [TransactionParser.normalizeMerchantCandidate] — the single
+ * Unit contract of [TransactionParser.normalizeMerchantCandidate] - the single
  * cleanup applied to every rule-supplied merchant extract and the parser's own
  * "Info:" narration, so raw narration captures can never ship as titles.
  */

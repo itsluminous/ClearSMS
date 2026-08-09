@@ -5,7 +5,7 @@ import org.junit.Test
 
 /**
  * The recipient field shows the contact NAME after a pick, while the value
- * actually sent stays the phone number — including contacts with several
+ * actually sent stays the phone number - including contacts with several
  * numbers, and without breaking manual raw-number entry.
  */
 class RecipientSelectionTest {

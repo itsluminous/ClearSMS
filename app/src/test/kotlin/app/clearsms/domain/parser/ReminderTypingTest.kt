@@ -7,7 +7,7 @@ import org.junit.Test
 /**
  * Regression suite for reminder TYPE classification (see
  * [ReminderTypeClassifier]). Every body below is a synthetic replica of a
- * real message SHAPE observed on-device (numbers invented, digits changed) —
+ * real message SHAPE observed on-device (numbers invented, digits changed) -
  * one test per confirmed misclassification plus regressions for every shape
  * verified correct, so a future rule tweak cannot silently reintroduce the
  * loose-keyword bugs (bare "premium" -> INSURANCE, bare "plan" ->

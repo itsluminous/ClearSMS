@@ -25,7 +25,7 @@ class OtpParser {
      * [parse] this never falls back to a bare six-digit number near a context
      * word, so a transaction reference in a debit alert that merely mentions
      * "OTP"/"PIN" in an advisory can never be mistaken for a code. Used where
-     * a false OTP is costly — e.g. reclassifying a rule-matched transaction.
+     * a false OTP is costly - e.g. reclassifying a rule-matched transaction.
      */
     fun parseAnchored(body: String): ParsedOtp? {
         for (pattern in KEYWORD_PATTERNS) {

@@ -126,7 +126,7 @@ class TransactionNotifierCustomViewTest {
         assertThat(title).isEqualTo("₹40,194.56")
         assertThat(title).doesNotContain("+")
         assertThat(title).doesNotContain("−")
-        // The custom parsed layouts are attached — same mechanism as
+        // The custom parsed layouts are attached - same mechanism as
         // transactions, no second notification style.
         @Suppress("DEPRECATION")
         assertThat(notification.contentView.layoutId).isEqualTo(R.layout.notification_transaction)

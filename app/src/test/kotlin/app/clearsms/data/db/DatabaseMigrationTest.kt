@@ -9,7 +9,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Validates the auto migrations against the committed schema JSONs — a
+ * Validates the auto migrations against the committed schema JSONs - a
  * destructive fallback would silently wipe user data on app update.
  */
 @RunWith(RobolectricTestRunner::class)

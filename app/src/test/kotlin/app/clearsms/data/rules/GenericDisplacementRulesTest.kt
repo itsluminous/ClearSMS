@@ -10,7 +10,7 @@ import java.io.File
 /**
  * Coverage tests for the sender-specific rules that displace the generic-*
  * fallbacks (banks, cards, wallets, couriers). Every message here is
- * SYNTHETIC — patterns were derived from message *shapes*, and these tests
+ * SYNTHETIC - patterns were derived from message *shapes*, and these tests
  * assert each representative rule matches its intended shape (with capture
  * order) and rejects a near-miss, while the generic safety net stays intact.
  */

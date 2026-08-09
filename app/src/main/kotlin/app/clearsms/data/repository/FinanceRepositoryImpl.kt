@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.map
 /**
  * Default [FinanceRepository] backed by Room DAOs.
  *
- * Reminder flows are de-duplicated per bill at the read layer — see
+ * Reminder flows are de-duplicated per bill at the read layer - see
  * [ReminderDeduplication] for the identity and merge rules.
  */
 class FinanceRepositoryImpl(

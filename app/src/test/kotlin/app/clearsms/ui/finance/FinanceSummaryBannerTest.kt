@@ -35,7 +35,7 @@ import java.time.ZonedDateTime
 
 /**
  * The finance summary banner's click behaviour: tapping toggles the inline
- * breakdown, and — because expansion is a disclosure, not a navigation — the
+ * breakdown, and - because expansion is a disclosure, not a navigation - the
  * pill selection (and the stored default filter) is never disturbed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -138,12 +138,12 @@ class FinanceSummaryBannerTest {
                 )
             finance.transactions.value =
                 listOf(
-                    // Real spend + income — counted:
+                    // Real spend + income - counted:
                     tx(1, 500.0, TransactionType.DEBIT, thisMonth),
                     tx(2, 1_000.0, TransactionType.CREDIT, thisMonth),
-                    // Bank-side card-bill transfer — excluded:
+                    // Bank-side card-bill transfer - excluded:
                     tx(3, 700.0, TransactionType.DEBIT, thisMonth, category = MerchantCategory.TRANSFER),
-                    // Card-side "payment received" for the same rupees —
+                    // Card-side "payment received" for the same rupees -
                     // excluded because it carries the card's full identity
                     // (last-4 AND bank), not the tail alone:
                     tx(4, 700.0, TransactionType.CREDIT, thisMonth, account = "5106", bank = "Axis Bank"),

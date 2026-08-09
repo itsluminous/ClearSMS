@@ -66,7 +66,7 @@ class SearchViewModelTest {
             val viewModel = viewModel()
             val job = collectResults(viewModel)
 
-            // Six keystrokes 50 ms apart — well inside the debounce window.
+            // Six keystrokes 50 ms apart - well inside the debounce window.
             for (prefix in listOf("S", "Sa", "Sal", "Sala", "Salar", "Salary")) {
                 viewModel.onQueryChange(prefix)
                 advanceTimeBy(50)
@@ -92,7 +92,7 @@ class SearchViewModelTest {
 
     @Test
     fun `a stalled pipeline still echoes keystrokes synchronously`() {
-        // No dispatcher progress at all — the field value must not lag,
+        // No dispatcher progress at all - the field value must not lag,
         // which is what scrambled fast typing in the pre-paging design.
         val viewModel = viewModel()
         viewModel.onQueryChange("S")

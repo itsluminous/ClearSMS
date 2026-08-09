@@ -11,7 +11,7 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * Promotional notifications are controlled solely from Android's notification
- * settings — there is no in-app toggle. The channel is created BLOCKED
+ * settings - there is no in-app toggle. The channel is created BLOCKED
  * (IMPORTANCE_NONE) so promos show nothing until the user switches the category
  * on, while still being visible there to switch on. Messages are posted to it
  * unconditionally; if they were gated in-app too, the system switch would

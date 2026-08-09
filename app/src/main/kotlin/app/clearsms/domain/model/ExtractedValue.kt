@@ -6,7 +6,7 @@ import java.time.LocalDate
  * A rule extract resolved to a TYPED value.
  *
  * Rules declare WHICH capture is what kind of thing (an amount, a date, a
- * merchant name — see the `extract` / `extract_types` schema in
+ * merchant name - see the `extract` / `extract_types` schema in
  * CONTRIBUTING.md); the parsing ALGORITHMS (the amount grammar, the
  * multi-format date normalisation, merchant normalisation) stay in Kotlin
  * and are applied ONCE, by the rule engine, when the extract is resolved.

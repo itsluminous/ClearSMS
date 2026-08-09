@@ -56,22 +56,22 @@ data class RuleWizardUiState(
     val extractTypes: Map<String, String> = emptyMap(),
     /** Notification template carried over verbatim from the loaded rule. */
     val notificationAction: String? = null,
-    // Step 1 — source message and detected tokens.
+    // Step 1 - source message and detected tokens.
     val sourceSender: String = "",
     val sourceBody: String = "",
     val analyzed: Boolean = false,
     val tokens: List<SuggestedToken> = emptyList(),
     /** token index → extract field key or [FIELD_IGNORE]. */
     val tokenFields: Map<Int, String> = emptyMap(),
-    // Step 2 — classification.
+    // Step 2 - classification.
     val category: String = "important",
     val subCategory: String? = null,
-    // Step 4 — conditions.
+    // Step 4 - conditions.
     val keywordOptions: List<String> = emptyList(),
     val mustContain: Set<String> = emptySet(),
     val mustNotContain: String = "",
     val bindSender: Boolean = true,
-    // Step 5 — generated pattern + live testing.
+    // Step 5 - generated pattern + live testing.
     val composedSenderPattern: String = "",
     val composedBodyPattern: String = "",
     val patternOverride: String? = null,
@@ -80,7 +80,7 @@ data class RuleWizardUiState(
     val testSender: String = "",
     val testBody: String = "",
     val testResult: CategorizationResult? = null,
-    // Step 6 — save.
+    // Step 6 - save.
     val name: String = "",
     val priority: String = DEFAULT_USER_PRIORITY.toString(),
     val validationError: WizardValidationError? = null,

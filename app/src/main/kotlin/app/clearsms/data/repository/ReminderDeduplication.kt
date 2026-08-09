@@ -11,7 +11,7 @@ import java.time.ZoneId
  *
  * Two SMS about the same credit-card bill (a statement plus a later
  * follow-up) each produce a reminder row; showing both is a bug. This
- * de-duplicates at the read layer — no schema change.
+ * de-duplicates at the read layer - no schema change.
  *
  * Logical identity of a bill:
  * - the account/card last-4 digits (falling back to the bank name when the
@@ -24,7 +24,7 @@ import java.time.ZoneId
  * always stay separate.
  *
  * Merge rule (newest wins, non-null fallback): within a group the reminder
- * whose source message is most recent ([ReminderEntity.createdAt]) is kept —
+ * whose source message is most recent ([ReminderEntity.createdAt]) is kept -
  * a later SMS reflects the current state of the bill. For [ReminderEntity.totalDue]
  * and [ReminderEntity.minDue] the newest non-null value wins: when the newest
  * reminder lacks a field, the value is taken from the most recent older

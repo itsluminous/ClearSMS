@@ -42,8 +42,8 @@ class SettingsCatalogTest {
                 "Backup & restore",
                 "Rules",
                 "Signature",
-                "About",
                 "Donate",
+                "About",
             ).inOrder()
     }
 
@@ -176,7 +176,7 @@ class SettingsCatalogTest {
         assertThat(standalone.map(::title))
             .containsExactly("Permissions", "Privacy policy", "Open source licenses")
             .inOrder()
-        // They are the last three rows — below every section, never inside one.
+        // They are the last three rows - below every section, never inside one.
         assertThat(SettingsItem.entries.takeLast(3)).isEqualTo(standalone)
     }
 

@@ -2,24 +2,24 @@ package app.clearsms.ui.components
 
 /**
  * Semantic meaning of a rendered amount, mapped to a fixed color
- * ([app.clearsms.ui.theme.SemanticAmountColors] — never the dynamic
+ * ([app.clearsms.ui.theme.SemanticAmountColors] - never the dynamic
  * Material palette).
  */
 enum class AmountKind {
-    /** Money left an account — always red. */
+    /** Money left an account - always red. */
     DEBIT,
 
-    /** Money arrived — always green. */
+    /** Money arrived - always green. */
     CREDIT,
 
-    /** A balance report with no movement — always blue. */
+    /** A balance report with no movement - always blue. */
     BALANCE,
 }
 
 /**
  * Detail-map keys written only for bill/payment reminders (due date, total
- * due, minimum due). Their presence means the amount is informational — a
- * bill to be paid, not money that moved — so it must never render as a red
+ * due, minimum due). Their presence means the amount is informational - a
+ * bill to be paid, not money that moved - so it must never render as a red
  * debit.
  */
 private val BILL_MARKER_KEYS = setOf("due_date", "total_due", "min_due")
@@ -33,7 +33,7 @@ fun isBillDetails(details: Map<String, String>): Boolean = BILL_MARKER_KEYS.any 
  *
  * Bill/reminder-derived amounts win first: a bill is informational (nothing
  * moved yet), so it always renders in the blue [AmountKind.BALANCE]
- * treatment with no sign — even if a parser also stamped a debit `type` on
+ * treatment with no sign - even if a parser also stamped a debit `type` on
  * the same message. Otherwise an explicit `type` wins; a parsed `balance`
  * with no transaction type is a balance-only message; anything else has no
  * semantic amount.

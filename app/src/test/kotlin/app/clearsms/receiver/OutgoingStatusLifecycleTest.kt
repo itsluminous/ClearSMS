@@ -20,7 +20,7 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * The outgoing send lifecycle, exercised through [SendReportRecorder] against
- * a real in-memory Room database — the same aggregation the broadcast
+ * a real in-memory Room database - the same aggregation the broadcast
  * receiver runs on radio reports:
  *
  * SENDING → SENT (sent report) → DELIVERED (delivery report, per part) and
@@ -215,7 +215,7 @@ class OutgoingStatusLifecycleTest {
             recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 0, partCount = 2))
             dao.resetForResend(id, systemSmsId)
             assertThat(status(id)).isEqualTo(DeliveryStatus.SENDING)
-            // One report after the reset is 1 of 2 — not delivered.
+            // One report after the reset is 1 of 2 - not delivered.
             recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 1, partCount = 2))
             assertThat(status(id)).isNotEqualTo(DeliveryStatus.DELIVERED)
         }

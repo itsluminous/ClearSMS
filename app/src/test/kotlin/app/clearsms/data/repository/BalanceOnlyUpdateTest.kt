@@ -98,7 +98,7 @@ class BalanceOnlyUpdateTest {
             val account = db.accountDao().getAll().single()
             assertThat(account.lastKnownBalance).isEqualTo(40194.56)
             assertThat(account.lastUpdated).isEqualTo(5_000L)
-            // Still exactly ONE transaction — the debit; the statement added none.
+            // Still exactly ONE transaction - the debit; the statement added none.
             assertThat(db.transactionDao().getAll()).hasSize(1)
         }
 

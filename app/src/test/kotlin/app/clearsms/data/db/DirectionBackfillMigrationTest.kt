@@ -129,7 +129,7 @@ class DirectionBackfillMigrationTest {
 
     @Test
     fun `unreadable provider leaves every row incoming`() {
-        // sentRows stays empty — the provider read degraded to nothing.
+        // sentRows stays empty - the provider read degraded to nothing.
         helper.createDatabase(TEST_DB, 6).apply {
             insertV6Message(this, 1, "9876543210", "was actually sent", 1_000, systemSmsId = 77)
             close()

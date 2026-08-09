@@ -49,7 +49,7 @@ class MessageCategorizer(
 
     /**
      * Final post-condition: no result ever leaves the categorizer as
-     * [Category.IMPORTANT] with their sub-category preserved — there is no
+     * [Category.IMPORTANT] with their sub-category preserved - there is no
      * notices (travel/PNR, appointment tokens, credit-score checks,
      * broker/exchange statements, UPI-mandate lifecycle) are IMPORTANT now,
      * keeping their sub-category so downstream meaning is unchanged. This also
@@ -89,7 +89,7 @@ class MessageCategorizer(
      * Post-conditions applied to EVERY categorization result, regardless of
      * which stage of the priority chain produced it:
      *
-     * 1. An extractable OTP code always wins over PROMOTIONAL — a directory
+     * 1. An extractable OTP code always wins over PROMOTIONAL - a directory
      *    entry or brand rule that files the sender as promotional must never
      *    swallow a verification code.
      * 2. An extracted transaction is never PROMOTIONAL: when the message is
@@ -98,7 +98,7 @@ class MessageCategorizer(
      * 3. A keyword-ANCHORED OTP beats a transaction categorization: an
      *    authorization request ("413423 is SECRET OTP for txn of INR 1205.23
      *    on ... card ... at ...") quotes an amount, a card and a merchant,
-     *    but nothing has moved — the user needs the CODE, not a transaction
+     *    but nothing has moved - the user needs the CODE, not a transaction
      *    row. This mirrors invariant 1 for the transaction path, and also
      *    lifts a directory-matched sender's [SubCategory.OTP] refinement to
      *    the real OTP category so the OTP notification fires. Only
@@ -111,7 +111,7 @@ class MessageCategorizer(
      *    downstream from the rule's captures.
      *
      * Exceptions, deliberately narrow:
-     * - SCAM results stay put — a phishing message quoting an "OTP" or a
+     * - SCAM results stay put - a phishing message quoting an "OTP" or a
      *   fake debit must not be promoted into the trusted categories.
      * - UPI-mandate lifecycle notices (created / cancelled) carry an amount
      *   but move no money; they must never be promoted AS a transaction. They

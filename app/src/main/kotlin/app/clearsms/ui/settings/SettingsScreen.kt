@@ -17,8 +17,10 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Recycling
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
@@ -171,7 +173,7 @@ fun SettingsScreen(
         }
     // Automatic-backup directory: the grant must outlive this Activity, so
     // the persistable permission is taken here, before the ViewModel ever
-    // stores the uri — a stored uri is always a usable one.
+    // stores the uri - a stored uri is always a usable one.
     val backupDirectoryLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri != null) {
@@ -669,8 +671,17 @@ private fun settingsRowEntries(
         val section = item.section?.let { stringResource(it.titleRes) }
         val title = stringResource(item.titleRes)
         when (item) {
-            SettingsItem.ARCHIVED ->
-                row(section, title, stringResource(R.string.settings_archived_summary), onArchived)
+            SettingsItem.ARCHIVED -> {
+                val archivedSummary = stringResource(R.string.settings_archived_summary)
+                SettingsRowEntry(section, title, archivedSummary) {
+                    ActionRow(
+                        icon = Icons.Outlined.Archive,
+                        title = title,
+                        subtitle = archivedSummary,
+                        onClick = onArchived,
+                    )
+                }
+            }
             // Tap opens the bin (like Archived); the trailing switch flips
             // the behaviour of committed deletes. Retention is fixed at 30
             // days, stated in the summary.
@@ -685,6 +696,7 @@ private fun settingsRowEntries(
                     )
                 SettingsRowEntry(section, title, binSummary) {
                     NavigableToggleRow(
+                        icon = Icons.Outlined.Recycling,
                         title = title,
                         subtitle = binSummary,
                         checked = state.recycleBinEnabled,
@@ -734,7 +746,7 @@ private fun settingsRowEntries(
                 row(section, title, logoBackgroundLabel(state.logoBackground)) {
                     openDialog(SettingsDialog.LOGO_BACKGROUND)
                 }
-            // TODO: deliveryReports is written here but not consumed yet — the
+            // TODO: deliveryReports is written here but not consumed yet - the
             //  platform stage must read it in SmsSender to request delivery
             //  status for outgoing messages.
             SettingsItem.DELIVERY_REPORTS ->
@@ -852,7 +864,7 @@ private fun settingsRowEntries(
                     openDialog(SettingsDialog.FINANCE_PILL_ORDER)
                 }
             // Privacy, not Appearance: hiding balances behind the device lock is
-            // a confidentiality control, not a cosmetic one — living under
+            // a confidentiality control, not a cosmetic one - living under
             // Finance also keeps it visually distinct from the extracted-details
             // verbosity toggle, which users previously conflated with it.
             SettingsItem.SHOW_BALANCE ->
@@ -943,7 +955,7 @@ private fun settingsRowEntries(
                 ) { openDialog(SettingsDialog.SIGNATURE) }
             SettingsItem.VERSION -> {
                 // Interpolate the real build version so the link always lands
-                // on this build's release notes — never a hardcoded tag.
+                // on this build's release notes - never a hardcoded tag.
                 val url = stringResource(R.string.url_release_notes, BuildConfig.VERSION_NAME)
                 row(section, title, appVersion()) { onOpenLink(url) }
             }
@@ -980,7 +992,7 @@ private fun SectionHeader(title: String) {
 }
 
 /**
- * A row that runs a one-shot action rather than editing a preference — the
+ * A row that runs a one-shot action rather than editing a preference - the
  * leading icon separates it visually from the plain [SettingRow]s around it.
  */
 @Composable
@@ -1109,7 +1121,7 @@ private fun ToggleRow(
 }
 
 /**
- * Row that both navigates (tap anywhere) and carries a trailing switch —
+ * Row that both navigates (tap anywhere) and carries a trailing switch -
  * the Recycle bin row opens the bin like Archived while its switch flips
  * the delete behaviour.
  */
@@ -1120,9 +1132,14 @@ private fun NavigableToggleRow(
     checked: Boolean,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
+        leadingContent =
+            icon?.let {
+                { Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            },
         headlineContent = { Text(title) },
         supportingContent = {
             Text(
@@ -1234,7 +1251,7 @@ private const val MAX_NOTIFICATION_ACTIONS = 3
 /**
  * OTP size picker with a live preview of the digit size: exactly five
  * options, Option 1 (smallest) to Option 5 (largest). Option 2 is the
- * default — there is no separate "Default" entry.
+ * default - there is no separate "Default" entry.
  */
 @Composable
 private fun OtpSizeDialog(
@@ -1449,8 +1466,8 @@ private fun otpSizeLabel(size: OtpDisplaySize): String =
 private fun appVersion(): String {
     val context = androidx.compose.ui.platform.LocalContext.current
     return try {
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "—"
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "-"
     } catch (_: Exception) {
-        "—"
+        "-"
     }
 }

@@ -230,7 +230,7 @@ class SystemSmsImporterTest {
             val inserted = env.importer.importAll { imported, total -> progress += imported to total }
 
             assertThat(inserted).isEqualTo(1200)
-            // Initial callback plus one per 500-row page — not one per message.
+            // Initial callback plus one per 500-row page - not one per message.
             assertThat(progress).containsExactly(0 to 1200, 500 to 1200, 1000 to 1200, 1200 to 1200).inOrder()
             assertThat(env.checkpoints.get()).isEqualTo(SyncCheckpointStore.Checkpoint(1200L, 1200))
         }

@@ -12,7 +12,7 @@ import androidx.compose.runtime.setValue
  * [InboxScreen]), so returning from the system role dialog updates the
  * banner live. Dismissal is session-scoped only: the instance lives in a
  * `remember { }` in the inbox composition, so the banner reappears on the
- * next launch while the role is still missing — losing the default-SMS role
+ * next launch while the role is still missing - losing the default-SMS role
  * means new messages silently stop arriving, which must not stay hidden
  * forever.
  *

@@ -3,7 +3,7 @@ package app.clearsms.ui.components
 /**
  * Immutable multi-select state for list screens (inbox threads, conversation
  * messages). Selection mode [active] flips on via [enter] (long-press) and
- * off via [clear] (close button / system back) — or automatically when the
+ * off via [clear] (close button / system back) - or automatically when the
  * last item is deselected, so an empty contextual bar is never shown.
  */
 data class SelectionState<T>(

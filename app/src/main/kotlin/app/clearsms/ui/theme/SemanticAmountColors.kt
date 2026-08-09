@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
  * `colorScheme`: Material You derives every scheme role from the user's
  * wallpaper, so `error`/`tertiary`/`primary` can land on hues that no longer
  * read as red/green/blue. Financial direction must not shift meaning with
- * the wallpaper, so these values are constants — only a light/dark variant
+ * the wallpaper, so these values are constants - only a light/dark variant
  * exists, chosen for WCAG AA (≥ 4.5:1) contrast against the app's light and
  * dark surfaces and the system notification shade.
  *

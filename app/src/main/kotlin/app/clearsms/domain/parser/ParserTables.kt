@@ -10,8 +10,8 @@ import java.util.logging.Logger
  * Bundled lookup tables for the domain parsers, loaded once from classpath
  * resources compiled straight out of `rules/tables/` (see CONTRIBUTING.md).
  *
- * The tables are pure pattern CONTENT — merchant keywords, courier names,
- * biller sender ids — community-editable JSON. The algorithms that consume
+ * The tables are pure pattern CONTENT - merchant keywords, courier names,
+ * biller sender ids - community-editable JSON. The algorithms that consume
  * them (scoring, arbitration, guardrails) stay in Kotlin.
  *
  * Loading is lazy and cheap (a few KB of JSON, parsed once per process) and
@@ -94,7 +94,7 @@ object ParserTables {
 
     /**
      * Parses the reminder evidence table. Rows are validated with the guard
-     * library's load-time ReDoS rules ([GuardLibrary.validate]) — pattern
+     * library's load-time ReDoS rules ([GuardLibrary.validate]) - pattern
      * content in this table runs against every candidate reminder body, so
      * an unsafe or invalid row is skipped with a warning, never fatal.
      * `table_ref` / `sender_table_ref` values resolve against the assembled
@@ -220,7 +220,7 @@ object ParserTables {
         Logger.getLogger("ClearSMS").warning("Bundled table $name unusable ($reason); falling back to an empty table")
     }
 
-    /** Matches nothing, ever — the safe value for an empty alternation. */
+    /** Matches nothing, ever - the safe value for an empty alternation. */
     internal val NEVER_MATCH = Regex("(?!)")
 
     private val FORMAT = Json { ignoreUnknownKeys = true }
@@ -316,8 +316,8 @@ class BillerTable(
 
 /**
  * Reminder-type evidence rows loaded from `tables/reminder_evidence.json`.
- * Pattern content and weights live in the data; the scoring algorithm —
- * threshold, tie-break order, bill-disqualifies-subscription — stays in
+ * Pattern content and weights live in the data; the scoring algorithm -
+ * threshold, tie-break order, bill-disqualifies-subscription - stays in
  * [ReminderTypeClassifier]. An empty table (malformed/missing asset) makes
  * every type score zero, so classification degrades to the fallback.
  */
@@ -340,7 +340,7 @@ class TypeEvidence(
 /**
  * One scored condition. Matches when every regex present matches its
  * target ([bodyRegex] against the body, [senderRegex] against the sender)
- * and [notIfGuard] — when set — does NOT match the body.
+ * and [notIfGuard] - when set - does NOT match the body.
  */
 class EvidenceRow(
     val bodyRegex: Regex?,

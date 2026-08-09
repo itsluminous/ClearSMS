@@ -14,7 +14,7 @@ import javax.inject.Singleton
  * - a reveal lasts until the app leaves the foreground
  *   ([app.clearsms.MainActivity.onStop], configuration changes excepted),
  *   until the user taps the eye to hide again, or until the "Show balance"
- *   setting is written (either direction) — whichever comes first.
+ *   setting is written (either direction) - whichever comes first.
  *
  * Cancelled or failed authentication never calls [reveal], so balances stay
  * masked. Holding the flag in memory only means nothing sensitive is ever

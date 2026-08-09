@@ -10,7 +10,7 @@ import java.util.logging.Logger
  * message bodies.
  *
  * Resolution chain (first hit wins):
- * 1. an institution the BODY names as the ACCOUNT'S OWN bank — next to the
+ * 1. an institution the BODY names as the ACCOUNT'S OWN bank - next to the
  *    account or card ("in HDFC Bank A/c xx8709", "your Axis Bank credit
  *    card"). This is the account's bank even when the SMS arrives via an
  *    aggregator like a card-payment app. A bank named in remittance
@@ -19,9 +19,9 @@ import java.util.logging.Logger
  * 2. the sender ID matched against the institution table generated from
  *    `rules/brands/brands.json` (entries carrying an `is_issuer` field),
  * 3. a bank the body merely MENTIONS outside any account context (a
- *    "- Federal Bank" signature) — weaker than the sender, so an HDFC
+ *    "- Federal Bank" signature) - weaker than the sender, so an HDFC
  *    sender naming another bank in passing stays HDFC,
- * 4. the normalized sender ID itself — an account should never be nameless;
+ * 4. the normalized sender ID itself - an account should never be nameless;
  *    showing "VD-Pluxee" as "PLUXEE" beats showing "Unknown bank".
  *
  * Every returned name is CANONICAL: "SBI" and "State Bank of India" resolve
@@ -39,7 +39,7 @@ object SenderNameResolver {
         /**
          * Whether this institution can OWN an account/card. Banks and wallets
          * are issuers; payment channels (CRED), ecommerce brands (Flipkart)
-         * and telecoms (Airtel) are not — they appear in money messages as
+         * and telecoms (Airtel) are not - they appear in money messages as
          * merchants or conduits, never as the account's home.
          */
         val isIssuer: Boolean = true,
@@ -48,14 +48,14 @@ object SenderNameResolver {
          * `category == "CARD"`): a co-branded card like Scapia Federal whose
          * transaction SMS may legitimately carry no account digits at all.
          * Only such issuers may own an issuer-keyed (digit-less) card
-         * account — see the account-identity rules at the ingestion site.
+         * account - see the account-identity rules at the ingestion site.
          */
         val isCardProduct: Boolean = false,
         /**
          * Whether the issuer is a WALLET product (brands.json
          * `category == "WALLET"`): a meal/benefits wallet like Pluxee whose
          * credit/spend SMS may carry no account digits at all. Only such
-         * issuers may own an issuer-keyed (digit-less) wallet account —
+         * issuers may own an issuer-keyed (digit-less) wallet account -
          * the wallet counterpart of [isCardProduct].
          */
         val isWalletProduct: Boolean = false,
@@ -71,7 +71,7 @@ object SenderNameResolver {
      * of India account, but keep their own avatar).
      *
      * A malformed or missing table degrades to an empty list with a logged
-     * warning — resolution then falls back to normalized sender ids, never
+     * warning - resolution then falls back to normalized sender ids, never
      * a crash.
      */
     private val INSTITUTIONS: List<Institution> by lazy {
@@ -158,7 +158,7 @@ object SenderNameResolver {
         body: String = "",
     ): String? {
         val bodyMatch = matchBodyInstitution(body)
-        // 1. The bank the body names as the ACCOUNT'S OWN — even when the
+        // 1. The bank the body names as the ACCOUNT'S OWN - even when the
         //    SMS comes from an aggregator (card-payment apps, wallets).
         bodyMatch.own?.let { return it.name }
         // 2. The sender ID against the curated table.
@@ -168,7 +168,7 @@ object SenderNameResolver {
             ?.let { return it.name }
         matchAlias(normalized)?.let { return it.name }
         // 3. A bank mentioned outside any account context (a signature like
-        //    "- Federal Bank") — weaker than the sender by design.
+        //    "- Federal Bank") - weaker than the sender by design.
         bodyMatch.mentioned?.let { return it.name }
         // 4. Last resort: the normalized sender ID itself.
         return normalized.takeIf { it.isNotBlank() }
@@ -211,7 +211,7 @@ object SenderNameResolver {
     /**
      * Whether [name] resolves to a curated WALLET issuer (Pluxee, Paytm...).
      * Wallet products routinely send digit-less money SMS ("credited with
-     * Rs.X towards Meal Wallet") — only such issuers may own an issuer-keyed,
+     * Rs.X towards Meal Wallet") - only such issuers may own an issuer-keyed,
      * digit-less wallet account, mirroring [isCardProductIssuer] for cards.
      */
     fun isWalletIssuer(name: String?): Boolean {
@@ -231,9 +231,9 @@ object SenderNameResolver {
 
     /**
      * The single account-creation guardrail: whether [name] can plausibly
-     * OWN an account or card — i.e. is a financial institution or wallet.
+     * OWN an account or card - i.e. is a financial institution or wallet.
      *
-     * Rationale: three real misattribution shapes all shared one root cause —
+     * Rationale: three real misattribution shapes all shared one root cause -
      * an `AccountEntity` was created from whatever name landed in
      * `bankName`, even when that name was a merchant ("at Paytm"), a payment
      * channel (CRED forwarding a card payment), or an ecommerce brand
@@ -242,7 +242,7 @@ object SenderNameResolver {
      *  - a curated institution whose kind is bank/wallet ([Institution.isIssuer]),
      *  - or an uncurated name that self-evidently names a bank ("...BANK..."),
      *  - or a name the [body] explicitly places in a card/account phrase
-     *    ("linked to your <Name> Card", "<Name> A/c") — an unknown-but-real
+     *    ("linked to your <Name> Card", "<Name> A/c") - an unknown-but-real
      *    issuer named by its own message.
      * Everything else (merchant names, payment apps, ecommerce brands, raw
      * shortcodes) must NOT create an account; the caller keeps the account's
@@ -271,15 +271,15 @@ object SenderNameResolver {
      * The body's institution evidence, split by strength.
      *
      * [own] is the account's OWN institution: an alias in an ACCOUNT context
-     * — "your Axis Bank credit card", "in HDFC Bank A/c xx8709", "Pluxee ...
+     * - "your Axis Bank credit card", "in HDFC Bank A/c xx8709", "Pluxee ...
      * wallet". Two refinements keep that honest:
      *  - an alias in a MERCHANT/VPA position ("at FLIPKART", "to VPA
      *    credcc@yesbank", "For IMPS -Federal bank-") is the counterparty and
-     *    is discarded outright, whatever follows it — a UPI narration
+     *    is discarded outright, whatever follows it - a UPI narration
      *    quoting "credit card bill" after "@yesbank" must not make Yes Bank
      *    the account's bank;
      *  - softer lead-ins ("via <bank>", "from <bank>", "to <bank>") discard
-     *    the alias only when NO account context follows — "debited from
+     *    the alias only when NO account context follows - "debited from
      *    HDFC Bank A/c xx8709" is the user's own account;
      *  - a context word that is itself part of ANOTHER institution's name
      *    does not count ("For SONYLIV ... Via: HDFC Bank" must not read
@@ -315,7 +315,7 @@ object SenderNameResolver {
     }
 
     /**
-     * Whether an ACCOUNT-context word follows the alias match at [range] —
+     * Whether an ACCOUNT-context word follows the alias match at [range] -
      * ignoring context words that sit inside a DIFFERENT institution's own
      * alias match (another bank's name is never this alias's account).
      */
@@ -370,7 +370,7 @@ object SenderNameResolver {
 
     /**
      * Soft lead-ins ("via <bank>", "from <bank>", "to <bank>") that yield
-     * only when NO account context follows — "debited from HDFC Bank A/c
+     * only when NO account context follows - "debited from HDFC Bank A/c
      * xx8709" is the user's own account, "via Federal Bank UPI" is a rail.
      */
     private val SOFT_NARRATION_REGEX =

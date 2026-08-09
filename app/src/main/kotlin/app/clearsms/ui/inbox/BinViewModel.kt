@@ -39,7 +39,7 @@ sealed interface BinEvent {
 
     /**
      * Restore succeeded in-app but the system-provider re-insert failed or
-     * was skipped (not the default SMS app) — said so via snackbar.
+     * was skipped (not the default SMS app) - said so via snackbar.
      */
     data object RestoredAppOnly : BinEvent
 }
@@ -86,7 +86,7 @@ class BinViewModel
             }
         }
 
-        /** Permanently removes one message — same effect as a hard delete today. */
+        /** Permanently removes one message - same effect as a hard delete today. */
         fun deleteForever(messageId: Long) {
             viewModelScope.launch(ioDispatcher) { messageRepository.deleteForever(listOf(messageId)) }
         }

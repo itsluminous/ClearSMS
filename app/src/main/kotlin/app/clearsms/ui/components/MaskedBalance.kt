@@ -32,12 +32,12 @@ object BalanceMask {
 }
 
 /**
- * A monetary amount behind the "Show balance" privacy gate — display only,
+ * A monetary amount behind the "Show balance" privacy gate - display only,
  * with NO inline eye. Revealing is a screen-level action (one eye in the
  * top bar) because the gate is global: revealing one balance reveals them
  * all, so a per-row control was pure noise stealing row width.
  *
- * - Not gated (setting ON): plain [AmountText] — today's behaviour.
+ * - Not gated (setting ON): plain [AmountText] - today's behaviour.
  * - Gated and hidden: [BalanceMask.MASK]; the masked text is removed from
  *   the accessibility tree ([clearAndSetSemantics]) and replaced with a
  *   generic "Balance hidden" description, so TalkBack can never read a
@@ -68,7 +68,7 @@ fun MaskedAmountText(
 }
 
 /**
- * The reveal/conceal eye — ONE per screen (top bar / section header), never
+ * The reveal/conceal eye - ONE per screen (top bar / section header), never
  * per row. An [IconButton] guarantees the 48dp minimum touch target.
  */
 @Composable

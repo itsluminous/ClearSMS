@@ -144,7 +144,7 @@ class InboxViewModel
          * Paged inbox rows: Room's PagingSource loads windows of
          * latest-per-thread messages instead of materializing the table, and
          * per-item work (sender resolution, glyph, time label) happens here
-         * on the IO dispatcher — never during composition.
+         * on the IO dispatcher - never during composition.
          */
         val pagedItems: Flow<PagingData<InboxItem>> =
             combine(filter, contactsTick) { current, _ -> current }
@@ -223,7 +223,7 @@ class InboxViewModel
 
         /**
          * Persists the OTP as handled (copied or dismissed) so the banner
-         * never shows it again — see [OtpBannerPolicy.select].
+         * never shows it again - see [OtpBannerPolicy.select].
          */
         fun markOtpHandled(messageId: Long) {
             viewModelScope.launch(ioDispatcher) { settings.setHandledOtpMessageId(messageId) }

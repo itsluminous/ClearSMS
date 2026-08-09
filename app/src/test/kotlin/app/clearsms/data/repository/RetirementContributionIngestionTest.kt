@@ -29,7 +29,7 @@ import org.robolectric.RobolectricTestRunner
 /**
  * Retirement-scheme contributions (CR1). An NPS units-credited SMS and an
  * EPF passbook-contribution SMS are money RECEIVED into the user's
- * retirement account — employer contributions never touch a tracked bank
+ * retirement account - employer contributions never touch a tracked bank
  * account, so typing them "debit" fabricated spends. They must land as
  * CREDIT transactions on retirement-issuer accounts (Protean NPS / EPFO)
  * that never collide with a bank account sharing the same last-4.

@@ -7,7 +7,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 /**
- * Unit coverage for [TransactionDeduplication] — the logic that stops one
+ * Unit coverage for [TransactionDeduplication] - the logic that stops one
  * payment becoming several TransactionEntity rows when a bank sends more than
  * one SMS alert for it, while never merging two genuinely distinct payments.
  */

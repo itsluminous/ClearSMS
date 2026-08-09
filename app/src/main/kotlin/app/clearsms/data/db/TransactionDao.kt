@@ -13,14 +13,14 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun observeAll(): Flow<List<TransactionEntity>>
 
-    /** Newest transactions bounded by [limit] — backs the growing "load more" page. */
+    /** Newest transactions bounded by [limit] - backs the growing "load more" page. */
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC LIMIT :limit")
     fun observeLatest(limit: Int): Flow<List<TransactionEntity>>
 
     /**
      * Transactions belonging to ONE account: linked by [TransactionEntity.accountId],
      * with an exact (accountNumber, bankName) fallback for unlinked legacy
-     * rows. Never matched on the last-4 alone — the same tail can exist at
+     * rows. Never matched on the last-4 alone - the same tail can exist at
      * several banks.
      */
     @Query(
@@ -39,7 +39,7 @@ interface TransactionDao {
         bankName: String,
     ): Flow<List<TransactionEntity>>
 
-    /** Newest transactions for one account bounded by [limit] — account-detail "load more" page. */
+    /** Newest transactions for one account bounded by [limit] - account-detail "load more" page. */
     @Query(
         """
         SELECT t.* FROM transactions t
@@ -57,7 +57,7 @@ interface TransactionDao {
         limit: Int,
     ): Flow<List<TransactionEntity>>
 
-    /** Most recent transaction for an account — the message behind the latest balance update. */
+    /** Most recent transaction for an account - the message behind the latest balance update. */
     @Query(
         """
         SELECT t.* FROM transactions t
@@ -81,7 +81,7 @@ interface TransactionDao {
      * Duplicate candidates by transaction reference (tier 1): rows whose
      * reference matches case-insensitively on the same account last-4, at
      * ANY time distance. Callers re-check the pair with
-     * [app.clearsms.data.repository.TransactionDeduplication] — this only
+     * [app.clearsms.data.repository.TransactionDeduplication] - this only
      * narrows the scan.
      */
     @Query(
@@ -99,7 +99,7 @@ interface TransactionDao {
 
     /**
      * Duplicate candidates by proximity (tiers 2/2b): same amount, type and
-     * last-4 inside a timestamp window — the BANK is deliberately not
+     * last-4 inside a timestamp window - the BANK is deliberately not
      * filtered here, so cross-bank echo candidates surface too. Callers
      * re-check each pair against the dedup guards (tier 2 requires equal
      * banks; tier 2b requires different ones plus its vetoes).
@@ -121,7 +121,7 @@ interface TransactionDao {
     ): List<TransactionEntity>
 
     /**
-     * How many OTHER transactions are attributed to this (bank, last-4) —
+     * How many OTHER transactions are attributed to this (bank, last-4) -
      * the "real account relationship" evidence used to pick the surviving
      * bank of a cross-bank echo pair and to veto ref-less cross-bank merges
      * when BOTH banks genuinely hold the tail.
@@ -138,7 +138,7 @@ interface TransactionDao {
         excludeId: Long,
     ): Int
 
-    /** Transactions still linked to [accountId], excluding [excludeId] — orphan check. */
+    /** Transactions still linked to [accountId], excluding [excludeId] - orphan check. */
     @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId AND id != :excludeId")
     suspend fun countByAccountId(
         accountId: Long,

@@ -13,7 +13,7 @@ import javax.inject.Singleton
  * Cancels shade notifications for messages the user has now seen in-app.
  *
  * The notifiers post from the SMS receiver context and this cancels from UI
- * flows — both sides go through [NotificationManagerCompat] against ids
+ * flows - both sides go through [NotificationManagerCompat] against ids
  * derived by [NotificationIds], the shared single source of truth, so a
  * cancel always hits exactly what the post created.
  *

@@ -11,7 +11,7 @@ enum class UnlockDecision {
     PROMPT,
 
     /**
-     * No screen lock is configured at all — the user cannot authenticate.
+     * No screen lock is configured at all - the user cannot authenticate.
      * The UI explains that a screen lock is required and offers the system
      * security settings; it never silently reveals.
      */
@@ -26,7 +26,7 @@ enum class UnlockDecision {
  *
  * [AUTHENTICATORS] deliberately allows BIOMETRIC_WEAK *or* DEVICE_CREDENTIAL:
  * the feature is "unlock with your device lock", so fingerprint, face, PIN,
- * pattern and password are all accepted — never biometric-only.
+ * pattern and password are all accepted - never biometric-only.
  */
 object BalanceUnlock {
     const val AUTHENTICATORS =
@@ -56,7 +56,7 @@ object BalanceUnlock {
      * Shows the system authentication sheet. [onResult] receives true only
      * on success; errors, lockouts and user cancellation all report false
      * (the caller keeps balances masked). A single rejected fingerprint
-     * (`onAuthenticationFailed`) is not terminal — the sheet stays up and
+     * (`onAuthenticationFailed`) is not terminal - the sheet stays up and
      * the user may retry or fall back to their PIN/pattern/password.
      */
     fun prompt(

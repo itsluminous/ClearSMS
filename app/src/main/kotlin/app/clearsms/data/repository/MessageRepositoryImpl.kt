@@ -149,7 +149,7 @@ class MessageRepositoryImpl(
         if (ids.isEmpty()) return
         val chunks = SqliteChunker.chunk(ids)
         // Collect provider ids and delete our rows atomically; the provider
-        // sync happens after commit — losing our copy but keeping the
+        // sync happens after commit - losing our copy but keeping the
         // provider row (crash in between) self-heals via the unique
         // systemSmsId re-import, the reverse would not.
         val (systemIds, threadIds) =
@@ -237,7 +237,7 @@ class MessageRepositoryImpl(
         val chunks = SqliteChunker.chunk(ids)
         // Provider first: a crash after the provider deletion but before the
         // flag/row write leaves providerDeletePending set, and the next
-        // launch re-issues a delete for already-gone provider ids — a no-op.
+        // launch re-issues a delete for already-gone provider ids - a no-op.
         // The reverse order could resurrect the message in other SMS apps.
         val systemIds = chunks.flatMap { messageDao.pendingSystemIdsFor(it) }
         deleteFromProvider(systemIds)
@@ -293,8 +293,8 @@ class MessageRepositoryImpl(
     override suspend fun deleteOtpOlderThan(cutoffMs: Long): Int {
         // Eligibility is category == OTP, nothing else: extractedOtp alone
         // does not qualify a message (an IMPORTANT bank alert carrying a code
-        // must survive). Deletion reuses deleteMessages — the one batched
-        // transaction + provider-sync path — rather than a second mechanism.
+        // must survive). Deletion reuses deleteMessages - the one batched
+        // transaction + provider-sync path - rather than a second mechanism.
         val ids = messageDao.idsOlderThan(Category.OTP, cutoffMs)
         deleteMessages(ids)
         return ids.size
@@ -438,7 +438,7 @@ class MessageRepositoryImpl(
 
     override suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit): Int {
         // The rules snapshot is decoded ONCE (same optimization as the bulk
-        // import) — re-decoding per message made a full re-sort O(N×R).
+        // import) - re-decoding per message made a full re-sort O(N×R).
         val snapshot = rulesSnapshot()
         val total = messageDao.count()
         onProgress(0, total)
@@ -464,7 +464,7 @@ class MessageRepositoryImpl(
                     )
                     // Reminders AND transactions are REFRESHED (deleted + re-derived
                     // inside this page transaction) so existing rows pick up parser
-                    // and rule fixes — corrected titles, amounts, categories — and
+                    // and rule fixes - corrected titles, amounts, categories - and
                     // stale rows from messages that no longer derive anything
                     // disappear. Delete-before-insert keeps the run idempotent (a
                     // message never owns two transaction rows), and finance totals
@@ -520,7 +520,7 @@ class MessageRepositoryImpl(
      *
      * Rows whose [ImportedSmsRow.systemSmsId] already exists are skipped by
      * the unique index (IGNORE strategy), and their derived transaction /
-     * reminder rows are skipped with them — re-processing a page can never
+     * reminder rows are skipped with them - re-processing a page can never
      * duplicate messages or double finance totals.
      *
      * @return the number of messages actually inserted.
@@ -612,7 +612,7 @@ class MessageRepositoryImpl(
         // Same evaluation-input cap as the categorizer (see
         // MessageCategorizer.MAX_EVAL_BODY_LENGTH): the OTP/transaction/
         // reminder parsers below are regex-driven too, so they must never see
-        // an unbounded body. Only evaluation is capped — the stored row keeps
+        // an unbounded body. Only evaluation is capped - the stored row keeps
         // the full text.
         val evalBody = body.take(MessageCategorizer.MAX_EVAL_BODY_LENGTH)
         val result = categorizer.categorize(sender, body, userRules, builtinRules)
@@ -626,7 +626,7 @@ class MessageRepositoryImpl(
         val transaction =
             when {
                 // Statement/bill notices ("Statement is sent...", "Total of Rs X
-                // ... is due") describe money OWED — they must never become a
+                // ... is due") describe money OWED - they must never become a
                 // transaction, whether from the parser or from rule extracts.
                 // They stay reminders (see the reminder path below).
                 transactionParser.isStatementNotice(evalBody) -> null
@@ -640,7 +640,7 @@ class MessageRepositoryImpl(
             }
 
         // Delivery expectations only come from messages the categorizer
-        // already recognized as deliveries — the parser is not allowed to
+        // already recognized as deliveries - the parser is not allowed to
         // introduce a fresh source of false positives.
         val delivery =
             if (result.subCategory == SubCategory.DELIVERY) {
@@ -692,7 +692,7 @@ class MessageRepositoryImpl(
             tx.referenceNumber?.let { merged["reference"] = it }
             // A USD/EUR/... spend keeps its currency on record so the amount
             // is never silently read as INR (the entity itself has no
-            // currency column yet — this is the audit trail until it does).
+            // currency column yet - this is the audit trail until it does).
             transactionParser.foreignCurrency(evalBody)?.let { merged["currency"] = it }
         }
         // Balance-only details feed the same "balance"/"account_last4"/"bank"
@@ -711,7 +711,7 @@ class MessageRepositoryImpl(
         // Rule-extracted values win over parser heuristics for shared keys.
         merged.putAll(extracts)
         // ...except the merchant: the transaction above already applied the
-        // rule-over-parser precedence WITH normalization, so re-stamp it —
+        // rule-over-parser precedence WITH normalization, so re-stamp it -
         // otherwise a raw rule capture ("XX6894- RD Installment-Jul 2026")
         // would land in extractedDataJson and resurface in the UI.
         transaction?.let { tx ->
@@ -720,8 +720,8 @@ class MessageRepositoryImpl(
         // ...and the reminder fields: the reminder object above already
         // merged rule extracts with parser output, TYPED (its due date is a
         // real date, not a raw "03-Jul-26" capture) and invariant-checked
-        // (totalDue >= minDue). Re-stamping keeps extractedDataJson — what
-        // the parsed notification and the conversation card render — in
+        // (totalDue >= minDue). Re-stamping keeps extractedDataJson - what
+        // the parsed notification and the conversation card render - in
         // lockstep with the Alerts row, and normalizes the due date to ISO.
         reminder?.let { rem ->
             rem.totalDue?.let { merged["total_due"] = it.toString() } ?: merged.remove("total_due")
@@ -760,8 +760,8 @@ class MessageRepositoryImpl(
             // Account-creation guardrail: an account/card row may only
             // carry the name of a plausible financial institution or
             // wallet. Merchant names, payment channels (CRED) and
-            // ecommerce brands (Flipkart) — including ones a rule extract
-            // re-injected — are stripped to a blank issuer, so the row
+            // ecommerce brands (Flipkart) - including ones a rule extract
+            // re-injected - are stripped to a blank issuer, so the row
             // stays claimable by the real bank instead of spawning a
             // bogus "Flipkart bank account".
             val bankName =
@@ -809,7 +809,7 @@ class MessageRepositoryImpl(
         }
         // Balance-only messages update the account WITHOUT fabricating a
         // transaction row. Gated hard: the message must name the account
-        // (last-4) and a plausible issuer — a merchant or shortcode balance
+        // (last-4) and a plausible issuer - a merchant or shortcode balance
         // mention can never create or touch an account.
         if (enriched.transaction == null) {
             enriched.balanceStatement?.let { statement ->
@@ -825,7 +825,7 @@ class MessageRepositoryImpl(
                 )
             }
         }
-        // A confirmed total-limit statement updates the card's total limit —
+        // A confirmed total-limit statement updates the card's total limit -
         // the sole source of the figure now that manual entry is gone. Same
         // guardrails as balances: the message must name the card (last-4)
         // and a plausible issuer.
@@ -859,7 +859,7 @@ class MessageRepositoryImpl(
         }
         enriched.delivery?.let { delivery ->
             // "today"/"tomorrow" resolve against the MESSAGE date, not the
-            // current clock — imports of old messages stay correct.
+            // current clock - imports of old messages stay correct.
             val messageDate =
                 Instant
                     .ofEpochMilli(timestampMs)
@@ -882,7 +882,7 @@ class MessageRepositoryImpl(
      * An already-persisted row recording the same payment as [candidate],
      * or null. Candidates are narrowed by the DAO (same reference on the
      * same account last-4 at any time distance, or same amount/type/last-4
-     * inside the tier-2 window — bank-agnostic, so cross-bank echoes
+     * inside the tier-2 window - bank-agnostic, so cross-bank echoes
      * surface) and each pairing is confirmed by [TransactionDeduplication].
      * A ref-LESS cross-bank pairing is additionally vetoed when BOTH banks
      * hold independent transaction evidence for the tail: two genuine
@@ -922,7 +922,7 @@ class MessageRepositoryImpl(
 
     /**
      * Whether BOTH banks of a ref-less cross-bank pairing have transaction
-     * evidence for the tail beyond the pair itself — the two-genuine-accounts
+     * evidence for the tail beyond the pair itself - the two-genuine-accounts
      * shape a near-echo merge must never touch.
      */
     private suspend fun bothBanksHoldTail(
@@ -942,7 +942,7 @@ class MessageRepositoryImpl(
      * the account is upserted and its id used. With a blank issuer NO
      * account is ever created: the transaction attaches to an existing
      * account only when exactly one named bank holds that last-4, otherwise
-     * it stays unattached — a nameless account row is never the answer. The
+     * it stays unattached - a nameless account row is never the answer. The
      * one exception to "no last-4, no account" is a curated standalone CARD
      * product or WALLET issuer (see issuerKeyedAccountId): their money SMS
      * carry no digits at all, yet the issuer identifies the account exactly.
@@ -962,12 +962,12 @@ class MessageRepositoryImpl(
     /**
      * Collapses a cross-bank UPI echo pair into ONE transaction under ONE
      * bank. The surviving bank is the one with a real account relationship
-     * — other transactions already attributed to that (bank, last-4); the
+     * - other transactions already attributed to that (bank, last-4); the
      * UPI provider's echo has none (see
      * [TransactionDeduplication.crossBankSurvivor]). Only the winner's
      * account is (up)serted; if the LOSING side already spawned an account
-     * that nothing else references — no other transaction, no balance or
-     * limit ever reported — that phantom row is reaped, so the provider
+     * that nothing else references - no other transaction, no balance or
+     * limit ever reported - that phantom row is reaped, so the provider
      * bank never surfaces in Finance.
      */
     private suspend fun collapseCrossBankEcho(
@@ -1021,7 +1021,7 @@ class MessageRepositoryImpl(
      * The account a bank-less transaction may attach to: exactly ONE named
      * bank must hold this last-4 (preferring the row matching [accountType]
      * when a bank has several). Null when no bank or several banks share
-     * the tail — attaching by number alone is how cross-bank contamination
+     * the tail - attaching by number alone is how cross-bank contamination
      * happened.
      */
     private suspend fun soleAccountIdForTail(
@@ -1035,7 +1035,7 @@ class MessageRepositoryImpl(
 
     /**
      * The account for a money message whose SMS carries NO account digits
-     * at all — two curated shapes send exactly that:
+     * at all - two curated shapes send exactly that:
      *  - co-branded card products (Scapia Federal): "txn ... on your Scapia
      *    Federal Visa credit card was successful", never a last-4;
      *  - wallet products (Pluxee): "Your Pluxee Card has been successfully
@@ -1046,13 +1046,13 @@ class MessageRepositoryImpl(
      *    ([SenderNameResolver.isCardProductIssuer]) with a body that reads
      *    as a card ([AccountType.CREDIT_CARD]), OR a curated WALLET issuer
      *    ([SenderNameResolver.isWalletIssuer]) with a body that reads as a
-     *    wallet ([AccountType.WALLET]) — a digit-less SAVINGS debit stays
+     *    wallet ([AccountType.WALLET]) - a digit-less SAVINGS debit stays
      *    unattached exactly as before;
      *  - when the issuer already has exactly ONE account of that type (a
      *    template change later adds a last-4, say), the money attaches
      *    to it;
      *  - when it has none, ONE account is created under a stable synthetic
-     *    key ([SenderNameResolver.syntheticAccountKey]) — the issuer alone
+     *    key ([SenderNameResolver.syntheticAccountKey]) - the issuer alone
      *    identifies the card/wallet, and the user's money belongs on it,
      *    not in an unattached limbo;
      *  - several same-type accounts of the same issuer are ambiguous:
@@ -1062,7 +1062,7 @@ class MessageRepositoryImpl(
      * the first such message creates a second (digit-keyed) account next to
      * the synthetic one and history splits between them. Accepted: the
      * attach-to-sole-existing branch handles the reverse (and far likelier)
-     * order, and merchants still can never become accounts — the issuer
+     * order, and merchants still can never become accounts - the issuer
      * must survive the curated card-product/wallet-issuer check.
      */
     private suspend fun issuerKeyedAccountId(
@@ -1105,7 +1105,7 @@ class MessageRepositoryImpl(
 
     /**
      * Creates or refreshes an account row from either a transaction or a
-     * balance-only statement — ONE mechanism, so the timestamp ordering
+     * balance-only statement - ONE mechanism, so the timestamp ordering
      * (older messages never clobber a newer balance) and the blank-bank
      * claim behave identically for both sources. Returns the row id of the
      * created or updated account, so transactions link to it explicitly.
@@ -1208,8 +1208,8 @@ class MessageRepositoryImpl(
     /**
      * Overlays rule-extracted values onto the parser's transaction.
      *
-     * The engine already resolved each extract to its typed value — amounts
-     * parsed, the merchant normalized (see [ExtractedValue]) — so this is a
+     * The engine already resolved each extract to its typed value - amounts
+     * parsed, the merchant normalized (see [ExtractedValue]) - so this is a
      * pure precedence merge: a typed rule value wins over the parser's
      * heuristic. A merchant capture that was pure reference noise normalized
      * to null and falls back to the parser's (already clean) title, keeping
@@ -1249,8 +1249,8 @@ class MessageRepositoryImpl(
         return ParsedTransaction(
             amount = amount,
             type = type,
-            // A recharge / bill payment / top-up has no third-party merchant —
-            // the biller IS the sender — so the title falls back to the resolved
+            // A recharge / bill payment / top-up has no third-party merchant -
+            // the biller IS the sender - so the title falls back to the resolved
             // sender brand ("Airtel") rather than a generic phrase. A merchant
             // named in the body still wins. It goes in the MERCHANT slot, not
             // bankName, so the account-creation guardrail is untouched.
@@ -1265,7 +1265,7 @@ class MessageRepositoryImpl(
             balance = typed.amount("balance"),
             availableLimit = typed.amount("available_limit"),
             merchantCategory = subCategory.toMerchantCategory() ?: MerchantCategory.OTHER,
-            // The body's own wording decides the account kind — a rule-matched
+            // The body's own wording decides the account kind - a rule-matched
             // card spend ("on your ... credit card was successful") must land
             // on the card, never on a phantom savings account.
             accountType = transactionParser.accountTypeOf(body),
@@ -1275,7 +1275,7 @@ class MessageRepositoryImpl(
     /**
      * Spend category implied by the rule's sub-category: a recharge rule
      * always yields a RECHARGE spend, an investment/mutual-fund rule an
-     * INVESTMENT spend — regardless of what the body-keyword heuristic says.
+     * INVESTMENT spend - regardless of what the body-keyword heuristic says.
      */
     private fun SubCategory?.toMerchantCategory(): MerchantCategory? =
         when (this) {
@@ -1286,7 +1286,7 @@ class MessageRepositoryImpl(
 
     /**
      * Rule extracts win over parser heuristics per field. A rule's generic
-     * "amount" extract is the amount DUE — it backfills the total when
+     * "amount" extract is the amount DUE - it backfills the total when
      * neither the rule nor the parser produced an explicit total (the ICICI
      * Pru premium rule captures the premium as "amount"; dropping it was why
      * premiums surfaced with no amount). [ensureTotalNotBelowMin] re-applies
@@ -1315,7 +1315,7 @@ class MessageRepositoryImpl(
         extracts: Map<String, String>,
         typed: Map<String, ExtractedValue>,
     ): ParsedReminder? {
-        // Undated candidates are not actionable reminders — an amount alone
+        // Undated candidates are not actionable reminders - an amount alone
         // (e.g. a reimbursement-claim SMS) must not become an Alerts card.
         val dueDate = typed.date("due_date") ?: return null
         return ensureTotalNotBelowMin(
@@ -1325,7 +1325,7 @@ class MessageRepositoryImpl(
                 // by a bill rule is a credit-card bill, not a generic bill).
                 type = reminderTypeClassifier.classify(sender, evalBody) ?: ReminderType.OTHER,
                 dueDate = dueDate,
-                // A rule's generic "amount" is the amount DUE — the headline
+                // A rule's generic "amount" is the amount DUE - the headline
                 // total, never the minimum (the Alerts card and the parsed
                 // notification lead with the total).
                 totalDue = typed.amount("total_due") ?: typed.amount("amount"),
@@ -1340,7 +1340,7 @@ class MessageRepositoryImpl(
     /**
      * Post-merge totalDue >= minDue invariant: a merged "total" below the
      * minimum is a mis-capture (a minimum-due phrase landing in a total
-     * slot), so the total is dropped rather than stored wrong — mirroring
+     * slot), so the total is dropped rather than stored wrong - mirroring
      * [ReminderParser]'s own resolution, which raw rule captures bypass.
      */
     private fun ensureTotalNotBelowMin(reminder: ParsedReminder): ParsedReminder {
@@ -1362,7 +1362,7 @@ class MessageRepositoryImpl(
     // endregion
 
     companion object {
-        /** Messages per re-categorization transaction — large enough to amortize
+        /** Messages per re-categorization transaction - large enough to amortize
          * the commit, small enough that progress ticks and cancellation stay
          * responsive on a 14k-message inbox. */
         const val RECATEGORIZE_PAGE_SIZE = 200
@@ -1370,7 +1370,7 @@ class MessageRepositoryImpl(
         /**
          * Sub-categories whose rule extracts may derive a transaction on
          * their own (no parser match needed): plain transactions, prepaid
-         * recharges, and investment/mutual-fund contributions — all real
+         * recharges, and investment/mutual-fund contributions - all real
          * money movements the user asked to see in Finance. Amount + type
          * extracts remain mandatory (see transactionFromExtracts), so
          * balance-only rules under these sub-categories never create rows.
@@ -1417,7 +1417,7 @@ internal data class ImportedSmsRow(
     val delivered: Boolean = false,
 )
 
-/** Page source that is always empty — the unsearchable-query fallback. */
+/** Page source that is always empty - the unsearchable-query fallback. */
 private class EmptyPagingSource : PagingSource<Int, MessageEntity>() {
     override fun getRefreshKey(state: androidx.paging.PagingState<Int, MessageEntity>): Int? = null
 
