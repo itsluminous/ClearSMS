@@ -79,4 +79,13 @@ object SimSelector {
         activeSims
             .firstOrNull { it.subscriptionId == subscriptionId }
             ?.let { "SIM ${it.slotIndex + 1}" }
+
+    /** 1-based slot number for an active subscription; null when unknown. */
+    fun slotNumberFor(
+        activeSims: List<SimInfo>,
+        subscriptionId: Int?,
+    ): Int? =
+        activeSims
+            .firstOrNull { it.subscriptionId == subscriptionId }
+            ?.let { it.slotIndex + 1 }
 }

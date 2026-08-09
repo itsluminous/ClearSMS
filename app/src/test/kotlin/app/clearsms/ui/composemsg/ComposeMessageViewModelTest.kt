@@ -145,12 +145,12 @@ class ComposeMessageViewModelTest {
 
             val vm = viewModel()
             // No recipient yet: the system default SIM (slot 1) is chosen.
-            awaitUntil { vm.simState.value.label == "SIM 1" }
+            awaitUntil { vm.simState.value.slot == 1 }
             assertThat(vm.simState.value.visible).isTrue()
 
             vm.onRecipientChange("+15551234567")
             // The remembered per-recipient choice (sub 20, slot 2) takes over.
-            awaitUntil { vm.simState.value.label == "SIM 2" }
+            awaitUntil { vm.simState.value.slot == 2 }
         }
 
     @Test
@@ -165,11 +165,11 @@ class ComposeMessageViewModelTest {
 
             val vm = viewModel()
             vm.onRecipientChange("+15559876543")
-            awaitUntil { vm.simState.value.label == "SIM 1" }
+            awaitUntil { vm.simState.value.slot == 1 }
             vm.cycleSim()
 
             awaitUntil { simChoiceStore.rememberedFor("+15559876543") == 20 }
-            assertThat(vm.simState.value.label).isEqualTo("SIM 2")
+            assertThat(vm.simState.value.slot).isEqualTo(2)
         }
 
     @Test
@@ -184,7 +184,7 @@ class ComposeMessageViewModelTest {
 
             val vm = viewModel()
             vm.onRecipientChange("+15551112222")
-            awaitUntil { vm.simState.value.label == "SIM 2" }
+            awaitUntil { vm.simState.value.slot == 2 }
             vm.onBodyChange("hello")
             vm.send()
 

@@ -17,6 +17,7 @@ import app.clearsms.work.MessageScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -77,15 +78,24 @@ class ComposeMessageViewModel
         private val simUi = MutableStateFlow(SimUiState())
         val simState: StateFlow<SimUiState> = simUi.asStateFlow()
 
+        /**
+         * The in-flight per-recipient SIM lookup. Tracked so a manual
+         * cycle tap can cancel it: without this, a lookup started by a
+         * recipient edit could resume after the tap and silently overwrite
+         * the user's explicit choice.
+         */
+        private var simRefreshJob: Job? = null
+
         init {
             // Prime the SIM chooser exactly like the conversation screen
             // does: the per-recipient memory decides once a recipient is
             // known, else the system default. No thread exists yet, so
             // there is no last-used-in-thread rung.
-            viewModelScope.launch(ioDispatcher) {
-                activeSims = subscriptionSource.activeSims()
-                refreshSimForRecipient()
-            }
+            simRefreshJob =
+                viewModelScope.launch(ioDispatcher) {
+                    activeSims = subscriptionSource.activeSims()
+                    refreshSimForRecipient()
+                }
         }
 
         val suggestions: StateFlow<List<ContactSuggestion>> =
@@ -118,11 +128,14 @@ class ComposeMessageViewModel
             state.value = state.value.copy(recipient = selection.destination, picked = selection.picked)
             // The chosen recipient re-primes the SIM from the same
             // per-recipient memory the conversation screen writes.
-            viewModelScope.launch(ioDispatcher) { refreshSimForRecipient() }
+            simRefreshJob?.cancel()
+            simRefreshJob = viewModelScope.launch(ioDispatcher) { refreshSimForRecipient() }
         }
 
         /** Cycles to the next SIM and remembers the choice for this recipient. */
         fun cycleSim() {
+            // The user's explicit tap outranks any in-flight recipient lookup.
+            simRefreshJob?.cancel()
             val next = SimSelector.next(activeSims, chosenSim.value) ?: return
             chosenSim.value = next
             refreshSimUi()
@@ -150,7 +163,8 @@ class ComposeMessageViewModel
             simUi.value =
                 SimUiState(
                     visible = SimSelector.indicatorVisible(activeSims),
-                    label = SimSelector.slotLabelFor(activeSims, chosen).orEmpty(),
+                    slot = SimSelector.slotNumberFor(activeSims, chosen) ?: 0,
+                    simCount = activeSims.size,
                     operatorName = activeSims.firstOrNull { it.subscriptionId == chosen }?.displayName.orEmpty(),
                 )
         }

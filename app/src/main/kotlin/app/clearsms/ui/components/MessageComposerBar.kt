@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.SimCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -20,9 +22,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.clearsms.R
 
 /**
@@ -31,11 +36,20 @@ import app.clearsms.R
  */
 data class SimUiState(
     val visible: Boolean = false,
-    /** "SIM 1"/"SIM 2" - the slot of the SIM the next send will use. */
-    val label: String = "",
+    /** 1-based slot of the SIM the next send uses, drawn inside the icon; 0 = unknown. */
+    val slot: Int = 0,
+    /** Count of active SIMs, for the accessibility description. */
+    val simCount: Int = 0,
     /** Operator / user-given subscription name, surfaced as a toast on tap. */
     val operatorName: String = "",
-)
+) {
+    /**
+     * Accessibility description of the icon indicator ("SIM 1 of 2 -
+     * Airtel"). Built here, not as a resource, so the mapping stays
+     * unit-testable and consistent with the raw operator-name toast.
+     */
+    val contentDescription: String get() = "SIM $slot of $simCount - $operatorName"
+}
 
 /**
  * The one compose bar: text field, dual-SIM indicator (tap cycles SIMs and
@@ -68,26 +82,35 @@ fun MessageComposerBar(
             shape = RoundedCornerShape(28.dp),
             maxLines = 4,
         )
-        // Compact SIM indicator, dual-SIM devices only: shows the slot the
-        // next send uses; tapping cycles SIMs and toasts the operator name.
+        // Compact SIM indicator, dual-SIM devices only: a SIM-card outline
+        // with the slot number drawn inside shows the SIM the next send
+        // uses; tapping cycles SIMs and toasts the operator name.
         if (sim.visible) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier =
-                    Modifier.clickable(
-                        onClick = {
-                            onCycleSim()
-                            Toast.makeText(context, sim.operatorName, Toast.LENGTH_SHORT).show()
-                        },
-                        onClickLabel = stringResource(R.string.conversation_sim_switch),
-                    ),
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable(
+                            onClick = {
+                                onCycleSim()
+                                Toast.makeText(context, sim.operatorName, Toast.LENGTH_SHORT).show()
+                            },
+                            onClickLabel = stringResource(R.string.conversation_sim_switch),
+                        ).padding(6.dp),
             ) {
+                Icon(
+                    Icons.Outlined.SimCard,
+                    contentDescription = sim.contentDescription,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // Same tint as the icon; onSurfaceVariant stays legible on
+                // the bar surface in both light and dark themes.
                 Text(
-                    text = sim.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    text = sim.slot.toString(),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

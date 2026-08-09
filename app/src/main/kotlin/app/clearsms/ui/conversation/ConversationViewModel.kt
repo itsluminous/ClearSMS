@@ -225,7 +225,8 @@ class ConversationViewModel
             simUi.value =
                 SimUiState(
                     visible = SimSelector.indicatorVisible(activeSims),
-                    label = SimSelector.slotLabelFor(activeSims, chosen).orEmpty(),
+                    slot = SimSelector.slotNumberFor(activeSims, chosen) ?: 0,
+                    simCount = activeSims.size,
                     operatorName = activeSims.firstOrNull { it.subscriptionId == chosen }?.displayName.orEmpty(),
                 )
         }
