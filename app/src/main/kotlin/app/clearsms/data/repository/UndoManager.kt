@@ -50,6 +50,19 @@ class UndoManager(
     private var pending: Pending? = null
     private var timer: Job? = null
 
+    /**
+     * Immediate bin-aware delete for callers with no undo surface
+     * (notification action buttons): stages and commits in one step, so the
+     * recycle-bin setting is honored exactly like a timed-out UI delete.
+     * Any pending UI undo is committed first (one pending action at a time).
+     */
+    suspend fun deleteNow(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        commitPending()
+        val staged = repository.stageDeleteMessages(ids)
+        repository.commitStagedDelete(staged, toBin = recycleBinEnabled())
+    }
+
     /** Stages [ids] for deletion; returns the number of messages staged. */
     suspend fun stageDeleteMessages(ids: List<Long>): Int =
         stage { Pending.Delete(repository.stageDeleteMessages(ids)) }

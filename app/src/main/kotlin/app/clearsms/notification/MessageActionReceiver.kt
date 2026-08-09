@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.ApplicationScope
 import app.clearsms.sms.SmsSender
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +27,9 @@ import javax.inject.Inject
 class MessageActionReceiver : BroadcastReceiver() {
     @Inject
     lateinit var messageRepository: MessageRepository
+
+    @Inject
+    lateinit var undoManager: UndoManager
 
     @Inject
     lateinit var smsSender: SmsSender
@@ -62,7 +66,7 @@ class MessageActionReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 applicationScope.launch {
                     try {
-                        messageRepository.delete(messageId)
+                        undoManager.deleteNow(listOf(messageId))
                         dismiss()
                     } finally {
                         pendingResult.finish()

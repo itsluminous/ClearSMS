@@ -44,6 +44,38 @@ class UndoManagerTest {
         }
 
     @Test
+    fun `deleteNow commits immediately honoring the bin - the notification path`() =
+        runTest {
+            binEnabled = true
+            val manager = manager()
+            manager.deleteNow(listOf(7L))
+            runCurrent()
+            // No undo window: committed at once, to the bin.
+            assertThat(repository.commits).containsExactly(listOf(7L) to true)
+        }
+
+    @Test
+    fun `deleteNow with the bin off hard-deletes immediately`() =
+        runTest {
+            binEnabled = false
+            val manager = manager()
+            manager.deleteNow(listOf(7L))
+            runCurrent()
+            assertThat(repository.commits).containsExactly(listOf(7L) to false)
+        }
+
+    @Test
+    fun `deleteNow first commits a pending UI undo`() =
+        runTest {
+            val manager = manager()
+            manager.stageDeleteMessages(listOf(1L))
+            manager.deleteNow(listOf(2L))
+            runCurrent()
+            // The pending UI delete commits before the immediate one.
+            assertThat(repository.commits).containsExactly(listOf(1L) to false, listOf(2L) to false).inOrder()
+        }
+
+    @Test
     fun `commit honors the recycle-bin setting read at commit time`() =
         runTest {
             binEnabled = true

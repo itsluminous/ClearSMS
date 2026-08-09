@@ -6,6 +6,7 @@ import android.content.Intent
 import android.widget.Toast
 import app.clearsms.R
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.ApplicationScope
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,9 @@ import javax.inject.Inject
 class OtpActionReceiver : BroadcastReceiver() {
     @Inject
     lateinit var messageRepository: MessageRepository
+
+    @Inject
+    lateinit var undoManager: UndoManager
 
     @Inject
     lateinit var otpNotifier: OtpNotifier
@@ -59,7 +63,7 @@ class OtpActionReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 applicationScope.launch {
                     try {
-                        messageRepository.delete(messageId)
+                        undoManager.deleteNow(listOf(messageId))
                         otpNotifier.cancel(messageId)
                     } finally {
                         pendingResult.finish()
