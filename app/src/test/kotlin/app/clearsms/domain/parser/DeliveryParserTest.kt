@@ -46,7 +46,12 @@ class DeliveryParserTest {
 
     @Test
     fun `message without any delivery expectation is ignored`() {
-        assertThat(parser.parse("AMAZIN", "Your Amazon order 403-1234567 has been shipped.")).isNull()
+        // "shipped" with an identifiable parcel is now an UNDATED delivery
+        // (see the dispatch shape); a body with neither verb nor date stays out.
+        val shipped = parser.parse("AMAZIN", "Your Amazon order 403-1234567 has been shipped.")
+        assertThat(shipped).isNotNull()
+        assertThat(shipped!!.expectedDate(messageDate)).isNull()
+        assertThat(parser.parse("AMAZIN", "Your Amazon order 403-1234567 is being prepared.")).isNull()
     }
 
     @Test

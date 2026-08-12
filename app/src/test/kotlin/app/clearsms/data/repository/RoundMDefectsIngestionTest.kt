@@ -13,6 +13,8 @@ import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.ReminderType
+import app.clearsms.domain.model.SubCategory
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -143,6 +145,31 @@ class RoundMDefectsIngestionTest {
                 1_000L,
             )
             assertThat(db.reminderDao().getAll()).isEmpty()
+        }
+
+    // endregion
+
+    // region defect 3: card dispatched via courier with AWB
+
+    @Test
+    fun `card dispatch via courier ingests as an undated delivery with courier and tracking id`() =
+        runBlocking {
+            val entity =
+                repository.insertIncoming(
+                    "JD-BOBCRD-S",
+                    "Congrats, Your BOBCARD is dispatched via Bluedart AWB 31198765432. " +
+                        "Track here https://bluedart.com/?31198765432. Download the BOBCARD app to activate your card quickly.",
+                    1_000L,
+                )
+            assertThat(entity.category).isEqualTo(Category.IMPORTANT)
+            assertThat(entity.subCategory).isEqualTo(SubCategory.DELIVERY)
+            val reminder = db.reminderDao().getAll().single()
+            assertThat(reminder.type).isEqualTo(ReminderType.DELIVERY)
+            assertThat(reminder.bankName).isEqualTo("Blue Dart")
+            assertThat(reminder.label).isEqualTo("31198765432")
+            // No arrival date was stated: the card is undated, never a fake ETA.
+            assertThat(reminder.dueDate).isNull()
+            assertThat(db.transactionDao().getAll()).isEmpty()
         }
 
     // endregion

@@ -187,7 +187,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                         insertReminder(
                             db,
                             type = "DELIVERY",
-                            dueDate = delivery.expectedDate(messageDate).toEpochMs(),
+                            dueDate = delivery.expectedDate(messageDate)?.toEpochMs(),
                             totalDue = null,
                             minDue = null,
                             accountLast4 = null,

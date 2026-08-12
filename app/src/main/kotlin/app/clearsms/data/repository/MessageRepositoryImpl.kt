@@ -1068,7 +1068,9 @@ class MessageRepositoryImpl(
             reminderDao.insert(
                 ReminderEntity(
                     type = ReminderType.DELIVERY,
-                    dueDate = delivery.expectedDate(messageDate).toEpochMs(),
+                    // Null for a dispatch notice with no stated arrival: the
+                    // card shows as an undated upcoming delivery.
+                    dueDate = delivery.expectedDate(messageDate)?.toEpochMs(),
                     bankName = delivery.merchant,
                     label = delivery.reference,
                     rawSmsId = messageId,

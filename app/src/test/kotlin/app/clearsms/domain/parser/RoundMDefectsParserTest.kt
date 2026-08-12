@@ -95,4 +95,38 @@ class RoundMDefectsParserTest {
     }
 
     // endregion
+
+    // region defect 3: card dispatched via courier with AWB
+
+    private val deliveryParser = DeliveryParser()
+
+    private val cardDispatch =
+        "Congrats, Your BOBCARD is dispatched via Bluedart AWB 31198765432. " +
+            "Track here https://bluedart.com/?31198765432. Download the BOBCARD app to activate your card quickly."
+
+    @Test
+    fun `dispatch notice with courier and AWB parses as an undated delivery`() {
+        val result = deliveryParser.parse("JD-BOBCRD-S", cardDispatch)
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchant).isEqualTo("Blue Dart")
+        assertThat(result.reference).isEqualTo("31198765432")
+        assertThat(result.expectedDate(java.time.LocalDate.of(2026, 8, 12))).isNull()
+    }
+
+    @Test
+    fun `dispatch notice does not trip the scam heuristics`() {
+        assertThat(ScamDetector().isScam(cardDispatch)).isFalse()
+    }
+
+    @Test
+    fun `dispatched marketing copy without courier or reference is not a delivery`() {
+        val result =
+            deliveryParser.parse(
+                "JD-OFFERS",
+                "Order today and your gift hamper is dispatched in 24 hours! Hurry, offer ends soon.",
+            )
+        assertThat(result).isNull()
+    }
+
+    // endregion
 }

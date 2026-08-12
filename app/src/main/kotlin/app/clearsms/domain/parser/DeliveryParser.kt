@@ -23,13 +23,24 @@ class DeliveryParser {
                 explicitDate != null -> null
                 TOMORROW_REGEX.containsMatchIn(body) -> 1L
                 TODAY_REGEX.containsMatchIn(body) || OUT_FOR_DELIVERY_REGEX.containsMatchIn(body) -> 0L
-                else -> return null
+                else -> null
             }
+        val merchant = merchantFor(sender, body)
+        val reference = REFERENCE_REGEX.find(body)?.groupValues?.get(1)
+        if (explicitDate == null && relativeDays == null) {
+            // A dispatch/shipment notice states no arrival date. It is still
+            // a real delivery worth an (undated) Alerts card - but ONLY when
+            // it identifies its parcel: a recognizable courier/merchant or a
+            // tracking reference. A bare marketing "dispatched in 24 hours"
+            // has neither and stays out.
+            if (!DISPATCHED_REGEX.containsMatchIn(body)) return null
+            if (merchant == null && reference == null) return null
+        }
         return ParsedDelivery(
             explicitDate = explicitDate,
             relativeDays = relativeDays,
-            merchant = merchantFor(sender, body),
-            reference = REFERENCE_REGEX.find(body)?.groupValues?.get(1),
+            merchant = merchant,
+            reference = reference,
         )
     }
 
@@ -106,6 +117,13 @@ class DeliveryParser {
             Regex("(?i)arriv(?:ing|es?)\\s+today|deliver(?:ed|y)?\\s+(?:by\\s+)?today|expected\\s+today")
 
         val OUT_FOR_DELIVERY_REGEX = Regex("(?i)out\\s+for\\s+delivery")
+
+        /**
+         * "is dispatched via <courier>", "has been shipped" - the parcel is
+         * moving but no arrival date is stated. Accepted only alongside a
+         * recognizable courier or a tracking reference (see [parse]).
+         */
+        val DISPATCHED_REGEX = Regex("(?i)\\b(?:is|has\\s+been|was)\\s+(?:dispatched|shipped)\\b")
 
         /**
          * Order / tracking / consignment reference (must contain a digit).
