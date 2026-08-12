@@ -24,6 +24,36 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "paytm-link-otp-01",
+      "name": "Paytm Account-Link OTP In App Notice",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)(?:IPAYTM|PYTMB|PAYTM)",
+        "body_pattern": "(?i)OTP\\s+to\\s+link\\s+your\\s+Paytm\\s+account\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "paytm-movies-ticket-01",
+      "name": "Paytm Movies Ticket Details",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)(?:IPAYTM|PYTMB|PAYTM)",
+        "body_pattern": "(?i)Paytm\\s+Movies\\s+ticket\\s+details"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }
