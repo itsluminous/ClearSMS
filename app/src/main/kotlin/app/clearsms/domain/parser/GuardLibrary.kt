@@ -39,6 +39,9 @@ enum class GuardId(
     /** UPI mandate lifecycle notices - never promoted as a transaction. */
     MANDATE_NOTICE("mandate_notice"),
 
+    /** Per-unit "every Rs X spent" pitch amounts - never a transaction. */
+    HYPOTHETICAL_AMOUNT("hypothetical_amount"),
+
     /** Credit-limit increase offers - never a card's total limit. */
     LIMIT_OFFER("limit_offer"),
 

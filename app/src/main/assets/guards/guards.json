@@ -75,6 +75,14 @@
       ]
     },
     {
+      "id": "hypothetical_amount",
+      "description": "Per-unit / hypothetical amounts in marketing pitches ('earn 3 pts on every Rs 100 spent', 'cashback per Rs 500 paid'). The amount is an example rate, not money that moved - the transaction parser scrubs matched spans (amount AND its trailing spend verb) before detection, so a rewards pitch can never fabricate a debit.",
+      "patterns": [
+        "(?i)\\b(?:on\\s+|for\\s+)?every\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?(?:\\s+(?:spent|paid|charged|loaded))?",
+        "(?i)\\bper\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?(?:\\s+(?:spent|paid|charged))?"
+      ]
+    },
+    {
       "id": "mandate_notice",
       "description": "UPI Autopay / e-mandate lifecycle notices ('Mandate ... successfully created/cancelled'). They quote the mandate's amount but no money moved - never promoted as a transaction; surfaced as an IMPORTANT bank alert.",
       "patterns": [

@@ -270,6 +270,7 @@ class GuardLibraryTest {
             GuardId.MARKETING_PITCH -> listOf("reap benefits of rising markets")
             GuardId.VOUCHER -> listOf("your voucher expires soon")
             GuardId.MANDATE_NOTICE -> listOf("Mandate successfully created")
+            GuardId.HYPOTHETICAL_AMOUNT -> listOf("earn 3 pts on every Rs 100 spent")
             GuardId.LIMIT_OFFER -> listOf("you are eligible for an increase")
             GuardId.TIER_PREMIUM -> listOf("LIV Premium subscription active")
             GuardId.FUTURE_TENSE -> listOf("amount will be ")

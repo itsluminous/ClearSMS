@@ -7417,6 +7417,20 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-08T00:00:00Z"
+    },
+    {
+      "id": "card-reward-pitch-01",
+      "name": "Card Reward-Points Pitch",
+      "priority": 25,
+      "match": {
+        "body_pattern": "(?i)\\bearn\\s+\\d{1,4}\\s*(?:pts?|points|reward\\s+points)\\s+on\\s+every\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

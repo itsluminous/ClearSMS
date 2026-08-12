@@ -29,7 +29,15 @@ class TransactionParser {
         // amounts satisfy the transaction heuristics, so the notice phrases
         // are scrubbed BEFORE parsing: what remains carries no completed
         // debit/credit verb and the message stays a reminder only.
-        val effectiveBody = GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body)
+        // A per-unit pitch amount ("earn 3 pts on every Rs 100 spent") is a
+        // hypothetical rate, not money that moved: the same scrub removes
+        // the amount AND its trailing spend verb, so a rewards pitch can
+        // never fabricate a debit.
+        val effectiveBody =
+            GuardLibrary.scrub(
+                GuardId.HYPOTHETICAL_AMOUNT,
+                GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body),
+            )
         // "Payment of INR X ... is due (on <date>)" announces a FUTURE
         // obligation - a bill reminder, never a completed debit. The trailing
         // "Ignore if paid" advisory carries a completed-tense verb ("paid")
@@ -193,7 +201,11 @@ class TransactionParser {
      * silently summed as INR.
      */
     fun foreignCurrency(body: String): String? {
-        val effectiveBody = GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body)
+        val effectiveBody =
+            GuardLibrary.scrub(
+                GuardId.HYPOTHETICAL_AMOUNT,
+                GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body),
+            )
         val balanceMatch = BALANCE_REGEX.find(effectiveBody)
         val excluded =
             listOfNotNull(balanceMatch?.range) + AVAILABLE_LIMIT_REGEX.findAll(effectiveBody).map { it.range }
