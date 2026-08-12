@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "vfs-visa-update-01",
+      "name": "VFS Global Visa Application Update",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)VFSSMS",
+        "body_pattern": "(?i)visa\\s+application"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    }
+  ]
+}

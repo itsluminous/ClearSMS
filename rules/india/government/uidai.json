@@ -30,6 +30,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "uidai-pvc-delivery-01",
+      "name": "Aadhaar PVC Card Handed To India Post",
+      "priority": 272,
+      "match": {
+        "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
+        "body_pattern": "(?i)Aadhaar\\s+PVC\\s+Card\\b[\\s\\S]{0,60}?\\bhanded\\s+over\\s+to\\s+India\\s+Post"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

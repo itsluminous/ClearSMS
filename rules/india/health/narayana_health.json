@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "nh-patient-link-01",
+      "name": "Narayana Health Report / Receipt Link",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)NCARE",
+        "body_pattern": "(?i)(?:lab\\s+report|receipt\\s+is\\s+now\\s+available|Narayana\\s+Health)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    }
+  ]
+}
