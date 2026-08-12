@@ -1243,6 +1243,89 @@
         "SONYLIV"
       ],
       "is_issuer": false
+    },
+    {
+      "key": "croma",
+      "name": "Croma",
+      "category": "ECOMMERCE",
+      "color": "#12DAA8",
+      "monogram": "C",
+      "senders": [
+        "ECROMA",
+        "CROMAX"
+      ],
+      "aliases": [
+        "CROMA",
+        "INFINITI RETAIL"
+      ]
+    },
+    {
+      "key": "dtdc",
+      "name": "DTDC",
+      "category": "DELIVERY",
+      "color": "#ED1C24",
+      "monogram": "D",
+      "senders": [
+        "DTDCCR"
+      ],
+      "aliases": [
+        "DTDC"
+      ]
+    },
+    {
+      "key": "bobcard",
+      "name": "BOBCARD",
+      "category": "CARD",
+      "color": "#F15A29",
+      "monogram": "BC",
+      "senders": [
+        "BOBCRD"
+      ],
+      "aliases": [
+        "BOBCARD",
+        "BOB FINANCIAL"
+      ]
+    },
+    {
+      "key": "gailgas",
+      "name": "GAIL Gas",
+      "category": "UTILITY",
+      "color": "#E31E24",
+      "monogram": "G",
+      "senders": [
+        "GAILGS"
+      ],
+      "aliases": [
+        "GAIL GAS",
+        "GAIL"
+      ]
+    },
+    {
+      "key": "narayanahealth",
+      "name": "Narayana Health",
+      "category": "HEALTH",
+      "color": "#00A0DF",
+      "monogram": "NH",
+      "senders": [
+        "NCARE"
+      ],
+      "aliases": [
+        "NARAYANA HEALTH",
+        "NARAYANA HRUDAYALAYA"
+      ]
+    },
+    {
+      "key": "vishalmegamart",
+      "name": "Vishal Mega Mart",
+      "category": "ECOMMERCE",
+      "color": "#E8262D",
+      "monogram": "V",
+      "senders": [
+        "VISHM"
+      ],
+      "aliases": [
+        "VISHAL MEGA MART"
+      ]
     }
   ]
 }

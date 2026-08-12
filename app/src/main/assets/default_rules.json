@@ -8,7 +8,8 @@
       "match": {
         "body_pattern": "(?i)(?=[\\s\\S]*(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|tiny\\.cc|shorturl\\.at))(?=[\\s\\S]*(?:prize|lottery|lucky\\s+draw|jackpot|winner|you\\s+have\\s+won|claim\\s+(?:your|now)|congratulations))",
         "body_must_not_contain": [
-          "Team TechGig"
+          "Team TechGig",
+          "IDFC First Bank Rewards"
         ]
       },
       "action": {
@@ -7472,6 +7473,1191 @@
         "extract_types": {
           "journey_date": "date"
         }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "axis-otp-txn-01",
+      "name": "Axis Bank Card Transaction OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+SECRET\\s+OTP\\s+for\\s+txn\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+Axis\\s+Bank\\s+card"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "amount": "$2"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "axis-card-approved-01",
+      "name": "Axis Credit Card Application Approved",
+      "priority": 309,
+      "match": {
+        "sender_pattern": "(?i)AXIS",
+        "body_pattern": "(?i)Credit\\s+Card\\s+application\\s+ref\\s+no\\.?[^\\n]{0,20}?\\bis\\s+approved"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "bobcard-otp-01",
+      "name": "BOBCARD OTP (keyword first)",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)OTP\\s+is\\s+(\\d{4,8})\\s+for\\b"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "bobcard-otp-02",
+      "name": "BOBCARD OTP (digits first)",
+      "priority": 329,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+OTP\\s+for\\b"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "bobcard-dispatch-01",
+      "name": "BOBCARD Dispatched Via Courier",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)BOBCARD\\s+is\\s+dispatched\\s+via\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "canara-otp-confirm-01",
+      "name": "Canara Bank Request Confirmation OTP",
+      "priority": 311,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)confirm\\s+with\\s+OTP\\s*:?\\s*(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "canara-pos-debit-01",
+      "name": "Canara Card-Linked A/c POS Debit",
+      "priority": 321,
+      "match": {
+        "sender_pattern": "(?i)(?:CANBNK|CANBK|CANARA)",
+        "body_pattern": "(?i)linked\\s+to\\s+card\\s+debited\\s+INR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+[\\d/]{6,10}\\s+POS",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "bank": "Canara Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "citi-service-reply-01",
+      "name": "Citi Service Request Reply",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)(?:^(?:[A-Z]{2}-)?52484(?:-[SPTG])?$|CITIBA)",
+        "body_pattern": "(?i)(?:Request\\s+unsuccessful|CitiAlert\\s+Keyword)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "citi-card-delivered-01",
+      "name": "Citi Card Delivered By Courier",
+      "priority": 312,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)card\\s+ending\\s+(\\d{4})\\s+has\\s+been\\s+delivered\\s+via\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "account_last4": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-refund-01",
+      "name": "Citi Card Refund Initiated",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+initiated\\s+for\\s+your\\s+Citi\\s+Credit\\s+Card\\s+ending\\s+(\\d{4})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "hdfc-credit-received-01",
+      "name": "HDFC Credit Received (Received! INR)",
+      "priority": 323,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)Received!\\s+INR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+HDFC\\s+Bank\\s+A/c\\s+[Xx*]*(\\d{3,6})\\s+On\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "hdfc-smartpay-02",
+      "name": "HDFC SmartPay Bill Paid",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)Bill\\s+Paid!\\s+([^\\n]{1,40}?)\\s+Bill\\b[^\\n]{0,30}?\\bof\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+paid\\s+on\\s+([0-9A-Za-z-]{6,12})\\s+from\\s+HDFC\\s+Bank\\s+Account\\s+[Xx*]*(\\d{3,6})\\s+via\\s+SmartPay",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "merchant": "$1",
+          "amount": "$2",
+          "account_last4": "$4",
+          "type": "debit",
+          "bank": "HDFC Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "hdfc-addon-card-01",
+      "name": "HDFC Add-On Card Request In Process",
+      "priority": 293,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)HDFC\\s+Bank\\s+Add\\s+On\\s+Card\\s+is\\s+in\\s+process"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "hdfc-chequebook-dispatch-01",
+      "name": "HDFC Chequebook Dispatched",
+      "priority": 293,
+      "match": {
+        "sender_pattern": "(?i)HDFC",
+        "body_pattern": "(?i)sent\\s+your\\s+Chequebook\\b[^\\n]{0,30}?\\bvia\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-autopay-notice-01",
+      "name": "ICICI Card Upcoming Standing-Instruction Debit",
+      "priority": 334,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+([^\\n,]{1,30}?)\\s+to\\s+be\\s+debited\\s+from\\s+your\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{4})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "icici-card-delivered-02",
+      "name": "ICICI Credit Card Delivered",
+      "priority": 293,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)Delivered:\\s*Credit\\s+Card\\b[^\\n]{0,80}?\\bis\\s+delivered\\s+by\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "idfc-first-estatement-02",
+      "name": "IDFC FIRST Card eStatement (dues inline)",
+      "priority": 309,
+      "match": {
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)eStatement\\s+for\\s+your\\s+FIRST\\b[^\\n]{0,40}?\\bCredit\\s+Card\\s+is\\s+here[^\\n]{0,20}?Total\\s+Amt\\s+Due:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[^\\n]{0,20}?Min\\s+Amt\\s+Due:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "min_due": "$2",
+          "bank": "IDFC FIRST Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "idfc-rewards-redeemed-01",
+      "name": "IDFC FIRST Rewards Redemption Confirmed",
+      "priority": 305,
+      "match": {
+        "sender_pattern": "(?i)IDFC",
+        "body_pattern": "(?i)successfully\\s+redeemed\\s+Gift\\s+Cards?\\b[^\\n]{0,60}?\\bIDFC\\s+First\\s+Bank\\s+Rewards"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "idfc-welcome-voucher-01",
+      "name": "IDFC FIRST Welcome Voucher Offer",
+      "priority": 304,
+      "match": {
+        "sender_pattern": "(?i)IDFC",
+        "body_pattern": "(?i)Welcome\\s+Voucher\\b[^\\n]{0,60}?\\bavailable\\s+for\\s+redemption"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-dispatch-01",
+      "name": "SBI Credit Card Dispatched",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)SBI\\s+Credit\\s+Card\\s+has\\s+been\\s+dispatched\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-estmt-01",
+      "name": "SBI Card E-Statement Sent",
+      "priority": 313,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)E-?stmt\\s+for\\s+your\\s+SBI\\s+Card\\s+ending\\s+with\\s+(\\d{4})\\s+dated\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "bank": "SBI Card"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-web-otp-01",
+      "name": "SBI Card Website Login OTP",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)OTP\\s+to\\s+login\\s+to\\s+your\\s+account\\s+on\\s+SBI\\s+Card\\s+website\\s+is\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-yono-otp-01",
+      "name": "SBI YONO Web Login OTP",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)(?:SBI|SBYONO)",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+the\\s+OTP\\s+to\\s+login\\s+to\\s+YONO"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-it-refund-01",
+      "name": "Income Tax Refund Credited (SBI)",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)(?:SBI|SBICMP)",
+        "body_pattern": "(?i)(?:IT\\s+Refund\\s+amount\\s+of|ITR\\s+REGISTERED\\s+ON\\s+YOUR\\s+PAN\\b[^\\n]{0,30}?\\bFOR)\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)[^\\n]{0,60}?\\bCREDITED\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-install-status-01",
+      "name": "Amazon Order Installation Status",
+      "priority": 212,
+      "match": {
+        "body_pattern": "(?i)install(?:ation|ed)?\\b[\\s\\S]{0,80}?\\b\\d{3}-\\d{7}-\\d{7}\\b|\\b\\d{3}-\\d{7}-\\d{7}\\b[\\s\\S]{0,60}?\\binstall(?:ation|ed)?\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-job-application-01",
+      "name": "Amazon Job Application Status",
+      "priority": 214,
+      "match": {
+        "body_pattern": "(?i)status\\s+of\\s+your\\s+Amazon\\s+job\\s+application\\s+has\\s+changed"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-images-required-01",
+      "name": "Amazon Requires Images Upload",
+      "priority": 214,
+      "match": {
+        "body_pattern": "(?i)(?:Amazon\\s+requires\\s+images:|upload\\s+the\\s+images\\s+required\\s+by\\s+Amazon\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-cancelled-01",
+      "name": "Amazon Return Pickup Cancelled",
+      "priority": 215,
+      "match": {
+        "body_pattern": "(?i)Pickup\\s+Cancelled:\\s*Your\\s+return\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-service-completed-01",
+      "name": "Amazon Home Service Completed",
+      "priority": 213,
+      "match": {
+        "body_pattern": "(?i)\\bis\\s+completed\\s+as\\s+per\\s+technician\\b",
+        "body_must_contain": [
+          "amzn.in"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-reminder-01",
+      "name": "Amazon Return Pickup Reminder",
+      "priority": 215,
+      "match": {
+        "body_pattern": "(?i)Pickup\\s+reminder:\\s*Your\\s+return\\s+pick\\s*up\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-order-cancelled-01",
+      "name": "Amazon Order Cancelled",
+      "priority": 215,
+      "match": {
+        "body_pattern": "(?i)Order\\s+Cancelled:\\s*Your\\s+Amazon[^\\n]{0,15}?\\border\\s+\\d{3}-\\d{7}-\\d{7}"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-order-confirmed-01",
+      "name": "Amazon Order Placed Confirmation",
+      "priority": 216,
+      "match": {
+        "body_pattern": "(?i)Confirmed:\\s*Your\\s+Amazon\\.in\\s+order\\s+\\d{3}-\\d{7}-\\d{7}\\s+is\\s+successfully\\s+placed"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-item-cancelled-01",
+      "name": "Amazon Return Item Cancelled / Returned",
+      "priority": 213,
+      "match": {
+        "body_pattern": "(?i)Cancelled:[^\\n]{0,80}?\\bis\\s+being\\s+returned\\s+to\\s+us",
+        "body_must_contain": [
+          "amzn.in"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "croma-delivery-01",
+      "name": "Croma Order / Return Movement",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:ECROMA|CROMA)",
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|zooming\\s+across|has\\s+reached\\s+you|picked\\s+up|out\\s+to\\s+collect|delivery\\s+may\\s+be\\s+delayed)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Croma"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "zipcare-plan-01",
+      "name": "ZipCare Protection Plan Activated",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)ZIPCRE",
+        "body_pattern": "(?i)protected\\s+with\\s+ZipCare"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "dtdc-delivery-failed-01",
+      "name": "DTDC Delivery Attempt Failed",
+      "priority": 230,
+      "match": {
+        "sender_pattern": "(?i)DTDC",
+        "body_pattern": "(?i)was\\s+not\\s+delivered\\s+as\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "flipkart-giftcard-order-01",
+      "name": "Flipkart e-Gift Voucher Order Received",
+      "priority": 221,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)order\\s+for\\s+e-?Gift\\s+Voucher\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "flipkart-axis-card-approved-01",
+      "name": "Flipkart Axis Credit Card Approved",
+      "priority": 221,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)Flipkart\\s+Axis\\s+credit\\s+card\\s+is\\s+approved"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "nimbuspost-shipped-01",
+      "name": "NimbusPost Order Shipped",
+      "priority": 230,
+      "match": {
+        "sender_pattern": "(?i)(?:NIMPST|NIMBUS)",
+        "body_pattern": "(?i)has\\s+been\\s+shipped\\s+via\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "shiprocket-shipped-01",
+      "name": "Shiprocket Order Shipped",
+      "priority": 230,
+      "match": {
+        "sender_pattern": "(?i)(?:SHPRKT|SHIPRKT)",
+        "body_pattern": "(?i)Order\\s+Shipped:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vishalmm-coupon-01",
+      "name": "Vishal Mega Mart Coupon",
+      "priority": 150,
+      "match": {
+        "sender_pattern": "(?i)VISHM",
+        "body_pattern": "(?i)coupon\\s+worth\\b"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "epfo-otp-01",
+      "name": "EPFO OTP (use OTP ... to)",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)use\\s+OTP\\s+(\\d{4,8})\\s*(?:\\(OTP-ID:?\\s*\\d{1,10}\\))?\\s*to\\b"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "epfo-login-otp-01",
+      "name": "EPFO Member Interface Login OTP",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)(?:EPFOHO|EPFO)",
+        "body_pattern": "(?i)OTP\\s+to\\s+login\\s+to\\s+Member\\s+Interface\\s+is\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "passport-dispatched-01",
+      "name": "Passport Dispatched (Speed Post)",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)TCSPSK",
+        "body_pattern": "(?i)Passport\\b[^\\n]{0,40}?\\bdispatched\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "uidai-pvc-delivery-01",
+      "name": "Aadhaar PVC Card Handed To India Post",
+      "priority": 272,
+      "match": {
+        "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
+        "body_pattern": "(?i)Aadhaar\\s+PVC\\s+Card\\b[\\s\\S]{0,60}?\\bhanded\\s+over\\s+to\\s+India\\s+Post"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vfs-visa-update-01",
+      "name": "VFS Global Visa Application Update",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)VFSSMS",
+        "body_pattern": "(?i)visa\\s+application"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "nh-patient-link-01",
+      "name": "Narayana Health Report / Receipt Link",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)NCARE",
+        "body_pattern": "(?i)(?:lab\\s+report|receipt\\s+is\\s+now\\s+available|Narayana\\s+Health)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-recharge-processed-02",
+      "name": "Airtel Prepaid Recharge Success (order id)",
+      "priority": 242,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRINF|AIRTEL)",
+        "body_pattern": "(?i)Prepaid\\s+recharge\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+success",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-payment-processing-01",
+      "name": "Airtel Payment Processing",
+      "priority": 241,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRINF|AIRTEL)",
+        "body_pattern": "(?i)we\\s+have\\s+processed\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-payment-failed-01",
+      "name": "Airtel Payment Failed Notice",
+      "priority": 243,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRINF|AIRTEL)",
+        "body_pattern": "(?i)payment\\s+of\\s+Rs\\.?\\s*[\\d,.]{1,12}\\s+has\\s+failed\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-retailer-recharge-01",
+      "name": "Airtel Retailer Recharge Receipt",
+      "priority": 240,
+      "match": {
+        "sender_pattern": "(?i)(?:ERECHARGE|AIRTEL)",
+        "body_pattern": "(?i)Recharge\\s+done\\s+on\\b[^\\n]{0,40}?MRP\\s*:?\\s*Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-recharge-success-02",
+      "name": "Airtel Recharge Successful (retail channel)",
+      "priority": 242,
+      "match": {
+        "sender_pattern": "(?i)(?:ERECHARGE|AIRINF)",
+        "body_pattern": "(?i)Recharge\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+successful\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-account-update-01",
+      "name": "Airtel Account Service Update (121)",
+      "priority": 140,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?121(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:airtel\\s+mobile|email\\s+id\\s+update)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vi-roaming-care-01",
+      "name": "Vi International Roaming Care Notice",
+      "priority": 140,
+      "match": {
+        "sender_pattern": "(?i)VIROAM",
+        "body_pattern": "(?i)\\broaming\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vi-survey-01",
+      "name": "Vi Network Feedback Survey (59823)",
+      "priority": 139,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?59823(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:reply\\s+with\\s+a\\s+number|text\\s+a\\s+score\\s+from|great\\s+experience|invalid\\s+response|recommend\\s+Vi\\b)"
+      },
+      "action": {
+        "category": "promotional"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vi-recharged-02",
+      "name": "Vi Recharge Done (Rs recharged!)",
+      "priority": 239,
+      "match": {
+        "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
+        "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+recharged!",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Vi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vistara-boarding-pass-01",
+      "name": "Vistara Boarding Pass Link",
+      "priority": 300,
+      "match": {
+        "body_pattern": "(?i)fly\\.airvistara\\.com/ssci/bp"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "tripsource-flight-update-01",
+      "name": "TripSource Flight Status Update",
+      "priority": 265,
+      "match": {
+        "body_pattern": "(?i)TripSource:\\s*Your\\s+flight"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "flight-cancelled-refund-01",
+      "name": "Airline Cancellation Refund Notice",
+      "priority": 259,
+      "match": {
+        "body_pattern": "(?i)\\bflight\\s+[A-Z]{3}-[A-Z]{3}\\s+\\(PNR:?\\s*([A-Z0-9]{5,8})\\)\\s+was\\s+cancelled\\s+by\\s+the\\s+airline[^\\n]{0,20}?\\s*Refund\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "pnr": "$1",
+          "amount": "$2",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "gailgas-invoice-01",
+      "name": "GAIL Gas DPNG Invoice Generated",
+      "priority": 250,
+      "match": {
+        "body_pattern": "(?i)Invoice\\s+for\\s+DPNG\\s+has\\s+been\\s+generated"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "merchant": "GAIL Gas"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "everbridge-alert-01",
+      "name": "Everbridge / McKAlert Emergency Comms",
+      "priority": 210,
+      "match": {
+        "body_pattern": "(?i)(?:\\bmckalert\\b|\\beverbridge\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-alerting-01",
+      "name": "Amazon Alerting Pager Notification",
+      "priority": 210,
+      "match": {
+        "body_pattern": "(?i)\\bAmazon\\s+Alerting:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "mss-monitor-alert-01",
+      "name": "MSS Monitoring Alert (503501)",
+      "priority": 209,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?503501(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:alert|problem|incidents?|outage|failure|saturation|unavailable|dynatrace|monitor|acknowledg)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazonpay-icici-earnings-01",
+      "name": "Amazon Pay ICICI Card Earnings Credited",
+      "priority": 301,
+      "match": {
+        "body_pattern": "(?i)earnings\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?),?\\s+for\\s+usage\\s+of\\s+Amazon\\s+Pay\\s+ICICI\\s+Bank\\s+Credit\\s+Card"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Amazon Pay"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazonpay-cashback-01",
+      "name": "Amazon Pay Cashback Added",
+      "priority": 302,
+      "match": {
+        "body_pattern": "(?i)Cashback\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\b[^\\n]{0,60}?\\badded\\s+to\\s+your\\s+Amazon\\s+Pay\\s+balance"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit",
+          "merchant": "Amazon Pay"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "cred-refund-01",
+      "name": "CRED Refund Auto-Initiated",
+      "priority": 316,
+      "match": {
+        "sender_pattern": "(?i)CRED",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+automatically\\s+initiated\\s+to\\s+your\\s+bank\\s+account",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "paytm-link-otp-01",
+      "name": "Paytm Account-Link OTP In App Notice",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)(?:IPAYTM|PYTMB|PAYTM)",
+        "body_pattern": "(?i)OTP\\s+to\\s+link\\s+your\\s+Paytm\\s+account\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "paytm-movies-ticket-01",
+      "name": "Paytm Movies Ticket Details",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)(?:IPAYTM|PYTMB|PAYTM)",
+        "body_pattern": "(?i)Paytm\\s+Movies\\s+ticket\\s+details"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-12T00:00:00Z"
