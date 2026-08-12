@@ -853,8 +853,13 @@ class MessageRepositoryImpl(
                 // A reminder without a due date is not actionable; this also
                 // keeps transaction confirmations (SubCategory.TRANSACTION)
                 // from doubling as reminders unless they genuinely carry a
-                // due date, e.g. a card statement.
-            }?.takeIf { it.dueDate != null }
+                // due date, e.g. a card statement. The one dateless shape
+                // allowed through is a "bill ... is generated" notice
+                // carrying its amount - the freshly issued bill IS the
+                // obligation (see ReminderParser.isGeneratedBillNotice).
+            }?.takeIf {
+                it.dueDate != null || (it.totalDue != null && reminderParser.isGeneratedBillNotice(evalBody))
+            }
 
         // A balance statement reports STATE, not movement: derived only when
         // no transaction exists (a debit quoting "Avl Bal" keeps its balance

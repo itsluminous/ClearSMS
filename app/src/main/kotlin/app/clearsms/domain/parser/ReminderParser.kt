@@ -14,7 +14,10 @@ import java.util.Locale
  * - A reminder MUST carry a due date, and the due-context keyword must be
  *   anchored to that date ("due on <date>", "pay by <date>", ...). A bare
  *   "due"/"bill"/"expir" somewhere in the body is not enough - that gate
- *   previously flooded Alerts with unrelated messages.
+ *   previously flooded Alerts with unrelated messages. The ONE dateless
+ *   exception is a "bill ... is generated" notice carrying its amount
+ *   (see [isGeneratedBillNotice]): the generated bill is itself the
+ *   obligation, announced before the biller states a due date.
  * - Completed / settled events (payments received, thank-you-for-payment
  *   confirmations, refunds, reimbursement claims, debit/credit
  *   confirmations) are never reminders, even when the body also mentions a
@@ -47,20 +50,38 @@ class ReminderParser {
         // never surface in Alerts.
         if (GuardLibrary.matches(GuardId.MARKETING_PITCH, body)) return null
         if (GuardLibrary.matches(GuardId.VOUCHER, body)) return null
-        // The due keyword must be adjacent to a parseable date.
-        val dueDate = findAnchoredDueDate(body) ?: return null
+        // The due keyword must be adjacent to a parseable date. The one
+        // dateless shape accepted is a "bill ... is generated" notice
+        // carrying its amount (see [isGeneratedBillNotice]): a generated
+        // bill IS the obligation, announced before the biller states a due
+        // date - rejecting it hid real electricity/telecom bills from
+        // Alerts entirely.
+        val dueDate = findAnchoredDueDate(body)
+        if (dueDate == null && !isGeneratedBillNotice(body)) return null
         val type = typeClassifier.classify(sender, body) ?: return null
         val minDue = firstAmount(body, MIN_DUE_PATTERNS)
+        val totalDue = resolveTotalAgainstMin(body, firstAmount(body, TOTAL_DUE_PATTERNS), minDue)
+        // An undated notice without an amount obligates nothing concrete.
+        if (dueDate == null && totalDue == null) return null
         return ParsedReminder(
             type = type,
             dueDate = dueDate,
-            totalDue = resolveTotalAgainstMin(body, firstAmount(body, TOTAL_DUE_PATTERNS), minDue),
+            totalDue = totalDue,
             minDue = minDue,
             accountLast4 = ACCOUNT_REGEX.find(body)?.groupValues?.get(1),
             bankName = SenderNameResolver.bankNameFor(sender, body),
             label = extractLabel(body),
         )
     }
+
+    /**
+     * True for a "bill ... is/has been generated" notice - the one reminder
+     * shape accepted WITHOUT a due date (when it carries its amount): the
+     * generated bill is itself the obligation. Settled/marketing/voucher
+     * guards still reject first, and the caller-side amount requirement
+     * keeps a bare "bill generated, nothing payable" notice out of Alerts.
+     */
+    fun isGeneratedBillNotice(body: String): Boolean = GENERATED_BILL_REGEX.containsMatchIn(body)
 
     /** First due-date whose keyword is directly anchored to the date text. */
     private fun findAnchoredDueDate(body: String): LocalDate? {
@@ -315,6 +336,13 @@ class ReminderParser {
         val PAY_BY_LOOSE_ANCHOR = Regex("(?i)\\bpay\\b[^\\n]{0,100}?\\bby\\s+($DATE)")
 
         val DUE_WORD_REGEX = Regex("(?i)\\bdue\\b")
+
+        /**
+         * "bill ... is/has been/was generated" - a freshly issued bill.
+         * Bounded gap so an unrelated "generated" (an OTP, a report) never
+         * binds to a distant "bill".
+         */
+        val GENERATED_BILL_REGEX = Regex("(?i)\\bbill\\b[^\\n]{0,80}?\\b(?:is|has\\s+been|was)\\s+generated\\b")
 
         /** DD-MM-YY or DD/MM/YYYY style dates. */
         val NUMERIC_DATE_REGEX = Regex("(?<!\\d)(\\d{1,2})[-/](\\d{1,2})[-/](\\d{2}(?:\\d{2})?)(?!\\d)")

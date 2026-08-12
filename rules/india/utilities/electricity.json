@@ -2,6 +2,25 @@
   "version": "1.0",
   "rules": [
     {
+      "id": "electricity-bill-generated-01",
+      "name": "Electricity Board Bill Generated",
+      "priority": 156,
+      "match": {
+        "body_pattern": "(?i)\\((BESCOM|BSES|MSEDCL|TNEB|TSSPDCL|APSPDCL|KSEB|PSPCL|UPPCL|WBSEDCL|CESC|TPDDL|BEST)\\)[\\s\\S]{0,20}?\\bbill\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+generated"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "bank": "$1",
+          "amount": "$2",
+          "label": "Electricity bill"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
       "id": "electricity-bill-01",
       "name": "Electricity Bill Ready",
       "priority": 155,

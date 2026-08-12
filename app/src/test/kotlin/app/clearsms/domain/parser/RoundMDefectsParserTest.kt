@@ -45,4 +45,54 @@ class RoundMDefectsParserTest {
     }
 
     // endregion
+
+    // region defect 2: generated bill without a due date
+
+    private val reminderParser = ReminderParser()
+
+    @Test
+    fun `generated electricity bill with amount parses as an undated reminder`() {
+        val result =
+            reminderParser.parse(
+                "JD-HDFCBK-S",
+                "Your Bangalore Ele.... Ltd (BESCOM) (3011122233) bill of Rs 3582.00 is generated. " +
+                    "Pay now on PayZapp. https://1.example.bank.in/HDFCBK/s/AbCdEfGh",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.dueDate).isNull()
+        assertThat(result.totalDue).isEqualTo(3582.0)
+    }
+
+    @Test
+    fun `generated bill notice never parses as a transaction`() {
+        val result =
+            parser.parse(
+                "JD-HDFCBK-S",
+                "Your Bangalore Ele.... Ltd (BESCOM) (3011122233) bill of Rs 3582.00 is generated. " +
+                    "Pay now on PayZapp. https://1.example.bank.in/HDFCBK/s/AbCdEfGh",
+            )
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `a paid-bill confirmation is not a reminder`() {
+        val result =
+            reminderParser.parse(
+                "JD-HDFCBK-S",
+                "Your BESCOM bill of Rs 3582.00 has been paid successfully via PayZapp. Ref 522298765432.",
+            )
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `a generated bill without any amount is not a reminder`() {
+        val result =
+            reminderParser.parse(
+                "JD-AIRTEL",
+                "Bill for your Airtel Mobile has been generated and there is no payable amount this month.",
+            )
+        assertThat(result).isNull()
+    }
+
+    // endregion
 }
