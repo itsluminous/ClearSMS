@@ -483,6 +483,8 @@
     <!-- Alerts: delivery reminders -->
     <string name="alerts_filter_delivery">Delivery</string>
     <string name="alerts_type_delivery">Delivery</string>
+    <string name="alerts_filter_travel">Travel</string>
+    <string name="alerts_type_travel">Travel</string>
     <string name="alerts_expected_on">Expected %1$s</string>
     <string name="alerts_tracking_ref">Ref: %1$s</string>
 

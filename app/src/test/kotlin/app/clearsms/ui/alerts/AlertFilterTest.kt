@@ -56,7 +56,7 @@ class AlertFilterTest {
     }
 
     @Test
-    fun `pill row order is all, credit cards, emi, insurance, bill, subscription, deposit, delivery`() {
+    fun `pill row order is all, credit cards, emi, insurance, bill, subscription, deposit, delivery, travel`() {
         assertThat(AlertFilter.entries)
             .containsExactly(
                 AlertFilter.ALL,
@@ -67,6 +67,7 @@ class AlertFilterTest {
                 AlertFilter.SUBSCRIPTION,
                 AlertFilter.DEPOSIT,
                 AlertFilter.DELIVERY,
+                AlertFilter.TRAVEL,
             ).inOrder()
     }
 

@@ -2,6 +2,31 @@
   "version": "1.0",
   "rules": [
     {
+      "id": "irctc-journey-01",
+      "name": "IRCTC Journey Ticket (PNR/TRN/DOJ)",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)IRCTC",
+        "body_pattern": "(?i)\\bPNR[:\\s]*(\\d{10})\\s*,\\s*TRN[:\\s]*(\\d{3,5})\\s*,\\s*DOJ[:\\s]*(\\d{1,2}-\\d{1,2}-\\d{2,4})[\\s\\S]{0,20}?\\b([A-Za-z]{2,6}-[A-Za-z]{2,6})\\s*,\\s*DP[:\\s]*(\\d{1,2}:\\d{2})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel",
+        "extract": {
+          "pnr": "$1",
+          "train": "$2",
+          "journey_date": "$3",
+          "route": "$4",
+          "departure_time": "$5"
+        },
+        "extract_types": {
+          "journey_date": "date"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
       "id": "irctc-cancel-01",
       "name": "IRCTC Ticket Cancellation",
       "priority": 321,

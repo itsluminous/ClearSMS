@@ -9,6 +9,8 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleEngine
+import app.clearsms.data.rules.RuleSources
+import app.clearsms.data.rules.toEntity
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
@@ -26,6 +28,9 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * End-to-end ingestion of the round-M defect fixtures over the REAL bundled
@@ -170,6 +175,89 @@ class RoundMDefectsIngestionTest {
             // No arrival date was stated: the card is undated, never a fake ETA.
             assertThat(reminder.dueDate).isNull()
             assertThat(db.transactionDao().getAll()).isEmpty()
+        }
+
+    // endregion
+
+    // region defect 4: train / flight journeys surface in Alerts
+
+    private val trainTicket =
+        "PNR:6198765432,TRN:12345,DOJ:15-08-26,3A,DNR-BXR,DP:11:58,Boarding at DNR only,\n" +
+            "ASHA VERMA+1,B4 27,B4 26,\n" +
+            "Fare:1040,C Fee:23.6+PG\n-IRCTC"
+
+    private fun dueDay(ms: Long?): LocalDate? = ms?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }
+
+    @Test
+    fun `train ticket ingests as a travel alert on the journey date with no fare transaction`() =
+        runBlocking {
+            val entity = repository.insertIncoming("VM-IRCTC", trainTicket, 1_000L)
+            assertThat(entity.category).isEqualTo(Category.IMPORTANT)
+            assertThat(entity.subCategory).isEqualTo(SubCategory.TRAVEL)
+            val reminder = db.reminderDao().getAll().single()
+            assertThat(reminder.type).isEqualTo(ReminderType.TRAVEL)
+            assertThat(dueDay(reminder.dueDate)).isEqualTo(LocalDate.of(2026, 8, 15))
+            assertThat(reminder.label).isEqualTo("Train 12345 \u00b7 DNR-BXR \u00b7 dep 11:58")
+            // "Fare:1040" is the ticket's price history, never a debit.
+            assertThat(db.transactionDao().getAll()).isEmpty()
+        }
+
+    @Test
+    fun `travel alert sits in upcoming until the journey day and expires past it`() =
+        runBlocking {
+            repository.insertIncoming("VM-IRCTC", trainTicket, 1_000L)
+            val journeyMs =
+                LocalDate
+                    .of(2026, 8, 15)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+            assertThat(db.reminderDao().observeUpcoming(journeyMs).first()).hasSize(1)
+            assertThat(db.reminderDao().observePast(journeyMs).first()).isEmpty()
+            val dayAfter = journeyMs + 24 * 60 * 60 * 1000L
+            assertThat(db.reminderDao().observeUpcoming(dayAfter).first()).isEmpty()
+            assertThat(db.reminderDao().observePast(dayAfter).first()).hasSize(1)
+        }
+
+    @Test
+    fun `irctc otp still categorizes as otp not travel`() =
+        runBlocking {
+            val entity =
+                repository.insertIncoming(
+                    "VM-IRCTC",
+                    "445566 is the OTP for your IRCTC login. Do not share it with anyone.",
+                    1_000L,
+                )
+            assertThat(entity.category).isEqualTo(Category.OTP)
+            assertThat(db.reminderDao().getAll()).isEmpty()
+        }
+
+    @Test
+    fun `a flight rule extracting a journey date surfaces through the same travel path`() =
+        runBlocking {
+            val definition =
+                json.decodeFromString(
+                    app.clearsms.data.rules.RuleDefinition
+                        .serializer(),
+                    """
+                    {"id":"t-flight-journey","priority":900,
+                     "match":{"sender_pattern":"(?i)TSTAIR",
+                       "body_pattern":"(?i)flight (6E-\\d{3,4}) PNR ([A-Z0-9]{6}) departs (BLR-DEL) on (\\d{1,2}-\\d{1,2}-\\d{2,4})"},
+                     "action":{"category":"important","sub_category":"travel",
+                       "extract":{"flight":"${'$'}1","pnr":"${'$'}2","route":"${'$'}3","journey_date":"${'$'}4"},
+                       "extract_types":{"journey_date":"date"}}}
+                    """.trimIndent(),
+                )
+            db.ruleDao().insertAll(listOf(definition.toEntity(json, RuleSources.USER)))
+            repository.insertIncoming(
+                "VM-TSTAIR",
+                "Your flight 6E-1234 PNR ZX9QW2 departs BLR-DEL on 20-08-26 at 09:40. Web check-in open.",
+                1_000L,
+            )
+            val reminder = db.reminderDao().getAll().single()
+            assertThat(reminder.type).isEqualTo(ReminderType.TRAVEL)
+            assertThat(dueDay(reminder.dueDate)).isEqualTo(LocalDate.of(2026, 8, 20))
+            assertThat(reminder.label).isEqualTo("Flight 6E-1234 \u00b7 BLR-DEL")
         }
 
     // endregion

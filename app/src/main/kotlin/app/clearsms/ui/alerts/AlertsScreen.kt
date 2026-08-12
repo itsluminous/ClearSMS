@@ -362,6 +362,7 @@ internal fun AlertFilter.displayName(): String =
         AlertFilter.SUBSCRIPTION -> stringResource(R.string.alerts_filter_subscription)
         AlertFilter.DEPOSIT -> stringResource(R.string.alerts_filter_deposit)
         AlertFilter.DELIVERY -> stringResource(R.string.alerts_filter_delivery)
+        AlertFilter.TRAVEL -> stringResource(R.string.alerts_filter_travel)
     }
 
 @Composable
@@ -379,6 +380,7 @@ private fun TypeBadge(type: ReminderType) {
                     ReminderType.INSURANCE -> stringResource(R.string.alerts_type_insurance)
                     ReminderType.SUBSCRIPTION -> stringResource(R.string.alerts_type_subscription)
                     ReminderType.DELIVERY -> stringResource(R.string.alerts_type_delivery)
+                    ReminderType.TRAVEL -> stringResource(R.string.alerts_type_travel)
                     ReminderType.OTHER -> stringResource(R.string.alerts_type_other)
                 },
             style = MaterialTheme.typography.labelMedium,

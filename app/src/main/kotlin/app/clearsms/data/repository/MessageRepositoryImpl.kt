@@ -848,6 +848,10 @@ class MessageRepositoryImpl(
         val reminder =
             when {
                 parsedReminder != null -> mergeReminder(parsedReminder, result.typed, extracts)
+                // A dated journey (train or flight): the rule extracts the
+                // journey date; the entry expires past it. One shared path
+                // for both travel modes - never a train-only mechanism.
+                result.subCategory == SubCategory.TRAVEL -> travelFromExtracts(extracts, result.typed)
                 result.subCategory == SubCategory.BILL -> reminderFromExtracts(sender, evalBody, extracts, result.typed)
                 else -> null
                 // A reminder without a due date is not actionable; this also
@@ -1510,6 +1514,39 @@ class MessageRepositoryImpl(
                 label = extracts["label"] ?: parsed.label,
             ),
         )
+
+    /**
+     * Travel Alerts entry from a rule's typed extracts. Requires a
+     * `journey_date` (typed via `extract_types`): the entry sits in
+     * upcoming until the journey day and moves to past after it - the same
+     * lifecycle for trains AND flights, so any travel rule extracting a
+     * journey date surfaces identically. Undated travel notices (gate
+     * changes, chart prepared) stay out of Alerts exactly as before. The
+     * label never carries a full PNR - only its masked tail.
+     */
+    private fun travelFromExtracts(
+        extracts: Map<String, String>,
+        typed: Map<String, ExtractedValue>,
+    ): ParsedReminder? {
+        val journeyDate = typed.date("journey_date") ?: return null
+        val mode =
+            extracts["train"]?.let { "Train $it" }
+                ?: extracts["flight"]?.let { "Flight $it" }
+        val label =
+            listOfNotNull(mode, extracts["route"], extracts["departure_time"]?.let { "dep $it" })
+                .joinToString(" \u00b7 ")
+                .ifBlank { null }
+                ?: extracts["pnr"]?.let { "PNR xx${it.takeLast(4)}" }
+        return ParsedReminder(
+            type = ReminderType.TRAVEL,
+            dueDate = journeyDate,
+            totalDue = null,
+            minDue = null,
+            accountLast4 = null,
+            bankName = null,
+            label = label,
+        )
+    }
 
     private fun reminderFromExtracts(
         sender: String,

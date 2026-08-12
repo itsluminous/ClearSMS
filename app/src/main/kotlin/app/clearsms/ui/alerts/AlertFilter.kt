@@ -23,6 +23,7 @@ enum class AlertFilter {
     SUBSCRIPTION,
     DEPOSIT,
     DELIVERY,
+    TRAVEL,
     ;
 
     /** Whether a reminder of [type] belongs under this pill. */
@@ -36,6 +37,7 @@ enum class AlertFilter {
             SUBSCRIPTION -> type == ReminderType.SUBSCRIPTION
             DEPOSIT -> type == ReminderType.DEPOSIT
             DELIVERY -> type == ReminderType.DELIVERY
+            TRAVEL -> type == ReminderType.TRAVEL
         }
 
     companion object {

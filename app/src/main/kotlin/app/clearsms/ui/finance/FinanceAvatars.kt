@@ -28,5 +28,6 @@ fun reminderGlyph(type: ReminderType): BrandGlyph =
         ReminderType.EMI, ReminderType.DEPOSIT -> BrandGlyph.BANK
         ReminderType.INSURANCE -> BrandGlyph.HEALTH
         ReminderType.DELIVERY -> BrandGlyph.DELIVERY
+        ReminderType.TRAVEL -> BrandGlyph.TRAVEL
         ReminderType.SUBSCRIPTION, ReminderType.OTHER -> BrandGlyph.NONE
     }

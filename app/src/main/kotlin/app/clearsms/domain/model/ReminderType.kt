@@ -10,5 +10,11 @@ enum class ReminderType {
     INSURANCE,
     SUBSCRIPTION,
     DELIVERY,
+
+    /**
+     * A dated journey (train or flight): PNR / itinerary notices surface as
+     * an Alerts entry on the journey date and expire past it.
+     */
+    TRAVEL,
     OTHER,
 }
