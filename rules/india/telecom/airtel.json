@@ -230,6 +230,119 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "airtel-recharge-processed-02",
+      "name": "Airtel Prepaid Recharge Success (order id)",
+      "priority": 242,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRINF|AIRTEL)",
+        "body_pattern": "(?i)Prepaid\\s+recharge\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+success",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-payment-processing-01",
+      "name": "Airtel Payment Processing",
+      "priority": 241,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRINF|AIRTEL)",
+        "body_pattern": "(?i)we\\s+have\\s+processed\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-payment-failed-01",
+      "name": "Airtel Payment Failed Notice",
+      "priority": 243,
+      "match": {
+        "sender_pattern": "(?i)(?:AIRINF|AIRTEL)",
+        "body_pattern": "(?i)payment\\s+of\\s+Rs\\.?\\s*[\\d,.]{1,12}\\s+has\\s+failed\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-retailer-recharge-01",
+      "name": "Airtel Retailer Recharge Receipt",
+      "priority": 240,
+      "match": {
+        "sender_pattern": "(?i)(?:ERECHARGE|AIRTEL)",
+        "body_pattern": "(?i)Recharge\\s+done\\s+on\\b[^\\n]{0,40}?MRP\\s*:?\\s*Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-recharge-success-02",
+      "name": "Airtel Recharge Successful (retail channel)",
+      "priority": 242,
+      "match": {
+        "sender_pattern": "(?i)(?:ERECHARGE|AIRINF)",
+        "body_pattern": "(?i)Recharge\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+successful\\s+for\\s+your\\s+Airtel"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Airtel"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "airtel-account-update-01",
+      "name": "Airtel Account Service Update (121)",
+      "priority": 140,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?121(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:airtel\\s+mobile|email\\s+id\\s+update)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

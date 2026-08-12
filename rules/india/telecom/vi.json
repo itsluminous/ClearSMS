@@ -57,6 +57,58 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "vi-roaming-care-01",
+      "name": "Vi International Roaming Care Notice",
+      "priority": 140,
+      "match": {
+        "sender_pattern": "(?i)VIROAM",
+        "body_pattern": "(?i)\\broaming\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vi-survey-01",
+      "name": "Vi Network Feedback Survey (59823)",
+      "priority": 139,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?59823(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:reply\\s+with\\s+a\\s+number|text\\s+a\\s+score\\s+from|great\\s+experience|invalid\\s+response|recommend\\s+Vi\\b)"
+      },
+      "action": {
+        "category": "promotional"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "vi-recharged-02",
+      "name": "Vi Recharge Done (Rs recharged!)",
+      "priority": 239,
+      "match": {
+        "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
+        "body_pattern": "(?i)Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+recharged!",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "amount": "$1",
+          "type": "debit",
+          "operator": "Vi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }
