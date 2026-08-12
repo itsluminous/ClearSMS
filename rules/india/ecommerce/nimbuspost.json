@@ -15,6 +15,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "nimbuspost-shipped-01",
+      "name": "NimbusPost Order Shipped",
+      "priority": 230,
+      "match": {
+        "sender_pattern": "(?i)(?:NIMPST|NIMBUS)",
+        "body_pattern": "(?i)has\\s+been\\s+shipped\\s+via\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

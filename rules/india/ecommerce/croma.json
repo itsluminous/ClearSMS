@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "croma-delivery-01",
+      "name": "Croma Order / Return Movement",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:ECROMA|CROMA)",
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|zooming\\s+across|has\\s+reached\\s+you|picked\\s+up|out\\s+to\\s+collect|delivery\\s+may\\s+be\\s+delayed)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Croma"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "zipcare-plan-01",
+      "name": "ZipCare Protection Plan Activated",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)ZIPCRE",
+        "body_pattern": "(?i)protected\\s+with\\s+ZipCare"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    }
+  ]
+}

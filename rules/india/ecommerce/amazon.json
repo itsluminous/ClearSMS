@@ -131,6 +131,159 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "amazon-install-status-01",
+      "name": "Amazon Order Installation Status",
+      "priority": 212,
+      "match": {
+        "body_pattern": "(?i)install(?:ation|ed)?\\b[\\s\\S]{0,80}?\\b\\d{3}-\\d{7}-\\d{7}\\b|\\b\\d{3}-\\d{7}-\\d{7}\\b[\\s\\S]{0,60}?\\binstall(?:ation|ed)?\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-job-application-01",
+      "name": "Amazon Job Application Status",
+      "priority": 214,
+      "match": {
+        "body_pattern": "(?i)status\\s+of\\s+your\\s+Amazon\\s+job\\s+application\\s+has\\s+changed"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-images-required-01",
+      "name": "Amazon Requires Images Upload",
+      "priority": 214,
+      "match": {
+        "body_pattern": "(?i)(?:Amazon\\s+requires\\s+images:|upload\\s+the\\s+images\\s+required\\s+by\\s+Amazon\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-cancelled-01",
+      "name": "Amazon Return Pickup Cancelled",
+      "priority": 215,
+      "match": {
+        "body_pattern": "(?i)Pickup\\s+Cancelled:\\s*Your\\s+return\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-service-completed-01",
+      "name": "Amazon Home Service Completed",
+      "priority": 213,
+      "match": {
+        "body_pattern": "(?i)\\bis\\s+completed\\s+as\\s+per\\s+technician\\b",
+        "body_must_contain": [
+          "amzn.in"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-reminder-01",
+      "name": "Amazon Return Pickup Reminder",
+      "priority": 215,
+      "match": {
+        "body_pattern": "(?i)Pickup\\s+reminder:\\s*Your\\s+return\\s+pick\\s*up\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-order-cancelled-01",
+      "name": "Amazon Order Cancelled",
+      "priority": 215,
+      "match": {
+        "body_pattern": "(?i)Order\\s+Cancelled:\\s*Your\\s+Amazon[^\\n]{0,15}?\\border\\s+\\d{3}-\\d{7}-\\d{7}"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-order-confirmed-01",
+      "name": "Amazon Order Placed Confirmation",
+      "priority": 216,
+      "match": {
+        "body_pattern": "(?i)Confirmed:\\s*Your\\s+Amazon\\.in\\s+order\\s+\\d{3}-\\d{7}-\\d{7}\\s+is\\s+successfully\\s+placed"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-return-item-cancelled-01",
+      "name": "Amazon Return Item Cancelled / Returned",
+      "priority": 213,
+      "match": {
+        "body_pattern": "(?i)Cancelled:[^\\n]{0,80}?\\bis\\s+being\\s+returned\\s+to\\s+us",
+        "body_must_contain": [
+          "amzn.in"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "merchant": "Amazon"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

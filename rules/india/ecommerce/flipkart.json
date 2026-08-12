@@ -156,6 +156,36 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "flipkart-giftcard-order-01",
+      "name": "Flipkart e-Gift Voucher Order Received",
+      "priority": 221,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)order\\s+for\\s+e-?Gift\\s+Voucher\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "flipkart-axis-card-approved-01",
+      "name": "Flipkart Axis Credit Card Approved",
+      "priority": 221,
+      "match": {
+        "sender_pattern": "(?i)(?:FLPKRT|FKRT|FLIPKART)",
+        "body_pattern": "(?i)Flipkart\\s+Axis\\s+credit\\s+card\\s+is\\s+approved"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

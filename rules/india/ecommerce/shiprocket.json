@@ -15,6 +15,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "shiprocket-shipped-01",
+      "name": "Shiprocket Order Shipped",
+      "priority": 230,
+      "match": {
+        "sender_pattern": "(?i)(?:SHPRKT|SHIPRKT)",
+        "body_pattern": "(?i)Order\\s+Shipped:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }
