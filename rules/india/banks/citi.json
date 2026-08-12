@@ -119,6 +119,63 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "citi-service-reply-01",
+      "name": "Citi Service Request Reply",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)(?:^(?:[A-Z]{2}-)?52484(?:-[SPTG])?$|CITIBA)",
+        "body_pattern": "(?i)(?:Request\\s+unsuccessful|CitiAlert\\s+Keyword)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "citi-card-delivered-01",
+      "name": "Citi Card Delivered By Courier",
+      "priority": 312,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)card\\s+ending\\s+(\\d{4})\\s+has\\s+been\\s+delivered\\s+via\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery",
+        "extract": {
+          "account_last4": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "citi-cc-refund-01",
+      "name": "Citi Card Refund Initiated",
+      "priority": 322,
+      "match": {
+        "sender_pattern": "(?i)CITI",
+        "body_pattern": "(?i)refund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+initiated\\s+for\\s+your\\s+Citi\\s+Credit\\s+Card\\s+ending\\s+(\\d{4})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "type": "credit",
+          "bank": "Citi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

@@ -494,6 +494,100 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-dispatch-01",
+      "name": "SBI Credit Card Dispatched",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)SBI\\s+Credit\\s+Card\\s+has\\s+been\\s+dispatched\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-estmt-01",
+      "name": "SBI Card E-Statement Sent",
+      "priority": 313,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)E-?stmt\\s+for\\s+your\\s+SBI\\s+Card\\s+ending\\s+with\\s+(\\d{4})\\s+dated\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "bank": "SBI Card"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-web-otp-01",
+      "name": "SBI Card Website Login OTP",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)OTP\\s+to\\s+login\\s+to\\s+your\\s+account\\s+on\\s+SBI\\s+Card\\s+website\\s+is\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-yono-otp-01",
+      "name": "SBI YONO Web Login OTP",
+      "priority": 331,
+      "match": {
+        "sender_pattern": "(?i)(?:SBI|SBYONO)",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+the\\s+OTP\\s+to\\s+login\\s+to\\s+YONO"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-it-refund-01",
+      "name": "Income Tax Refund Credited (SBI)",
+      "priority": 317,
+      "match": {
+        "sender_pattern": "(?i)(?:SBI|SBICMP)",
+        "body_pattern": "(?i)(?:IT\\s+Refund\\s+amount\\s+of|ITR\\s+REGISTERED\\s+ON\\s+YOUR\\s+PAN\\b[^\\n]{0,30}?\\bFOR)\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)[^\\n]{0,60}?\\bCREDITED\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

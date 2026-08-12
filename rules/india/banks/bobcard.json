@@ -1,0 +1,58 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "bobcard-otp-01",
+      "name": "BOBCARD OTP (keyword first)",
+      "priority": 330,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)OTP\\s+is\\s+(\\d{4,8})\\s+for\\b"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "bobcard-otp-02",
+      "name": "BOBCARD OTP (digits first)",
+      "priority": 329,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)(\\d{4,8})\\s+is\\s+your\\s+OTP\\s+for\\b"
+      },
+      "action": {
+        "category": "otp",
+        "sub_category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "bobcard-dispatch-01",
+      "name": "BOBCARD Dispatched Via Courier",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)BOBCARD\\s+is\\s+dispatched\\s+via\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    }
+  ]
+}

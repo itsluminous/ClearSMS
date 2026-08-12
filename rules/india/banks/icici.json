@@ -487,6 +487,45 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "icici-cc-autopay-notice-01",
+      "name": "ICICI Card Upcoming Standing-Instruction Debit",
+      "priority": 334,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)payment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+for\\s+([^\\n,]{1,30}?)\\s+to\\s+be\\s+debited\\s+from\\s+your\\s+ICICI\\s+Bank\\s+Credit\\s+Card\\s+[Xx*]*(\\d{4})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "bank": "ICICI Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "icici-card-delivered-02",
+      "name": "ICICI Credit Card Delivered",
+      "priority": 293,
+      "match": {
+        "sender_pattern": "(?i)ICICI",
+        "body_pattern": "(?i)Delivered:\\s*Credit\\s+Card\\b[^\\n]{0,80}?\\bis\\s+delivered\\s+by\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

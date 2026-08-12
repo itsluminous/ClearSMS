@@ -205,6 +205,56 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "idfc-first-estatement-02",
+      "name": "IDFC FIRST Card eStatement (dues inline)",
+      "priority": 309,
+      "match": {
+        "sender_pattern": "(?i)(?:IDFCFB|IDFCBK|IDFC)",
+        "body_pattern": "(?i)eStatement\\s+for\\s+your\\s+FIRST\\b[^\\n]{0,40}?\\bCredit\\s+Card\\s+is\\s+here[^\\n]{0,20}?Total\\s+Amt\\s+Due:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[^\\n]{0,20}?Min\\s+Amt\\s+Due:?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1",
+          "min_due": "$2",
+          "bank": "IDFC FIRST Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "idfc-rewards-redeemed-01",
+      "name": "IDFC FIRST Rewards Redemption Confirmed",
+      "priority": 305,
+      "match": {
+        "sender_pattern": "(?i)IDFC",
+        "body_pattern": "(?i)successfully\\s+redeemed\\s+Gift\\s+Cards?\\b[^\\n]{0,60}?\\bIDFC\\s+First\\s+Bank\\s+Rewards"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "idfc-welcome-voucher-01",
+      "name": "IDFC FIRST Welcome Voucher Offer",
+      "priority": 304,
+      "match": {
+        "sender_pattern": "(?i)IDFC",
+        "body_pattern": "(?i)Welcome\\s+Voucher\\b[^\\n]{0,60}?\\bavailable\\s+for\\s+redemption"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }
