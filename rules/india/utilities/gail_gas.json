@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "gailgas-invoice-01",
+      "name": "GAIL Gas DPNG Invoice Generated",
+      "priority": 250,
+      "match": {
+        "body_pattern": "(?i)Invoice\\s+for\\s+DPNG\\s+has\\s+been\\s+generated"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "merchant": "GAIL Gas"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    }
+  ]
+}

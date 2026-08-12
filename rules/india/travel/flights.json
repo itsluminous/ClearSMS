@@ -208,6 +208,53 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "vistara-boarding-pass-01",
+      "name": "Vistara Boarding Pass Link",
+      "priority": 300,
+      "match": {
+        "body_pattern": "(?i)fly\\.airvistara\\.com/ssci/bp"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "tripsource-flight-update-01",
+      "name": "TripSource Flight Status Update",
+      "priority": 265,
+      "match": {
+        "body_pattern": "(?i)TripSource:\\s*Your\\s+flight"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "flight-cancelled-refund-01",
+      "name": "Airline Cancellation Refund Notice",
+      "priority": 259,
+      "match": {
+        "body_pattern": "(?i)\\bflight\\s+[A-Z]{3}-[A-Z]{3}\\s+\\(PNR:?\\s*([A-Z0-9]{5,8})\\)\\s+was\\s+cancelled\\s+by\\s+the\\s+airline[^\\n]{0,20}?\\s*Refund\\s+of\\s+Rs\\.?\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "pnr": "$1",
+          "amount": "$2",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
     }
   ]
 }

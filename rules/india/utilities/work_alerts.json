@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "everbridge-alert-01",
+      "name": "Everbridge / McKAlert Emergency Comms",
+      "priority": 210,
+      "match": {
+        "body_pattern": "(?i)(?:\\bmckalert\\b|\\beverbridge\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "amazon-alerting-01",
+      "name": "Amazon Alerting Pager Notification",
+      "priority": 210,
+      "match": {
+        "body_pattern": "(?i)\\bAmazon\\s+Alerting:"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "mss-monitor-alert-01",
+      "name": "MSS Monitoring Alert (503501)",
+      "priority": 209,
+      "match": {
+        "sender_pattern": "^(?:[A-Z]{2}-)?503501(?:-[SPTG])?$",
+        "body_pattern": "(?i)(?:alert|problem|incidents?|outage|failure|saturation|unavailable|dynatrace|monitor|acknowledg)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "general"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-12T00:00:00Z"
+    }
+  ]
+}
