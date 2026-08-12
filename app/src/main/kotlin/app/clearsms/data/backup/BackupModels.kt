@@ -109,6 +109,8 @@ data class ReminderBackup(
     val bankName: String? = null,
     val rawSmsId: Long,
     val createdAt: Long,
+    /** Dismissal marker; restoring a backup must not resurrect dismissed alerts. */
+    val dismissedAt: Long? = null,
 )
 
 @Serializable
@@ -262,7 +264,7 @@ internal fun RuleBackup.toUserEntity() =
     )
 
 internal fun ReminderEntity.toBackup() =
-    ReminderBackup(id, type.name, dueDate, totalDue, minDue, accountLast4, bankName, rawSmsId, createdAt)
+    ReminderBackup(id, type.name, dueDate, totalDue, minDue, accountLast4, bankName, rawSmsId, createdAt, dismissedAt)
 
 internal fun ThreadPinEntity.toBackup() = PinBackup(normalizedSender, pinnedAt)
 
@@ -279,4 +281,5 @@ internal fun ReminderBackup.toEntity(issues: RestoreIssues) =
         bankName = bankName,
         rawSmsId = rawSmsId,
         createdAt = createdAt,
+        dismissedAt = dismissedAt,
     )

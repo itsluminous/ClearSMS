@@ -434,10 +434,13 @@
     <string name="source_message_deleted">Original message was deleted</string>
     <string name="account_open_message">Open message</string>
 
-    <!-- Alerts: past reminders section -->
-    <string name="alerts_past_reminders_count">Past reminders (%1$d)</string>
-    <string name="alerts_expand_past">Expand past reminders</string>
-    <string name="alerts_collapse_past">Collapse past reminders</string>
+    <!-- Alerts: older (dismissed + expired) section -->
+    <string name="alerts_past_reminders_count">Older alerts (%1$d)</string>
+    <string name="alerts_expand_past">Expand older alerts</string>
+    <string name="alerts_collapse_past">Collapse older alerts</string>
+    <string name="alerts_restore">Restore</string>
+    <string name="alerts_delete_forever">Delete</string>
+    <string name="alerts_show_more_older">Show more (%1$d)</string>
     <!-- Guided rule wizard (token suggestions) -->
     <string name="rule_wizard_step_source">1. Source message</string>
     <string name="rule_wizard_step_source_hint">Tap a highlighted value to include it in the rule.</string>

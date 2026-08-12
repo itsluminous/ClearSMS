@@ -8,7 +8,7 @@ import app.clearsms.domain.model.ReminderType
 /** A bill / payment reminder extracted from an SMS. */
 @Entity(
     tableName = "reminders",
-    indices = [Index("dueDate"), Index("rawSmsId")],
+    indices = [Index("dueDate"), Index("rawSmsId"), Index("dismissedAt")],
 )
 data class ReminderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -24,4 +24,12 @@ data class ReminderEntity(
     /** Row id of the originating message in the messages table. */
     val rawSmsId: Long,
     val createdAt: Long,
+    /**
+     * Dismissal marker: null for live alerts; the dismissal timestamp for
+     * cards the user dismissed. A dismissed reminder rests in the Alerts
+     * "Older" section (it is never hard-deleted by Dismiss), can be
+     * restored from there, and is auto-purged after the Older retention
+     * window - see [app.clearsms.data.repository.ReminderBucketing].
+     */
+    val dismissedAt: Long? = null,
 )

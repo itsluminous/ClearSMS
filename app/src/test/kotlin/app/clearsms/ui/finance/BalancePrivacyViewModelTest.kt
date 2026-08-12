@@ -171,6 +171,17 @@ private class EmptyFinanceRepository : FinanceRepository {
 
     override fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>> = MutableStateFlow(emptyList())
 
+    override suspend fun dismissReminder(
+        reminderId: Long,
+        dismissedAt: Long,
+    ) = Unit
+
+    override suspend fun restoreReminder(reminderId: Long) = Unit
+
+    override suspend fun deleteReminderForever(reminderId: Long) = Unit
+
+    override suspend fun purgeExpiredReminders(nowMs: Long): Int = 0
+
     override suspend fun addNote(
         transactionId: Long,
         note: String?,

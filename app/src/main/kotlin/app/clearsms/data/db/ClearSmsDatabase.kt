@@ -28,7 +28,7 @@ import java.time.ZoneId
         DraftEntity::class,
         ThreadPinEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -98,6 +98,11 @@ import java.time.ZoneId
         // v15 -> v16: adds the thread_pins table (pinned conversations,
         // keyed by normalized sender). Pure addition; nothing is pinned.
         AutoMigration(from = 15, to = 16),
+        // v16 -> v17: adds reminders.dismissedAt (nullable dismissal marker
+        // backing the Alerts "Older" section - dismissed cards rest there
+        // instead of being deleted) plus its index for the purge sweep.
+        // Pure addition; existing rows read as not dismissed.
+        AutoMigration(from = 16, to = 17),
     ],
 )
 @TypeConverters(Converters::class)

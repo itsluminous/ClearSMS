@@ -3,7 +3,6 @@ package app.clearsms.ui.alerts
 import app.cash.turbine.test
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.MessageEntity
-import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.repository.FinanceRepository
@@ -18,6 +17,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -50,17 +50,19 @@ class AlertsViewModelTest {
             createdAt = id,
         )
 
-    private fun viewModel(messages: Map<Long, MessageEntity> = emptyMap()): AlertsViewModel =
+    private fun viewModel(
+        repository: FakeFinanceRepository = FakeFinanceRepository(past = listOf(reminder(1), reminder(2))),
+        messages: Map<Long, MessageEntity> = emptyMap(),
+    ): AlertsViewModel =
         AlertsViewModel(
-            financeRepository = FakeFinanceRepository(past = listOf(reminder(1), reminder(2))),
+            financeRepository = repository,
             settingsRepository = FakeSettingsRepository(),
-            reminderDao = NoopReminderDao(),
             messageLookup = MessageLookup { id -> messages[id] },
             ioDispatcher = dispatcher,
         )
 
     @Test
-    fun `past reminders section is collapsed by default and toggles`() =
+    fun `older alerts section is collapsed by default and toggles`() =
         runTest {
             val vm = viewModel()
 
@@ -103,33 +105,58 @@ class AlertsViewModelTest {
             assertThat(viewModel().sourceMessageFor(999L)).isNull()
         }
 
+    @Test
+    fun `dismiss restore and delete route to the repository as flag operations`() =
+        runTest {
+            val repository = FakeFinanceRepository()
+            val vm = viewModel(repository)
+
+            vm.dismiss(7L)
+            advanceUntilIdle()
+            assertThat(repository.dismissed).containsExactly(7L)
+
+            vm.restore(7L)
+            advanceUntilIdle()
+            assertThat(repository.restored).containsExactly(7L)
+
+            vm.deleteForever(8L)
+            advanceUntilIdle()
+            assertThat(repository.deletedForever).containsExactly(8L)
+        }
+
+    @Test
+    fun `opening alerts runs the older retention purge`() =
+        runTest {
+            val repository = FakeFinanceRepository()
+
+            viewModel(repository)
+            advanceUntilIdle()
+
+            assertThat(repository.purgeCount).isEqualTo(1)
+        }
+
     private fun typed(
         id: Long,
         type: ReminderType,
     ) = reminder(id).copy(type = type)
 
     @Test
-    fun `selected pill filters both upcoming and past lists`() =
+    fun `selected pill filters both active and older lists`() =
         runTest {
             val vm =
-                AlertsViewModel(
-                    financeRepository =
-                        FakeFinanceRepository(
-                            upcoming =
-                                listOf(
-                                    typed(1, ReminderType.INSURANCE),
-                                    typed(2, ReminderType.CREDIT_CARD),
-                                ),
-                            past =
-                                listOf(
-                                    typed(3, ReminderType.INSURANCE),
-                                    typed(4, ReminderType.OTHER),
-                                ),
-                        ),
-                    settingsRepository = FakeSettingsRepository(),
-                    reminderDao = NoopReminderDao(),
-                    messageLookup = MessageLookup { null },
-                    ioDispatcher = dispatcher,
+                viewModel(
+                    FakeFinanceRepository(
+                        upcoming =
+                            listOf(
+                                typed(1, ReminderType.INSURANCE),
+                                typed(2, ReminderType.CREDIT_CARD),
+                            ),
+                        past =
+                            listOf(
+                                typed(3, ReminderType.INSURANCE),
+                                typed(4, ReminderType.OTHER),
+                            ),
+                    ),
                 )
 
             vm.uiState.test {
@@ -155,16 +182,11 @@ class AlertsViewModelTest {
     fun `pill counts reflect all reminders regardless of active filter`() =
         runTest {
             val vm =
-                AlertsViewModel(
-                    financeRepository =
-                        FakeFinanceRepository(
-                            upcoming = listOf(typed(1, ReminderType.SUBSCRIPTION)),
-                            past = listOf(typed(2, ReminderType.DEPOSIT), typed(3, ReminderType.DEPOSIT)),
-                        ),
-                    settingsRepository = FakeSettingsRepository(),
-                    reminderDao = NoopReminderDao(),
-                    messageLookup = MessageLookup { null },
-                    ioDispatcher = dispatcher,
+                viewModel(
+                    FakeFinanceRepository(
+                        upcoming = listOf(typed(1, ReminderType.SUBSCRIPTION)),
+                        past = listOf(typed(2, ReminderType.DEPOSIT), typed(3, ReminderType.DEPOSIT)),
+                    ),
                 )
 
             vm.uiState.test {
@@ -189,6 +211,11 @@ private class FakeFinanceRepository(
     private val upcoming: List<ReminderEntity> = emptyList(),
     private val past: List<ReminderEntity> = emptyList(),
 ) : FinanceRepository {
+    val dismissed = mutableListOf<Long>()
+    val restored = mutableListOf<Long>()
+    val deletedForever = mutableListOf<Long>()
+    var purgeCount = 0
+
     override fun observeTransactions(): Flow<List<TransactionEntity>> = flowOf(emptyList())
 
     override fun observeLatestTransactions(limit: Int): Flow<List<TransactionEntity>> = flowOf(emptyList())
@@ -217,28 +244,28 @@ private class FakeFinanceRepository(
 
     override fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>> = flowOf(past)
 
+    override suspend fun dismissReminder(
+        reminderId: Long,
+        dismissedAt: Long,
+    ) {
+        dismissed += reminderId
+    }
+
+    override suspend fun restoreReminder(reminderId: Long) {
+        restored += reminderId
+    }
+
+    override suspend fun deleteReminderForever(reminderId: Long) {
+        deletedForever += reminderId
+    }
+
+    override suspend fun purgeExpiredReminders(nowMs: Long): Int {
+        purgeCount++
+        return 0
+    }
+
     override suspend fun addNote(
         transactionId: Long,
         note: String?,
     ) = Unit
-}
-
-private class NoopReminderDao : ReminderDao {
-    override fun observeUpcoming(nowMs: Long): Flow<List<ReminderEntity>> = flowOf(emptyList())
-
-    override fun observePast(nowMs: Long): Flow<List<ReminderEntity>> = flowOf(emptyList())
-
-    override suspend fun findByRawSmsId(rawSmsId: Long): ReminderEntity? = null
-
-    override suspend fun getAll(): List<ReminderEntity> = emptyList()
-
-    override suspend fun insert(reminder: ReminderEntity): Long = reminder.id
-
-    override suspend fun insertAll(reminders: List<ReminderEntity>) = Unit
-
-    override suspend fun deleteById(id: Long) = Unit
-
-    override suspend fun deleteByRawSmsId(rawSmsId: Long) = Unit
-
-    override suspend fun deleteAll() = Unit
 }

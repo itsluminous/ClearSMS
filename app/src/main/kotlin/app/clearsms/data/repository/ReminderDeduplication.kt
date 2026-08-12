@@ -43,9 +43,15 @@ object ReminderDeduplication {
         return groups.values.map(::merge)
     }
 
-    private fun identityOf(
+    /**
+     * Logical identity key of [reminder] - rows sharing a key describe the
+     * same bill/delivery. Also used by the write path so dismiss / restore /
+     * delete-forever act on the WHOLE duplicate group (flagging only the
+     * displayed row would let a hidden duplicate resurrect the card).
+     */
+    internal fun identityOf(
         reminder: ReminderEntity,
-        zone: ZoneId,
+        zone: ZoneId = ZoneId.systemDefault(),
     ): Any {
         if (reminder.type == ReminderType.DELIVERY) {
             // Same order/tracking reference = same delivery, regardless of
@@ -80,6 +86,10 @@ object ReminderDeduplication {
             totalDue = newestFirst.firstNotNullOfOrNull { it.totalDue },
             minDue = newestFirst.firstNotNullOfOrNull { it.minDue },
             label = newestFirst.firstNotNullOfOrNull { it.label },
+            // Dismissal is sticky across the group: a re-parsed duplicate
+            // (same bill, new row) must NOT resurrect an actively-dismissed
+            // alert - the merged card stays dismissed until restored.
+            dismissedAt = group.mapNotNull { it.dismissedAt }.maxOrNull(),
         )
     }
 }

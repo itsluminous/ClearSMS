@@ -2,7 +2,6 @@ package app.clearsms.ui.alerts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
@@ -43,15 +42,14 @@ data class AlertsUiState(
 class AlertsViewModel
     @Inject
     constructor(
-        financeRepository: FinanceRepository,
+        private val financeRepository: FinanceRepository,
         settingsRepository: SettingsRepository,
-        private val reminderDao: ReminderDao,
         private val messageLookup: MessageLookup,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val filter = MutableStateFlow(AlertFilter.ALL)
 
-        /** Session-only expansion state for the "Past reminders" section (collapsed by default). */
+        /** Session-only expansion state for the "Older alerts" section (collapsed by default). */
         private val pastExpanded = MutableStateFlow(false)
 
         /**
@@ -86,18 +84,38 @@ class AlertsViewModel
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertsUiState())
 
+        init {
+            // Retention sweep on opening Alerts (mirrors the recycle bin's
+            // on-start purge): Older rows past the 90-day window are dropped.
+            viewModelScope.launch(ioDispatcher) {
+                financeRepository.purgeExpiredReminders(System.currentTimeMillis())
+            }
+        }
+
         fun setFilter(value: AlertFilter) {
             filter.value = value
         }
 
-        /** Toggles the past-reminders section; remembered only for the session. */
+        /** Toggles the Older-alerts section; remembered only for the session. */
         fun togglePastExpanded() {
             pastExpanded.value = !pastExpanded.value
         }
 
-        /** Dismisses (removes) a reminder card. */
+        /** Dismisses a card: it moves to the Older section (never deleted here). */
         fun dismiss(reminderId: Long) {
-            viewModelScope.launch(ioDispatcher) { reminderDao.deleteById(reminderId) }
+            viewModelScope.launch(ioDispatcher) {
+                financeRepository.dismissReminder(reminderId, System.currentTimeMillis())
+            }
+        }
+
+        /** Restores (un-dismisses) a card from the Older section. */
+        fun restore(reminderId: Long) {
+            viewModelScope.launch(ioDispatcher) { financeRepository.restoreReminder(reminderId) }
+        }
+
+        /** Permanently deletes a card from the Older section. */
+        fun deleteForever(reminderId: Long) {
+            viewModelScope.launch(ioDispatcher) { financeRepository.deleteReminderForever(reminderId) }
         }
 
         /** Conversation target for the SMS behind [rawSmsId]; null when it was deleted. */

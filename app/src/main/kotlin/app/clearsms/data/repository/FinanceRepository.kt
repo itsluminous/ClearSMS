@@ -35,9 +35,29 @@ interface FinanceRepository {
 
     fun observeReminders(): Flow<List<ReminderEntity>>
 
+    /** Actionable alerts under the age policy in [ReminderBucketing]; [nowMs] = start-of-today cutoff. */
     fun observeUpcomingReminders(nowMs: Long): Flow<List<ReminderEntity>>
 
+    /** The "Older alerts" section: dismissed + expired entries, newest first. */
     fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>>
+
+    /**
+     * Flags the reminder (and every duplicate sharing its identity) as
+     * dismissed - it moves to Older instead of being deleted.
+     */
+    suspend fun dismissReminder(
+        reminderId: Long,
+        dismissedAt: Long,
+    )
+
+    /** Un-dismisses the reminder group - the card returns to the active list (if still in window). */
+    suspend fun restoreReminder(reminderId: Long)
+
+    /** Permanently deletes the reminder group (the Older section's delete action). */
+    suspend fun deleteReminderForever(reminderId: Long)
+
+    /** Purges Older rows past the retention window. @return purged row count. */
+    suspend fun purgeExpiredReminders(nowMs: Long): Int
 
     suspend fun addNote(
         transactionId: Long,

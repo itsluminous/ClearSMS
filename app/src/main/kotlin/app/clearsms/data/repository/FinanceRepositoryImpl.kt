@@ -8,6 +8,7 @@ import app.clearsms.data.db.TransactionDao
 import app.clearsms.data.db.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.util.concurrent.TimeUnit
 
 /**
  * Default [FinanceRepository] backed by Room DAOs.
@@ -42,13 +43,47 @@ class FinanceRepositoryImpl(
 
     override fun observeAccounts(): Flow<List<AccountEntity>> = accountDao.observeAll()
 
-    override fun observeReminders(): Flow<List<ReminderEntity>> = reminderDao.observeUpcoming(0L).map(ReminderDeduplication::dedupe)
+    override fun observeReminders(): Flow<List<ReminderEntity>> =
+        reminderDao.observeAll().map { ReminderBucketing.bucket(it, nowMs = 0L).active }
 
     override fun observeUpcomingReminders(nowMs: Long): Flow<List<ReminderEntity>> =
-        reminderDao.observeUpcoming(nowMs).map(ReminderDeduplication::dedupe)
+        reminderDao.observeAll().map { ReminderBucketing.bucket(it, nowMs).active }
 
     override fun observePastReminders(nowMs: Long): Flow<List<ReminderEntity>> =
-        reminderDao.observePast(nowMs).map(ReminderDeduplication::dedupe)
+        reminderDao.observeAll().map { ReminderBucketing.bucket(it, nowMs).older }
+
+    override suspend fun dismissReminder(
+        reminderId: Long,
+        dismissedAt: Long,
+    ) = reminderDao.setDismissed(identityGroupIds(reminderId), dismissedAt)
+
+    override suspend fun restoreReminder(reminderId: Long) = reminderDao.setDismissed(identityGroupIds(reminderId), null)
+
+    override suspend fun deleteReminderForever(reminderId: Long) = reminderDao.deleteByIds(identityGroupIds(reminderId))
+
+    override suspend fun purgeExpiredReminders(nowMs: Long): Int {
+        val retention = ReminderBucketing.retentionMs()
+        return reminderDao.purgeExpired(
+            dismissedCutoffMs = nowMs - retention,
+            dueCutoffMs = nowMs - retention,
+            deliveryCreatedCutoffMs =
+                nowMs - retention - TimeUnit.DAYS.toMillis(ReminderBucketing.UNDATED_DELIVERY_ACTIVE_DAYS),
+            billCreatedCutoffMs =
+                nowMs - retention - TimeUnit.DAYS.toMillis(ReminderBucketing.UNDATED_BILL_ACTIVE_DAYS),
+        )
+    }
+
+    /**
+     * Row ids of every reminder sharing [reminderId]'s logical identity.
+     * Dismiss/restore/delete act on the whole duplicate group - a surviving
+     * duplicate row would otherwise resurrect the card on the next read.
+     */
+    private suspend fun identityGroupIds(reminderId: Long): List<Long> {
+        val all = reminderDao.getAll()
+        val target = all.find { it.id == reminderId } ?: return emptyList()
+        val identity = ReminderDeduplication.identityOf(target)
+        return all.filter { ReminderDeduplication.identityOf(it) == identity }.map { it.id }
+    }
 
     override suspend fun addNote(
         transactionId: Long,

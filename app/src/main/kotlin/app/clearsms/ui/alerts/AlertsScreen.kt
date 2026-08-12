@@ -34,8 +34,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -67,6 +70,9 @@ import java.util.Locale
 
 private val DUE_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
 
+/** Older-alerts cards rendered per "Show more" click. */
+private const val OLDER_PAGE_SIZE = 20
+
 /** Alerts: upcoming bill/payment reminder cards plus a collapsible past section. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +87,9 @@ fun AlertsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
+
+    // How many Older cards are rendered; grows via the "Show more" button.
+    var olderVisible by rememberSaveable { mutableIntStateOf(OLDER_PAGE_SIZE) }
 
     val openReminder: (ReminderEntity) -> Unit = { reminder ->
         scope.launch {
@@ -167,15 +176,29 @@ fun AlertsScreen(
                     )
                 }
                 if (state.pastExpanded) {
-                    items(state.past, key = { "past_${it.id}" }) { reminder ->
+                    // Capped display: Older can accumulate months of entries;
+                    // render a page at a time and grow on demand.
+                    items(state.past.take(olderVisible), key = { "past_${it.id}" }) { reminder ->
                         ReminderCard(
                             reminder = reminder,
                             richAvatars = state.showRichAvatars,
                             onOpen = { openReminder(reminder) },
                             onDismiss = { viewModel.dismiss(reminder.id) },
+                            onRestore = { viewModel.restore(reminder.id) },
+                            onDelete = { viewModel.deleteForever(reminder.id) },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                             past = true,
                         )
+                    }
+                    if (state.past.size > olderVisible) {
+                        item(key = "past_show_more") {
+                            TextButton(
+                                onClick = { olderVisible += OLDER_PAGE_SIZE },
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            ) {
+                                Text(stringResource(R.string.alerts_show_more_older, state.past.size - olderVisible))
+                            }
+                        }
                     }
                 }
             }
@@ -233,6 +256,8 @@ private fun ReminderCard(
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onRestore: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
     past: Boolean = false,
 ) {
     ElevatedCard(
@@ -344,8 +369,25 @@ private fun ReminderCard(
                     color = if (past) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 )
             }
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.alerts_dismiss))
+            if (past) {
+                // Older section: a dismissed card can come back; either kind
+                // can be deleted for good (the pre-Older dismiss semantics).
+                Row {
+                    if (reminder.dismissedAt != null && onRestore != null) {
+                        TextButton(onClick = onRestore) {
+                            Text(stringResource(R.string.alerts_restore))
+                        }
+                    }
+                    if (onDelete != null) {
+                        TextButton(onClick = onDelete) {
+                            Text(stringResource(R.string.alerts_delete_forever))
+                        }
+                    }
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.alerts_dismiss))
+                }
             }
         }
     }

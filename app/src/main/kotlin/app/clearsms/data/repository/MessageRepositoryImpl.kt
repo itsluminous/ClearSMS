@@ -622,10 +622,19 @@ class MessageRepositoryImpl(
                     // same amounts. User-entered data survives: the transaction
                     // note is carried onto the re-derived row, and account rows
                     // (which hold user-set card limits) are upserted, never deleted.
+                    // A reminder's dismissal flag survives the same way - a
+                    // re-sort must never resurrect a dismissed alert.
+                    val previousDismissedAt = reminderDao.findByRawSmsId(message.id)?.dismissedAt
                     reminderDao.deleteByRawSmsId(message.id)
                     val previousNote = transactionDao.findByRawSmsId(message.id)?.note
                     transactionDao.deleteByRawSmsId(message.id)
-                    persistDerived(message.id, message.timestamp, enriched, preservedNote = previousNote)
+                    persistDerived(
+                        message.id,
+                        message.timestamp,
+                        enriched,
+                        preservedNote = previousNote,
+                        preservedDismissedAt = previousDismissedAt,
+                    )
                 }
             }
             processed += page.size
@@ -957,6 +966,11 @@ class MessageRepositoryImpl(
          * onto the re-derived row by the re-sort refresh path.
          */
         preservedNote: String? = null,
+        /**
+         * Dismissal timestamp from a previous derivation of the same
+         * message: a re-sort refresh must not resurrect a dismissed alert.
+         */
+        preservedDismissedAt: Long? = null,
     ) {
         enriched.transaction?.let { tx ->
             val accountNumber = tx.accountLast4 ?: ""
@@ -1058,6 +1072,7 @@ class MessageRepositoryImpl(
                     label = reminder.label,
                     rawSmsId = messageId,
                     createdAt = timestampMs,
+                    dismissedAt = preservedDismissedAt,
                 ),
             )
         }
@@ -1079,6 +1094,7 @@ class MessageRepositoryImpl(
                     label = delivery.reference,
                     rawSmsId = messageId,
                     createdAt = timestampMs,
+                    dismissedAt = preservedDismissedAt,
                 ),
             )
         }

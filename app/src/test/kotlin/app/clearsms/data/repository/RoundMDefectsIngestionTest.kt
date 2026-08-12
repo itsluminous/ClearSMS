@@ -19,7 +19,6 @@ import app.clearsms.domain.model.ReminderType
 import app.clearsms.domain.model.SubCategory
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -130,12 +129,12 @@ class RoundMDefectsIngestionTest {
             assertThat(reminder.label).isEqualTo("Electricity bill")
             // A bill notice moves no money.
             assertThat(db.transactionDao().getAll()).isEmpty()
-            // Undated reminders surface as upcoming in Alerts.
+            // Undated reminders surface as active alerts (within the
+            // 30-day dateless-bill window from the message date).
             assertThat(
-                db
-                    .reminderDao()
-                    .observeUpcoming(2_000_000L)
-                    .first()
+                ReminderBucketing
+                    .bucket(db.reminderDao().getAll(), nowMs = 2_000_000L)
+                    .active
                     .single()
                     .id,
             ).isEqualTo(reminder.id)
@@ -212,11 +211,11 @@ class RoundMDefectsIngestionTest {
                     .atStartOfDay(ZoneId.systemDefault())
                     .toInstant()
                     .toEpochMilli()
-            assertThat(db.reminderDao().observeUpcoming(journeyMs).first()).hasSize(1)
-            assertThat(db.reminderDao().observePast(journeyMs).first()).isEmpty()
+            assertThat(ReminderBucketing.bucket(db.reminderDao().getAll(), journeyMs).active).hasSize(1)
+            assertThat(ReminderBucketing.bucket(db.reminderDao().getAll(), journeyMs).older).isEmpty()
             val dayAfter = journeyMs + 24 * 60 * 60 * 1000L
-            assertThat(db.reminderDao().observeUpcoming(dayAfter).first()).isEmpty()
-            assertThat(db.reminderDao().observePast(dayAfter).first()).hasSize(1)
+            assertThat(ReminderBucketing.bucket(db.reminderDao().getAll(), dayAfter).active).isEmpty()
+            assertThat(ReminderBucketing.bucket(db.reminderDao().getAll(), dayAfter).older).hasSize(1)
         }
 
     @Test

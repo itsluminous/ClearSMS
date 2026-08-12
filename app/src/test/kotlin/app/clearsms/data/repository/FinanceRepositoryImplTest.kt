@@ -50,21 +50,118 @@ class FinanceRepositoryImplTest {
     @Test
     fun `upcoming and past reminder flows are de-duplicated per bill`() =
         runTest {
-            val duplicates = listOf(reminder(id = 1, createdAt = 1_000), reminder(id = 2, createdAt = 2_000))
+            // Same card, same due day: one future-dated pair (active) plus
+            // one past-dated pair (older) - each collapses to its newest row.
+            val futureDue = System.currentTimeMillis() + 5 * 86_400_000L
+            val active = listOf(reminder(1, createdAt = 1_000, dueDate = futureDue), reminder(2, createdAt = 2_000, dueDate = futureDue))
+            val expired = listOf(reminder(3, createdAt = 1_000, dueDate = 1_000L), reminder(4, createdAt = 2_000, dueDate = 1_000L))
             val repository =
                 FinanceRepositoryImpl(
                     transactionDao = FakeTransactionDao(),
                     accountDao = FakeAccountDao(),
-                    reminderDao = FakeReminderDao(upcoming = duplicates, past = duplicates),
+                    reminderDao = FakeReminderDao(active + expired),
                 )
 
-            val upcoming = repository.observeUpcomingReminders(0L).first()
-            val past = repository.observePastReminders(Long.MAX_VALUE).first()
+            val nowMs = System.currentTimeMillis()
+            val upcoming = repository.observeUpcomingReminders(nowMs).first()
+            val past = repository.observePastReminders(nowMs).first()
 
             assertThat(upcoming).hasSize(1)
             assertThat(upcoming.single().id).isEqualTo(2)
             assertThat(past).hasSize(1)
-            assertThat(past.single().id).isEqualTo(2)
+            assertThat(past.single().id).isEqualTo(4)
+        }
+
+    @Test
+    fun `dismiss flags the whole duplicate group instead of deleting`() =
+        runTest {
+            val duplicates = listOf(reminder(1, createdAt = 1_000), reminder(2, createdAt = 2_000))
+            val dao = FakeReminderDao(duplicates)
+            val repository =
+                FinanceRepositoryImpl(
+                    transactionDao = FakeTransactionDao(),
+                    accountDao = FakeAccountDao(),
+                    reminderDao = dao,
+                )
+
+            repository.dismissReminder(reminderId = 2, dismissedAt = 9_999)
+
+            // Nothing deleted; BOTH rows of the identity group are flagged -
+            // a surviving duplicate must not resurrect the card.
+            assertThat(dao.rows).hasSize(2)
+            assertThat(dao.rows.map { it.dismissedAt }).containsExactly(9_999L, 9_999L)
+        }
+
+    @Test
+    fun `restore clears the dismissal flag on the whole group`() =
+        runTest {
+            val dao =
+                FakeReminderDao(
+                    listOf(
+                        reminder(1, createdAt = 1_000).copy(dismissedAt = 5_000),
+                        reminder(2, createdAt = 2_000).copy(dismissedAt = 5_000),
+                    ),
+                )
+            val repository =
+                FinanceRepositoryImpl(
+                    transactionDao = FakeTransactionDao(),
+                    accountDao = FakeAccountDao(),
+                    reminderDao = dao,
+                )
+
+            repository.restoreReminder(reminderId = 2)
+
+            assertThat(dao.rows.map { it.dismissedAt }).containsExactly(null, null)
+        }
+
+    @Test
+    fun `delete forever removes the whole duplicate group`() =
+        runTest {
+            val other = reminder(9, createdAt = 500).copy(accountLast4 = "9999")
+            val dao =
+                FakeReminderDao(
+                    listOf(reminder(1, createdAt = 1_000), reminder(2, createdAt = 2_000), other),
+                )
+            val repository =
+                FinanceRepositoryImpl(
+                    transactionDao = FakeTransactionDao(),
+                    accountDao = FakeAccountDao(),
+                    reminderDao = dao,
+                )
+
+            repository.deleteReminderForever(reminderId = 2)
+
+            // Both rows of the bill's identity group are gone; the unrelated
+            // card's reminder survives.
+            assertThat(dao.rows.map { it.id }).containsExactly(9L)
+        }
+
+    @Test
+    fun `dismissed duplicate is not resurrected by a re-parsed row`() =
+        runTest {
+            // The user dismissed the bill (row 1); a catch-up re-parse then
+            // produced a NEW duplicate row (row 2, not flagged). The merged
+            // card must stay in Older, never as a fresh active alert.
+            val futureDue = System.currentTimeMillis() + 5 * 86_400_000L
+            val dao =
+                FakeReminderDao(
+                    listOf(
+                        reminder(1, createdAt = 1_000, dueDate = futureDue).copy(dismissedAt = 5_000),
+                        reminder(2, createdAt = 2_000, dueDate = futureDue),
+                    ),
+                )
+            val repository =
+                FinanceRepositoryImpl(
+                    transactionDao = FakeTransactionDao(),
+                    accountDao = FakeAccountDao(),
+                    reminderDao = dao,
+                )
+
+            val nowMs = System.currentTimeMillis()
+            assertThat(repository.observeUpcomingReminders(nowMs).first()).isEmpty()
+            val older = repository.observePastReminders(nowMs).first()
+            assertThat(older).hasSize(1)
+            assertThat(older.single().dismissedAt).isEqualTo(5_000)
         }
 
     @Test
@@ -203,24 +300,65 @@ private class FakeAccountDao : AccountDao {
 }
 
 private class FakeReminderDao(
-    private val upcoming: List<ReminderEntity> = emptyList(),
-    private val past: List<ReminderEntity> = emptyList(),
+    reminders: List<ReminderEntity> = emptyList(),
 ) : ReminderDao {
-    override fun observeUpcoming(nowMs: Long): Flow<List<ReminderEntity>> = flowOf(upcoming)
+    val rows = reminders.toMutableList()
 
-    override fun observePast(nowMs: Long): Flow<List<ReminderEntity>> = flowOf(past)
+    override fun observeAll(): Flow<List<ReminderEntity>> = flowOf(rows.toList())
 
-    override suspend fun findByRawSmsId(rawSmsId: Long): ReminderEntity? = (upcoming + past).find { it.rawSmsId == rawSmsId }
+    override fun observeUpcoming(nowMs: Long): Flow<List<ReminderEntity>> =
+        flowOf(rows.filter { it.dismissedAt == null && it.dueDate != null && it.dueDate!! >= nowMs })
 
-    override suspend fun getAll(): List<ReminderEntity> = upcoming + past
+    override suspend fun findByRawSmsId(rawSmsId: Long): ReminderEntity? = rows.find { it.rawSmsId == rawSmsId }
 
-    override suspend fun insert(reminder: ReminderEntity): Long = reminder.id
+    override suspend fun getAll(): List<ReminderEntity> = rows.toList()
 
-    override suspend fun insertAll(reminders: List<ReminderEntity>) = Unit
+    override suspend fun insert(reminder: ReminderEntity): Long = reminder.id.also { rows += reminder }
 
-    override suspend fun deleteById(id: Long) = Unit
+    override suspend fun insertAll(reminders: List<ReminderEntity>) {
+        rows += reminders
+    }
 
-    override suspend fun deleteByRawSmsId(rawSmsId: Long) = Unit
+    override suspend fun setDismissed(
+        ids: List<Long>,
+        dismissedAt: Long?,
+    ) {
+        rows.replaceAll { if (it.id in ids) it.copy(dismissedAt = dismissedAt) else it }
+    }
 
-    override suspend fun deleteAll() = Unit
+    override suspend fun deleteByIds(ids: List<Long>) {
+        rows.removeAll { it.id in ids }
+    }
+
+    override suspend fun deleteByRawSmsId(rawSmsId: Long) {
+        rows.removeAll { it.rawSmsId == rawSmsId }
+    }
+
+    override suspend fun purgeExpired(
+        dismissedCutoffMs: Long,
+        dueCutoffMs: Long,
+        deliveryCreatedCutoffMs: Long,
+        billCreatedCutoffMs: Long,
+    ): Int {
+        val before = rows.size
+        rows.removeAll {
+            (it.dismissedAt != null && it.dismissedAt!! < dismissedCutoffMs) ||
+                (it.dismissedAt == null && it.dueDate != null && it.dueDate!! < dueCutoffMs) ||
+                (
+                    it.dismissedAt == null &&
+                        it.dueDate == null &&
+                        it.type == ReminderType.DELIVERY &&
+                        it.createdAt < deliveryCreatedCutoffMs
+                ) ||
+                (
+                    it.dismissedAt == null &&
+                        it.dueDate == null &&
+                        it.type != ReminderType.DELIVERY &&
+                        it.createdAt < billCreatedCutoffMs
+                )
+        }
+        return before - rows.size
+    }
+
+    override suspend fun deleteAll() = rows.clear()
 }
