@@ -8,7 +8,6 @@ import app.clearsms.data.db.TransactionDao
 import app.clearsms.data.db.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.concurrent.TimeUnit
 
 /**
  * Default [FinanceRepository] backed by Room DAOs.
@@ -61,16 +60,20 @@ class FinanceRepositoryImpl(
 
     override suspend fun deleteReminderForever(reminderId: Long) = reminderDao.deleteByIds(identityGroupIds(reminderId))
 
-    override suspend fun purgeExpiredReminders(nowMs: Long): Int {
-        val retention = ReminderBucketing.retentionMs()
-        return reminderDao.purgeExpired(
-            dismissedCutoffMs = nowMs - retention,
-            dueCutoffMs = nowMs - retention,
-            deliveryCreatedCutoffMs =
-                nowMs - retention - TimeUnit.DAYS.toMillis(ReminderBucketing.UNDATED_DELIVERY_ACTIVE_DAYS),
-            billCreatedCutoffMs =
-                nowMs - retention - TimeUnit.DAYS.toMillis(ReminderBucketing.UNDATED_BILL_ACTIVE_DAYS),
-        )
+    override suspend fun clearOlderReminders(nowMs: Long): Int {
+        // The SAME bucketing the read layer uses decides what "older" means,
+        // so the bulk clear deletes exactly the rows the section shows -
+        // including undeduplicated duplicates hiding behind a shown card.
+        val all = reminderDao.getAll()
+        val olderIdentities =
+            ReminderBucketing
+                .bucket(all, nowMs)
+                .older
+                .map { ReminderDeduplication.identityOf(it) }
+                .toSet()
+        val ids = all.filter { ReminderDeduplication.identityOf(it) in olderIdentities }.map { it.id }
+        if (ids.isNotEmpty()) reminderDao.deleteByIds(ids)
+        return ids.size
     }
 
     /**

@@ -84,13 +84,9 @@ class AlertsViewModel
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertsUiState())
 
-        init {
-            // Retention sweep on opening Alerts (mirrors the recycle bin's
-            // on-start purge): Older rows past the 90-day window are dropped.
-            viewModelScope.launch(ioDispatcher) {
-                financeRepository.purgeExpiredReminders(System.currentTimeMillis())
-            }
-        }
+        // NO retention sweep: Older is the complete alert history. The
+        // v0.10.5 90-day auto-purge erased alerts the user wanted to look
+        // back at; rows now leave Older only via delete-forever/clear-older.
 
         fun setFilter(value: AlertFilter) {
             filter.value = value
@@ -116,6 +112,11 @@ class AlertsViewModel
         /** Permanently deletes a card from the Older section. */
         fun deleteForever(reminderId: Long) {
             viewModelScope.launch(ioDispatcher) { financeRepository.deleteReminderForever(reminderId) }
+        }
+
+        /** Bulk "clear older": permanently deletes the whole Older archive (confirmed in the UI). */
+        fun clearOlder() {
+            viewModelScope.launch(ioDispatcher) { financeRepository.clearOlderReminders(nowMs) }
         }
 
         /** Conversation target for the SMS behind [rawSmsId]; null when it was deleted. */

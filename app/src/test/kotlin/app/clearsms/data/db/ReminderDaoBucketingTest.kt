@@ -106,35 +106,25 @@ class ReminderDaoBucketingTest {
     }
 
     @Test
-    fun `purge drops only rows past retention keeping active and recent older`() {
+    fun `years old rows survive forever - older is a complete archive`() {
+        // Regression for the v0.10.5 90-day auto-purge, which erased old
+        // alerts entirely. Rows of every past shape now persist: the only
+        // deletes are the explicit per-card and bulk clear-older paths.
         runBlocking {
-            val retention = ReminderBucketing.retentionMs()
             dao.insertAll(
                 listOf(
-                    // Dismissed 91 days ago: purged. Dismissed yesterday: kept.
-                    bill(1, dueDate = null, createdAt = daysAgo(100), dismissedAt = daysAgo(91)),
-                    bill(2, dueDate = null, createdAt = daysAgo(100), dismissedAt = daysAgo(1)),
-                    // Expired 91 days ago: purged. Expired yesterday: kept in Older.
-                    bill(3, dueDate = daysAgo(91), createdAt = daysAgo(120)),
-                    bill(4, dueDate = daysAgo(1), createdAt = daysAgo(30)),
-                    // Active dated bill: never purged.
-                    bill(5, dueDate = nowMs + 86_400_000L, createdAt = daysAgo(1)),
-                    // Undated delivery: purged 90d after its 14-day window ends.
-                    delivery(6, expected = null, createdAt = daysAgo(105)),
-                    delivery(7, expected = null, createdAt = daysAgo(103)),
+                    bill(1, dueDate = null, createdAt = daysAgo(400), dismissedAt = daysAgo(365)),
+                    bill(2, dueDate = daysAgo(365), createdAt = daysAgo(400)),
+                    bill(3, dueDate = nowMs + 86_400_000L, createdAt = daysAgo(1)),
+                    delivery(4, expected = null, createdAt = daysAgo(730)),
                 ),
             )
 
-            val purged =
-                dao.purgeExpired(
-                    dismissedCutoffMs = nowMs - retention,
-                    dueCutoffMs = nowMs - retention,
-                    deliveryCreatedCutoffMs = nowMs - retention - TimeUnit.DAYS.toMillis(14),
-                    billCreatedCutoffMs = nowMs - retention - TimeUnit.DAYS.toMillis(30),
-                )
+            val buckets = ReminderBucketing.bucket(dao.getAll(), nowMs)
 
-            assertThat(purged).isEqualTo(3)
-            assertThat(dao.getAll().map { it.id }).containsExactly(2L, 4L, 5L, 7L)
+            assertThat(dao.getAll().map { it.id }).containsExactly(1L, 2L, 3L, 4L)
+            assertThat(buckets.active.map { it.id }).containsExactly(3L)
+            assertThat(buckets.older.map { it.id }).containsExactly(1L, 2L, 4L)
         }
     }
 }

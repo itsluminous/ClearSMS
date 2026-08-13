@@ -56,8 +56,12 @@ interface FinanceRepository {
     /** Permanently deletes the reminder group (the Older section's delete action). */
     suspend fun deleteReminderForever(reminderId: Long)
 
-    /** Purges Older rows past the retention window. @return purged row count. */
-    suspend fun purgeExpiredReminders(nowMs: Long): Int
+    /**
+     * Permanently deletes EVERY row currently in the Older bucket at [nowMs]
+     * (the bulk "clear older" affordance). Never runs automatically - Older
+     * is otherwise a complete archive. @return deleted row count.
+     */
+    suspend fun clearOlderReminders(nowMs: Long): Int
 
     suspend fun addNote(
         transactionId: Long,

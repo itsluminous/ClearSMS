@@ -125,14 +125,19 @@ class AlertsViewModelTest {
         }
 
     @Test
-    fun `opening alerts runs the older retention purge`() =
+    fun `opening alerts never clears history - clear older is explicit`() =
         runTest {
             val repository = FakeFinanceRepository()
 
-            viewModel(repository)
+            val vm = viewModel(repository)
             advanceUntilIdle()
+            // Regression for the v0.10.5 90-day auto-purge: nothing is
+            // deleted just by opening the screen.
+            assertThat(repository.clearOlderCount).isEqualTo(0)
 
-            assertThat(repository.purgeCount).isEqualTo(1)
+            vm.clearOlder()
+            advanceUntilIdle()
+            assertThat(repository.clearOlderCount).isEqualTo(1)
         }
 
     private fun typed(
@@ -214,7 +219,7 @@ private class FakeFinanceRepository(
     val dismissed = mutableListOf<Long>()
     val restored = mutableListOf<Long>()
     val deletedForever = mutableListOf<Long>()
-    var purgeCount = 0
+    var clearOlderCount = 0
 
     override fun observeTransactions(): Flow<List<TransactionEntity>> = flowOf(emptyList())
 
@@ -259,8 +264,8 @@ private class FakeFinanceRepository(
         deletedForever += reminderId
     }
 
-    override suspend fun purgeExpiredReminders(nowMs: Long): Int {
-        purgeCount++
+    override suspend fun clearOlderReminders(nowMs: Long): Int {
+        clearOlderCount++
         return 0
     }
 

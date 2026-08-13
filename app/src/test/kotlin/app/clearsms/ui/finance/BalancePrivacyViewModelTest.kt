@@ -180,7 +180,7 @@ private class EmptyFinanceRepository : FinanceRepository {
 
     override suspend fun deleteReminderForever(reminderId: Long) = Unit
 
-    override suspend fun purgeExpiredReminders(nowMs: Long): Int = 0
+    override suspend fun clearOlderReminders(nowMs: Long): Int = 0
 
     override suspend fun addNote(
         transactionId: Long,

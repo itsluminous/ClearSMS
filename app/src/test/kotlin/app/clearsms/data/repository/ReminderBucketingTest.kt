@@ -121,24 +121,42 @@ class ReminderBucketingTest {
     }
 
     @Test
-    fun `older section sorts newest first by dismissal then date`() {
-        val dismissedRecently = bill(1, dueDate = null, createdAt = daysAgo(40), dismissedAt = nowMs)
-        val expiredLongAgo = bill(2, dueDate = daysAgo(20), createdAt = daysAgo(50))
-        val expiredYesterday = bill(3, dueDate = daysAgo(1), createdAt = daysAgo(30))
+    fun `older interleaves undated rows at message date plus 15 days, newest first`() {
+        // Dateless (msg 40d ago -> effective 25d ago) sorts BETWEEN the bill
+        // expired 20 days ago and the one expired 30 days ago.
+        val dateless = bill(1, dueDate = null, createdAt = daysAgo(40), dismissedAt = nowMs)
+        val expired20 = bill(2, dueDate = daysAgo(20), createdAt = daysAgo(50))
+        val expired30 = bill(3, dueDate = daysAgo(30), createdAt = daysAgo(60))
+        val expiredYesterday = bill(4, dueDate = daysAgo(1), createdAt = daysAgo(30))
 
-        val buckets = ReminderBucketing.bucket(listOf(expiredLongAgo, dismissedRecently, expiredYesterday), nowMs)
+        val buckets =
+            ReminderBucketing.bucket(listOf(expired30, dateless, expiredYesterday, expired20), nowMs)
 
-        assertThat(buckets.older.map { it.id }).containsExactly(1L, 3L, 2L).inOrder()
+        assertThat(buckets.older.map { it.id }).containsExactly(4L, 2L, 1L, 3L).inOrder()
     }
 
     @Test
-    fun `active list sorts by due date with undated entries last`() {
-        val undated = undatedDelivery(1, createdAt = daysAgo(2))
+    fun `assumed effective date is a sort key only - never written to the entity`() {
+        val dateless = bill(1, dueDate = null, createdAt = daysAgo(40), dismissedAt = nowMs)
+
+        val buckets = ReminderBucketing.bucket(listOf(dateless), nowMs)
+
+        // The card renders a date line only for a real dueDate, so a null
+        // here guarantees no fabricated "due 15 Aug" can appear on screen.
+        assertThat(buckets.older.single().dueDate).isNull()
+        assertThat(buckets.older.single()).isEqualTo(dateless)
+    }
+
+    @Test
+    fun `active interleaves undated rows on the same assumed axis`() {
+        // Undated delivery from 12 days ago -> effective +3d: BETWEEN the
+        // bill due tomorrow and the one due in 9 days (no longer forced last).
+        val undated = undatedDelivery(1, createdAt = daysAgo(12))
         val dueSoon = bill(2, dueDate = nowMs + TimeUnit.DAYS.toMillis(1), createdAt = daysAgo(1))
         val dueLater = bill(3, dueDate = nowMs + TimeUnit.DAYS.toMillis(9), createdAt = daysAgo(1))
 
         val buckets = ReminderBucketing.bucket(listOf(undated, dueLater, dueSoon), nowMs)
 
-        assertThat(buckets.active.map { it.id }).containsExactly(2L, 3L, 1L).inOrder()
+        assertThat(buckets.active.map { it.id }).containsExactly(2L, 1L, 3L).inOrder()
     }
 }

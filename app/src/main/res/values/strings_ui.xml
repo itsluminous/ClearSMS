@@ -441,6 +441,9 @@
     <string name="alerts_restore">Restore</string>
     <string name="alerts_delete_forever">Delete</string>
     <string name="alerts_show_more_older">Show more (%1$d)</string>
+    <string name="alerts_clear_older">Clear older</string>
+    <string name="alerts_clear_older_title">Clear older alerts?</string>
+    <string name="alerts_clear_older_message">All %1$d older alerts will be permanently deleted. The source messages stay in your inbox. This can\'t be undone.</string>
     <!-- Guided rule wizard (token suggestions) -->
     <string name="rule_wizard_step_source">1. Source message</string>
     <string name="rule_wizard_step_source_hint">Tap a highlighted value to include it in the rule.</string>

@@ -165,6 +165,37 @@ class FinanceRepositoryImplTest {
         }
 
     @Test
+    fun `clear older deletes only the older bucket keeping active rows`() =
+        runTest {
+            val nowMs = System.currentTimeMillis()
+            val futureDue = nowMs + 5 * 86_400_000L
+            val dao =
+                FakeReminderDao(
+                    listOf(
+                        // Active: future-dated bill - must survive the bulk clear.
+                        reminder(1, createdAt = 1_000, dueDate = futureDue),
+                        // Older: expired long ago, dismissed, and a very old
+                        // undated row - all explicitly cleared.
+                        reminder(2, createdAt = 1_000, dueDate = 1_000L).copy(accountLast4 = "2222"),
+                        reminder(3, createdAt = 2_000, dueDate = futureDue)
+                            .copy(accountLast4 = "3333", dismissedAt = 5_000),
+                        reminder(4, createdAt = 4_000, dueDate = null).copy(accountLast4 = "4444"),
+                    ),
+                )
+            val repository =
+                FinanceRepositoryImpl(
+                    transactionDao = FakeTransactionDao(),
+                    accountDao = FakeAccountDao(),
+                    reminderDao = dao,
+                )
+
+            val cleared = repository.clearOlderReminders(nowMs)
+
+            assertThat(cleared).isEqualTo(3)
+            assertThat(dao.rows.map { it.id }).containsExactly(1L)
+        }
+
+    @Test
     fun `latest transaction for account never falls back to the account number alone`() =
         runTest {
             val tx = transaction(id = 1, account = "1234", bank = "IDFC FIRST", timestamp = 5_000)
@@ -332,32 +363,6 @@ private class FakeReminderDao(
 
     override suspend fun deleteByRawSmsId(rawSmsId: Long) {
         rows.removeAll { it.rawSmsId == rawSmsId }
-    }
-
-    override suspend fun purgeExpired(
-        dismissedCutoffMs: Long,
-        dueCutoffMs: Long,
-        deliveryCreatedCutoffMs: Long,
-        billCreatedCutoffMs: Long,
-    ): Int {
-        val before = rows.size
-        rows.removeAll {
-            (it.dismissedAt != null && it.dismissedAt!! < dismissedCutoffMs) ||
-                (it.dismissedAt == null && it.dueDate != null && it.dueDate!! < dueCutoffMs) ||
-                (
-                    it.dismissedAt == null &&
-                        it.dueDate == null &&
-                        it.type == ReminderType.DELIVERY &&
-                        it.createdAt < deliveryCreatedCutoffMs
-                ) ||
-                (
-                    it.dismissedAt == null &&
-                        it.dueDate == null &&
-                        it.type != ReminderType.DELIVERY &&
-                        it.createdAt < billCreatedCutoffMs
-                )
-        }
-        return before - rows.size
     }
 
     override suspend fun deleteAll() = rows.clear()

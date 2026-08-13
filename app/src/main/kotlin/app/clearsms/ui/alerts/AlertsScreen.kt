@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +36,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -70,9 +72,6 @@ import java.util.Locale
 
 private val DUE_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
 
-/** Older-alerts cards rendered per "Show more" click. */
-private const val OLDER_PAGE_SIZE = 20
-
 /** Alerts: upcoming bill/payment reminder cards plus a collapsible past section. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +88,10 @@ fun AlertsScreen(
     val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
 
     // How many Older cards are rendered; grows via the "Show more" button.
-    var olderVisible by rememberSaveable { mutableIntStateOf(OLDER_PAGE_SIZE) }
+    var olderVisible by rememberSaveable { mutableIntStateOf(OlderPaging.PAGE_SIZE) }
+
+    // Bulk clear-older confirmation dialog.
+    var confirmClearOlder by rememberSaveable { mutableStateOf(false) }
 
     val openReminder: (ReminderEntity) -> Unit = { reminder ->
         scope.launch {
@@ -176,9 +178,11 @@ fun AlertsScreen(
                     )
                 }
                 if (state.pastExpanded) {
-                    // Capped display: Older can accumulate months of entries;
-                    // render a page at a time and grow on demand.
-                    items(state.past.take(olderVisible), key = { "past_${it.id}" }) { reminder ->
+                    // Windowed composition: Older is a complete archive that
+                    // can span years; render a page at a time and grow on
+                    // demand (see OlderPaging).
+                    val visible = OlderPaging.visibleCount(total = state.past.size, requested = olderVisible)
+                    items(state.past.take(visible), key = { "past_${it.id}" }) { reminder ->
                         ReminderCard(
                             reminder = reminder,
                             richAvatars = state.showRichAvatars,
@@ -190,19 +194,45 @@ fun AlertsScreen(
                             past = true,
                         )
                     }
-                    if (state.past.size > olderVisible) {
-                        item(key = "past_show_more") {
-                            TextButton(
-                                onClick = { olderVisible += OLDER_PAGE_SIZE },
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                            ) {
-                                Text(stringResource(R.string.alerts_show_more_older, state.past.size - olderVisible))
+                    val remaining = OlderPaging.remaining(total = state.past.size, requested = olderVisible)
+                    item(key = "past_footer") {
+                        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            if (remaining > 0) {
+                                TextButton(onClick = { olderVisible = OlderPaging.grow(olderVisible) }) {
+                                    Text(stringResource(R.string.alerts_show_more_older, remaining))
+                                }
+                            }
+                            Spacer(Modifier.weight(1f))
+                            // Older never auto-purges, so the only bulk way
+                            // out of a years-long archive is explicit.
+                            TextButton(onClick = { confirmClearOlder = true }) {
+                                Text(stringResource(R.string.alerts_clear_older))
                             }
                         }
                     }
                 }
             }
         }
+    }
+    if (confirmClearOlder) {
+        AlertDialog(
+            onDismissRequest = { confirmClearOlder = false },
+            title = { Text(stringResource(R.string.alerts_clear_older_title)) },
+            text = { Text(stringResource(R.string.alerts_clear_older_message, state.past.size)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmClearOlder = false
+                        viewModel.clearOlder()
+                    },
+                ) { Text(stringResource(R.string.ui_action_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClearOlder = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 

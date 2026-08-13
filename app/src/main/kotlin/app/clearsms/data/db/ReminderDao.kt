@@ -51,31 +51,6 @@ interface ReminderDao {
     @Query("DELETE FROM reminders WHERE rawSmsId = :rawSmsId")
     suspend fun deleteByRawSmsId(rawSmsId: Long)
 
-    /**
-     * The Older-section retention sweep: hard-deletes rows that left the
-     * active list long ago. Each cutoff is (now - retention - the row's own
-     * active window), computed by [app.clearsms.data.repository.ReminderBucketing]:
-     * - dismissed rows age from [ReminderEntity.dismissedAt],
-     * - expired dated rows from [ReminderEntity.dueDate],
-     * - undated rows from [ReminderEntity.createdAt] (delivery vs bill
-     *   windows differ). Active rows are never purged.
-     */
-    @Query(
-        """
-        DELETE FROM reminders WHERE
-            (dismissedAt IS NOT NULL AND dismissedAt < :dismissedCutoffMs)
-            OR (dismissedAt IS NULL AND dueDate IS NOT NULL AND dueDate < :dueCutoffMs)
-            OR (dismissedAt IS NULL AND dueDate IS NULL AND type = 'DELIVERY' AND createdAt < :deliveryCreatedCutoffMs)
-            OR (dismissedAt IS NULL AND dueDate IS NULL AND type != 'DELIVERY' AND createdAt < :billCreatedCutoffMs)
-        """,
-    )
-    suspend fun purgeExpired(
-        dismissedCutoffMs: Long,
-        dueCutoffMs: Long,
-        deliveryCreatedCutoffMs: Long,
-        billCreatedCutoffMs: Long,
-    ): Int
-
     @Query("DELETE FROM reminders")
     suspend fun deleteAll()
 }
