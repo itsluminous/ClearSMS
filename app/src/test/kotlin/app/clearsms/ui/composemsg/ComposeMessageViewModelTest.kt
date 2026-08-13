@@ -222,4 +222,66 @@ class ComposeMessageViewModelTest {
             val rows = dao.observeThread(requireNotNull(dao.threadIdFor("5551112222"))).first()
             assertThat(rows.single().subscriptionId).isEqualTo(20)
         }
+    // --- inbound image share ----------------------------------------------
+
+    @Test
+    fun `shared image is staged as a chip with text prefilled - and NEVER auto-sent`() =
+        runBlocking<Unit> {
+            val image = File(context.cacheDir, "shared.bin")
+            image.writeBytes(ByteArray(256) { 5 })
+            val vm =
+                viewModel(
+                    SavedStateHandle(
+                        mapOf(
+                            "body" to "look at this",
+                            "imageUri" to
+                                android.net.Uri
+                                    .fromFile(image)
+                                    .toString(),
+                        ),
+                    ),
+                )
+
+            awaitUntil { vm.attachments.value.isNotEmpty() }
+
+            assertThat(vm.attachments.value).hasSize(1)
+            assertThat(vm.uiState.value.body).isEqualTo("look at this")
+            // Never auto-sent: no send attempt was made and nothing exists.
+            assertThat(vm.uiState.value.sendStatus).isNull()
+            assertThat(dao.getById(1L)).isNull()
+        }
+
+    @Test
+    fun `send with a staged attachment goes out as MMS on one row`() =
+        runBlocking<Unit> {
+            val image = File(context.cacheDir, "shared2.bin")
+            image.writeBytes(ByteArray(64) { 2 })
+            val vm =
+                viewModel(
+                    SavedStateHandle(
+                        mapOf(
+                            "imageUri" to
+                                android.net.Uri
+                                    .fromFile(image)
+                                    .toString(),
+                        ),
+                    ),
+                )
+            awaitUntil { vm.attachments.value.isNotEmpty() }
+            vm.onRecipientChange("+15551230000")
+            vm.onBodyChange("here")
+
+            vm.send()
+            awaitUntil {
+                vm.uiState.value.sendStatus != null &&
+                    vm.uiState.value.sendStatus != app.clearsms.ui.conversation.SendStatus.SENDING
+            }
+
+            val row = dao.getById(1L)
+            assertThat(row).isNotNull()
+            assertThat(row!!.attachmentKinds).isNotNull()
+            assertThat(db.attachmentDao().forMessage(1L)).hasSize(1)
+            // Chips were consumed by the send.
+            assertThat(vm.attachments.value).isEmpty()
+        }
 }

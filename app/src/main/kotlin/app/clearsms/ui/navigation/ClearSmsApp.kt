@@ -63,6 +63,7 @@ private data class BottomDestination(
 fun ClearSmsApp(
     initialRecipient: String?,
     initialBody: String?,
+    initialImageUri: String?,
     onOnboarded: () -> Unit,
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
@@ -77,6 +78,7 @@ fun ClearSmsApp(
                     MainScaffold(
                         initialRecipient = initialRecipient,
                         initialBody = initialBody,
+                        initialImageUri = initialImageUri,
                         startDestination = state.defaultDestination,
                     )
                 }
@@ -89,6 +91,7 @@ fun ClearSmsApp(
 private fun MainScaffold(
     initialRecipient: String?,
     initialBody: String?,
+    initialImageUri: String?,
     startDestination: StartDestination,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -102,9 +105,11 @@ private fun MainScaffold(
     val currentRoute = backStackEntry?.destination?.route
 
     // A share/compose intent deep-links straight into the compose screen.
-    LaunchedEffect(initialRecipient, initialBody) {
-        if (!initialRecipient.isNullOrBlank() || !initialBody.isNullOrBlank()) {
-            navController.navigate(Routes.compose(initialRecipient, initialBody))
+    // A shared image rides along as a nav argument; the compose ViewModel
+    // stages it immediately (the share grant dies with the activity).
+    LaunchedEffect(initialRecipient, initialBody, initialImageUri) {
+        if (!initialRecipient.isNullOrBlank() || !initialBody.isNullOrBlank() || !initialImageUri.isNullOrBlank()) {
+            navController.navigate(Routes.compose(initialRecipient, initialBody, initialImageUri))
         }
     }
 
@@ -227,6 +232,7 @@ private fun MainScaffold(
                     listOf(
                         navArgument("recipient") { defaultValue = "" },
                         navArgument("body") { defaultValue = "" },
+                        navArgument("imageUri") { defaultValue = "" },
                     ),
             ) {
                 ComposeMessageScreen(onBack = { navController.popBackStack() })

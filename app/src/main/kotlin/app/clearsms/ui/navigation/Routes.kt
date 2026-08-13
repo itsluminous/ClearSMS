@@ -24,12 +24,15 @@ object Routes {
         messageId: Long = -1L,
     ) = "conversation/$threadId?messageId=$messageId"
 
-    const val COMPOSE = "compose?recipient={recipient}&body={body}"
+    const val COMPOSE = "compose?recipient={recipient}&body={body}&imageUri={imageUri}"
 
     fun compose(
         recipient: String? = null,
         body: String? = null,
-    ): String = "compose?recipient=${Uri.encode(recipient.orEmpty())}&body=${Uri.encode(body.orEmpty())}"
+        imageUri: String? = null,
+    ): String =
+        "compose?recipient=${Uri.encode(recipient.orEmpty())}&body=${Uri.encode(body.orEmpty())}" +
+            "&imageUri=${Uri.encode(imageUri.orEmpty())}"
 
     const val ACCOUNT_DETAIL = "account/{accountNumber}?bank={bank}"
 

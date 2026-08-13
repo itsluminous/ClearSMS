@@ -134,4 +134,42 @@ class IntentTriageTest {
         val launcher = Intent(Intent.ACTION_MAIN)
         assertThat(IntentTriage.sanitizeDeepLink(launcher)).isSameInstanceAs(launcher)
     }
+
+    // --- inbound media shares --------------------------------------------
+
+    @Test
+    fun `image share carries the stream uri and any text - never a recipient`() {
+        val intent =
+            Intent(Intent.ACTION_SEND)
+                .setType("image/jpeg")
+                .putExtra(Intent.EXTRA_STREAM, Uri.parse("content://media/external/images/1"))
+                .putExtra(Intent.EXTRA_TEXT, "look at this")
+        val send = IntentTriage.extractSendIntent(intent)
+        assertThat(send.imageUri).isEqualTo("content://media/external/images/1")
+        assertThat(send.body).isEqualTo("look at this")
+        assertThat(send.recipient).isNull()
+        assertThat(send.rejectedAttachment).isFalse()
+    }
+
+    @Test
+    fun `non-image share stream is rejected politely - text still honored`() {
+        val intent =
+            Intent(Intent.ACTION_SEND)
+                .setType("video/mp4")
+                .putExtra(Intent.EXTRA_STREAM, Uri.parse("content://media/external/video/1"))
+                .putExtra(Intent.EXTRA_TEXT, "watch this")
+        val send = IntentTriage.extractSendIntent(intent)
+        assertThat(send.imageUri).isNull()
+        assertThat(send.rejectedAttachment).isTrue()
+        assertThat(send.body).isEqualTo("watch this")
+    }
+
+    @Test
+    fun `plain text share has no image and no rejection`() {
+        val intent = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "hello")
+        val send = IntentTriage.extractSendIntent(intent)
+        assertThat(send.imageUri).isNull()
+        assertThat(send.rejectedAttachment).isFalse()
+        assertThat(send.body).isEqualTo("hello")
+    }
 }

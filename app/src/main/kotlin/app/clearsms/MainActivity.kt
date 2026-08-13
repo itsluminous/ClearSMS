@@ -3,6 +3,7 @@ package app.clearsms
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
@@ -41,10 +42,16 @@ class MainActivity : FragmentActivity() {
         // navigation graph or navigate anywhere unexpected.
         setIntent(IntentTriage.sanitizeDeepLink(intent))
         val send = IntentTriage.extractSendIntent(intent)
+        if (send.rejectedAttachment) {
+            // A share with a non-image stream: keep the text, say why the
+            // attachment was dropped - never fail the share silently.
+            Toast.makeText(this, R.string.share_only_images, Toast.LENGTH_LONG).show()
+        }
         setContent {
             ClearSmsApp(
                 initialRecipient = send.recipient,
                 initialBody = send.body,
+                initialImageUri = send.imageUri,
                 onOnboarded = { WorkScheduler.scheduleAll(applicationContext) },
             )
         }
@@ -60,10 +67,17 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-/** Recipient/body extracted from a compose-style intent; both null otherwise. */
+/**
+ * Recipient/body/shared-image extracted from a compose-style intent; all
+ * null otherwise. [rejectedAttachment] is true when a share carried a
+ * non-image stream (video, audio, arbitrary file) - the share is still
+ * honored for its text, with a polite toast about the dropped attachment.
+ */
 internal data class SendIntent(
     val recipient: String?,
     val body: String?,
+    val imageUri: String? = null,
+    val rejectedAttachment: Boolean = false,
 )
 
 /**
@@ -110,7 +124,19 @@ internal object IntentTriage {
                 // for those, so fall back to the CharSequence form. Never
                 // truncated: the user decides what they share.
                 ?: runCatching { intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString() }.getOrNull()
-        return SendIntent(recipient, body)
+        // A shared media stream: only images are accepted (the MMS compose
+        // path). The URI itself is untrusted - it is never opened here;
+        // the compose screen copies it into app staging immediately, and a
+        // revoked/hostile URI degrades to an inline "could not be read".
+        val stream =
+            runCatching {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            }.getOrNull()
+        val isImageShare = intent.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true
+        val imageUri = stream?.takeIf { isImageShare }?.toString()
+        val rejectedAttachment = stream != null && !isImageShare
+        return SendIntent(recipient, body, imageUri, rejectedAttachment)
     }
 
     /**
