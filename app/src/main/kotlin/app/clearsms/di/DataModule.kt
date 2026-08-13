@@ -10,6 +10,7 @@ import app.clearsms.BuildConfig
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.db.AccountDao
+import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.BackfillMessageDirections
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageDao
@@ -32,6 +33,7 @@ import app.clearsms.data.rules.RuleImporter
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.mms.AttachmentStore
 import app.clearsms.notification.NotificationDismisser
 import app.clearsms.receiver.DefaultSendReportSideEffects
 import app.clearsms.receiver.SendReportSideEffects
@@ -146,6 +148,9 @@ object DataModule {
     fun provideReminderDao(db: ClearSmsDatabase): ReminderDao = db.reminderDao()
 
     @Provides
+    fun provideAttachmentDao(db: ClearSmsDatabase): AttachmentDao = db.attachmentDao()
+
+    @Provides
     @Singleton
     fun provideSettingsDataStore(
         @ApplicationContext context: Context,
@@ -200,6 +205,7 @@ object DataModule {
         telephonyWriter: TelephonyWriter,
         notificationDismisser: NotificationDismisser,
         settingsRepository: SettingsRepository,
+        attachmentStore: AttachmentStore,
     ): MessageRepositoryImpl =
         MessageRepositoryImpl(
             database = database,
@@ -212,6 +218,7 @@ object DataModule {
             readNotificationCanceler = notificationDismisser,
             blockedKeywords = { settingsRepository.blockedKeywords.first() },
             recycleBinEnabled = { settingsRepository.recycleBinEnabled.first() },
+            attachmentFileCleaner = attachmentStore::deleteFor,
         )
 
     @Provides

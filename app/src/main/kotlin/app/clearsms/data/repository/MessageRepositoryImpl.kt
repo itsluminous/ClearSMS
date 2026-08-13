@@ -3,12 +3,14 @@ package app.clearsms.data.repository
 import androidx.paging.PagingSource
 import androidx.room.withTransaction
 import app.clearsms.data.db.AccountEntity
+import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.DraftEntity
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.data.db.MmsStatus
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.ThreadPinEntity
 import app.clearsms.data.db.TransactionEntity
@@ -43,6 +45,7 @@ import app.clearsms.domain.parser.TotalLimitStatement
 import app.clearsms.domain.parser.TransactionParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -81,6 +84,14 @@ class MessageRepositoryImpl(
      * committed-delete semantics. Default matches the settings default (on).
      */
     private val recycleBinEnabled: suspend () -> Boolean = { true },
+    /**
+     * Platform hook removing a hard-deleted message's stored MMS attachment
+     * files (see [app.clearsms.mms.AttachmentStore]); null in tests. Rows in
+     * the `attachments` table are deleted in the same transaction as the
+     * message; files go after commit (a crash in between leaves orphaned
+     * files, never dangling rows).
+     */
+    private val attachmentFileCleaner: ((Long) -> Unit)? = null,
 ) : MessageRepository {
     /** Types rule-extract reminders from body evidence (see [reminderFromExtracts]). */
     private val reminderTypeClassifier = ReminderTypeClassifier()
@@ -92,6 +103,7 @@ class MessageRepositoryImpl(
     private val ruleDao get() = database.ruleDao()
     private val draftDao get() = database.draftDao()
     private val threadPinDao get() = database.threadPinDao()
+    private val attachmentDao get() = database.attachmentDao()
 
     /**
      * Test seam: invoked inside the ingestion transaction after the derived
@@ -214,10 +226,12 @@ class MessageRepositoryImpl(
             database.withTransaction {
                 val collectedSystem = chunks.flatMap { messageDao.systemSmsIdsFor(it) }
                 val collectedThreads = chunks.flatMap { messageDao.threadIdsFor(it) }.distinct()
+                chunks.forEach { attachmentDao.deleteForMessages(it) }
                 chunks.forEach { messageDao.deleteByIds(it) }
                 collectedSystem to collectedThreads
             }
         deleteFromProvider(systemIds)
+        deleteAttachmentFiles(ids)
         // A deleted message is no longer "new": its OTP / transaction / scam
         // notifications go with it (this is what makes the OTP auto-delete
         // path clear its notification too).
@@ -303,9 +317,11 @@ class MessageRepositoryImpl(
             if (toBin) {
                 chunks.forEach { messageDao.clearProviderPending(it) }
             } else {
+                chunks.forEach { attachmentDao.deleteForMessages(it) }
                 chunks.forEach { messageDao.deleteByIds(it) }
             }
         }
+        if (!toBin) deleteAttachmentFiles(ids)
     }
 
     override suspend fun commitAllPendingDeletes(toBin: Boolean) {
@@ -524,6 +540,120 @@ class MessageRepositoryImpl(
             MessageRepository.IncomingIngest(entity.copy(id = rowId), duplicate = false)
         }
     }
+
+    // region MMS
+
+    override suspend fun insertMmsNotification(
+        sender: String,
+        timestampMs: Long,
+        transactionId: String,
+        contentLocation: String,
+    ): MessageEntity {
+        // No body exists yet, so no categorization/extraction/keyword pass
+        // runs here - the downloaded content goes through the full pipeline
+        // in [completeMmsDownload]. The pending row only reserves the
+        // message's place in its thread.
+        val normalized = SenderNormalizer.normalize(sender)
+        return database.withTransaction {
+            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+            val entity =
+                MessageEntity(
+                    threadId = threadId,
+                    sender = sender,
+                    normalizedSender = normalized,
+                    body = "",
+                    timestamp = timestampMs,
+                    category = Category.UNKNOWN,
+                    isBlockedSender = isSenderBlocked(normalized),
+                    mmsStatus = MmsStatus.PENDING,
+                    mmsTransactionId = transactionId,
+                    mmsContentLocation = contentLocation,
+                )
+            entity.copy(id = messageDao.insert(entity))
+        }
+    }
+
+    override suspend fun completeMmsDownload(
+        messageId: Long,
+        sender: String?,
+        body: String,
+        recipients: List<String>,
+        attachments: List<MmsAttachmentDraft>,
+    ): MessageEntity? {
+        val existing = messageDao.getById(messageId) ?: return null
+        // Group MMS attribution: the row belongs to the SENDER. The
+        // notification usually carried it already; when it used the
+        // insert-address token the retrieve-conf From re-attributes the row
+        // (and its thread) here. Recipients are stored for a future group
+        // UI - there is no group-thread UI this wave.
+        val effectiveSender = sender?.takeIf { it.isNotBlank() && existing.sender.isBlank() } ?: existing.sender
+        val enriched = classify(rulesSnapshot(), effectiveSender, body)
+        val normalized = SenderNormalizer.normalize(effectiveSender)
+        return database.withTransaction {
+            val row = messageDao.getById(messageId) ?: return@withTransaction null
+            val threadId =
+                if (normalized == row.normalizedSender) {
+                    row.threadId
+                } else {
+                    messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+                }
+            val updated =
+                row.copy(
+                    sender = effectiveSender,
+                    normalizedSender = normalized,
+                    threadId = threadId,
+                    body = body,
+                    category = enriched.result.category,
+                    subCategory = enriched.result.subCategory,
+                    extractedOtp = enriched.otpCode,
+                    extractedDataJson = encodeExtracted(enriched.extracted),
+                    isBlockedSender = isSenderBlocked(normalized),
+                    mmsStatus = MmsStatus.DOWNLOADED,
+                    mmsRecipients = encodeRecipients(recipients),
+                    attachmentKinds = attachmentKinds(attachments),
+                )
+            messageDao.update(updated)
+            if (attachments.isNotEmpty()) {
+                attachmentDao.insertAll(
+                    attachments.map {
+                        AttachmentEntity(
+                            messageId = messageId,
+                            mimeType = it.mimeType,
+                            fileName = it.fileName,
+                            sizeBytes = it.sizeBytes,
+                        )
+                    },
+                )
+            }
+            persistDerived(messageId, row.timestamp, enriched)
+            updated
+        }
+    }
+
+    override suspend fun markMmsFailed(messageId: Long) = messageDao.setMmsStatus(messageId, MmsStatus.FAILED)
+
+    override suspend fun markMmsPendingForRetry(messageId: Long): MessageEntity? {
+        val row = messageDao.getById(messageId) ?: return null
+        if (row.mmsStatus != MmsStatus.FAILED || row.mmsContentLocation.isNullOrBlank()) return null
+        messageDao.setMmsStatus(messageId, MmsStatus.PENDING)
+        return row.copy(mmsStatus = MmsStatus.PENDING)
+    }
+
+    private fun encodeRecipients(recipients: List<String>): String? =
+        recipients
+            .takeIf { it.isNotEmpty() }
+            ?.let { json.encodeToString(ListSerializer(String.serializer()), it) }
+
+    /** "IMAGE", "FILE" or "IMAGE,FILE" - see [MessageEntity.attachmentKinds]. */
+    private fun attachmentKinds(attachments: List<MmsAttachmentDraft>): String? {
+        if (attachments.isEmpty()) return null
+        val kinds = mutableListOf<String>()
+        if (attachments.any { it.mimeType.startsWith("image/") }) kinds += "IMAGE"
+        if (attachments.any { !it.mimeType.startsWith("image/") }) kinds += "FILE"
+        return kinds.joinToString(",")
+    }
+
+    // endregion
 
     /**
      * Ingests a keyword-blocked incoming message following the app's delete
@@ -1426,6 +1556,11 @@ class MessageRepositoryImpl(
         ruleDao.getEnabledBySource(source).mapNotNull { it.toDefinition(json) }
 
     private suspend fun isSenderBlocked(normalizedSender: String): Boolean = messageDao.isSenderBlocked(normalizedSender)
+
+    private fun deleteAttachmentFiles(messageIds: List<Long>) {
+        val cleaner = attachmentFileCleaner ?: return
+        messageIds.forEach(cleaner)
+    }
 
     /**
      * Overlays rule-extracted values onto the parser's transaction.

@@ -51,4 +51,10 @@ class Converters {
 
     @TypeConverter
     fun toDeliveryStatus(value: String?): DeliveryStatus? = value?.let(DeliveryStatus::valueOf)
+
+    @TypeConverter
+    fun fromMmsStatus(value: MmsStatus?): String? = value?.name
+
+    @TypeConverter
+    fun toMmsStatus(value: String?): MmsStatus? = value?.let(MmsStatus::valueOf)
 }

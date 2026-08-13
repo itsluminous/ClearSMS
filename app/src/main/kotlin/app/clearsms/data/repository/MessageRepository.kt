@@ -7,6 +7,13 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import kotlinx.coroutines.flow.Flow
 
+/** Metadata of one stored MMS attachment file, pending its Room row. */
+data class MmsAttachmentDraft(
+    val mimeType: String,
+    val fileName: String,
+    val sizeBytes: Long,
+)
+
 /** Outcome of a recycle-bin restore. */
 data class BinRestoreResult(
     /** Rows made live again in the app database. */
@@ -269,6 +276,49 @@ interface MessageRepository {
         timestampMs: Long,
         systemSmsId: Long? = null,
     ): IncomingIngest = IncomingIngest(insertIncoming(sender, body, timestampMs, systemSmsId), duplicate = false)
+
+    // region MMS
+
+    /**
+     * Stores the pending row for a just-announced MMS (m-notification-ind):
+     * an empty-bodied message in [app.clearsms.data.db.MmsStatus.PENDING]
+     * that the conversation renders as "downloading" until
+     * [completeMmsDownload] or [markMmsFailed] resolves it.
+     */
+    suspend fun insertMmsNotification(
+        sender: String,
+        timestampMs: Long,
+        transactionId: String,
+        contentLocation: String,
+    ): MessageEntity = insertIncoming(sender, "", timestampMs)
+
+    /**
+     * Finalizes a downloaded MMS: the text part becomes the body (run
+     * through the normal categorization/extraction pipeline), attachment
+     * metadata rows are written, the row is re-attributed to [sender] when
+     * the notification lacked one, and group recipients are recorded on the
+     * row. Returns the updated entity for notification routing, or null
+     * when the row no longer exists.
+     */
+    suspend fun completeMmsDownload(
+        messageId: Long,
+        sender: String?,
+        body: String,
+        recipients: List<String>,
+        attachments: List<MmsAttachmentDraft>,
+    ): MessageEntity? = null
+
+    /** Marks a pending MMS row [app.clearsms.data.db.MmsStatus.FAILED] (retry exhausted). */
+    suspend fun markMmsFailed(messageId: Long) {}
+
+    /**
+     * Flips a FAILED MMS row back to PENDING for a user-initiated retry;
+     * returns the row (carrying its stored content location) or null when
+     * it is gone or has no location to retry.
+     */
+    suspend fun markMmsPendingForRetry(messageId: Long): MessageEntity? = null
+
+    // endregion
 
     /**
      * Re-runs categorization and extraction over every stored message in

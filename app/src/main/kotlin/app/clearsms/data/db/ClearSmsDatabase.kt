@@ -27,8 +27,9 @@ import java.time.ZoneId
         ReminderEntity::class,
         DraftEntity::class,
         ThreadPinEntity::class,
+        AttachmentEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -103,6 +104,11 @@ import java.time.ZoneId
         // instead of being deleted) plus its index for the purge sweep.
         // Pure addition; existing rows read as not dismissed.
         AutoMigration(from = 16, to = 17),
+        // v17 -> v18: MMS receive - adds the attachments table plus the
+        // nullable messages.mmsStatus / mmsTransactionId / mmsContentLocation
+        // / mmsRecipients / attachmentKinds columns. Pure additions; every
+        // existing row reads as a plain SMS.
+        AutoMigration(from = 17, to = 18),
     ],
 )
 @TypeConverters(Converters::class)
@@ -120,6 +126,8 @@ abstract class ClearSmsDatabase : RoomDatabase() {
     abstract fun draftDao(): DraftDao
 
     abstract fun threadPinDao(): ThreadPinDao
+
+    abstract fun attachmentDao(): AttachmentDao
 
     /**
      * The auto migration creates the empty `messages_fts` virtual table;

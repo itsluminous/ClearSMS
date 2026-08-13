@@ -512,6 +512,12 @@ interface MessageDao {
     @Update
     suspend fun update(message: MessageEntity)
 
+    @Query("UPDATE messages SET mmsStatus = :status WHERE id = :id")
+    suspend fun setMmsStatus(
+        id: Long,
+        status: MmsStatus,
+    )
+
     @Query("UPDATE messages SET isRead = 1 WHERE threadId = :threadId")
     suspend fun markThreadRead(threadId: Long)
 

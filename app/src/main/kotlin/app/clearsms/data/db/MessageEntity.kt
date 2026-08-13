@@ -97,4 +97,31 @@ data class MessageEntity(
      * is rewritten to the actual send time when the schedule fires.
      */
     val scheduledAt: Long? = null,
+    /** Incoming-MMS lifecycle (see [MmsStatus]); null on SMS rows. */
+    val mmsStatus: MmsStatus? = null,
+    /**
+     * X-Mms-Transaction-ID from the carrier notification. Kept for
+     * diagnostics and to correlate the retrieve transaction; null on SMS.
+     */
+    val mmsTransactionId: String? = null,
+    /**
+     * The carrier MMSC content-location URL. Retained (also after failure)
+     * so a tapped FAILED row can retry the download without re-receiving
+     * the notification.
+     */
+    val mmsContentLocation: String? = null,
+    /**
+     * JSON array of the message's To/Cc addresses - the group-MMS
+     * recipients list, stored for a future group-conversation UI. The row
+     * itself is attributed to the SENDER (its thread); no group-thread UI
+     * exists yet.
+     */
+    val mmsRecipients: String? = null,
+    /**
+     * Comma-separated kinds of stored attachments: "IMAGE", "FILE" or
+     * "IMAGE,FILE"; null when the message has none. Denormalized onto the
+     * message so inbox snippets and notifications can label an image-only
+     * MMS ("📷 Photo") without joining the attachments table.
+     */
+    val attachmentKinds: String? = null,
 )
