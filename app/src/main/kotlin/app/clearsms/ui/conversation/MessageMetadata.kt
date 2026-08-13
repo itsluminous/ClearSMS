@@ -19,6 +19,9 @@ object MessageMetadata {
         /** Scheduled: the tap offers Send now / Edit time / Cancel. */
         OFFER_SCHEDULE_ACTIONS,
 
+        /** An incoming MMS whose download failed: the tap offers Retry / Delete. */
+        OFFER_MMS_RETRY,
+
         /** Default: the tap toggles the metadata/details expansion. */
         TOGGLE_DETAILS,
     }
@@ -30,17 +33,20 @@ object MessageMetadata {
      * metadata: recovering the message is what the user wants from that
      * bubble, and its status is already visible without expansion. A
      * SCHEDULED bubble likewise offers its actions (send now / edit time /
-     * cancel) - editing the schedule is the only reason to tap it.
+     * cancel), and an incoming MMS that could not be downloaded offers
+     * Retry/Delete for the same reason.
      */
     fun tapAction(
         selectionActive: Boolean,
         outgoing: Boolean,
         deliveryStatus: DeliveryStatus?,
+        mmsDownloadFailed: Boolean = false,
     ): TapAction =
         when {
             selectionActive -> TapAction.TOGGLE_SELECTION
             outgoing && deliveryStatus == DeliveryStatus.FAILED -> TapAction.OFFER_RETRY
             outgoing && deliveryStatus == DeliveryStatus.SCHEDULED -> TapAction.OFFER_SCHEDULE_ACTIONS
+            !outgoing && mmsDownloadFailed -> TapAction.OFFER_MMS_RETRY
             else -> TapAction.TOGGLE_DETAILS
         }
 

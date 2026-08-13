@@ -8,6 +8,8 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import app.clearsms.data.db.AttachmentDao
+import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
@@ -15,6 +17,7 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.mms.MmsInbound
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SimChoiceStore
@@ -145,6 +148,8 @@ class ConversationViewModel
         private val simChoiceStore: SimChoiceStore,
         private val messageScheduler: MessageScheduler,
         private val scheduleTipGate: ScheduleTipGate,
+        private val attachmentDao: AttachmentDao,
+        private val mmsInbound: MmsInbound,
         settings: SettingsRepository,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -292,6 +297,23 @@ class ConversationViewModel
                 }.map { data -> data.map { it.toConversationItem(json, ::simTagFor) } }
                 .flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
+
+        /**
+         * The thread's MMS attachments keyed by message id. Kept beside the
+         * paged items (not inside them) so paging never re-maps when an
+         * attachment row lands; bubbles look their own list up by id.
+         */
+        val attachments: StateFlow<Map<Long, List<AttachmentEntity>>> =
+            attachmentDao
+                .observeForThread(threadId)
+                .map { rows -> rows.groupBy { it.messageId } }
+                .flowOn(ioDispatcher)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+        /** Tapped "MMS could not be downloaded": flip to PENDING and re-fetch. */
+        fun retryMmsDownload(messageId: Long) {
+            viewModelScope.launch(ioDispatcher) { mmsInbound.retry(messageId) }
+        }
 
         val uiState: StateFlow<ConversationUiState> =
             combine(

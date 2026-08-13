@@ -88,4 +88,28 @@ class MessageMetadataTest {
             MessageMetadata.tapAction(selectionActive = false, outgoing = false, deliveryStatus = DeliveryStatus.FAILED),
         ).isEqualTo(MessageMetadata.TapAction.TOGGLE_DETAILS)
     }
+
+    @Test
+    fun `tapping a failed MMS download offers its retry dialog`() {
+        assertThat(
+            MessageMetadata.tapAction(
+                selectionActive = false,
+                outgoing = false,
+                deliveryStatus = null,
+                mmsDownloadFailed = true,
+            ),
+        ).isEqualTo(MessageMetadata.TapAction.OFFER_MMS_RETRY)
+    }
+
+    @Test
+    fun `selection mode wins over a failed MMS download`() {
+        assertThat(
+            MessageMetadata.tapAction(
+                selectionActive = true,
+                outgoing = false,
+                deliveryStatus = null,
+                mmsDownloadFailed = true,
+            ),
+        ).isEqualTo(MessageMetadata.TapAction.TOGGLE_SELECTION)
+    }
 }

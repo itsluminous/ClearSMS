@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -73,7 +74,9 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.ShareIntents
+import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
+import app.clearsms.data.db.MmsStatus
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
@@ -114,6 +117,15 @@ fun ConversationScreen(
     // Failed outgoing message whose Retry/Delete dialog is open (from a
     // bubble tap); survives rotation so the choice is never silently lost.
     var failedMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Incoming MMS whose download failed and whose Retry/Delete dialog is
+    // open (from a bubble tap).
+    var failedMmsId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // The thread's MMS attachments keyed by message id, and the image
+    // currently opened in the full-screen viewer.
+    val attachmentsByMessage by viewModel.attachments.collectAsStateWithLifecycle()
+    var viewedImage by remember { mutableStateOf<AttachmentEntity?>(null) }
 
     // Scheduled bubble whose Send now / Edit time / Cancel dialog is open.
     var scheduledMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -328,17 +340,21 @@ fun ConversationScreen(
                         selected = selection.isSelected(item.id),
                         showDetails = state.showTransactionDetails,
                         expanded = expandedId == item.id,
+                        attachments = attachmentsByMessage[item.id].orEmpty(),
+                        onImageTap = { viewedImage = it },
                         onClick = {
                             when (
                                 MessageMetadata.tapAction(
                                     selectionActive = selection.active,
                                     outgoing = item.outgoing,
                                     deliveryStatus = item.deliveryStatus,
+                                    mmsDownloadFailed = item.message?.mmsStatus == MmsStatus.FAILED,
                                 )
                             ) {
                                 MessageMetadata.TapAction.TOGGLE_SELECTION -> viewModel.toggleSelection(item.id)
                                 MessageMetadata.TapAction.OFFER_RETRY -> failedMessageId = item.id
                                 MessageMetadata.TapAction.OFFER_SCHEDULE_ACTIONS -> scheduledMessageId = item.id
+                                MessageMetadata.TapAction.OFFER_MMS_RETRY -> failedMmsId = item.id
                                 MessageMetadata.TapAction.TOGGLE_DETAILS ->
                                     expandedId = MessageMetadata.onTap(expandedId, item.id, selectionActive = false)
                             }
@@ -378,6 +394,39 @@ fun ConversationScreen(
                 ) { Text(stringResource(R.string.ui_action_delete)) }
             },
         )
+    }
+
+    // Retry/Delete choice for a tapped "MMS could not be downloaded" row -
+    // the same dialog pattern as the failed-send choice above. Retry flips
+    // the SAME row back to Downloading in place; Delete stages an undoable
+    // delete like every other delete in the app.
+    failedMmsId?.let { messageId ->
+        AlertDialog(
+            onDismissRequest = { failedMmsId = null },
+            title = { Text(stringResource(R.string.conversation_mms_failed_dialog_title)) },
+            text = { Text(stringResource(R.string.conversation_mms_failed_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        failedMmsId = null
+                        viewModel.retryMmsDownload(messageId)
+                    },
+                ) { Text(stringResource(R.string.action_retry)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        failedMmsId = null
+                        viewModel.delete(messageId)
+                    },
+                ) { Text(stringResource(R.string.ui_action_delete)) }
+            },
+        )
+    }
+
+    // Full-screen viewer for a tapped MMS image.
+    viewedImage?.let { attachment ->
+        MmsImageViewerDialog(attachment = attachment, onDismiss = { viewedImage = null })
     }
 
     // Send now / Edit time / Cancel for a tapped scheduled bubble - the
@@ -632,6 +681,8 @@ private fun MessageBubble(
     onLongClick: () -> Unit,
     expanded: Boolean = false,
     selectionActive: Boolean = false,
+    attachments: List<AttachmentEntity> = emptyList(),
+    onImageTap: (AttachmentEntity) -> Unit = {},
 ) {
     val alignment = if (item.outgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor =
@@ -711,7 +762,37 @@ private fun MessageBubble(
                         ),
             ) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    Text(text = item.body, style = MaterialTheme.typography.bodyLarge, color = textColor)
+                    // MMS content: image thumbnails and file chips above the
+                    // text. The body renders only when there is text; the
+                    // pending/failed download states replace it.
+                    if (attachments.isNotEmpty()) {
+                        MmsAttachmentContent(attachments = attachments, onImageTap = onImageTap)
+                    }
+                    when {
+                        item.message?.mmsStatus == MmsStatus.PENDING ->
+                            Text(
+                                text = stringResource(R.string.mms_downloading),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = FontStyle.Italic,
+                                color = textColor.copy(alpha = 0.8f),
+                            )
+                        item.message?.mmsStatus == MmsStatus.FAILED -> {
+                            Text(
+                                text = stringResource(R.string.mms_download_failed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            Text(
+                                text = stringResource(R.string.mms_failed_tap_retry),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                            )
+                        }
+                        item.body.isNotBlank() || attachments.isEmpty() ->
+                            Text(text = item.body, style = MaterialTheme.typography.bodyLarge, color = textColor)
+                        // Image/file-only MMS: the attachments ARE the message.
+                        else -> Unit
+                    }
                     Text(
                         text = item.timeLabel,
                         style = MaterialTheme.typography.labelSmall,

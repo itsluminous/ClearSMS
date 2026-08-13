@@ -83,6 +83,7 @@ import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.mms.MmsSnippet
 import app.clearsms.sms.DefaultSmsAppHelper
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AvatarDefaults
@@ -647,7 +648,10 @@ private fun InboxRow(
                     )
                 } else {
                     Text(
-                        text = message.body,
+                        // MMS rows may have no body text: the shared snippet
+                        // helper labels image-only messages ("📷 Photo") and
+                        // pending/failed downloads.
+                        text = MmsSnippet.overrideRes(message)?.let { stringResource(it) } ?: message.body,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 2,

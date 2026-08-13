@@ -47,7 +47,7 @@ class AttachmentStore
         fun fileFor(
             messageId: Long,
             fileName: String,
-        ): File = File(File(root, messageId.toString()), fileName)
+        ): File = mmsAttachmentFile(context.filesDir, messageId, fileName)
 
         /** Removes every stored attachment file (and the directory) of [messageId]. */
         fun deleteFor(messageId: Long) {
@@ -83,3 +83,15 @@ class AttachmentStore
             const val STAGING_DIR = "staging"
         }
     }
+
+/**
+ * Context-free path resolution for a stored attachment file, usable
+ * straight from composables (which have the files dir at hand but no
+ * injection point). Must mirror [AttachmentStore]'s layout:
+ * `filesDir/mms/<messageId>/<fileName>`.
+ */
+fun mmsAttachmentFile(
+    filesDir: File,
+    messageId: Long,
+    fileName: String,
+): File = File(File(File(filesDir, "mms"), messageId.toString()), fileName)
