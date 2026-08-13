@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.work.WorkManager
 import app.clearsms.domain.categorizer.ContactLookup
+import app.clearsms.mms.MmsDownloader
+import app.clearsms.mms.SystemMmsDownloader
 import app.clearsms.sms.ContactLookupImpl
 import app.clearsms.sms.DeviceSubscriptionSource
 import app.clearsms.sms.FrameworkSmsGateway
@@ -77,4 +79,8 @@ internal interface PlatformBindings {
     /** Framework-backed radio access for [app.clearsms.sms.SmsSender]. */
     @Binds
     fun smsGateway(impl: FrameworkSmsGateway): SmsGateway
+
+    /** Platform MMS retrieval for [app.clearsms.mms.MmsInbound]. */
+    @Binds
+    fun mmsDownloader(impl: SystemMmsDownloader): MmsDownloader
 }

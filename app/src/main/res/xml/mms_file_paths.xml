@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exposes ONLY filesDir/mms/ through the FileProvider: the download
+     staging file the platform MMS service writes into, and the stored
+     attachment files shared/viewed via per-URI grants. Nothing else in the
+     app's private storage is reachable through this authority. -->
+<paths>
+    <files-path
+        name="mms"
+        path="mms/" />
+</paths>

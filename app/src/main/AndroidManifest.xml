@@ -137,6 +137,27 @@
             android:name=".receiver.SmsSentReceiver"
             android:exported="false" />
 
+        <!-- PendingIntent target for MMS download results (see
+             SystemMmsDownloader). NOT exported: only our own PendingIntents
+             may report a download outcome. -->
+        <receiver
+            android:name=".receiver.MmsDownloadReceiver"
+            android:exported="false" />
+
+        <!-- Serves filesDir/mms/ only (see @xml/mms_file_paths): the staging
+             file the platform MMS service writes a downloaded PDU into, and
+             stored attachments handed to viewers/share targets via per-URI
+             grants. Not exported; access is grant-based. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/mms_file_paths" />
+        </provider>
+
         <!-- ================================================================
              Platform-stage additions (not part of the default-SMS-app
              contract): notification action handlers and reminder alarms.

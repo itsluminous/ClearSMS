@@ -10,6 +10,7 @@ import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.mms.MmsSnippet
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,8 +42,8 @@ class MessageNotifier
          * here is the only conversation identity to keep consistent.
          *
          * [selected] is the user's notification-action choice (defaults to
-         * the settings default for callers without settings access, e.g. the
-         * MMS placeholder path). REPLY is offered only for repliable
+         * the settings default for callers without settings access). REPLY
+         * is offered only for repliable
          * addresses - see [NotificationActionPlanner.isRepliableAddress].
          */
         fun notify(
@@ -52,6 +53,9 @@ class MessageNotifier
         ) {
             Channels.ensureCreated(context)
             val resolved = senderResolver.resolve(message.sender)
+            // An image-only MMS has no body text; the shared snippet helper
+            // labels it ("📷 Photo") the same way the inbox row does.
+            val displayBody = MmsSnippet.overrideRes(message)?.let(context::getString) ?: message.body
             val sender =
                 Person
                     .Builder()
@@ -62,7 +66,7 @@ class MessageNotifier
             val style =
                 NotificationCompat
                     .MessagingStyle(Person.Builder().setName(context.getString(R.string.notification_me)).build())
-                    .addMessage(message.body, message.timestamp, sender)
+                    .addMessage(displayBody, message.timestamp, sender)
             val notificationId = threadNotificationId(message.threadId)
             val planned =
                 NotificationActionPlanner.forMessage(
@@ -74,7 +78,7 @@ class MessageNotifier
                     .Builder(context, channelId)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(resolved.name)
-                    .setContentText(message.body)
+                    .setContentText(displayBody)
                     .setStyle(style)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     .setContentIntent(conversationIntent(message.threadId))

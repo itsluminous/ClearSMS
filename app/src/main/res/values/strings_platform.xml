@@ -40,9 +40,18 @@
     <string name="send_failed_title">Message not sent</string>
     <string name="send_failed_text">Could not send your message to %1$s</string>
 
-    <!-- MMS placeholder -->
-    <string name="mms_placeholder_sender">MMS</string>
-    <string name="mms_placeholder_body">Multimedia message received. Open your previous messaging app to view it - MMS download is not supported yet.</string>
+    <!-- MMS receive -->
+    <string name="mms_downloading">Downloading MMS…</string>
+    <string name="mms_download_failed">MMS could not be downloaded</string>
+    <string name="mms_failed_tap_retry">Tap to retry</string>
+    <string name="mms_snippet_photo">📷 Photo</string>
+    <string name="mms_snippet_attachment">📎 Attachment</string>
+    <string name="mms_image_content_description">MMS photo</string>
+    <string name="mms_viewer_share">Share photo</string>
+    <string name="mms_viewer_close">Close</string>
+    <string name="mms_open_attachment_failed">No app can open this attachment</string>
+    <string name="conversation_mms_failed_dialog_title">Download failed</string>
+    <string name="conversation_mms_failed_dialog_message">This multimedia message could not be downloaded. Retry the download or delete the message.</string>
 
 
     <!-- Bill reminders -->
