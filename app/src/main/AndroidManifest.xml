@@ -63,6 +63,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="clearsms" />
             </intent-filter>
+            <!-- Inbound share target: text shared from ANY app lands in the
+                 new-conversation screen prefilled (EXTRA_TEXT only, never
+                 auto-sent; attachments are ignored - no MMS compose yet).
+                 Distinct from the sms-scheme SEND filter above, which
+                 requires a data URI and so never matches a plain share. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- Default SMS app requirement #2: SMS_DELIVER receiver. -->

@@ -105,6 +105,11 @@ internal object IntentTriage {
         val body =
             intent.getStringExtra("sms_body")
                 ?: intent.getStringExtra(Intent.EXTRA_TEXT)
+                // A share source may attach EXTRA_TEXT as a non-String
+                // CharSequence (styled spans); getStringExtra returns null
+                // for those, so fall back to the CharSequence form. Never
+                // truncated: the user decides what they share.
+                ?: runCatching { intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString() }.getOrNull()
         return SendIntent(recipient, body)
     }
 
