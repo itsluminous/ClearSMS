@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import app.clearsms.R
+import app.clearsms.ShareIntents
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
 
@@ -58,13 +59,9 @@ internal object MessageActionFactory {
         context: Context,
         message: MessageEntity,
     ): NotificationCompat.Action {
-        val send =
-            Intent(Intent.ACTION_SEND)
-                .setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT, message.body)
         val chooser =
-            Intent
-                .createChooser(send, context.getString(R.string.notification_action_share))
+            ShareIntents
+                .chooser(message.body, context.getString(R.string.notification_action_share))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val pending =
             PendingIntent.getActivity(

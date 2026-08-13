@@ -454,10 +454,12 @@ class ConversationViewModel
         }
 
         /**
-         * Concatenates the selected message bodies in chronological order and
-         * hands the text to [onReady] on the main thread (for the clipboard).
+         * Concatenates the selected message bodies in chronological
+         * (timestamp) order and hands the text to [onReady] on the main
+         * thread. Serves copy (clipboard), share (chooser) and forward
+         * (compose prefill) - one text-of-selection rule for all three.
          */
-        fun copySelected(onReady: (String) -> Unit) {
+        fun selectedText(onReady: (String) -> Unit) {
             val ids = selectionState.value.selected.toList()
             exitSelection()
             viewModelScope.launch {

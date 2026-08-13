@@ -31,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -161,13 +163,22 @@ fun ComposeMessageScreen(
                     },
                 )
             } else {
+                // Forward / inbound share arrive with a prefilled BODY and an
+                // empty recipient: focus goes straight to the recipient field
+                // so the next keystroke picks who it goes to.
+                val recipientFocus = remember { FocusRequester() }
                 OutlinedTextField(
                     value = state.recipient,
                     onValueChange = viewModel::onRecipientChange,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .focusRequester(recipientFocus),
                     label = { Text(stringResource(R.string.compose_recipient)) },
                     singleLine = true,
                 )
+                LaunchedEffect(Unit) { recipientFocus.requestFocus() }
             }
             if (state.picked == null && suggestions.isNotEmpty()) {
                 LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {

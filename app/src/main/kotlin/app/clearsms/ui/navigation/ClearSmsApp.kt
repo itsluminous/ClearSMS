@@ -216,6 +216,9 @@ private fun MainScaffold(
                 ConversationScreen(
                     onBack = { navController.popBackStack() },
                     onCreateRule = { sender, body -> navController.navigate(Routes.ruleWizard(sender, body)) },
+                    // Forward: the compose screen with the text prefilled,
+                    // recipient empty (and focused - see ComposeMessageScreen).
+                    onForward = { text -> navController.navigate(Routes.compose(body = text)) },
                 )
             }
             composable(

@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Forward
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -70,6 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import app.clearsms.R
+import app.clearsms.ShareIntents
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -94,6 +97,7 @@ private const val HIGHLIGHT_FADE_MS = 600
 fun ConversationScreen(
     onBack: () -> Unit,
     onCreateRule: (sender: String, body: String) -> Unit,
+    onForward: (text: String) -> Unit,
     viewModel: ConversationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -101,6 +105,7 @@ fun ConversationScreen(
     val items = viewModel.pagedItems.collectAsLazyPagingItems()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     // Draft lives in the ViewModel (persisted per thread): leaving and
     // reopening the conversation restores unsent text.
     val draft by viewModel.draft.collectAsStateWithLifecycle()
@@ -211,6 +216,7 @@ fun ConversationScreen(
     Scaffold(
         topBar = {
             if (selection.active) {
+                val shareTitle = stringResource(R.string.action_share_message)
                 ConversationSelectionBar(
                     selection = selection,
                     singleItem =
@@ -222,7 +228,13 @@ fun ConversationScreen(
                     onClose = viewModel::exitSelection,
                     onDelete = { confirmDelete = true },
                     onCopy = {
-                        viewModel.copySelected { text -> clipboard.setText(AnnotatedString(text)) }
+                        viewModel.selectedText { text -> clipboard.setText(AnnotatedString(text)) }
+                    },
+                    onForward = { viewModel.selectedText(onForward) },
+                    onShare = {
+                        viewModel.selectedText { text ->
+                            context.startActivity(ShareIntents.chooser(text, shareTitle))
+                        }
                     },
                     onSelectAll = viewModel::selectAll,
                     onCopyOtp = { otp -> clipboard.setText(AnnotatedString(otp)) },
@@ -442,7 +454,11 @@ fun ConversationScreen(
     }
 }
 
-/** Contextual top bar shown while message multi-select is active. */
+/**
+ * Contextual top bar shown while message multi-select is active. Inline vs
+ * overflow placement is decided by [ConversationSelectionBarLayout] - three
+ * inline slots keep the six-digit "N selected" title unwrapped.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ConversationSelectionBar(
@@ -451,6 +467,8 @@ private fun ConversationSelectionBar(
     onClose: () -> Unit,
     onDelete: () -> Unit,
     onCopy: () -> Unit,
+    onForward: () -> Unit,
+    onShare: () -> Unit,
     onSelectAll: () -> Unit,
     onCopyOtp: (String) -> Unit,
     onCreateRule: (body: String) -> Unit,
@@ -473,38 +491,78 @@ private fun ConversationSelectionBar(
             }
         },
         actions = {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
-            }
-            IconButton(onClick = onCopy) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.action_copy_message))
-            }
-            IconButton(onClick = onSelectAll) {
-                Icon(Icons.Outlined.SelectAll, contentDescription = stringResource(R.string.action_select_all))
-            }
-            if (singleItem != null) {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
+            ConversationSelectionBarLayout.inlineActions.forEach { action ->
+                when (action) {
+                    MessageSelectionAction.COPY ->
+                        IconButton(onClick = onCopy) {
+                            Icon(
+                                Icons.Outlined.ContentCopy,
+                                contentDescription = stringResource(R.string.action_copy_message),
+                            )
+                        }
+                    MessageSelectionAction.DELETE ->
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
+                        }
+                    MessageSelectionAction.FORWARD ->
+                        IconButton(onClick = onForward) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.Forward,
+                                contentDescription = stringResource(R.string.action_forward_message),
+                            )
+                        }
+                    else -> Unit
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    singleItem.message?.extractedOtp?.let { otp ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_copy_otp)) },
-                            leadingIcon = { Icon(Icons.Outlined.Password, contentDescription = null) },
-                            onClick = {
-                                menuOpen = false
-                                onCopyOtp(otp)
-                            },
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_add_rule)) },
-                        leadingIcon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onCreateRule(singleItem.body)
-                        },
+            }
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                val overflow =
+                    ConversationSelectionBarLayout.overflowActions(
+                        singleMessage = singleItem != null,
+                        hasOtp = singleItem?.message?.extractedOtp != null,
                     )
+                overflow.forEach { action ->
+                    when (action) {
+                        MessageSelectionAction.SHARE ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_share_message)) },
+                                leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onShare()
+                                },
+                            )
+                        MessageSelectionAction.SELECT_ALL ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_select_all)) },
+                                leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onSelectAll()
+                                },
+                            )
+                        MessageSelectionAction.COPY_OTP ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_copy_otp)) },
+                                leadingIcon = { Icon(Icons.Outlined.Password, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.message?.extractedOtp?.let(onCopyOtp)
+                                },
+                            )
+                        MessageSelectionAction.ADD_RULE ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_add_rule)) },
+                                leadingIcon = { Icon(Icons.Outlined.AddCircleOutline, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.let { onCreateRule(it.body) }
+                                },
+                            )
+                        else -> Unit
+                    }
                 }
             }
         },
