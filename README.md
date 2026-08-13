@@ -34,6 +34,61 @@ handles OTPs intelligently - all completely offline, on your device.
 - **Community rules** - categorization rules are plain JSON, bundled with the app and
   maintained by the community in this repository.
 
+## Feature checklist
+
+Everything shipped, and what's on the roadmap:
+
+**Messaging**
+- [x] SMS send & receive (default-SMS-app role, catch-up import when the role is regained)
+- [x] MMS receive (auto-download, image bubbles, full-screen viewer, retry on failure)
+- [x] MMS send (photo picker / camera / any file, on-device compression, SIM-aware)
+- [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages)
+- [x] Message scheduling (long-press Send; survives reboots)
+- [x] Per-thread drafts with inbox preview
+- [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry
+- [x] Share & forward selected messages; share text or images from other apps into a new message
+- [x] Undo for delete & archive (Gmail-style snackbar)
+- [x] Recycle bin (on by default, 30-day retention, restore & delete-forever)
+- [x] Pinned conversations
+- [x] Blocked senders & blocked keywords (keyword matches go straight to the bin)
+- [ ] Group-MMS conversation UI (group messages currently attribute to their sender)
+- [ ] MMS delivery reports
+- [ ] Attachments persisted in drafts
+- [ ] Scheduling for messages with attachments (currently SMS-only)
+- [ ] Blocked keywords applied to MMS bodies
+
+**Smart inbox**
+- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown (390+ community rules + 715k sender directory)
+- [x] Category filter pills (reorderable) with tags hidden under single-category filters
+- [x] Full-text search with category & time filters
+- [x] Scam-awareness flagging
+- [x] Rule manager: search, enable/disable, tap-to-edit your rules, duplicate bundled ones
+- [ ] Compose-screen contact suggestions & alphabet fast-scroll
+
+**Finance & alerts**
+- [x] Transactions extracted into accounts, cards & wallets with spend charts
+- [x] Balance tracking with biometric balance lock
+- [x] Bills, autopay, insurance & credit-card due reminders (CRED and undated bills included)
+- [x] Train & flight journeys in Alerts
+- [x] Deliveries with courier & tracking id
+- [x] Time-aware alerts with a complete, restorable "Older" archive
+- [x] Cross-bank UPI duplicate collapsing; retirement contributions as credits
+- [ ] Conversation details screen (per-sender rename, category & finance view)
+- [ ] Per-conversation custom notifications
+
+**Notifications & OTP**
+- [x] Parsed transaction notifications with semantic colors and brand logos
+- [x] Big copyable OTP notifications, auto-copy, auto-delete policies, one-shot cleanup
+- [x] Notifications clear when messages are read in-app (recycle-bin-aware actions)
+- [x] Missed-message notifications after signal loss or default-app switches
+- [ ] App-wide biometric/PIN lock (today the lock covers Finance balances)
+
+**Data & privacy**
+- [x] Fully offline: no INTERNET permission (sole exception: the system's carrier MMS transaction)
+- [x] Local backup & restore for messages AND settings (timestamped files, chosen folder, scheduled)
+- [x] Settings backup with security-sensitive keys excluded by design
+- [ ] Encrypted backups
+
 ## Screenshots
 
 | Smart inbox | Finance | Alerts |
