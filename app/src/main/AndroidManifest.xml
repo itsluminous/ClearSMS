@@ -144,6 +144,12 @@
             android:name=".receiver.MmsDownloadReceiver"
             android:exported="false" />
 
+        <!-- PendingIntent target for MMS send results (see MmsSender). NOT
+             exported: only our own PendingIntents may report a send outcome. -->
+        <receiver
+            android:name=".receiver.MmsSentReceiver"
+            android:exported="false" />
+
         <!-- Serves filesDir/mms/ only (see @xml/mms_file_paths): the staging
              file the platform MMS service writes a downloaded PDU into, and
              stored attachments handed to viewers/share targets via per-URI
