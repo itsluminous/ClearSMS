@@ -92,7 +92,7 @@ class MmsSendReportRecorder
                 if (current != null && current.deliveryStatus != DeliveryStatus.FAILED) {
                     messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
                     messageDao.setSendFailureReason(messageId, failureReason?.name)
-                    sideEffects.notifyFailure(destination)
+                    sideEffects.notifyFailure(destination, current.threadId, messageId)
                 }
             }
             attachmentStore.stagingFile(messageId).delete()

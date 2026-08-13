@@ -40,6 +40,7 @@ class OutgoingStatusLifecycleTest {
         var failedMirrors = 0
         var deliveredMirrors = 0
         var failureNotifications = 0
+        var lastFailureTarget: Pair<Long?, Long?>? = null
 
         override fun mirrorFailed(providerUri: Uri) {
             failedMirrors++
@@ -49,8 +50,13 @@ class OutgoingStatusLifecycleTest {
             deliveredMirrors++
         }
 
-        override fun notifyFailure(destination: String) {
+        override fun notifyFailure(
+            destination: String,
+            threadId: Long?,
+            messageId: Long?,
+        ) {
             failureNotifications++
+            lastFailureTarget = threadId to messageId
         }
     }
 

@@ -83,7 +83,11 @@ interface SendReportSideEffects {
 
     fun mirrorDelivered(providerUri: Uri)
 
-    fun notifyFailure(destination: String)
+    fun notifyFailure(
+        destination: String,
+        threadId: Long? = null,
+        messageId: Long? = null,
+    )
 }
 
 /** Production side effects: system SMS provider columns + failure notification. */
@@ -98,7 +102,11 @@ class DefaultSendReportSideEffects
 
         override fun mirrorDelivered(providerUri: Uri) = telephonyWriter.markDelivered(providerUri)
 
-        override fun notifyFailure(destination: String) = messageNotifier.notifySendFailure(destination)
+        override fun notifyFailure(
+            destination: String,
+            threadId: Long?,
+            messageId: Long?,
+        ) = messageNotifier.notifySendFailure(destination, threadId, messageId)
     }
 
 /**
@@ -136,7 +144,8 @@ class SendReportRecorder
                         if (systemSmsId != null) messageDao.markFailedBySystemId(systemSmsId) > 0 else true
                     if (newlyFailed) {
                         report.providerUri?.let { sideEffects.mirrorFailed(it) }
-                        sideEffects.notifyFailure(report.destination)
+                        val row = systemSmsId?.let { messageDao.getBySystemId(it) }
+                        sideEffects.notifyFailure(report.destination, row?.threadId, row?.id)
                     }
                 }
                 DeliveryStatus.SENT -> {

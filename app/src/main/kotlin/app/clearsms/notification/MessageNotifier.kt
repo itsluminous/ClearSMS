@@ -108,9 +108,13 @@ class MessageNotifier
         }
 
         /** Shown when an outgoing message could not be sent. */
-        fun notifySendFailure(destination: String) {
+        fun notifySendFailure(
+            destination: String,
+            threadId: Long? = null,
+            messageId: Long? = null,
+        ) {
             Channels.ensureCreated(context)
-            val notification =
+            val builder =
                 NotificationCompat
                     .Builder(context, Channels.MESSAGES)
                     .setSmallIcon(R.drawable.ic_notification)
@@ -118,8 +122,37 @@ class MessageNotifier
                     .setContentText(context.getString(R.string.send_failed_text, destination))
                     .setCategory(NotificationCompat.CATEGORY_ERROR)
                     .setAutoCancel(true)
-                    .build()
-            post(NotificationIds.SEND_FAILURE, notification)
+            // Tap opens the conversation scrolled to (and highlighting) the
+            // failed message, where the bubble's tap offers Retry/Delete.
+            if (threadId != null) {
+                builder.setContentIntent(failedMessageIntent(threadId, messageId))
+            }
+            post(NotificationIds.SEND_FAILURE, builder.build())
+        }
+
+        private fun failedMessageIntent(
+            threadId: Long,
+            messageId: Long?,
+        ): PendingIntent {
+            val uri =
+                if (messageId != null) {
+                    "clearsms://conversation/$threadId?messageId=$messageId"
+                } else {
+                    "clearsms://conversation/$threadId"
+                }.toUri()
+            val intent =
+                Intent(Intent.ACTION_VIEW, uri)
+                    .setClassName(context, "app.clearsms.MainActivity")
+                    .putExtra(EXTRA_THREAD_ID, threadId)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            return PendingIntent.getActivity(
+                context,
+                // Distinct request-code space from conversationIntent so a
+                // failure intent never recycles a plain-open intent.
+                (messageId ?: threadId).toInt() or 0x40000000,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
         }
 
         private fun conversationIntent(threadId: Long): PendingIntent {

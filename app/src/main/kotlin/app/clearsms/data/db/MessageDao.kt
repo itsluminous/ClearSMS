@@ -247,6 +247,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE id = :id")
     suspend fun getById(id: Long): MessageEntity?
 
+    @Query("SELECT * FROM messages WHERE systemSmsId = :systemSmsId LIMIT 1")
+    suspend fun getBySystemId(systemSmsId: Long): MessageEntity?
+
     @Query("SELECT * FROM messages ORDER BY id ASC")
     suspend fun getAll(): List<MessageEntity>
 

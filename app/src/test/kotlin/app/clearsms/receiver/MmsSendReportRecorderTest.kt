@@ -22,13 +22,19 @@ import java.io.File
 
 private class RecordingSideEffects : SendReportSideEffects {
     val failures = mutableListOf<String>()
+    val targets = mutableListOf<Pair<Long?, Long?>>()
 
     override fun mirrorFailed(providerUri: Uri) = Unit
 
     override fun mirrorDelivered(providerUri: Uri) = Unit
 
-    override fun notifyFailure(destination: String) {
+    override fun notifyFailure(
+        destination: String,
+        threadId: Long?,
+        messageId: Long?,
+    ) {
         failures += destination
+        targets += threadId to messageId
     }
 }
 
@@ -106,6 +112,10 @@ class MmsSendReportRecorderTest {
 
             assertThat(dao.getById(id)?.deliveryStatus).isEqualTo(DeliveryStatus.FAILED)
             assertThat(sideEffects.failures).containsExactly("+15551234567")
+            // The notification must target the failed message so a tap can
+            // open the conversation and highlight the bubble.
+            val row = dao.getById(id)
+            assertThat(sideEffects.targets).containsExactly(row?.threadId to id)
         }
 
     @Test
