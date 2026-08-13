@@ -14,6 +14,11 @@ handles OTPs intelligently - all completely offline, on your device.
 
 - **Smart inbox** - messages are automatically sorted into Important, Promotional,
   Personal, Unknown, and OTP using a transparent, regex-based rules engine (no ML black box).
+- **MMS receive** - picture messages download automatically (via the Android
+  system's MMS service, over the carrier network only - see Privacy
+  Principles), with image bubbles, a full-screen viewer, and attachment files
+  stored app-privately. Group MMS is attributed to its sender; a dedicated
+  group-conversation UI is not built yet.
 - **Finance dashboard** - debit/credit transactions are extracted from bank SMS into
   accounts, credit cards, and spend summaries with hand-rolled Compose charts.
 - **Bills & reminders** - upcoming bills and payment due dates in one Alerts view.
@@ -41,7 +46,12 @@ handles OTPs intelligently - all completely offline, on your device.
 
 ## Privacy Principles
 
-- **100% offline.** No network calls at runtime. No servers, no telemetry, no analytics.
+- **Offline by design.** The app requests no INTERNET permission and makes no
+  network calls of its own - no servers, no telemetry, no analytics. The one
+  exception is inherent to MMS: retrieving a picture message is a transaction
+  the *Android system's* MMS service performs with your carrier's MMSC over
+  the carrier network. That transaction is how the MMS protocol works, never
+  leaves the carrier network, and involves no third party.
 - **No proprietary dependencies.** No Firebase, no Play Services - pure AOSP compatible.
 - **Your data stays on your device.** Backups are local files you control.
 - **Transparent categorization.** Every rule is human-readable JSON you can inspect,
