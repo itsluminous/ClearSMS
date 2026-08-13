@@ -1,18 +1,16 @@
 package app.clearsms.ui.rules
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import app.clearsms.data.rules.RuleAction
 import app.clearsms.data.rules.RuleDefinition
 import app.clearsms.data.rules.RuleMatch
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.data.rules.toEntity
 import app.clearsms.testing.FakeRuleRepository
+import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.ui.common.UiPrefs
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -27,7 +25,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 
 /**
  * Tapping a BUNDLED rule opens a read-only detail (pattern, priority,
@@ -58,24 +55,21 @@ class RulesViewModelDetailTest {
 
     private lateinit var repository: FakeRuleRepository
     private lateinit var uiPrefs: UiPrefs
-    private val storeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeRuleRepository(initial = listOf(bundledRule.toEntity(json, RuleSources.BUILTIN)))
-        uiPrefs =
-            UiPrefs(
-                PreferenceDataStoreFactory.create(scope = storeScope) {
-                    File.createTempFile("ui_settings", ".preferences_pb")
-                },
-            )
+        // In-memory store: park/restore SEMANTICS need no real file DataStore,
+        // and the file-backed one both runs outside the test scheduler and
+        // races new collectors against concurrent writes on datastore 1.1.x
+        // (b/431787506) - the proven cause of the CI-only 60s hang here.
+        uiPrefs = UiPrefs(InMemoryPreferencesDataStore())
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
-        storeScope.cancel()
     }
 
     private fun viewModel() =

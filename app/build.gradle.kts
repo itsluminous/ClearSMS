@@ -123,6 +123,15 @@ android {
                 // UnsatisfiedLinkError); RobolectricSandboxConventionTest
                 // enforces that no test splits the sandbox.
                 test.systemProperty("robolectric.graphicsMode", "NATIVE")
+                // CI-repro mode: `./gradlew -PciRepro testDebugUnitTest` caps
+                // the TEST JVM (not the daemon) at 2 visible cores, matching
+                // the 2-vCPU GitHub runners. Runtime.availableProcessors()
+                // then reports 2, so Dispatchers.Default, ForkJoinPool and
+                // Robolectric size their pools like CI. Normal builds are
+                // untouched. Kept permanently for hunting CI-only hangs.
+                if (project.hasProperty("ciRepro")) {
+                    test.jvmArgs("-XX:ActiveProcessorCount=2")
+                }
             }
         }
     }
