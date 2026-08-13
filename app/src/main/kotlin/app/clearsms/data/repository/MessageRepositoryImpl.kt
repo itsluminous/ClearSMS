@@ -967,6 +967,12 @@ class MessageRepositoryImpl(
                 // FAILED payments moved no money: no transaction, whether
                 // from the parser (already null there) or from rule extracts.
                 transactionParser.isFailedPayment(evalBody) -> null
+                // Collect / payment requests and mandate lifecycle notices
+                // quote an amount that was only ASKED for - never a
+                // transaction, from the parser OR from rule extracts. The
+                // requested figure is carried under its own unsigned key
+                // below.
+                transactionParser.isPaymentRequestNotice(evalBody) -> null
                 parsedTx != null -> mergeTransaction(parsedTx, result.typed, result.subCategory)
                 result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
                     transactionFromExtracts(extracts, result.typed, result.subCategory, sender, evalBody)
@@ -1073,6 +1079,19 @@ class MessageRepositoryImpl(
             rem.accountLast4?.let { merged.putIfAbsent("account_last4", it) }
             rem.bankName?.let { merged.putIfAbsent("bank", it) }
             rem.label?.let { merged.putIfAbsent("label", it) }
+        }
+        // A collect / payment request or mandate notice moved no money: no
+        // signed amount may survive - not even a rule's raw "amount"/"type"
+        // extracts, which would render as a green credit downstream. The
+        // requested figure is carried under its own key so the parsed
+        // notification and the details card render it UNSIGNED (blue),
+        // like a bill or balance update.
+        if (transactionParser.isPaymentRequestNotice(evalBody)) {
+            merged.remove("amount")
+            merged.remove("type")
+            transactionParser.requestedAmount(evalBody)?.let {
+                merged["requested_amount"] = it.toString()
+            }
         }
 
         return Enriched(

@@ -973,6 +973,9 @@ private fun ParsedDetailCard(details: Map<String, String>) {
                         when (key) {
                             "amount" -> amountKindOf(details)
                             "balance" -> AmountKind.BALANCE
+                            // A collect/payment request's figure: asked for,
+                            // never moved - informational blue, no sign.
+                            "requested_amount" -> AmountKind.BALANCE
                             else -> null
                         }
                     val amount = value.toDoubleOrNull()

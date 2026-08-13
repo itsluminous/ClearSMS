@@ -23,6 +23,14 @@ class TransactionParser {
         // up front - no transaction row, ever. Refund credits arrive as
         // their own later message and parse on their own.
         if (isFailedPayment(body)) return null
+        // A collect / payment REQUEST ("You've received an IPO request from
+        // X for up to Rs.Y", "A has requested Rs.B from your account") and a
+        // mandate lifecycle notice quote an amount that is only being ASKED
+        // for - "received ... request" otherwise satisfies the credit
+        // heuristics, so the whole notice is rejected up front. The approved
+        // request's execution arrives as its own "debited" message and
+        // parses then.
+        if (isPaymentRequestNotice(body)) return null
         // A statement / bill notice ("Statement is sent...", "E-statement of
         // ... has been mailed") reports money OWED, not money moved. Its
         // verbs ("sent", "generated") and its "Total of Rs X ... is due"
@@ -193,6 +201,38 @@ class TransactionParser {
      * debited, the refund arrives as its own message and parses then.)
      */
     fun isFailedPayment(body: String): Boolean = GuardLibrary.matches(GuardId.FAILED_PAYMENT, body)
+
+    /**
+     * True for UPI collect / payment-request notices ("You've received an
+     * IPO request from ...", "X has requested Rs.Y from your account",
+     * "approve to pay") and IPO mandate funds-blocked confirmations. Money
+     * is only being ASKED for - nothing moved.
+     */
+    fun isCollectRequest(body: String): Boolean = GuardLibrary.matches(GuardId.COLLECT_REQUEST, body)
+
+    /**
+     * The unified payment-request veto: a collect/payment request OR a UPI
+     * mandate lifecycle notice ([GuardId.MANDATE_NOTICE]). Both quote an
+     * amount while moving no money, so neither may ever yield a transaction -
+     * from the parser ([parse] consults this up front) OR from rule extracts
+     * (the ingestion pipeline consults it before deriving from extracts).
+     */
+    fun isPaymentRequestNotice(body: String): Boolean = isCollectRequest(body) || GuardLibrary.matches(GuardId.MANDATE_NOTICE, body)
+
+    /**
+     * The amount a collect/payment request is asking for ("for up to
+     * Rs.14807"), or null when the body is not a collect request or quotes
+     * no amount. Informational only: it renders unsigned (blue), never as a
+     * signed debit/credit, and never derives a transaction.
+     */
+    fun requestedAmount(body: String): Double? {
+        if (!isCollectRequest(body)) return null
+        return AMOUNT_REGEX
+            .find(body)
+            ?.groupValues
+            ?.get(1)
+            ?.toAmount()
+    }
 
     /**
      * ISO currency code when the transaction amount is denominated in a

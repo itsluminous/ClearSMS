@@ -3961,6 +3961,34 @@
       "created_at": "2026-07-28T00:00:00Z"
     },
     {
+      "id": "upi-collect-request-01",
+      "name": "UPI Collect / Payment Request (money asked for, nothing moved)",
+      "priority": 285,
+      "match": {
+        "body_pattern": "(?i)\\breceived\\s+an?\\s+(?:payment|collect|money|IPO|UPI)\\s+(?:mandate\\s+)?request\\b|\\b(?:payment|collect)\\s+request\\b|\\b(?:has|is)\\s+request(?:ed|ing)\\s+(?:money\\b|payment\\b|(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+)|\\bapprove\\s+to\\s+pay\\b|\\brequest\\b[^\\n]{0,80}?\\bclick\\s+to\\s+accept\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-13T00:00:00Z"
+    },
+    {
+      "id": "upi-ipo-mandate-block-01",
+      "name": "IPO Mandate Funds Blocked (ASBA - no debit until allotment)",
+      "priority": 285,
+      "match": {
+        "body_pattern": "(?i)\\bblock(?:ed)?\\s+(?:for|towards)\\s+(?:the\\s+)?IPO\\b(?![^\\n]{0,120}?\\bdebited\\b)|\\bmandate\\b[^\\n]{0,60}?\\b(?:successfully\\s+)?blocked\\b(?![^\\n]{0,120}?\\bdebited\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-13T00:00:00Z"
+    },
+    {
       "id": "hdfc-balance-stmt-01",
       "name": "HDFC Bank Balance Statement (Bank Named In Body)",
       "priority": 285,

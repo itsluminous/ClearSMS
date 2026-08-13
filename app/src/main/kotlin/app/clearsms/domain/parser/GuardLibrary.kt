@@ -39,6 +39,9 @@ enum class GuardId(
     /** UPI mandate lifecycle notices - never promoted as a transaction. */
     MANDATE_NOTICE("mandate_notice"),
 
+    /** UPI collect / payment requests - money asked for, never moved. */
+    COLLECT_REQUEST("collect_request"),
+
     /** Per-unit "every Rs X spent" pitch amounts - never a transaction. */
     HYPOTHETICAL_AMOUNT("hypothetical_amount"),
 

@@ -116,6 +116,27 @@ class GuardLibraryTest {
     }
 
     @Test
+    fun `collect request guard fires on payment requests but not on executed debits`() {
+        // The OCR'd device fixture shape (synthetic company/amount).
+        assertThat(
+            matches(
+                GuardId.COLLECT_REQUEST,
+                "You've received an IPO request from EXAMPLE TRANSMISSION LIMITED for up to Rs.14807. Click to accept.",
+            ),
+        ).isTrue()
+        assertThat(matches(GuardId.COLLECT_REQUEST, "RAMESH KUMAR has requested Rs.500.00 from your account. Approve in app")).isTrue()
+        assertThat(matches(GuardId.COLLECT_REQUEST, "You have declined the payment request from RAMESH KUMAR")).isTrue()
+        assertThat(matches(GuardId.COLLECT_REQUEST, "Approve to pay Rs.649 towards your subscription")).isTrue()
+        assertThat(matches(GuardId.COLLECT_REQUEST, "Rs.14807 blocked for IPO of EXAMPLE TRANSMISSION LIMITED via UPI mandate")).isTrue()
+        // Executed mandates and genuine credits must NOT match.
+        assertThat(
+            matches(GuardId.COLLECT_REQUEST, "Amount blocked for IPO of EXAMPLE LTD has been debited from your A/c XX1234"),
+        ).isFalse()
+        assertThat(matches(GuardId.COLLECT_REQUEST, "Rs.2,000.00 received in your A/c XX1234 from RAMESH KUMAR via UPI")).isFalse()
+        assertThat(matches(GuardId.COLLECT_REQUEST, "Rs.649 debited for Netflix via mandate")).isFalse()
+    }
+
+    @Test
     fun `limit offer guard fires on limit increase offers`() {
         assertThat(matches(GuardId.LIMIT_OFFER, "You are eligible for a Credit Limit increase to Rs.3,00,000")).isTrue()
         assertThat(matches(GuardId.LIMIT_OFFER, "Pre-approved limit enhancement. Apply now")).isTrue()
@@ -270,6 +291,7 @@ class GuardLibraryTest {
             GuardId.MARKETING_PITCH -> listOf("reap benefits of rising markets")
             GuardId.VOUCHER -> listOf("your voucher expires soon")
             GuardId.MANDATE_NOTICE -> listOf("Mandate successfully created")
+            GuardId.COLLECT_REQUEST -> listOf("You've received a payment request from EXAMPLE for Rs.100")
             GuardId.HYPOTHETICAL_AMOUNT -> listOf("earn 3 pts on every Rs 100 spent")
             GuardId.LIMIT_OFFER -> listOf("you are eligible for an increase")
             GuardId.TIER_PREMIUM -> listOf("LIV Premium subscription active")

@@ -5,8 +5,6 @@ import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SubCategory
-import app.clearsms.domain.parser.GuardId
-import app.clearsms.domain.parser.GuardLibrary
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.ScamDetector
@@ -149,7 +147,10 @@ class MessageCategorizer(
             )
         }
 
-        if (GuardLibrary.matches(GuardId.MANDATE_NOTICE, evalBody)) {
+        // Unified payment-request carve-out (mandate lifecycle + UPI collect
+        // requests): an amount that is only being asked for must never be
+        // promoted AS a transaction - it surfaces as an IMPORTANT bank alert.
+        if (transactionParser.isPaymentRequestNotice(evalBody)) {
             return result.copy(category = Category.IMPORTANT, subCategory = SubCategory.BANK_ALERT)
         }
 
@@ -177,6 +178,14 @@ class MessageCategorizer(
                 extracted = mapOf(EXTRACT_OTP_CODE to otp.code),
             )
         }
+        // A collect / payment request or mandate notice quotes an amount but
+        // moves no money: an IMPORTANT bank alert, never a transaction. Must
+        // run before the transaction branch - "received ... request" would
+        // otherwise satisfy the credit heuristics (the parser also vetoes
+        // it, so ordering here is belt-and-braces).
+        if (transactionParser.isPaymentRequestNotice(body)) {
+            return CategorizationResult(category = Category.IMPORTANT, subCategory = SubCategory.BANK_ALERT)
+        }
         if (transactionParser.parse(sender, body) != null) {
             return CategorizationResult(category = Category.IMPORTANT, subCategory = SubCategory.TRANSACTION)
         }
@@ -196,6 +205,9 @@ class MessageCategorizer(
     ): SubCategory? =
         when {
             otpParser.parse(body) != null -> SubCategory.OTP
+            // Payment requests / mandate notices: a bank alert, even for a
+            // directory-matched sender like PhonePe.
+            transactionParser.isPaymentRequestNotice(body) -> SubCategory.BANK_ALERT
             transactionParser.parse(sender, body) != null -> SubCategory.TRANSACTION
             reminderParser.parse(sender, body) != null -> SubCategory.BILL
             scamDetector.isScam(body) -> SubCategory.SCAM

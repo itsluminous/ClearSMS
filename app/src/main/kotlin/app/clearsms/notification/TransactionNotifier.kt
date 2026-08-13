@@ -110,6 +110,7 @@ class TransactionNotifier
                     accountFormat = context.getString(R.string.transaction_account_short),
                     dueDateFormat = context.getString(R.string.transaction_bill_due),
                     minDueFormat = context.getString(R.string.transaction_bill_min_due),
+                    requestLabel = context.getString(R.string.transaction_payment_request),
                 ) ?: return null
             Channels.ensureCreated(context)
 
@@ -232,6 +233,14 @@ class TransactionNotifier
             private val BILL_MARKER_KEYS = setOf("due_date", "total_due", "min_due")
 
             /**
+             * Detail key written only for collect / payment requests. Its
+             * presence forces the informational blue/no-sign treatment: the
+             * amount was only ASKED for, so it must never render as a
+             * signed credit or debit.
+             */
+            internal const val REQUESTED_AMOUNT_KEY = "requested_amount"
+
+            /**
              * Fixed day/night color resource for a transaction kind - the
              * notification twin of [app.clearsms.ui.theme.SemanticAmountColors].
              */
@@ -270,11 +279,16 @@ class TransactionNotifier
                 accountFormat: String,
                 dueDateFormat: String = "Due %s",
                 minDueFormat: String = "Min due \u20b9%s",
+                requestLabel: String = "Payment request",
             ): Content? {
                 val amount = details["amount"]?.replace(",", "")?.toDoubleOrNull()
                 val type = details["type"]?.lowercase()
                 val balance = details["balance"]?.replace(",", "")?.toDoubleOrNull()
                 val minDue = details["min_due"]?.replace(",", "")?.toDoubleOrNull()
+                // Collect / payment requests: money only ASKED for. Renders
+                // in the informational blue treatment with NO sign - never a
+                // green credit - led by the request label.
+                val requested = details[REQUESTED_AMOUNT_KEY]?.replace(",", "")?.toDoubleOrNull()
                 val billAmount =
                     if (BILL_MARKER_KEYS.any { it in details }) {
                         details["total_due"]?.replace(",", "")?.toDoubleOrNull()
@@ -284,6 +298,20 @@ class TransactionNotifier
                     } else {
                         null
                     }
+
+                if (billAmount == null && requested != null) {
+                    return Content(
+                        kind = Content.Kind.BALANCE,
+                        title = "₹${grouped(requested)}",
+                        text =
+                            listOfNotNull(
+                                requestLabel,
+                                details["merchant"] ?: details["label"],
+                                details["account_last4"]?.let { String.format(accountFormat, it) },
+                                details["bank"],
+                            ).joinToString(" · "),
+                    )
+                }
 
                 val kind =
                     when {

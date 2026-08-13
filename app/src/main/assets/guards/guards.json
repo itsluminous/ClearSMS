@@ -92,6 +92,19 @@
       ]
     },
     {
+      "id": "collect_request",
+      "description": "UPI collect / payment-request notices ('You've received an IPO request from X for up to Rs.Y. Click to accept', 'A has requested Rs.B from your account', 'approve to pay', IPO mandate funds-blocked confirmations). Money is only being ASKED for - or blocked pending an IPO allotment - so nothing moved: the message must never yield a transaction, from the parser or from rule extracts; it surfaces as an IMPORTANT bank alert with its figure rendered unsigned. The APPROVED request's later execution arrives as its own 'debited' message and parses then - the blocked-shape patterns therefore stand down (bounded lookahead) when a completed 'debited' follows.",
+      "patterns": [
+        "(?i)\\breceived\\s+an?\\s+(?:payment|collect|money|IPO|UPI)\\s+(?:mandate\\s+)?request\\b",
+        "(?i)\\b(?:payment|collect)\\s+request\\b",
+        "(?i)\\b(?:has|is)\\s+request(?:ed|ing)\\s+(?:money\\b|payment\\b|(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+)",
+        "(?i)\\bapprove\\s+to\\s+pay\\b",
+        "(?i)\\brequest\\b[^\\n]{0,80}?\\bclick\\s+to\\s+accept\\b",
+        "(?i)\\bblock(?:ed)?\\s+(?:for|towards)\\s+(?:the\\s+)?IPO\\b(?![^\\n]{0,120}?\\bdebited\\b)",
+        "(?i)\\bmandate\\b[^\\n]{0,60}?\\b(?:successfully\\s+)?blocked\\b(?![^\\n]{0,120}?\\bdebited\\b)"
+      ]
+    },
+    {
       "id": "limit_offer",
       "description": "Credit-limit increase OFFERS ('eligible for', 'pre-approved', 'can be increased to') - money the user does not have yet. Must never set a card's total limit.",
       "patterns": [
