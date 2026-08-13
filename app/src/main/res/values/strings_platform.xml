@@ -50,6 +50,19 @@
     <string name="mms_viewer_share">Share photo</string>
     <string name="mms_viewer_close">Close</string>
     <string name="mms_open_attachment_failed">No app can open this attachment</string>
+
+    <!-- MMS send: compose-bar attachments -->
+    <string name="compose_attach">Add attachment</string>
+    <string name="compose_attach_photo">Photo</string>
+    <string name="compose_attach_camera">Camera</string>
+    <string name="compose_attach_file">Any file</string>
+    <string name="compose_attachment_remove">Remove attachment</string>
+    <string name="compose_attachment_too_large">Too large to send, even after compression (limit %1$s)</string>
+    <string name="compose_attachment_unreadable">That file could not be read</string>
+    <string name="compose_attachment_size">%1$s of %2$s</string>
+    <string name="compose_attachment_schedule_sms_only">Scheduling is SMS-only - remove attachments to schedule</string>
+    <string name="compose_camera_missing">No camera app available</string>
+    <string name="share_only_images">Only images can be shared into Clear SMS</string>
     <string name="conversation_mms_failed_dialog_title">Download failed</string>
     <string name="conversation_mms_failed_dialog_message">This multimedia message could not be downloaded. Retry the download or delete the message.</string>
 

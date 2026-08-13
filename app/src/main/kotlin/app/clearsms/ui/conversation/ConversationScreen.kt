@@ -81,11 +81,13 @@ import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
+import app.clearsms.ui.components.AttachmentPickerSheet
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.amountKindOf
+import app.clearsms.ui.components.rememberAttachmentLaunchers
 import kotlinx.coroutines.delay
 
 /** How long the opened-message highlight stays fully visible... */
@@ -126,6 +128,19 @@ fun ConversationScreen(
     // currently opened in the full-screen viewer.
     val attachmentsByMessage by viewModel.attachments.collectAsStateWithLifecycle()
     var viewedImage by remember { mutableStateOf<AttachmentEntity?>(null) }
+
+    // Compose-bar attachments being staged for an MMS send, and the
+    // attach sheet's visibility. Attachment state deliberately does not
+    // persist in drafts this wave (text does): no rememberSaveable.
+    val stagedAttachments by viewModel.stagedAttachments.collectAsStateWithLifecycle()
+    val attachmentError by viewModel.attachmentError.collectAsStateWithLifecycle()
+    var showAttachmentSheet by remember { mutableStateOf(false) }
+    val attachmentLaunchers =
+        rememberAttachmentLaunchers(
+            onPicked = viewModel::addAttachments,
+            cameraUriProvider = viewModel::cameraUri,
+            onCameraDone = viewModel::onCameraResult,
+        )
 
     // Scheduled bubble whose Send now / Edit time / Cancel dialog is open.
     var scheduledMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -307,6 +322,10 @@ fun ConversationScreen(
                             scheduleEditTarget = null
                             showSchedulePicker = true
                         },
+                        attachments = stagedAttachments,
+                        onAttachClick = { showAttachmentSheet = true },
+                        onRemoveAttachment = viewModel::removeAttachment,
+                        attachmentError = attachmentError,
                     )
                 else -> NotRepliableRow()
             }
@@ -427,6 +446,14 @@ fun ConversationScreen(
     // Full-screen viewer for a tapped MMS image.
     viewedImage?.let { attachment ->
         MmsImageViewerDialog(attachment = attachment, onDismiss = { viewedImage = null })
+    }
+
+    // The compose-bar "+": Photo (photo picker) / Camera / Any file.
+    if (showAttachmentSheet) {
+        AttachmentPickerSheet(
+            onDismiss = { showAttachmentSheet = false },
+            launchers = attachmentLaunchers,
+        )
     }
 
     // Send now / Edit time / Cancel for a tapped scheduled bubble - the

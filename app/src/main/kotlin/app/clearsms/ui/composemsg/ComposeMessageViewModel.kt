@@ -1,15 +1,21 @@
 package app.clearsms.ui.composemsg
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.IoDispatcher
+import app.clearsms.mms.MmsSender
+import app.clearsms.mms.OutgoingAttachmentStager
+import app.clearsms.mms.StagedAttachment
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
+import app.clearsms.ui.common.AttachmentError
+import app.clearsms.ui.common.ComposerAttachments
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.components.SimUiState
 import app.clearsms.ui.conversation.SendStatus
@@ -53,6 +59,8 @@ class ComposeMessageViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val smsSender: SmsSender,
+        private val mmsSender: MmsSender,
+        attachmentStager: OutgoingAttachmentStager,
         private val sentMessageWatcher: SentMessageWatcher,
         private val settings: SettingsRepository,
         private val contactSuggestions: ContactSuggestions,
@@ -70,6 +78,31 @@ class ComposeMessageViewModel
                 ),
             )
         val uiState: StateFlow<ComposeUiState> = state.asStateFlow()
+
+        /**
+         * Compose attachments (staged + compressed). An inbound image share
+         * arrives through the `imageUri` nav argument and is staged HERE,
+         * immediately on open, because the share grant dies with the
+         * activity - and it is never auto-sent: sending stays a user tap.
+         */
+        private val composerAttachments =
+            ComposerAttachments(attachmentStager, viewModelScope, ioDispatcher)
+        val attachments: StateFlow<List<StagedAttachment>> = composerAttachments.attachments
+        val attachmentError: StateFlow<AttachmentError?> = composerAttachments.error
+
+        /**
+         * The MMS row a failed send left behind: Retry re-dispatches it via
+         * [MmsSender.resend] instead of composing a duplicate.
+         */
+        private var failedMmsMessageId: Long? = null
+
+        fun addAttachments(uris: List<Uri>) = composerAttachments.add(uris)
+
+        fun removeAttachment(attachment: StagedAttachment) = composerAttachments.remove(attachment)
+
+        fun cameraUri(): Uri = composerAttachments.cameraUri()
+
+        fun onCameraResult(success: Boolean) = composerAttachments.onCameraResult(success)
 
         private val recipientQuery = MutableStateFlow("")
 
@@ -105,6 +138,11 @@ class ComposeMessageViewModel
                     activeSims = subscriptionSource.activeSims()
                     refreshSimForRecipient()
                 }
+            // An inbound image share: copy it into app staging NOW (the
+            // URI grant is tied to the activity) as a removable chip.
+            savedStateHandle.get<String>("imageUri")?.takeIf { it.isNotBlank() }?.let { raw ->
+                composerAttachments.add(listOf(Uri.parse(raw)))
+            }
         }
 
         val suggestions: StateFlow<List<ContactSuggestion>> =
@@ -192,7 +230,10 @@ class ComposeMessageViewModel
          */
         fun send() {
             val current = state.value
-            if (current.recipient.isBlank() || current.body.isBlank()) return
+            val staged = composerAttachments.attachments.value
+            val retryMmsId = failedMmsMessageId
+            val hasMms = staged.isNotEmpty() || retryMmsId != null
+            if (current.recipient.isBlank() || (current.body.isBlank() && !hasMms)) return
             if (current.sendStatus == SendStatus.SENDING) return
             state.value = current.copy(sendStatus = SendStatus.SENDING)
             viewModelScope.launch(ioDispatcher) {
@@ -200,8 +241,24 @@ class ComposeMessageViewModel
                 val status =
                     try {
                         val messageId =
-                            smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
-                        sentMessageWatcher.await(messageId)
+                            when {
+                                staged.isNotEmpty() -> {
+                                    val attachments = composerAttachments.consume()
+                                    mmsSender
+                                        .send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)
+                                        .also { failedMmsMessageId = it }
+                                }
+                                retryMmsId != null -> {
+                                    // Attachments already live on the failed
+                                    // row; Retry re-dispatches THAT row.
+                                    mmsSender.resend(retryMmsId)
+                                    retryMmsId
+                                }
+                                else -> smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
+                            }
+                        val resolved = sentMessageWatcher.await(messageId)
+                        if (resolved == SendStatus.SENT) failedMmsMessageId = null
+                        resolved
                     } catch (_: Exception) {
                         SendStatus.FAILED
                     }
@@ -219,6 +276,10 @@ class ComposeMessageViewModel
             val current = state.value
             if (current.recipient.isBlank() || current.body.isBlank()) return
             if (current.sendStatus == SendStatus.SENDING) return
+            // Scheduling is SMS-only this wave (see scheduleHintVisible);
+            // the affordance is hidden with attachments staged, and this
+            // guard keeps the invariant even if a caller slips through.
+            if (composerAttachments.attachments.value.isNotEmpty()) return
             viewModelScope.launch(ioDispatcher) {
                 messageScheduler.schedule(
                     destination = current.recipient.trim(),
@@ -236,5 +297,13 @@ class ComposeMessageViewModel
         private suspend fun signedBody(body: String): String {
             val signature = settings.signature.first()
             return if (signature.isNotBlank()) "$body\n$signature" else body
+        }
+
+        override fun onCleared() {
+            // Attachment state does not persist in drafts this wave: the
+            // staged files go with the screen. Deleted inline because the
+            // ViewModel scope is already cancelled here.
+            composerAttachments.consume().forEach { it.file.delete() }
+            super.onCleared()
         }
     }

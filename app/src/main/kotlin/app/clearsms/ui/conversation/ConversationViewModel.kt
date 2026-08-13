@@ -1,5 +1,6 @@
 package app.clearsms.ui.conversation
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,9 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.mms.MmsInbound
+import app.clearsms.mms.MmsSender
+import app.clearsms.mms.OutgoingAttachmentStager
+import app.clearsms.mms.StagedAttachment
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SimChoiceStore
@@ -25,6 +29,8 @@ import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
+import app.clearsms.ui.common.AttachmentError
+import app.clearsms.ui.common.ComposerAttachments
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UndoUiEvent
@@ -143,6 +149,8 @@ class ConversationViewModel
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
         private val smsSender: SmsSender,
+        private val mmsSender: MmsSender,
+        attachmentStager: OutgoingAttachmentStager,
         private val sentMessageWatcher: SentMessageWatcher,
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
@@ -167,6 +175,28 @@ class ConversationViewModel
 
         /** Compose-field edit; blank text clears the saved draft. */
         fun setDraft(value: String) = conversationDraft.set(value)
+
+        /**
+         * Compose-bar attachments (staged + compressed). Deliberately NOT
+         * part of the persisted draft this wave: text survives leaving the
+         * thread (as today), attachments do not - [onCleared] discards the
+         * staged files.
+         */
+        private val composerAttachments =
+            ComposerAttachments(attachmentStager, viewModelScope, ioDispatcher)
+        val stagedAttachments: StateFlow<List<StagedAttachment>> = composerAttachments.attachments
+        val attachmentError: StateFlow<AttachmentError?> = composerAttachments.error
+
+        /** Adds picked/shared content as staged attachment chips. */
+        fun addAttachments(uris: List<Uri>) = composerAttachments.add(uris)
+
+        /** Removes an attachment chip (and its staged file). */
+        fun removeAttachment(attachment: StagedAttachment) = composerAttachments.remove(attachment)
+
+        /** Arms a camera capture; the result lands in [onCameraResult]. */
+        fun cameraUri(): Uri = composerAttachments.cameraUri()
+
+        fun onCameraResult(success: Boolean) = composerAttachments.onCameraResult(success)
 
         /** Active SIMs, primed once in init; empty on single-SIM devices. */
         @Volatile
@@ -337,21 +367,30 @@ class ConversationViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
         /**
-         * Dispatches [body]: [SmsSender] persists the outgoing row (Sending)
-         * before handing it to the radio, so the bubble appears immediately
-         * through paging invalidation; its status and the snackbar [SendEvent]
-         * then resolve from the persisted [DeliveryStatus].
+         * Dispatches [body]: with attachments staged the message goes out as
+         * an MMS through [MmsSender], otherwise as an SMS through
+         * [SmsSender]. Either way the outgoing row is persisted (Sending)
+         * before dispatch, so the bubble appears immediately through paging
+         * invalidation; its status and the snackbar [SendEvent] then resolve
+         * from the persisted [DeliveryStatus].
          */
         fun send(body: String) {
             val destination = uiState.value.address
-            if (destination.isBlank() || body.isBlank()) return
-            // Sending consumes the compose text: the field clears
-            // immediately and the saved draft is deleted with it.
+            val staged = composerAttachments.attachments.value
+            if (destination.isBlank() || (body.isBlank() && staged.isEmpty())) return
+            // Sending consumes the compose text AND the staged attachments:
+            // the field and chips clear immediately; the bubble tracks the
+            // send state.
             conversationDraft.consume()
+            val attachments = composerAttachments.consume()
             viewModelScope.launch(ioDispatcher) {
                 val messageId =
                     try {
-                        smsSender.send(destination, body, chosenSim.value)
+                        if (attachments.isEmpty()) {
+                            smsSender.send(destination, body, chosenSim.value)
+                        } else {
+                            mmsSender.send(destination, body, attachments, chosenSim.value)
+                        }
                     } catch (_: Exception) {
                         // Persisting the message itself failed - nothing to retry against.
                         sendEvents.send(SendEvent.Failed(NO_MESSAGE))
@@ -363,18 +402,35 @@ class ConversationViewModel
             }
         }
 
-        /** Re-dispatches a failed reply on its own row (bubble flips back to Sending). */
+        /**
+         * Re-dispatches a failed reply on its own row (bubble flips back to
+         * Sending). A row with attachment rows retries through the MMS
+         * path; everything else through SMS - the SAME tap->Retry dialog
+         * serves both.
+         */
         fun retry(messageId: Long) {
             if (messageId == NO_MESSAGE) return
             viewModelScope.launch(ioDispatcher) {
                 try {
-                    smsSender.resend(messageId)
+                    if (attachmentDao.forMessage(messageId).isNotEmpty()) {
+                        mmsSender.resend(messageId)
+                    } else {
+                        smsSender.resend(messageId)
+                    }
                 } catch (_: Exception) {
                     sendEvents.send(SendEvent.Failed(messageId))
                     return@launch
                 }
                 resolve(messageId)
             }
+        }
+
+        override fun onCleared() {
+            // Attachment state does not persist in drafts this wave: the
+            // staged files go with the screen. Deleted inline because the
+            // ViewModel scope is already cancelled here.
+            composerAttachments.consume().forEach { it.file.delete() }
+            super.onCleared()
         }
 
         // region scheduled sends
@@ -390,6 +446,10 @@ class ConversationViewModel
         ) {
             val destination = uiState.value.address
             if (destination.isBlank() || body.isBlank()) return
+            // Scheduling is SMS-only this wave (see scheduleHintVisible);
+            // the affordance is hidden with attachments staged, and this
+            // guard keeps the invariant even if a caller slips through.
+            if (composerAttachments.attachments.value.isNotEmpty()) return
             // Scheduling consumes the compose text exactly like sending
             // does - no leftover draft next to the scheduled bubble.
             conversationDraft.consume()

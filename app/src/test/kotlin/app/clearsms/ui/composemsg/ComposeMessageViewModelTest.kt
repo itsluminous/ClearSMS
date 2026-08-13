@@ -9,6 +9,10 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
+import app.clearsms.mms.AttachmentStore
+import app.clearsms.mms.MmsGateway
+import app.clearsms.mms.MmsSender
+import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SmsSender
@@ -93,7 +97,19 @@ class ComposeMessageViewModelTest {
         db.close()
     }
 
-    private fun viewModel(): ComposeMessageViewModel {
+    private class FakeMmsGateway : MmsGateway {
+        var sends = 0
+
+        override fun sendMultimediaMessage(
+            subscriptionId: Int?,
+            pduFile: File,
+            sentIntent: android.app.PendingIntent,
+        ) {
+            sends++
+        }
+    }
+
+    private fun viewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()): ComposeMessageViewModel {
         val uiPrefs =
             UiPrefs(
                 PreferenceDataStoreFactory.create {
@@ -101,9 +117,21 @@ class ComposeMessageViewModelTest {
                 },
             )
         val smsSender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.Unconfined, FakeSmsGateway())
+        val mmsSender =
+            MmsSender(
+                context,
+                dao,
+                db.attachmentDao(),
+                AttachmentStore(context),
+                OutgoingAttachmentStager(context),
+                FakeMmsGateway(),
+                Dispatchers.Unconfined,
+            )
         return ComposeMessageViewModel(
-            savedStateHandle = SavedStateHandle(),
+            savedStateHandle = savedStateHandle,
             smsSender = smsSender,
+            mmsSender = mmsSender,
+            attachmentStager = OutgoingAttachmentStager(context),
             sentMessageWatcher = SentMessageWatcher(dao, Dispatchers.Unconfined),
             settings = FakeSettingsRepository(),
             contactSuggestions = ContactSuggestions(context),

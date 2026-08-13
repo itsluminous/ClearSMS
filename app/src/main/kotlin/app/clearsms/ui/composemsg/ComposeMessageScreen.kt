@@ -38,9 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.ui.components.AttachmentPickerSheet
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.conversation.SendStatus
 
 /** New message: recipient with contact suggestions, body, signature-aware send. */
@@ -59,6 +61,19 @@ fun ComposeMessageScreen(
     val scheduledMessage = stringResource(R.string.conversation_scheduled)
     val retryLabel = stringResource(R.string.action_retry)
     var showSchedulePicker by rememberSaveable { mutableStateOf(false) }
+
+    // Compose-bar attachments being staged for an MMS send, and the
+    // attach sheet's visibility. Attachment state deliberately does not
+    // persist in drafts this wave (text does): no rememberSaveable.
+    val attachments by viewModel.attachments.collectAsStateWithLifecycle()
+    val attachmentError by viewModel.attachmentError.collectAsStateWithLifecycle()
+    var showAttachmentSheet by remember { mutableStateOf(false) }
+    val attachmentLaunchers =
+        rememberAttachmentLaunchers(
+            onPicked = viewModel::addAttachments,
+            cameraUriProvider = viewModel::cameraUri,
+            onCameraDone = viewModel::onCameraResult,
+        )
 
     // The send resolves asynchronously from the persisted message status:
     // confirm honestly ("Message sent" only without a recorded failure),
@@ -122,6 +137,10 @@ fun ComposeMessageScreen(
                 sim = simState,
                 onCycleSim = viewModel::cycleSim,
                 onScheduleSend = { showSchedulePicker = true },
+                attachments = attachments,
+                onAttachClick = { showAttachmentSheet = true },
+                onRemoveAttachment = viewModel::removeAttachment,
+                attachmentError = attachmentError,
             )
         },
     ) { padding ->
@@ -205,6 +224,14 @@ fun ComposeMessageScreen(
                 }
             }
         }
+    }
+
+    // The compose-bar "+": Photo (photo picker) / Camera / Any file.
+    if (showAttachmentSheet) {
+        AttachmentPickerSheet(
+            onDismiss = { showAttachmentSheet = false },
+            launchers = attachmentLaunchers,
+        )
     }
 
     if (showSchedulePicker) {
