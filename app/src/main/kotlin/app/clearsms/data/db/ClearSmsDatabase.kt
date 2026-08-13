@@ -29,7 +29,7 @@ import java.time.ZoneId
         ThreadPinEntity::class,
         AttachmentEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -109,6 +109,10 @@ import java.time.ZoneId
         // / mmsRecipients / attachmentKinds columns. Pure additions; every
         // existing row reads as a plain SMS.
         AutoMigration(from = 17, to = 18),
+        // v18 -> v19: adds messages.sendFailureReason (why an outgoing
+        // send failed, e.g. the carrier's MMS bearer never came up) so the
+        // failed-message dialog can say more than 'Not sent'. Pure addition.
+        AutoMigration(from = 18, to = 19),
     ],
 )
 @TypeConverters(Converters::class)

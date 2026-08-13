@@ -124,4 +124,10 @@ data class MessageEntity(
      * MMS ("📷 Photo") without joining the attachments table.
      */
     val attachmentKinds: String? = null,
+    /**
+     * Why the last outgoing send FAILED, as a [app.clearsms.mms.SendFailureReason]
+     * name - null while unsent/sent/unknown. Cleared on resend; shown in the
+     * failed-message dialog so 'Not sent' is never the whole story.
+     */
+    val sendFailureReason: String? = null,
 )

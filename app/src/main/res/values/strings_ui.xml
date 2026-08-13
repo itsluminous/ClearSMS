@@ -55,6 +55,10 @@
     <string name="conversation_not_sent">Not sent</string>
     <string name="conversation_failed_dialog_title">Message not sent</string>
     <string name="conversation_failed_dialog_message">Retry sending this message, or delete it?</string>
+    <string name="send_failure_no_mms_network">The MMS connection never came up. Check that mobile data is on - and note that some carriers (including most Indian networks) no longer support MMS at all, so no app can send one on this SIM.</string>
+    <string name="send_failure_apn">Your carrier\'s MMS settings (APN) look missing or rejected. Check the APN settings for this SIM.</string>
+    <string name="send_failure_http">Your carrier\'s MMS server refused the message.</string>
+    <string name="send_failure_transient">A temporary network problem interrupted the send - retrying may work.</string>
     <string name="conversation_delivered">Delivered</string>
     <string name="conversation_sim_switch">Switch SIM</string>
     <string name="conversation_scheduled">Scheduled</string>

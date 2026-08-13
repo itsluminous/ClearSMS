@@ -10,6 +10,7 @@ import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.mms.AttachmentStore
+import app.clearsms.mms.SendFailureReason
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -105,6 +106,18 @@ class MmsSendReportRecorderTest {
 
             assertThat(dao.getById(id)?.deliveryStatus).isEqualTo(DeliveryStatus.FAILED)
             assertThat(sideEffects.failures).containsExactly("+15551234567")
+        }
+
+    @Test
+    fun `failure records the reason and resend clears it`() =
+        runBlocking<Unit> {
+            val id = sendingRow()
+
+            recorder.record(id, "+15551234567", succeeded = false, failureReason = SendFailureReason.NO_MMS_NETWORK)
+            assertThat(dao.getById(id)?.sendFailureReason).isEqualTo("NO_MMS_NETWORK")
+
+            dao.resetForResend(id, systemSmsId = null)
+            assertThat(dao.getById(id)?.sendFailureReason).isNull()
         }
 
     @Test

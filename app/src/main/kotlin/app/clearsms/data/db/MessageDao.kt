@@ -398,10 +398,18 @@ interface MessageDao {
         return promoteDeliveredIfComplete(systemSmsId) > 0
     }
 
+    /** Records why the last send failed (a [app.clearsms.mms.SendFailureReason] name). */
+    @Query("UPDATE messages SET sendFailureReason = :reason WHERE id = :messageId")
+    suspend fun setSendFailureReason(
+        messageId: Long,
+        reason: String?,
+    )
+
     /** Rewrites a failed row for re-dispatch: back to SENDING on a fresh provider row. */
     @Query(
         """
-        UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId, deliveredParts = 0
+        UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId, deliveredParts = 0,
+            sendFailureReason = NULL
         WHERE id = :id
         """,
     )

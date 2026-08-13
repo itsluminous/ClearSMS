@@ -7,6 +7,7 @@ import android.content.Intent
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.mms.AttachmentStore
+import app.clearsms.mms.SendFailureReason
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,10 +39,12 @@ class MmsSentReceiver : BroadcastReceiver() {
         if (messageId < 0) return
         val destination = intent.getStringExtra(EXTRA_DESTINATION).orEmpty()
         val succeeded = resultCode == Activity.RESULT_OK
+        val failureReason =
+            if (succeeded) null else SendFailureReason.fromMmsResultCode(resultCode)
         val pending = goAsync()
         receiverScope.launch {
             try {
-                recorder.record(messageId, destination, succeeded)
+                recorder.record(messageId, destination, succeeded, failureReason)
             } finally {
                 pending.finish()
             }
@@ -76,6 +79,7 @@ class MmsSendReportRecorder
             messageId: Long,
             destination: String,
             succeeded: Boolean,
+            failureReason: SendFailureReason? = null,
         ) {
             if (succeeded) {
                 messageDao.promoteDeliveryStatus(
@@ -87,6 +91,7 @@ class MmsSendReportRecorder
                 val current = messageDao.getById(messageId)
                 if (current != null && current.deliveryStatus != DeliveryStatus.FAILED) {
                     messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
+                    messageDao.setSendFailureReason(messageId, failureReason?.name)
                     sideEffects.notifyFailure(destination)
                 }
             }

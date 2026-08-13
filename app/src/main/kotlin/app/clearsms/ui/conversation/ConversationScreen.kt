@@ -77,6 +77,7 @@ import app.clearsms.ShareIntents
 import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MmsStatus
+import app.clearsms.mms.SendFailureReason
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
@@ -392,10 +393,34 @@ fun ConversationScreen(
     // every other delete in the app. Matches the screen's existing dialog
     // pattern (see the selection-delete confirmation below).
     failedMessageId?.let { messageId ->
+        // The stored SendFailureReason (if any) turns "Not sent" into an
+        // explanation - most importantly distinguishing "your carrier's MMS
+        // network never came up" from genuinely retryable trouble.
+        val failureDetail =
+            items.itemSnapshotList.items
+                .firstOrNull { it.id == messageId }
+                ?.message
+                ?.sendFailureReason
+                ?.let { reason ->
+                    when (SendFailureReason.entries.firstOrNull { it.name == reason }) {
+                        SendFailureReason.NO_MMS_NETWORK -> stringResource(R.string.send_failure_no_mms_network)
+                        SendFailureReason.APN_CONFIGURATION -> stringResource(R.string.send_failure_apn)
+                        SendFailureReason.HTTP_FAILURE -> stringResource(R.string.send_failure_http)
+                        SendFailureReason.TRANSIENT -> stringResource(R.string.send_failure_transient)
+                        else -> null
+                    }
+                }
         AlertDialog(
             onDismissRequest = { failedMessageId = null },
             title = { Text(stringResource(R.string.conversation_failed_dialog_title)) },
-            text = { Text(stringResource(R.string.conversation_failed_dialog_message)) },
+            text = {
+                Text(
+                    listOfNotNull(
+                        failureDetail,
+                        stringResource(R.string.conversation_failed_dialog_message),
+                    ).joinToString(separator = "\n\n"),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
