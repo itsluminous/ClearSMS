@@ -33,6 +33,7 @@
     <string name="inbox_draft_preview">Draft: %1$s</string>
     <string name="inbox_pinned">Pinned</string>
     <string name="filter_unread">Unread</string>
+    <string name="inbox_unread_toggle_count">Unread · %1$d</string>
     <string name="inbox_contacts_permission">Grant contacts access to see names of people you know</string>
     <string name="inbox_contacts_grant">Grant</string>
 

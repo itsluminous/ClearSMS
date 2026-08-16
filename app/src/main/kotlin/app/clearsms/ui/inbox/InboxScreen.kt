@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
@@ -54,6 +55,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -276,14 +279,22 @@ fun InboxScreen(
                             )
                         }
                     }
+                    // "Unread only" is a view mode, not a category: it lives on
+                    // its own right-aligned line ABOVE the pills so it cannot be
+                    // read as one more (mutually exclusive) category chip.
+                    item(key = "unread_toggle") {
+                        UnreadToggleRow(
+                            unreadOnly = state.filter.unreadOnly,
+                            totalUnread = state.totalUnread,
+                            onToggleUnread = viewModel::toggleUnread,
+                        )
+                    }
                     item(key = "filters") {
                         FilterChipRow(
                             filter = state.filter,
                             unreadCounts = state.unreadCounts,
-                            totalUnread = state.totalUnread,
                             pillOrder = state.pillOrder,
                             onSelectCategory = viewModel::selectCategory,
-                            onToggleUnread = viewModel::toggleUnread,
                         )
                     }
                     if (emptyLoaded) {
@@ -543,33 +554,60 @@ private fun ContactsPermissionBanner(
     }
 }
 
+/**
+ * Right-aligned "Unread" view-mode switch shown above the pill row. A labeled
+ * [Switch] (not a [FilterChip]) so it reads as a mode toggle that composes
+ * with the pills, rather than one more mutually-exclusive category; the label
+ * carries the total unread count the old pill's badge used to show. Labeled,
+ * so it needs no long-press tooltip.
+ */
+@Composable
+private fun UnreadToggleRow(
+    unreadOnly: Boolean,
+    totalUnread: Int,
+    onToggleUnread: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        Row(
+            // One semantics node (Switch's own onCheckedChange is null below):
+            // TalkBack reads "Unread · N, switch, on/off" as a single control.
+            modifier =
+                Modifier.toggleable(
+                    value = unreadOnly,
+                    role = Role.Switch,
+                    onValueChange = { onToggleUnread() },
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text =
+                    if (totalUnread > 0) {
+                        stringResource(R.string.inbox_unread_toggle_count, totalUnread)
+                    } else {
+                        stringResource(R.string.filter_unread)
+                    },
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Switch(checked = unreadOnly, onCheckedChange = null)
+        }
+    }
+}
+
 @Composable
 private fun FilterChipRow(
     filter: InboxFilterState,
     unreadCounts: Map<Category, Int>,
-    totalUnread: Int,
     pillOrder: List<Category>,
     onSelectCategory: (Category) -> Unit,
-    onToggleUnread: () -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // "Unread" is an independent toggle that composes with any category.
-        item(key = "unread") {
-            FilterChip(
-                selected = filter.unreadOnly,
-                onClick = onToggleUnread,
-                label = { Text(stringResource(R.string.filter_unread)) },
-                trailingIcon =
-                    if (totalUnread > 0) {
-                        { Badge { Text(totalUnread.toString()) } }
-                    } else {
-                        null
-                    },
-            )
-        }
         items(orderedPills(pillOrder, Category.entries.toList()), key = { it.name }) { category ->
             val count = unreadCounts[category] ?: 0
             FilterChip(
