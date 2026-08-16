@@ -212,6 +212,10 @@ Two ways to contribute:
    submissions are incorporated into the next release. There are no runtime rule
    downloads - the app stays fully offline.
 
+Want a fully populated app for testing or screenshots without using real
+messages? Replay the synthetic demo corpus into an emulator - see
+[`scripts/demo/`](scripts/demo/).
+
 ### Finding missing rules using your own messages
 
 The most useful contribution is telling us which of *your* messages the app fails
