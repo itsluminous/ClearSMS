@@ -155,14 +155,46 @@ class ComposeMessageViewModelTest {
 
             vm.schedule(future)
 
-            awaitUntil { vm.uiState.value.scheduled }
+            val threadId = withTimeout(5_000) { vm.openThreadFlow.first() }
             val rows = dao.observeThread(requireNotNull(dao.threadIdFor("5551234567"))).first()
             assertThat(rows).hasSize(1)
+            assertThat(rows.single().threadId).isEqualTo(threadId)
             assertThat(rows.single().deliveryStatus).isEqualTo(DeliveryStatus.SCHEDULED)
             assertThat(rows.single().scheduledAt).isEqualTo(future)
             val alarms = shadowOf(requireNotNull(context.getSystemService(AlarmManager::class.java)))
             assertThat(requireNotNull(alarms.peekNextScheduledAlarm()).triggerAtMs).isEqualTo(future)
-            assertThat(vm.uiState.value.scheduled).isTrue()
+        }
+
+    @Test
+    fun `confirming a schedule clears the compose box immediately and navigates into the thread`() =
+        runBlocking<Unit> {
+            val vm = viewModel()
+            vm.onRecipientChange("+15554443333")
+            vm.onBodyChange("see you later")
+
+            vm.schedule(future)
+
+            // Optimistic consume, exactly like send: the field is empty the
+            // moment the picker is confirmed, not when the row lands.
+            assertThat(vm.uiState.value.body).isEmpty()
+            val threadId = withTimeout(5_000) { vm.openThreadFlow.first() }
+            assertThat(threadId).isEqualTo(dao.threadIdFor("5554443333"))
+        }
+
+    @Test
+    fun `double-confirming a schedule creates exactly ONE scheduled row`() =
+        runBlocking<Unit> {
+            val vm = viewModel()
+            vm.onRecipientChange("+15554445555")
+            vm.onBodyChange("only one bubble")
+
+            vm.schedule(future)
+            vm.schedule(future)
+
+            withTimeout(5_000) { vm.openThreadFlow.first() }
+            val rows = dao.observeThread(requireNotNull(dao.threadIdFor("5554445555"))).first()
+            assertThat(rows).hasSize(1)
+            assertThat(rows.single().deliveryStatus).isEqualTo(DeliveryStatus.SCHEDULED)
         }
 
     @Test

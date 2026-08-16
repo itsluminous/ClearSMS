@@ -48,8 +48,6 @@ data class ComposeUiState(
     val suggestions: List<ContactSuggestion> = emptyList(),
     /** Lifecycle of the current send; null before the first attempt. */
     val sendStatus: SendStatus? = null,
-    /** True once a schedule was created: the thread exists, leave the screen. */
-    val scheduled: Boolean = false,
 )
 
 @OptIn(FlowPreview::class)
@@ -296,6 +294,15 @@ class ComposeMessageViewModel
          * [MessageScheduler] the conversation screen uses: the thread is
          * created with a durable SCHEDULED row and an armed alarm - no
          * forked send path.
+         *
+         * The confirm mirrors [send] exactly: the compose box is consumed
+         * OPTIMISTICALLY (the field empties the moment the picker is
+         * confirmed), double-confirms are dropped twice over (the
+         * synchronous SENDING guard and the already-consumed blank body),
+         * and once the SCHEDULED row exists the screen navigates INTO the
+         * (possibly new) thread via [openThreadFlow], where the
+         * "Scheduled for <time>" bubble is the feedback. Only a persist
+         * failure keeps the user here, with the body restored.
          */
         fun schedule(scheduledAtMs: Long) {
             val current = state.value
@@ -305,16 +312,35 @@ class ComposeMessageViewModel
             // the affordance is hidden with attachments staged, and this
             // guard keeps the invariant even if a caller slips through.
             if (composerAttachments.attachments.value.isNotEmpty()) return
+            // Optimistic consume, exactly like send: no duplicate scheduled
+            // row can follow a double-confirm.
+            state.value = current.copy(body = "", sendStatus = SendStatus.SENDING)
             viewModelScope.launch(ioDispatcher) {
-                messageScheduler.schedule(
-                    destination = current.recipient.trim(),
-                    body = signedBody(current.body),
-                    subscriptionId = chosenSim.value,
-                    scheduledAtMs = scheduledAtMs,
-                )
+                val messageId =
+                    try {
+                        messageScheduler.schedule(
+                            destination = current.recipient.trim(),
+                            body = signedBody(current.body),
+                            subscriptionId = chosenSim.value,
+                            scheduledAtMs = scheduledAtMs,
+                        )
+                    } catch (_: Exception) {
+                        // Nothing was persisted: give the text back so the
+                        // user can retry (send now, or long-press again).
+                        state.value = state.value.copy(body = current.body, sendStatus = SendStatus.FAILED)
+                        return@launch
+                    }
                 // Whoever schedules knows about long-press - never tip them.
                 scheduleTipGate.markShown()
-                state.value = state.value.copy(scheduled = true)
+                // The thread exists with its scheduled bubble - go there.
+                val threadId = messageDao.getById(messageId)?.threadId
+                if (threadId != null) {
+                    openThreadEvents.send(threadId)
+                } else {
+                    // Row vanished between persist and lookup (never in
+                    // practice): fall back to the failure affordance.
+                    state.value = state.value.copy(body = current.body, sendStatus = SendStatus.FAILED)
+                }
             }
         }
 

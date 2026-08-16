@@ -450,6 +450,12 @@ class ConversationViewModel
             // the affordance is hidden with attachments staged, and this
             // guard keeps the invariant even if a caller slips through.
             if (composerAttachments.attachments.value.isNotEmpty()) return
+            // Double-confirm protection, mirroring send's consumed-body
+            // guard: the first confirm consumes the draft SYNCHRONOUSLY
+            // below, so a second confirm carrying the same stale [body]
+            // snapshot finds the draft already blank and is dropped - no
+            // duplicate scheduled row can exist.
+            if (conversationDraft.text.value.isBlank()) return
             // Scheduling consumes the compose text exactly like sending
             // does - no leftover draft next to the scheduled bubble.
             conversationDraft.consume()

@@ -58,7 +58,6 @@ fun ComposeMessageScreen(
     val simState by viewModel.simState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val notSentMessage = stringResource(R.string.message_not_sent)
-    val scheduledMessage = stringResource(R.string.conversation_scheduled)
     val retryLabel = stringResource(R.string.action_retry)
     var showSchedulePicker by rememberSaveable { mutableStateOf(false) }
 
@@ -76,10 +75,11 @@ fun ComposeMessageScreen(
         )
 
     // Send feedback is IMMEDIATE and lives in the thread: the box clears on
-    // tap, and a successful dispatch navigates into the new conversation,
-    // where the Sending->Sent bubble reports the radio's progress. Only a
-    // dispatch failure keeps the user here, with the body restored and a
-    // Retry affordance.
+    // tap (or on a confirmed schedule), and a successful dispatch navigates
+    // into the new conversation, where the Sending->Sent bubble - or the
+    // "Scheduled for <time>" bubble - reports the outcome. Only a dispatch
+    // failure keeps the user here, with the body restored and a Retry
+    // affordance.
     LaunchedEffect(Unit) {
         viewModel.openThreadFlow.collect { threadId -> onOpenConversation(threadId) }
     }
@@ -100,14 +100,6 @@ fun ComposeMessageScreen(
     val scheduleTip = stringResource(R.string.conversation_schedule_tip)
     LaunchedEffect(Unit) {
         viewModel.scheduleTipFlow.collect { snackbarHostState.showSnackbar(scheduleTip) }
-    }
-
-    // A schedule created the thread with its scheduled bubble - done here.
-    LaunchedEffect(state.scheduled) {
-        if (state.scheduled) {
-            snackbarHostState.showSnackbar(scheduledMessage, duration = SnackbarDuration.Short)
-            onBack()
-        }
     }
 
     Scaffold(
