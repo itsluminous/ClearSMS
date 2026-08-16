@@ -3,6 +3,7 @@ package app.clearsms.domain.parser
 import app.clearsms.domain.model.ParsedReminder
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
@@ -35,7 +36,10 @@ import java.util.Locale
  * [ParsedReminder.label] describing what the bill is for, falling back to a
  * digit-masked excerpt of the message when nothing structured is found.
  */
-class ReminderParser {
+class ReminderParser(
+    /** Clock for yearless-date inference ("12Aug" in airline itineraries); injectable for tests. */
+    private val today: () -> LocalDate = LocalDate::now,
+) {
     private val typeClassifier = ReminderTypeClassifier()
 
     fun parse(
@@ -151,6 +155,31 @@ class ReminderParser {
         ISO_DATE_REGEX.find(text)?.let { match ->
             val (year, month, day) = match.destructured
             return buildDate(day.toInt(), month.toInt(), year.toInt())
+        }
+        // Yearless "12Aug" / "12 Aug" (airline itineraries state the journey
+        // day without a year). Tried LAST so any explicit year wins, and
+        // guarded against a trailing year ("12Aug26", "12Nov'26") which the
+        // dated branches own. The year is inferred as whichever of the
+        // surrounding years puts the date closest to today - correct for
+        // both an upcoming journey and a historical import.
+        DAY_MONTH_YEARLESS_REGEX.find(text)?.let { match ->
+            val day = match.groupValues[1].toInt()
+            val monthName =
+                match.groupValues[2].lowercase().replaceFirstChar { it.uppercase() }
+            val now = today()
+            val base =
+                try {
+                    LocalDate.parse(
+                        "$day-$monthName-${now.year}",
+                        DateTimeFormatter.ofPattern("d-MMM-yyyy", Locale.ENGLISH),
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            if (base != null) {
+                return listOf(base.minusYears(1), base, base.plusYears(1))
+                    .minByOrNull { kotlin.math.abs(ChronoUnit.DAYS.between(now, it)) }
+            }
         }
         return null
     }
@@ -357,6 +386,15 @@ class ReminderParser {
 
         /** ISO yyyy-MM-dd, produced by rule extracts and LocalDate.toString(). */
         val ISO_DATE_REGEX = Regex("(?<!\\d)(\\d{4})-(\\d{2})-(\\d{2})(?!\\d)")
+
+        /**
+         * Yearless "12Aug" / "12 Aug" - a day plus a bare month abbreviation.
+         * The trailing lookaheads reject a fourth month letter ("12Augu"),
+         * an attached year ("12Aug26") and an apostrophe year ("12Nov'26"):
+         * dated forms belong to the explicit-year branches above.
+         */
+        val DAY_MONTH_YEARLESS_REGEX =
+            Regex("(?i)(?<!\\d)(\\d{1,2})\\s?([A-Za-z]{3})(?![A-Za-z])(?!\\s?'?\\d)")
 
         /**
          * Amount-due phrasings seen in real bank/biller SMS, most explicit
