@@ -42,6 +42,9 @@ enum class GuardId(
     /** UPI collect / payment requests - money asked for, never moved. */
     COLLECT_REQUEST("collect_request"),
 
+    /** Retirement units-credited echoes of an already-recorded contribution. */
+    RETIREMENT_UNITS_ECHO("retirement_units_echo"),
+
     /** Per-unit "every Rs X spent" pitch amounts - never a transaction. */
     HYPOTHETICAL_AMOUNT("hypothetical_amount"),
 

@@ -59,6 +59,16 @@ object SenderNameResolver {
          * the wallet counterpart of [isCardProduct].
          */
         val isWalletProduct: Boolean = false,
+        /**
+         * Whether the issuer is a RETIREMENT scheme (brands.json
+         * `category == "INVESTMENT"` with `is_issuer`): NPS as reported by
+         * either CRA (Protean, KFintech). Some of its money messages carry
+         * no PRAN digits ("credited to your NPS Tier-I a/c") - a tail-less
+         * valuation may UPDATE the scheme's sole existing account, but
+         * unlike cards/wallets it never CREATES one: the PRAN-tailed
+         * shapes own the account's identity.
+         */
+        val isRetirementProduct: Boolean = false,
     )
 
     /**
@@ -106,6 +116,7 @@ object SenderNameResolver {
                         isIssuer = isIssuer,
                         isCardProduct = brand.category == "CARD",
                         isWalletProduct = brand.category == "WALLET",
+                        isRetirementProduct = brand.category == "INVESTMENT",
                     )
                 }
         } catch (e: Exception) {
@@ -219,6 +230,19 @@ object SenderNameResolver {
         if (trimmed.isEmpty()) return false
         val inst = matchAlias(trimmed.uppercase()) ?: return false
         return inst.isIssuer && inst.isWalletProduct
+    }
+
+    /**
+     * Whether [name] resolves to a curated RETIREMENT scheme issuer (NPS
+     * via either CRA). A tail-less retirement valuation may UPDATE the
+     * scheme's sole existing account - never create one; the PRAN-tailed
+     * shapes own the account's identity.
+     */
+    fun isRetirementIssuer(name: String?): Boolean {
+        val trimmed = name?.trim().orEmpty()
+        if (trimmed.isEmpty()) return false
+        val inst = matchAlias(trimmed.uppercase()) ?: return false
+        return inst.isIssuer && inst.isRetirementProduct
     }
 
     /**

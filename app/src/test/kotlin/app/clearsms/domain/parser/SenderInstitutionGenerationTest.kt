@@ -23,7 +23,7 @@ class SenderInstitutionGenerationTest {
     @Test
     fun `generation yields the same institutions the deleted constant table had`() {
         val institutions = SenderNameResolver.parseInstitutions(repoFile("rules/brands/brands.json").readText())
-        assertThat(institutions).hasSize(29)
+        assertThat(institutions).hasSize(30)
 
         val byName = institutions.associateBy { it.name }
         // Spot-check the entries the old constants pinned, including every
@@ -49,13 +49,20 @@ class SenderInstitutionGenerationTest {
             .containsExactly("PYTMPB", "PAYTMB", "IPAYTM", "PAYTM")
         assertThat(byName.getValue("Citi").senderKeys).containsExactly("CITIBK", "CITIBA", "CITI")
         assertThat(byName.getValue("Pluxee").aliases).containsExactly("PLUXEE", "SODEXO")
-        assertThat(byName.getValue("Protean NPS").aliases).containsExactly("PROTEAN NPS", "PROTEAN")
+        // The two NPS CRAs (Protean, KFintech) generate under the ONE unified
+        // "NPS" issuer name - a subscriber has ONE PRAN, whichever CRA
+        // reports it - while keeping their own avatar brands.
+        val npsInstitutions = institutions.filter { it.name == "NPS" }
+        assertThat(npsInstitutions).hasSize(2)
+        assertThat(npsInstitutions.flatMap { it.senderKeys })
+            .containsAtLeast("PTNNPS", "KFNCRA")
+        assertThat(npsInstitutions.all { it.isRetirementProduct }).isTrue()
 
         // Issuer-ness must survive generation exactly.
         val issuers = institutions.filter { it.isIssuer }.map { it.name }
         val nonIssuers = institutions.filterNot { it.isIssuer }.map { it.name }
         assertThat(nonIssuers).containsExactly("CRED", "Flipkart", "Airtel", "Jio", "Vi", "BSNL", "Sony LIV")
-        assertThat(issuers).hasSize(22)
+        assertThat(issuers).hasSize(23)
     }
 
     @Test

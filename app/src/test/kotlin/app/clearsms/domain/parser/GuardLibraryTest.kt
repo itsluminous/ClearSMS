@@ -292,6 +292,8 @@ class GuardLibraryTest {
             GuardId.VOUCHER -> listOf("your voucher expires soon")
             GuardId.MANDATE_NOTICE -> listOf("Mandate successfully created")
             GuardId.COLLECT_REQUEST -> listOf("You've received a payment request from EXAMPLE for Rs.100")
+            GuardId.RETIREMENT_UNITS_ECHO ->
+                listOf("Your contribution of Rs.50,000.00 has been credited to your NPS Tier-I a/c")
             GuardId.HYPOTHETICAL_AMOUNT -> listOf("earn 3 pts on every Rs 100 spent")
             GuardId.LIMIT_OFFER -> listOf("you are eligible for an increase")
             GuardId.TIER_PREMIUM -> listOf("LIV Premium subscription active")

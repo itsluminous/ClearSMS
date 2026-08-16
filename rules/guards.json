@@ -131,6 +131,13 @@
       "patterns": [
         "(?i)^(?:know|check|view|track|see|get|download|install|update|complete|continue|avoid|claim|apply|visit|click|login)\\b"
       ]
+    },
+    {
+      "id": "retirement_units_echo",
+      "description": "Retirement-scheme units-credited confirmations ('Your contribution of Rs.X has been credited to your NPS Tier-I a/c ... valuation ... is Rs.Y'). The SAME contribution was already announced (and recorded as the credit) by the PRAN-tailed fund-confirmation SMS - a second credit here double-counts the money. The message never yields a transaction; its valuation refreshes the scheme account's balance instead.",
+      "patterns": [
+        "(?i)\\bcontribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+NPS\\b"
+      ]
     }
   ]
 }

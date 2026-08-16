@@ -220,6 +220,17 @@ class TransactionParser {
     fun isPaymentRequestNotice(body: String): Boolean = isCollectRequest(body) || GuardLibrary.matches(GuardId.MANDATE_NOTICE, body)
 
     /**
+     * True for a retirement units-credited confirmation ("Your contribution
+     * of Rs.X has been credited to your NPS Tier-I a/c ... valuation ... is
+     * Rs.Y"). The SAME contribution was already announced - and recorded as
+     * the credit - by the PRAN-tailed fund-confirmation SMS, so a second
+     * credit here would double-count the money. The message must never
+     * yield a transaction; its valuation refreshes the scheme account's
+     * balance instead (see the ingestion pipeline's balance path).
+     */
+    fun isRetirementUnitsEcho(body: String): Boolean = GuardLibrary.matches(GuardId.RETIREMENT_UNITS_ECHO, body)
+
+    /**
      * The amount a collect/payment request is asking for ("for up to
      * Rs.14807"), or null when the body is not a collect request or quotes
      * no amount. Informational only: it renders unsigned (blue), never as a

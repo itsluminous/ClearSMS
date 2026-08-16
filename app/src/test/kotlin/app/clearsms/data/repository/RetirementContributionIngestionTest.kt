@@ -31,7 +31,7 @@ import org.robolectric.RobolectricTestRunner
  * EPF passbook-contribution SMS are money RECEIVED into the user's
  * retirement account - employer contributions never touch a tracked bank
  * account, so typing them "debit" fabricated spends. They must land as
- * CREDIT transactions on retirement-issuer accounts (Protean NPS / EPFO)
+ * CREDIT transactions on retirement-issuer accounts (the unified "NPS" institution / EPFO)
  * that never collide with a bank account sharing the same last-4.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -88,10 +88,10 @@ class RetirementContributionIngestionTest {
             assertThat(tx.type).isEqualTo(TransactionType.CREDIT)
             assertThat(tx.amount).isEqualTo(37412.0)
             assertThat(tx.accountNumber).isEqualTo("5591")
-            assertThat(tx.bankName).isEqualTo("Protean NPS")
+            assertThat(tx.bankName).isEqualTo("NPS")
             assertThat(tx.category).isEqualTo(MerchantCategory.INVESTMENT)
             val account = db.accountDao().getAll().single()
-            assertThat(account.bankName).isEqualTo("Protean NPS")
+            assertThat(account.bankName).isEqualTo("NPS")
         }
 
     @Test
@@ -132,9 +132,9 @@ class RetirementContributionIngestionTest {
                 2_000L,
             )
             val accounts = db.accountDao().getAll()
-            assertThat(accounts.map { it.bankName }).containsExactly("HDFC Bank", "Protean NPS")
-            val nps = db.transactionDao().getAll().single { it.bankName == "Protean NPS" }
-            val npsAccount = accounts.single { it.bankName == "Protean NPS" }
+            assertThat(accounts.map { it.bankName }).containsExactly("HDFC Bank", "NPS")
+            val nps = db.transactionDao().getAll().single { it.bankName == "NPS" }
+            val npsAccount = accounts.single { it.bankName == "NPS" }
             assertThat(nps.accountId).isEqualTo(npsAccount.id)
         }
 

@@ -17,7 +17,7 @@
           "type": "credit",
           "merchant": "NPS",
           "account_last4": "$1",
-          "bank": "Protean NPS"
+          "bank": "NPS"
         }
       },
       "contributed_by": "clearsms",
@@ -37,7 +37,7 @@
         "extract": {
           "balance": "$2",
           "account_last4": "$1",
-          "bank": "Protean NPS"
+          "bank": "NPS"
         }
       },
       "contributed_by": "clearsms",
@@ -58,7 +58,7 @@
           "amount": "$1",
           "type": "credit",
           "merchant": "NPS",
-          "bank": "Protean NPS"
+          "bank": "NPS"
         }
       },
       "contributed_by": "clearsms",

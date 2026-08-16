@@ -47,6 +47,16 @@ class BrandResolutionTest {
     }
 
     @Test
+    fun `the two NPS CRAs keep their own avatar brands`() {
+        // The resolver unifies both CRAs on the ONE "NPS" institution, but
+        // each keeps its own avatar identity: a KFNCRA message shows the
+        // KFintech NPS tile, a PTNNPS one the Protean NPS tile.
+        assertThat(index.resolve("VM-KFNCRA-S")?.key).isEqualTo("kfintech")
+        assertThat(index.resolve("VM-KFNCRA-S")?.name).isEqualTo("KFintech NPS")
+        assertThat(index.resolve("VA-PTNNPS-S")?.key).isEqualTo("protean")
+    }
+
+    @Test
     fun `normalizeSenderId strips TRAI prefix and suffix`() {
         assertThat(normalizeSenderId("VM-HDFCBK")).isEqualTo("HDFCBK")
         assertThat(normalizeSenderId("JD-SBIINB-S")).isEqualTo("SBIINB")

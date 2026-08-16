@@ -81,10 +81,11 @@ class DerivedTransactionSubcategoriesTest {
             assertThat(tx.merchantName).isEqualTo("NPS")
             assertThat(tx.category).isEqualTo(MerchantCategory.INVESTMENT)
             // The user asked for NPS to be treated as an account: the PRAN
-            // tail identifies it and Protean (the NPS CRA) is its issuer.
+            // tail identifies it, and whichever CRA reports it (Protean,
+            // KFintech) the issuer is the ONE unified "NPS" institution.
             val account = db.accountDao().getAll().single()
             assertThat(account.accountNumber).isEqualTo("8227")
-            assertThat(account.bankName).isEqualTo("Protean NPS")
+            assertThat(account.bankName).isEqualTo("NPS")
         }
 
     @Test

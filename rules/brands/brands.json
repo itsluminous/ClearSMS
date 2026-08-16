@@ -1125,9 +1125,32 @@
         "NPS"
       ],
       "is_issuer": true,
+      "issuer_name": "NPS",
       "issuer_aliases": [
         "PROTEAN NPS",
-        "PROTEAN"
+        "PROTEAN",
+        "NPS"
+      ]
+    },
+    {
+      "key": "kfintech",
+      "name": "KFintech NPS",
+      "category": "INVESTMENT",
+      "color": "#D22630",
+      "monogram": "KF",
+      "senders": [
+        "KFNCRA"
+      ],
+      "aliases": [
+        "KFINTECH NPS",
+        "KFINTECH",
+        "KFIN NPS"
+      ],
+      "is_issuer": true,
+      "issuer_name": "NPS",
+      "issuer_aliases": [
+        "KFINTECH NPS",
+        "KFINTECH"
       ]
     },
     {

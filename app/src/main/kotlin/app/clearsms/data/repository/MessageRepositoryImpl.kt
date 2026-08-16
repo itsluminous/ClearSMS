@@ -973,6 +973,11 @@ class MessageRepositoryImpl(
                 // requested figure is carried under its own unsigned key
                 // below.
                 transactionParser.isPaymentRequestNotice(evalBody) -> null
+                // Retirement units-credited echoes re-announce a
+                // contribution whose fund-confirmation SMS already recorded
+                // the credit: never a second transaction; the valuation
+                // they quote refreshes the account balance below instead.
+                transactionParser.isRetirementUnitsEcho(evalBody) -> null
                 parsedTx != null -> mergeTransaction(parsedTx, result.typed, result.subCategory)
                 result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
                     transactionFromExtracts(extracts, result.typed, result.subCategory, sender, evalBody)
@@ -1177,12 +1182,19 @@ class MessageRepositoryImpl(
         // Balance-only messages update the account WITHOUT fabricating a
         // transaction row. Gated hard: the message must name the account
         // (last-4) and a plausible issuer - a merchant or shortcode balance
-        // mention can never create or touch an account.
+        // mention can never create or touch an account. One curated
+        // exception: a RETIREMENT scheme valuation ("valuation of your
+        // Tier-I a/c is Rs.X" - KFintech omits the PRAN there) may UPDATE
+        // the scheme's sole existing account, but never create one - the
+        // PRAN-tailed shapes own the account's identity.
         if (enriched.transaction == null) {
             enriched.balanceStatement?.let { statement ->
-                val accountNumber = statement.accountLast4 ?: return@let
                 val canonicalBank = SenderNameResolver.canonicalize(statement.bankName).orEmpty()
                 if (!SenderNameResolver.isPlausibleIssuer(canonicalBank)) return@let
+                val accountNumber =
+                    statement.accountLast4
+                        ?: soleRetirementAccountNumber(canonicalBank)
+                        ?: return@let
                 upsertAccountBalance(
                     accountNumber = accountNumber,
                     bankName = canonicalBank,
@@ -1402,6 +1414,18 @@ class MessageRepositoryImpl(
         val named = accountDao.findByNumber(accountNumber).filter { it.bankName.isNotBlank() }
         if (named.isEmpty() || named.map { it.bankName }.distinct().size > 1) return null
         return (named.firstOrNull { it.type == accountType } ?: named.first()).id
+    }
+
+    /**
+     * The account a TAIL-LESS retirement valuation may refresh: the scheme
+     * ([SenderNameResolver.isRetirementIssuer]) must already hold exactly
+     * ONE account - created earlier by a PRAN-tailed shape. Null (no
+     * update, and never a creation) when the issuer is not a retirement
+     * scheme, has no account yet, or ambiguously has several.
+     */
+    private suspend fun soleRetirementAccountNumber(bankName: String): String? {
+        if (!SenderNameResolver.isRetirementIssuer(bankName)) return null
+        return accountDao.findByBank(bankName).singleOrNull()?.accountNumber
     }
 
     /**
