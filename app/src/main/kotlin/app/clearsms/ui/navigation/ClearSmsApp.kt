@@ -235,7 +235,17 @@ private fun MainScaffold(
                         navArgument("imageUri") { defaultValue = "" },
                     ),
             ) {
-                ComposeMessageScreen(onBack = { navController.popBackStack() })
+                ComposeMessageScreen(
+                    onBack = { navController.popBackStack() },
+                    // A dispatched send created the thread: REPLACE this
+                    // screen with the conversation (back goes to the inbox,
+                    // never to a stale compose form).
+                    onOpenConversation = { threadId ->
+                        navController.navigate(Routes.conversation(threadId)) {
+                            popUpTo(Routes.COMPOSE) { inclusive = true }
+                        }
+                    },
+                )
             }
             composable(
                 route = Routes.ACCOUNT_DETAIL,

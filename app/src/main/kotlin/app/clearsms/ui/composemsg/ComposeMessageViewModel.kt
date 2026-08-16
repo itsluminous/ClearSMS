@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.clearsms.data.db.MessageDao
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.mms.MmsSender
@@ -19,7 +20,6 @@ import app.clearsms.ui.common.ComposerAttachments
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.components.SimUiState
 import app.clearsms.ui.conversation.SendStatus
-import app.clearsms.ui.conversation.SentMessageWatcher
 import app.clearsms.work.MessageScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -61,7 +61,7 @@ class ComposeMessageViewModel
         private val smsSender: SmsSender,
         private val mmsSender: MmsSender,
         attachmentStager: OutgoingAttachmentStager,
-        private val sentMessageWatcher: SentMessageWatcher,
+        private val messageDao: MessageDao,
         private val settings: SettingsRepository,
         private val contactSuggestions: ContactSuggestions,
         private val subscriptionSource: SubscriptionSource,
@@ -119,6 +119,13 @@ class ComposeMessageViewModel
         /** Fires once per install: the first send earns the long-press-to-schedule tip. */
         private val scheduleTipEvents = Channel<Unit>(Channel.BUFFERED)
         val scheduleTipFlow: Flow<Unit> = scheduleTipEvents.receiveAsFlow()
+
+        /**
+         * A successful dispatch created (or found) the thread: the screen
+         * navigates into it, where the Sending bubble is the send feedback.
+         */
+        private val openThreadEvents = Channel<Long>(Channel.BUFFERED)
+        val openThreadFlow: Flow<Long> = openThreadEvents.receiveAsFlow()
 
         /**
          * The in-flight per-recipient SIM lookup. Tracked so a manual
@@ -221,12 +228,19 @@ class ComposeMessageViewModel
         }
 
         /**
-         * Dispatches the message and resolves [ComposeUiState.sendStatus]
-         * from the persisted message status: [SmsSender] writes the outgoing
-         * row at Sending, and [SentMessageWatcher] resolves it to Sent or
-         * Failed from the recorded radio reports. Retrying is calling [send]
-         * again. The chosen SIM rides along exactly like a conversation
-         * reply.
+         * Dispatches the message. The compose box is consumed OPTIMISTICALLY -
+         * body and attachment chips clear the moment Send is tapped, exactly
+         * like the conversation compose bar - and, once the outgoing row is
+         * persisted (Sending), the screen navigates INTO the new thread via
+         * [openThreadFlow]: the Sending->Sent bubble there is the send
+         * feedback, so no delayed snackbar is ever the only response to the
+         * tap. Double-taps are idempotent twice over: the synchronous
+         * SENDING guard and the already-consumed (blank) body both drop the
+         * second tap. Only a dispatch failure (nothing persisted, or an MMS
+         * row left behind to resend) keeps the user here: the body is
+         * RESTORED and [ComposeUiState.sendStatus] reports FAILED so Retry
+         * has something to retry. The chosen SIM rides along exactly like a
+         * conversation reply.
          */
         fun send() {
             val current = state.value
@@ -235,34 +249,45 @@ class ComposeMessageViewModel
             val hasMms = staged.isNotEmpty() || retryMmsId != null
             if (current.recipient.isBlank() || (current.body.isBlank() && !hasMms)) return
             if (current.sendStatus == SendStatus.SENDING) return
-            state.value = current.copy(sendStatus = SendStatus.SENDING)
+            // Optimistic consume: the field and the chips empty NOW, before
+            // dispatch - the immediate "did my tap register?" feedback.
+            state.value = current.copy(body = "", sendStatus = SendStatus.SENDING)
+            val attachments = if (staged.isNotEmpty()) composerAttachments.consume() else emptyList()
             viewModelScope.launch(ioDispatcher) {
                 if (scheduleTipGate.shouldShowTip()) scheduleTipEvents.send(Unit)
-                val status =
+                val messageId =
                     try {
-                        val messageId =
-                            when {
-                                staged.isNotEmpty() -> {
-                                    val attachments = composerAttachments.consume()
-                                    mmsSender
-                                        .send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)
-                                        .also { failedMmsMessageId = it }
-                                }
-                                retryMmsId != null -> {
-                                    // Attachments already live on the failed
-                                    // row; Retry re-dispatches THAT row.
-                                    mmsSender.resend(retryMmsId)
-                                    retryMmsId
-                                }
-                                else -> smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
+                        when {
+                            attachments.isNotEmpty() ->
+                                mmsSender
+                                    .send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)
+                                    .also { failedMmsMessageId = it }
+                            retryMmsId != null -> {
+                                // Attachments already live on the failed
+                                // row; Retry re-dispatches THAT row.
+                                mmsSender.resend(retryMmsId)
+                                retryMmsId
                             }
-                        val resolved = sentMessageWatcher.await(messageId)
-                        if (resolved == SendStatus.SENT) failedMmsMessageId = null
-                        resolved
+                            else -> smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
+                        }
                     } catch (_: Exception) {
-                        SendStatus.FAILED
+                        // Nothing (new) was persisted: give the text back so
+                        // Retry is a real retry, not a blank no-op.
+                        state.value = state.value.copy(body = current.body, sendStatus = SendStatus.FAILED)
+                        return@launch
                     }
-                state.value = state.value.copy(sendStatus = status)
+                failedMmsMessageId = null
+                // The thread exists with its Sending bubble - go there. The
+                // radio's Sent/Failed report resolves on that bubble (and on
+                // the row's Retry affordance), not on this screen.
+                val threadId = messageDao.getById(messageId)?.threadId
+                if (threadId != null) {
+                    openThreadEvents.send(threadId)
+                } else {
+                    // Row vanished between persist and lookup (never in
+                    // practice): fall back to the failure affordance.
+                    state.value = state.value.copy(body = current.body, sendStatus = SendStatus.FAILED)
+                }
             }
         }
 

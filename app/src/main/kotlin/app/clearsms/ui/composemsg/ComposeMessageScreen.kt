@@ -50,13 +50,13 @@ import app.clearsms.ui.conversation.SendStatus
 @Composable
 fun ComposeMessageScreen(
     onBack: () -> Unit,
+    onOpenConversation: (Long) -> Unit,
     viewModel: ComposeMessageViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val simState by viewModel.simState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val sentMessage = stringResource(R.string.message_sent)
     val notSentMessage = stringResource(R.string.message_not_sent)
     val scheduledMessage = stringResource(R.string.conversation_scheduled)
     val retryLabel = stringResource(R.string.action_retry)
@@ -75,25 +75,23 @@ fun ComposeMessageScreen(
             onCameraDone = viewModel::onCameraResult,
         )
 
-    // The send resolves asynchronously from the persisted message status:
-    // confirm honestly ("Message sent" only without a recorded failure),
-    // offer Retry on failure, and only leave the screen after a success.
+    // Send feedback is IMMEDIATE and lives in the thread: the box clears on
+    // tap, and a successful dispatch navigates into the new conversation,
+    // where the Sending->Sent bubble reports the radio's progress. Only a
+    // dispatch failure keeps the user here, with the body restored and a
+    // Retry affordance.
+    LaunchedEffect(Unit) {
+        viewModel.openThreadFlow.collect { threadId -> onOpenConversation(threadId) }
+    }
     LaunchedEffect(state.sendStatus) {
-        when (state.sendStatus) {
-            SendStatus.SENT -> {
-                snackbarHostState.showSnackbar(sentMessage, duration = SnackbarDuration.Short)
-                onBack()
-            }
-            SendStatus.FAILED -> {
-                val result =
-                    snackbarHostState.showSnackbar(
-                        message = notSentMessage,
-                        actionLabel = retryLabel,
-                        duration = SnackbarDuration.Long,
-                    )
-                if (result == SnackbarResult.ActionPerformed) viewModel.send()
-            }
-            else -> Unit
+        if (state.sendStatus == SendStatus.FAILED) {
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = notSentMessage,
+                    actionLabel = retryLabel,
+                    duration = SnackbarDuration.Long,
+                )
+            if (result == SnackbarResult.ActionPerformed) viewModel.send()
         }
     }
 

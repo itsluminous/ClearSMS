@@ -22,13 +22,13 @@ import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
-import app.clearsms.ui.conversation.SentMessageWatcher
 import app.clearsms.work.MessageScheduler
 import app.clearsms.work.ScheduledSendAlarms
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -109,14 +109,17 @@ class ComposeMessageViewModelTest {
         }
     }
 
-    private fun viewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()): ComposeMessageViewModel {
+    private fun viewModel(
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
+        smsDao: MessageDao = dao,
+    ): ComposeMessageViewModel {
         val uiPrefs =
             UiPrefs(
                 PreferenceDataStoreFactory.create {
                     File.createTempFile("ui_settings", ".preferences_pb")
                 },
             )
-        val smsSender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.Unconfined, FakeSmsGateway())
+        val smsSender = SmsSender(context, smsDao, TelephonyWriter(context), uiPrefs, Dispatchers.Unconfined, FakeSmsGateway())
         val mmsSender =
             MmsSender(
                 context,
@@ -132,7 +135,7 @@ class ComposeMessageViewModelTest {
             smsSender = smsSender,
             mmsSender = mmsSender,
             attachmentStager = OutgoingAttachmentStager(context),
-            sentMessageWatcher = SentMessageWatcher(dao, Dispatchers.Unconfined),
+            messageDao = dao,
             settings = FakeSettingsRepository(),
             contactSuggestions = ContactSuggestions(context),
             subscriptionSource = subscriptions,
@@ -252,7 +255,7 @@ class ComposeMessageViewModelTest {
         }
 
     @Test
-    fun `send with a staged attachment goes out as MMS on one row`() =
+    fun `send with a staged attachment goes out as MMS on one row - chips clear and it navigates`() =
         runBlocking<Unit> {
             val image = File(context.cacheDir, "shared2.bin")
             image.writeBytes(ByteArray(64) { 2 })
@@ -272,16 +275,68 @@ class ComposeMessageViewModelTest {
             vm.onBodyChange("here")
 
             vm.send()
-            awaitUntil {
-                vm.uiState.value.sendStatus != null &&
-                    vm.uiState.value.sendStatus != app.clearsms.ui.conversation.SendStatus.SENDING
-            }
+            val threadId = withTimeout(5_000) { vm.openThreadFlow.first() }
 
             val row = dao.getById(1L)
             assertThat(row).isNotNull()
-            assertThat(row!!.attachmentKinds).isNotNull()
+            assertThat(row!!.threadId).isEqualTo(threadId)
+            assertThat(row.attachmentKinds).isNotNull()
             assertThat(db.attachmentDao().forMessage(1L)).hasSize(1)
-            // Chips were consumed by the send.
+            // Chips AND text were consumed optimistically by the send.
             assertThat(vm.attachments.value).isEmpty()
+            assertThat(vm.uiState.value.body).isEmpty()
+        }
+
+    // --- optimistic clear + navigate-into-thread on send --------------------
+
+    @Test
+    fun `send clears the compose box immediately and navigates into the created thread`() =
+        runBlocking<Unit> {
+            val vm = viewModel()
+            vm.onRecipientChange("+15550001111")
+            vm.onBodyChange("hello there")
+
+            vm.send()
+
+            // Optimistic consume: the field is empty the moment Send is
+            // tapped, not when the radio reports back.
+            assertThat(vm.uiState.value.body).isEmpty()
+            val threadId = withTimeout(5_000) { vm.openThreadFlow.first() }
+            assertThat(threadId).isEqualTo(dao.threadIdFor("5550001111"))
+        }
+
+    @Test
+    fun `double-tapping send dispatches exactly ONE message`() =
+        runBlocking<Unit> {
+            val vm = viewModel()
+            vm.onRecipientChange("+15550002222")
+            vm.onBodyChange("only once")
+
+            vm.send()
+            vm.send()
+
+            withTimeout(5_000) { vm.openThreadFlow.first() }
+            val rows = dao.observeThread(requireNotNull(dao.threadIdFor("5550002222"))).first()
+            assertThat(rows).hasSize(1)
+        }
+
+    @Test
+    fun `dispatch failure restores the body and reports FAILED so Retry has text to retry`() =
+        runBlocking<Unit> {
+            // Persisting the outgoing row is the first step of a dispatch:
+            // a throwing insert is the nothing-was-persisted failure shape.
+            val failingDao =
+                object : MessageDao by dao {
+                    override suspend fun insert(message: app.clearsms.data.db.MessageEntity): Long =
+                        throw IllegalStateException("disk full")
+                }
+            val vm = viewModel(smsDao = failingDao)
+            vm.onRecipientChange("+15550003333")
+            vm.onBodyChange("please arrive")
+
+            vm.send()
+
+            awaitUntil { vm.uiState.value.sendStatus == app.clearsms.ui.conversation.SendStatus.FAILED }
+            assertThat(vm.uiState.value.body).isEqualTo("please arrive")
         }
 }
