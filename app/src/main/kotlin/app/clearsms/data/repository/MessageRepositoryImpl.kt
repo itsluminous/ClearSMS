@@ -43,6 +43,10 @@ import app.clearsms.domain.parser.ReminderTypeClassifier
 import app.clearsms.domain.parser.SenderNameResolver
 import app.clearsms.domain.parser.TotalLimitStatement
 import app.clearsms.domain.parser.TransactionParser
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.builtins.ListSerializer
@@ -722,18 +726,34 @@ class MessageRepositoryImpl(
         val snapshot = rulesSnapshot()
         val total = messageDao.count()
         onProgress(0, total)
+        // Classification (regex over the full rule set) dominates the cost
+        // and is pure CPU - run it OUTSIDE the write transaction with the
+        // same bounded parallelism the initial import uses. Serial in-
+        // transaction classification is why the settings re-sort used to be
+        // many times slower than the fresh-install import over the same
+        // corpus (~900us/msg serial on a desktop JVM; worse on phone cores).
+        val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+        val classifyDispatcher = Dispatchers.Default.limitedParallelism(parallelism)
         var processed = 0
         var afterId = 0L
         while (true) {
             val page = messageDao.pageAfter(afterId, recategorizePageSize)
             if (page.isEmpty()) break
+            val classified =
+                coroutineScope {
+                    page
+                        .map { message ->
+                            async(classifyDispatcher) {
+                                message to classify(snapshot, message.sender, message.body)
+                            }
+                        }.awaitAll()
+                }
             // One transaction per page (mirrors persistImportedPage): a page
             // either fully commits or fully rolls back, so cancelling a
             // running re-sort never leaves a message updated without its
-            // derived rows refreshed.
+            // derived rows refreshed. The transaction now only writes.
             database.withTransaction {
-                for (message in page) {
-                    val enriched = classify(snapshot, message.sender, message.body)
+                for ((message, enriched) in classified) {
                     messageDao.update(
                         message.copy(
                             category = enriched.result.category,
