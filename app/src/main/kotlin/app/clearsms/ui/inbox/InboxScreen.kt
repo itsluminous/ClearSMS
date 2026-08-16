@@ -44,7 +44,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -94,6 +93,7 @@ import app.clearsms.ui.components.OtpBanner
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeableMessageItem
+import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.navigation.orderedPills
@@ -386,27 +386,34 @@ private fun InboxSelectionBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.action_exit_selection))
-            }
+            TooltipIconButton(
+                label = stringResource(R.string.action_exit_selection),
+                onClick = onClose,
+                icon = Icons.Outlined.Close,
+            )
         },
         actions = {
             // Inline trio, most-used first (SelectionBarLayout.inlineActions).
-            IconButton(onClick = onToggleRead) {
-                Icon(
-                    Icons.Outlined.MarkEmailRead,
-                    contentDescription = stringResource(R.string.action_mark_read_unread),
-                )
-            }
-            IconButton(onClick = onArchive) {
-                Icon(Icons.Outlined.Archive, contentDescription = stringResource(R.string.action_archive))
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
-            }
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
-            }
+            TooltipIconButton(
+                label = stringResource(R.string.action_mark_read_unread),
+                onClick = onToggleRead,
+                icon = Icons.Outlined.MarkEmailRead,
+            )
+            TooltipIconButton(
+                label = stringResource(R.string.action_archive),
+                onClick = onArchive,
+                icon = Icons.Outlined.Archive,
+            )
+            TooltipIconButton(
+                label = stringResource(R.string.ui_action_delete),
+                onClick = onDelete,
+                icon = Icons.Outlined.Delete,
+            )
+            TooltipIconButton(
+                label = stringResource(R.string.action_more_options),
+                onClick = { menuOpen = true },
+                icon = Icons.Outlined.MoreVert,
+            )
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 // Pin flips to Unpin only when EVERY selected thread is
                 // already pinned; a mixed selection pins the rest.
@@ -492,13 +499,12 @@ private fun DefaultSmsBanner(
                     Text(stringResource(R.string.onboarding_set_default))
                 }
             }
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.Outlined.Close,
-                    contentDescription = stringResource(R.string.inbox_default_sms_dismiss),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
+            TooltipIconButton(
+                label = stringResource(R.string.inbox_default_sms_dismiss),
+                onClick = onDismiss,
+                icon = Icons.Outlined.Close,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+            )
         }
     }
 }

@@ -42,6 +42,7 @@ import app.clearsms.ui.components.AttachmentPickerSheet
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.conversation.SendStatus
 
@@ -107,12 +108,11 @@ fun ComposeMessageScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.compose_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
+                    TooltipIconButton(
+                        label = stringResource(R.string.action_back),
+                        onClick = onBack,
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    )
                 },
             )
         },

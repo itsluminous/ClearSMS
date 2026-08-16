@@ -28,7 +28,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -80,6 +79,7 @@ import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.components.DeleteConfirmationDialog
+import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.otpPreviewFontSp
 import app.clearsms.ui.finance.displayName
@@ -313,7 +313,13 @@ fun SettingsScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(
+                    TooltipIconButton(
+                        label =
+                            if (searchActive) {
+                                stringResource(R.string.settings_search_close)
+                            } else {
+                                stringResource(R.string.action_back)
+                            },
                         onClick = {
                             if (searchActive) {
                                 searchActive = false
@@ -322,35 +328,24 @@ fun SettingsScreen(
                                 onBack()
                             }
                         },
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription =
-                                if (searchActive) {
-                                    stringResource(R.string.settings_search_close)
-                                } else {
-                                    stringResource(R.string.action_back)
-                                },
-                        )
-                    }
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    )
                 },
                 actions = {
                     if (searchActive) {
                         if (query.isNotEmpty()) {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(
-                                    Icons.Outlined.Close,
-                                    contentDescription = stringResource(R.string.settings_search_clear),
-                                )
-                            }
-                        }
-                    } else {
-                        IconButton(onClick = { searchActive = true }) {
-                            Icon(
-                                Icons.Outlined.Search,
-                                contentDescription = stringResource(R.string.settings_search),
+                            TooltipIconButton(
+                                label = stringResource(R.string.settings_search_clear),
+                                onClick = { query = "" },
+                                icon = Icons.Outlined.Close,
                             )
                         }
+                    } else {
+                        TooltipIconButton(
+                            label = stringResource(R.string.settings_search),
+                            onClick = { searchActive = true },
+                            icon = Icons.Outlined.Search,
+                        )
                     }
                 },
             )

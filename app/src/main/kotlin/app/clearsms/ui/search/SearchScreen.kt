@@ -16,8 +16,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +50,7 @@ import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.displayName
 
 /** Full-text search with category and date filters and highlighted matches. */
@@ -81,23 +80,21 @@ fun SearchScreen(
                         singleLine = true,
                         trailingIcon = {
                             if (query.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.onQueryChange("") }) {
-                                    Icon(
-                                        Icons.Outlined.Close,
-                                        contentDescription = stringResource(R.string.search_clear),
-                                    )
-                                }
+                                TooltipIconButton(
+                                    label = stringResource(R.string.search_clear),
+                                    onClick = { viewModel.onQueryChange("") },
+                                    icon = Icons.Outlined.Close,
+                                )
                             }
                         },
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
+                    TooltipIconButton(
+                        label = stringResource(R.string.action_back),
+                        onClick = onBack,
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    )
                 },
             )
         },

@@ -22,7 +22,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SimCard
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -99,13 +98,12 @@ fun MessageComposerBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (onAttachClick != null) {
-                IconButton(onClick = onAttachClick) {
-                    Icon(
-                        Icons.Outlined.Add,
-                        contentDescription = stringResource(R.string.compose_attach),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                TooltipIconButton(
+                    label = stringResource(R.string.compose_attach),
+                    onClick = onAttachClick,
+                    icon = Icons.Outlined.Add,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             OutlinedTextField(
                 value = draft,

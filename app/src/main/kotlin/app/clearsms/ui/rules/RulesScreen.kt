@@ -56,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.TooltipIconButton
 
 /** Rule management: builtin/user groups, enable toggles, SAF import/export, share. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,32 +124,28 @@ fun RulesScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.rules_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
+                    TooltipIconButton(
+                        label = stringResource(R.string.action_back),
+                        onClick = onBack,
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    )
                 },
                 actions = {
-                    IconButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) }) {
-                        Icon(
-                            Icons.Outlined.FileDownload,
-                            contentDescription = stringResource(R.string.rules_import),
-                        )
-                    }
-                    IconButton(onClick = viewModel::export) {
-                        Icon(
-                            Icons.Outlined.FileUpload,
-                            contentDescription = stringResource(R.string.rules_export),
-                        )
-                    }
-                    IconButton(onClick = viewModel::shareWithDeveloper) {
-                        Icon(
-                            Icons.Outlined.Share,
-                            contentDescription = stringResource(R.string.rules_share),
-                        )
-                    }
+                    TooltipIconButton(
+                        label = stringResource(R.string.rules_import),
+                        onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
+                        icon = Icons.Outlined.FileDownload,
+                    )
+                    TooltipIconButton(
+                        label = stringResource(R.string.rules_export),
+                        onClick = viewModel::export,
+                        icon = Icons.Outlined.FileUpload,
+                    )
+                    TooltipIconButton(
+                        label = stringResource(R.string.rules_share),
+                        onClick = viewModel::shareWithDeveloper,
+                        icon = Icons.Outlined.Share,
+                    )
                 },
             )
         },
@@ -181,12 +178,11 @@ fun RulesScreen(
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = stringResource(R.string.rules_search_clear),
-                            )
-                        }
+                        TooltipIconButton(
+                            label = stringResource(R.string.rules_search_clear),
+                            onClick = { query = "" },
+                            icon = Icons.Outlined.Close,
+                        )
                     }
                 },
                 singleLine = true,

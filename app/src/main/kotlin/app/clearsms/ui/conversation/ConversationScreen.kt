@@ -40,7 +40,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -87,6 +86,7 @@ import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import kotlinx.coroutines.delay
@@ -291,12 +291,11 @@ fun ConversationScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
+                        TooltipIconButton(
+                            label = stringResource(R.string.action_back),
+                            onClick = onBack,
+                            icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        )
                     },
                 )
             }
@@ -587,37 +586,41 @@ private fun ConversationSelectionBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.action_exit_selection))
-            }
+            TooltipIconButton(
+                label = stringResource(R.string.action_exit_selection),
+                onClick = onClose,
+                icon = Icons.Outlined.Close,
+            )
         },
         actions = {
             ConversationSelectionBarLayout.inlineActions.forEach { action ->
                 when (action) {
                     MessageSelectionAction.COPY ->
-                        IconButton(onClick = onCopy) {
-                            Icon(
-                                Icons.Outlined.ContentCopy,
-                                contentDescription = stringResource(R.string.action_copy_message),
-                            )
-                        }
+                        TooltipIconButton(
+                            label = stringResource(R.string.action_copy_message),
+                            onClick = onCopy,
+                            icon = Icons.Outlined.ContentCopy,
+                        )
                     MessageSelectionAction.DELETE ->
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.ui_action_delete))
-                        }
+                        TooltipIconButton(
+                            label = stringResource(R.string.ui_action_delete),
+                            onClick = onDelete,
+                            icon = Icons.Outlined.Delete,
+                        )
                     MessageSelectionAction.FORWARD ->
-                        IconButton(onClick = onForward) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.Forward,
-                                contentDescription = stringResource(R.string.action_forward_message),
-                            )
-                        }
+                        TooltipIconButton(
+                            label = stringResource(R.string.action_forward_message),
+                            onClick = onForward,
+                            icon = Icons.AutoMirrored.Outlined.Forward,
+                        )
                     else -> Unit
                 }
             }
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
-            }
+            TooltipIconButton(
+                label = stringResource(R.string.action_more_options),
+                onClick = { menuOpen = true },
+                icon = Icons.Outlined.MoreVert,
+            )
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 val overflow =
                     ConversationSelectionBarLayout.overflowActions(
