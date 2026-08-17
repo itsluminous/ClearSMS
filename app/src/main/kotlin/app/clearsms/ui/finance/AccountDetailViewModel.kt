@@ -47,6 +47,14 @@ data class AccountDetailUiState(
     val groups: List<MonthGroup> = emptyList(),
     /** True while more transactions exist beyond the current page. */
     val hasMoreTransactions: Boolean = false,
+    /**
+     * UNFILTERED rows currently loaded (the page size the limit governs).
+     * The load-more spinner must stop against THIS, not the filtered
+     * on-screen count: under a Credit/Debit filter the visible count can
+     * never reach the unfiltered limit, which kept the spinner alive
+     * forever (the reported infinite Load more).
+     */
+    val loadedCount: Int = 0,
     /** True while the next requested page is still resolving. */
     val isLoadingMore: Boolean = false,
     /** Mirrors Settings → Appearance → Show logos and contact photos. */
@@ -91,8 +99,7 @@ class AccountDetailViewModel
                             buildState(allTransactions, page, currentFilter)
                         }
                     }.onEach { state ->
-                        val shown = state.groups.sumOf { it.transactions.size }
-                        if (shown >= txLimit.value || !state.hasMoreTransactions) loadingMore.value = false
+                        if (state.loadedCount >= txLimit.value || !state.hasMoreTransactions) loadingMore.value = false
                     },
                 loadingMore,
                 settingsRepository.showRichAvatars,
@@ -140,6 +147,7 @@ class AccountDetailViewModel
                         )
                     },
                 hasMoreTransactions = TransactionPaging.hasMore(shown = page.size, total = allTransactions.size),
+                loadedCount = page.size,
                 loaded = true,
             )
         }
