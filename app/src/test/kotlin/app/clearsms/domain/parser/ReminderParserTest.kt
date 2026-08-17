@@ -255,27 +255,51 @@ class ReminderParserTest {
     }
 
     @Test
-    fun `yearless day-month resolves to the year closest to today`() {
-        val clocked = ReminderParser { LocalDate.of(2026, 8, 16) }
-        // Compact and spaced forms, past and future within the same year.
-        assertThat(clocked.parseDate("12Aug")).isEqualTo(LocalDate.of(2026, 8, 12))
-        assertThat(clocked.parseDate("20 Aug")).isEqualTo(LocalDate.of(2026, 8, 20))
-        // A far-back month rolls FORWARD across new year (Jan is closer ahead).
-        assertThat(clocked.parseDate("5Jan")).isEqualTo(LocalDate.of(2027, 1, 5))
+    fun `yearless day-month resolves to the year on or closest after the anchor`() {
+        val anchor = LocalDate.of(2026, 8, 16)
+        // Future within the same year stays in that year.
+        assertThat(parser.parseDate("20 Aug", anchor)).isEqualTo(LocalDate.of(2026, 8, 20))
+        // Same-day is valid (a boarding-day itinerary refers to TODAY's flight).
+        assertThat(parser.parseDate("16Aug", anchor)).isEqualTo(LocalDate.of(2026, 8, 16))
+        // A day already past relative to the anchor rolls FORWARD - a notice
+        // refers to the near future relative to when it was sent, never back.
+        assertThat(parser.parseDate("12Aug", anchor)).isEqualTo(LocalDate.of(2027, 8, 12))
         // Near end of year, an early month resolves to the NEXT year.
-        val december = ReminderParser { LocalDate.of(2026, 12, 20) }
-        assertThat(december.parseDate("3Jan")).isEqualTo(LocalDate.of(2027, 1, 3))
+        assertThat(parser.parseDate("3Jan", LocalDate.of(2026, 12, 20))).isEqualTo(LocalDate.of(2027, 1, 3))
+    }
+
+    @Test
+    fun `yearless date anchors on the MESSAGE date - a 2024 itinerary never becomes a 2026 alert`() {
+        // Real defect: an IndiGo SMS RECEIVED 11-Dec-2024 saying "11Dec,
+        // PAT-BLR" produced a travel card dated 11-Dec-2026 because the
+        // inference anchored on the clock at re-sort time. Anchored on the
+        // message date it is 2024 - already expired, so it lands in Older.
+        val messageDate = LocalDate.of(2024, 12, 11)
+        assertThat(parser.parseDate("11Dec", messageDate)).isEqualTo(LocalDate.of(2024, 12, 11))
+        // Same-day is valid; the following day would rather roll forward.
+        assertThat(parser.parseDate("10Dec", messageDate)).isEqualTo(LocalDate.of(2025, 12, 10))
+    }
+
+    @Test
+    fun `two-digit-year windowing is fixed to 20xx and never clock-relative`() {
+        // Audited alongside the yearless fix: normalizeYear maps yy to
+        // 2000+yy unconditionally - explicit-year forms never consult the
+        // anchor, so re-sorting old messages cannot move dated bills.
+        val farAnchor = LocalDate.of(2099, 1, 1)
+        assertThat(parser.parseDate("05-08-26", farAnchor)).isEqualTo(LocalDate.of(2026, 8, 5))
+        assertThat(parser.parseDate("05-Aug-26", farAnchor)).isEqualTo(LocalDate.of(2026, 8, 5))
+        assertThat(parser.parseDate("Aug 8 26", farAnchor)).isEqualTo(LocalDate.of(2026, 8, 8))
     }
 
     @Test
     fun `yearless branch never fires when an explicit year is attached`() {
-        val clocked = ReminderParser { LocalDate.of(2026, 8, 16) }
+        val anchor = LocalDate.of(2026, 8, 16)
         // Attached year is owned by the dated branches.
-        assertThat(clocked.parseDate("12Aug26")).isNull()
+        assertThat(parser.parseDate("12Aug26", anchor)).isNull()
         // Apostrophe year ("12Nov'26" in reschedule notices) stays unparsed
-        // rather than resolving to a clock-inferred year.
-        assertThat(clocked.parseDate("12Nov'26")).isNull()
+        // rather than resolving to an anchor-inferred year.
+        assertThat(parser.parseDate("12Nov'26", anchor)).isNull()
         // Not a month.
-        assertThat(clocked.parseDate("12Xyz")).isNull()
+        assertThat(parser.parseDate("12Xyz", anchor)).isNull()
     }
 }

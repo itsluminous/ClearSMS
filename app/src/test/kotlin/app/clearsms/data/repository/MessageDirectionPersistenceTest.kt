@@ -85,7 +85,7 @@ class MessageDirectionPersistenceTest {
                         body = "incoming text",
                         timestampMs = 1_000,
                         isRead = false,
-                        enriched = repository.classify(snapshot, "9876543210", "incoming text"),
+                        enriched = repository.classify(snapshot, "9876543210", "incoming text", 1_000L),
                     ),
                     ImportedSmsRow(
                         systemSmsId = 2,

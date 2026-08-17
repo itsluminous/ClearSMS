@@ -77,7 +77,7 @@ class IngestImportRaceTest {
             body = debitBody,
             timestampMs = 5_000L,
             isRead = false,
-            enriched = repository.classify(repository.rulesSnapshot(), debitSender, debitBody),
+            enriched = repository.classify(repository.rulesSnapshot(), debitSender, debitBody, 1_000L),
             delivered = false,
         )
 

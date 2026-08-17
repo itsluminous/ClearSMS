@@ -145,7 +145,7 @@ class KeywordBlockingIngestionTest {
                         body = matchingBody,
                         timestampMs = 1_000L,
                         isRead = false,
-                        enriched = repository.classify(snapshot, "BX-SPAMCO", matchingBody),
+                        enriched = repository.classify(snapshot, "BX-SPAMCO", matchingBody, 1_000L),
                     ),
                     ImportedSmsRow(
                         systemSmsId = 8L,
@@ -153,7 +153,7 @@ class KeywordBlockingIngestionTest {
                         body = "See you at 6?",
                         timestampMs = 2_000L,
                         isRead = false,
-                        enriched = repository.classify(snapshot, "AX-FRIEND", "See you at 6?"),
+                        enriched = repository.classify(snapshot, "AX-FRIEND", "See you at 6?", 1_000L),
                     ),
                 )
 
@@ -184,7 +184,7 @@ class KeywordBlockingIngestionTest {
                         body = matchingBody,
                         timestampMs = 1_000L,
                         isRead = false,
-                        enriched = repository.classify(snapshot, "BX-SPAMCO", matchingBody),
+                        enriched = repository.classify(snapshot, "BX-SPAMCO", matchingBody, 1_000L),
                     ),
                 )
 

@@ -123,7 +123,7 @@ class SystemSmsImporter
                                             isRead = raw.read,
                                             enriched =
                                                 if (raw.incoming) {
-                                                    repository.classify(snapshot, address, body)
+                                                    repository.classify(snapshot, address, body, raw.date)
                                                 } else {
                                                     null
                                                 },

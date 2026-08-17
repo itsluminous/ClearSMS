@@ -49,8 +49,12 @@ class RuleEngine(
     private val log: (String) -> Unit = {},
     private val evaluationBudgetNanos: Long = DEFAULT_EVALUATION_BUDGET_NANOS,
     private val nanoTime: () -> Long = System::nanoTime,
-    /** Shared date grammar ([ReminderParser.parseDate]); the algorithm stays in Kotlin. */
-    private val dateParser: (String) -> LocalDate? = ReminderParser()::parseDate,
+    /**
+     * Shared date grammar ([ReminderParser.parseDate]); the algorithm stays
+     * in Kotlin. Takes the evaluation's anchor date (the message date) so a
+     * yearless capture resolves relative to when the message was sent.
+     */
+    private val dateParser: (String, LocalDate) -> LocalDate? = ReminderParser()::parseDate,
     /** Shared merchant normalizer ([TransactionParser.normalizeMerchantCandidate]). */
     private val merchantNormalizer: (String) -> String? = TransactionParser()::normalizeMerchantCandidate,
     /** Whether a `guards_none` id names a known guard ([RuleGuards.isKnown]). */
@@ -69,11 +73,17 @@ class RuleEngine(
         rules: List<RuleDefinition>,
         sender: String,
         body: String,
+        /**
+         * Reference date for yearless typed-date extracts - the MESSAGE date
+         * wherever the caller has one. Defaults to the current clock only
+         * for contexts without a message timestamp (rule-wizard previews).
+         */
+        anchor: LocalDate = LocalDate.now(),
     ): CategorizationResult? {
         val ordered = rules.sortedByDescending { it.priority }
         val start = nanoTime()
         for (rule in ordered) {
-            val result = evaluateRule(rule, sender, body)
+            val result = evaluateRule(rule, sender, body, anchor)
             if (result != null) return result
             if (nanoTime() - start > evaluationBudgetNanos) {
                 log(
@@ -90,6 +100,7 @@ class RuleEngine(
         rule: RuleDefinition,
         sender: String,
         body: String,
+        anchor: LocalDate,
     ): CategorizationResult? {
         val match = rule.match
 
@@ -126,7 +137,7 @@ class RuleEngine(
         // not apply when any listed guard matches the body.
         if (match.guardsNone.any { guardMatches(it, body) }) return null
 
-        val (raw, typed) = resolveExtracts(rule, bodyMatch)
+        val (raw, typed) = resolveExtracts(rule, bodyMatch, anchor)
         return CategorizationResult(
             category = categoryOf(rule.action.category),
             subCategory = subCategoryOf(rule.action.subCategory),
@@ -145,6 +156,7 @@ class RuleEngine(
     private fun resolveExtracts(
         rule: RuleDefinition,
         bodyMatch: MatchResult?,
+        anchor: LocalDate,
     ): Pair<Map<String, String>, Map<String, ExtractedValue>> {
         val extract = rule.action.extract
         if (extract.isEmpty()) return emptyMap<String, String>() to emptyMap()
@@ -160,7 +172,7 @@ class RuleEngine(
             val trimmed = value.trim()
             raw[key] = trimmed
             val type = rule.action.extractTypes[key]?.let(ExtractType::fromName) ?: inferredType(key)
-            val typedValue = typeValue(trimmed, type)
+            val typedValue = typeValue(trimmed, type, anchor)
             if (typedValue == null) {
                 log("Rule '${rule.id}': extract '$key' does not parse as ${type.jsonName}; typed value dropped")
             } else {
@@ -174,6 +186,7 @@ class RuleEngine(
     private fun typeValue(
         trimmed: String,
         type: ExtractType,
+        anchor: LocalDate,
     ): ExtractedValue? =
         when (type) {
             ExtractType.AMOUNT ->
@@ -181,7 +194,7 @@ class RuleEngine(
                     .replace(",", "")
                     .toDoubleOrNull()
                     ?.let { ExtractedValue.Amount(trimmed, it) }
-            ExtractType.DATE -> dateParser(trimmed)?.let { ExtractedValue.Date(trimmed, it) }
+            ExtractType.DATE -> dateParser(trimmed, anchor)?.let { ExtractedValue.Date(trimmed, it) }
             ExtractType.MERCHANT -> ExtractedValue.Merchant(trimmed, merchantNormalizer(trimmed))
             ExtractType.TRANSACTION_TYPE ->
                 when (trimmed.lowercase()) {

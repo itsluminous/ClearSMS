@@ -194,13 +194,13 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                     val body = cursor.getString(2).take(MessageCategorizer.MAX_EVAL_BODY_LENGTH)
                     val timestamp = cursor.getLong(3)
                     val subCategory = if (cursor.isNull(4)) null else cursor.getString(4)
+                    val messageDate =
+                        Instant
+                            .ofEpochMilli(timestamp)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
                     if (subCategory == "DELIVERY") {
                         val delivery = deliveryParser.parse(sender, body) ?: continue
-                        val messageDate =
-                            Instant
-                                .ofEpochMilli(timestamp)
-                                .atZone(ZoneId.systemDefault())
-                                .toLocalDate()
                         insertReminder(
                             db,
                             type = "DELIVERY",
@@ -214,7 +214,8 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                             createdAt = timestamp,
                         )
                     } else {
-                        val reminder = reminderParser.parse(sender, body) ?: continue
+                        // Yearless dates anchor on the message's own date.
+                        val reminder = reminderParser.parse(sender, body, messageDate) ?: continue
                         insertReminder(
                             db,
                             type = reminder.type.name,

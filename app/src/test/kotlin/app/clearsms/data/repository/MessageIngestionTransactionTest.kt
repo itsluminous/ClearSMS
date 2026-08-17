@@ -122,7 +122,7 @@ class MessageIngestionTransactionTest {
                         body = debitBody,
                         timestampMs = 1_000L,
                         isRead = true,
-                        enriched = repository.classify(snapshot, debitSender, debitBody),
+                        enriched = repository.classify(snapshot, debitSender, debitBody, 1_000L),
                     ),
                 )
 

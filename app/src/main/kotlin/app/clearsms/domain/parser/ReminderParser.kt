@@ -3,7 +3,6 @@ package app.clearsms.domain.parser
 import app.clearsms.domain.model.ParsedReminder
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
@@ -37,7 +36,14 @@ import java.util.Locale
  * digit-masked excerpt of the message when nothing structured is found.
  */
 class ReminderParser(
-    /** Clock for yearless-date inference ("12Aug" in airline itineraries); injectable for tests. */
+    /**
+     * FALLBACK anchor for yearless-date inference ("12Aug" in airline
+     * itineraries), used only when a caller has no message timestamp to pass
+     * as [parse]/[parseDate]'s `anchor`. Every ingestion/re-sort path DOES
+     * pass the message date - anchoring on the current clock is what dated a
+     * Dec-2024 "11Dec" itinerary as Dec-2026 when re-sorted in 2026.
+     * Injectable for tests.
+     */
     private val today: () -> LocalDate = LocalDate::now,
 ) {
     private val typeClassifier = ReminderTypeClassifier()
@@ -45,6 +51,13 @@ class ReminderParser(
     fun parse(
         sender: String,
         body: String,
+        /**
+         * Reference date for yearless-date inference - the date the MESSAGE
+         * was received, never "now": a flight/due notice refers to the near
+         * future relative to when it was sent. Defaults to [today] only for
+         * callers with no message context (e.g. rule-wizard previews).
+         */
+        anchor: LocalDate = today(),
     ): ParsedReminder? {
         // Completed/settled events are not actionable reminders.
         if (GuardLibrary.matches(GuardId.SETTLED_PAYMENT, body)) return null
@@ -60,7 +73,7 @@ class ReminderParser(
         // bill IS the obligation, announced before the biller states a due
         // date - rejecting it hid real electricity/telecom bills from
         // Alerts entirely.
-        val dueDate = findAnchoredDueDate(body)
+        val dueDate = findAnchoredDueDate(body, anchor)
         if (dueDate == null && !isGeneratedBillNotice(body)) return null
         val type = typeClassifier.classify(sender, body) ?: return null
         val minDue = firstAmount(body, MIN_DUE_PATTERNS)
@@ -88,14 +101,17 @@ class ReminderParser(
     fun isGeneratedBillNotice(body: String): Boolean = GENERATED_BILL_REGEX.containsMatchIn(body)
 
     /** First due-date whose keyword is directly anchored to the date text. */
-    private fun findAnchoredDueDate(body: String): LocalDate? {
+    private fun findAnchoredDueDate(
+        body: String,
+        anchor: LocalDate,
+    ): LocalDate? {
         DUE_DATE_ANCHORS
-            .firstNotNullOfOrNull { anchor ->
-                anchor
+            .firstNotNullOfOrNull { regex ->
+                regex
                     .find(body)
                     ?.groupValues
                     ?.get(1)
-                    ?.let(::parseDate)
+                    ?.let { parseDate(it, anchor) }
             }?.let { return it }
         // Looser "Pay <...> by <date>" (e.g. "Pay Total Amount Due of Rs X by
         // 05-08-26", "Pay instantly by 05/08/2026"), accepted only when the
@@ -105,14 +121,23 @@ class ReminderParser(
                 .find(body)
                 ?.groupValues
                 ?.get(1)
-                ?.let(::parseDate)
+                ?.let { parseDate(it, anchor) }
                 ?.let { return it }
         }
         return null
     }
 
-    /** Parses the first recognizable DD-MM-YY(YY) or DD-MMM-YY(YY) date in [text]. */
-    fun parseDate(text: String): LocalDate? {
+    /**
+     * Parses the first recognizable DD-MM-YY(YY) or DD-MMM-YY(YY) date in
+     * [text]. [anchor] is the reference date for YEARLESS forms - the
+     * message's own date wherever the caller has one; explicit-year forms
+     * never consult it (two-digit years use the fixed 20xx window of
+     * [normalizeYear], deliberately clock-independent).
+     */
+    fun parseDate(
+        text: String,
+        anchor: LocalDate = today(),
+    ): LocalDate? {
         NUMERIC_DATE_REGEX.find(text)?.let { match ->
             val (day, month, year) = match.destructured
             return buildDate(day.toInt(), month.toInt(), year.toInt())
@@ -159,26 +184,32 @@ class ReminderParser(
         // Yearless "12Aug" / "12 Aug" (airline itineraries state the journey
         // day without a year). Tried LAST so any explicit year wins, and
         // guarded against a trailing year ("12Aug26", "12Nov'26") which the
-        // dated branches own. The year is inferred as whichever of the
-        // surrounding years puts the date closest to today - correct for
-        // both an upcoming journey and a historical import.
+        // dated branches own. The year chosen is the one that puts the date
+        // ON or closest AFTER the anchor (the message's own date): a flight
+        // or due notice refers to the near future relative to when it was
+        // SENT - same-day is valid. Anchoring on the message date means a
+        // Dec-2024 "11Dec" itinerary stays dated 2024 (already expired,
+        // lands in Older) instead of jumping to whatever year is closest to
+        // the clock at re-sort time.
         DAY_MONTH_YEARLESS_REGEX.find(text)?.let { match ->
             val day = match.groupValues[1].toInt()
             val monthName =
                 match.groupValues[2].lowercase().replaceFirstChar { it.uppercase() }
-            val now = today()
             val base =
                 try {
                     LocalDate.parse(
-                        "$day-$monthName-${now.year}",
+                        "$day-$monthName-${anchor.year}",
                         DateTimeFormatter.ofPattern("d-MMM-yyyy", Locale.ENGLISH),
                     )
                 } catch (_: Exception) {
                     null
                 }
             if (base != null) {
-                return listOf(base.minusYears(1), base, base.plusYears(1))
-                    .minByOrNull { kotlin.math.abs(ChronoUnit.DAYS.between(now, it)) }
+                // base+1y is always after the anchor, so the filter is
+                // never empty; base-1y can never win (strictly before base).
+                return listOf(base, base.plusYears(1))
+                    .filter { !it.isBefore(anchor) }
+                    .minOrNull()
             }
         }
         return null

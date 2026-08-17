@@ -9,6 +9,7 @@ import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.ScamDetector
 import app.clearsms.domain.parser.TransactionParser
+import java.time.LocalDate
 
 /**
  * Assigns a category to an incoming message using the priority chain:
@@ -34,6 +35,12 @@ class MessageCategorizer(
         body: String,
         userRules: List<RuleDefinition>,
         builtinRules: List<RuleDefinition>,
+        /**
+         * Reference date for yearless-date inference - the MESSAGE date
+         * wherever the caller has one. Defaults to the current clock only
+         * for contexts without a message timestamp (rule-wizard previews).
+         */
+        anchor: LocalDate = LocalDate.now(),
     ): CategorizationResult {
         // Regex engines only ever see a bounded prefix of the body: a
         // concatenated multipart SMS can be tens of thousands of characters,
@@ -41,7 +48,7 @@ class MessageCategorizer(
         // service. The full body is still stored and displayed unchanged.
         val evalBody = body.take(MAX_EVAL_BODY_LENGTH)
         return normalizeInformational(
-            enforceInvariants(sender, evalBody, rawCategorize(sender, evalBody, userRules, builtinRules)),
+            enforceInvariants(sender, evalBody, rawCategorize(sender, evalBody, userRules, builtinRules, anchor)),
         )
     }
 
@@ -63,18 +70,19 @@ class MessageCategorizer(
         evalBody: String,
         userRules: List<RuleDefinition>,
         builtinRules: List<RuleDefinition>,
+        anchor: LocalDate,
     ): CategorizationResult {
-        ruleEngine.evaluate(userRules, sender, evalBody)?.let { return it }
-        ruleEngine.evaluate(builtinRules, sender, evalBody)?.let { return it }
+        ruleEngine.evaluate(userRules, sender, evalBody, anchor)?.let { return it }
+        ruleEngine.evaluate(builtinRules, sender, evalBody, anchor)?.let { return it }
 
         senderIdLookup.lookup(sender)?.let { info ->
             return CategorizationResult(
                 category = info.category,
-                subCategory = contentSubCategory(sender, evalBody),
+                subCategory = contentSubCategory(sender, evalBody, anchor),
             )
         }
 
-        contentFallback(sender, evalBody)?.let { return it }
+        contentFallback(sender, evalBody, anchor)?.let { return it }
 
         if (contactLookup.isContact(sender)) {
             return CategorizationResult(category = Category.PERSONAL)
@@ -170,6 +178,7 @@ class MessageCategorizer(
     private fun contentFallback(
         sender: String,
         body: String,
+        anchor: LocalDate,
     ): CategorizationResult? {
         otpParser.parse(body)?.let { otp ->
             return CategorizationResult(
@@ -189,7 +198,7 @@ class MessageCategorizer(
         if (transactionParser.parse(sender, body) != null) {
             return CategorizationResult(category = Category.IMPORTANT, subCategory = SubCategory.TRANSACTION)
         }
-        if (reminderParser.parse(sender, body) != null) {
+        if (reminderParser.parse(sender, body, anchor) != null) {
             return CategorizationResult(category = Category.IMPORTANT, subCategory = SubCategory.BILL)
         }
         if (scamDetector.isScam(body)) {
@@ -202,6 +211,7 @@ class MessageCategorizer(
     private fun contentSubCategory(
         sender: String,
         body: String,
+        anchor: LocalDate,
     ): SubCategory? =
         when {
             otpParser.parse(body) != null -> SubCategory.OTP
@@ -209,7 +219,7 @@ class MessageCategorizer(
             // directory-matched sender like PhonePe.
             transactionParser.isPaymentRequestNotice(body) -> SubCategory.BANK_ALERT
             transactionParser.parse(sender, body) != null -> SubCategory.TRANSACTION
-            reminderParser.parse(sender, body) != null -> SubCategory.BILL
+            reminderParser.parse(sender, body, anchor) != null -> SubCategory.BILL
             scamDetector.isScam(body) -> SubCategory.SCAM
             else -> null
         }

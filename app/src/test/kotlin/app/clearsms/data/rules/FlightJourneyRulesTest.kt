@@ -3,7 +3,6 @@ package app.clearsms.data.rules
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.domain.model.date
-import app.clearsms.domain.parser.ReminderParser
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -20,9 +19,9 @@ import java.time.LocalDate
 class FlightJourneyRulesTest {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Fixed clock so the yearless "12Aug" itinerary date resolves deterministically. */
-    private val fixedToday: () -> LocalDate = { LocalDate.of(2026, 8, 16) }
-    private val engine = RuleEngine(dateParser = ReminderParser(fixedToday)::parseDate)
+    /** Fixed message-date anchor so the yearless "12Aug" itinerary date resolves deterministically. */
+    private val anchor = LocalDate.of(2026, 8, 10)
+    private val engine = RuleEngine()
 
     private val rules: List<RuleDefinition> by lazy {
         val file =
@@ -37,7 +36,7 @@ class FlightJourneyRulesTest {
     private fun evaluate(
         sender: String,
         body: String,
-    ) = engine.evaluate(rules, sender, body)
+    ) = engine.evaluate(rules, sender, body, anchor)
 
     @Test
     fun `booking confirmation extracts journey date route flight and departure time`() {
@@ -98,7 +97,7 @@ class FlightJourneyRulesTest {
     }
 
     @Test
-    fun `web check-in itinerary extracts the yearless journey day nearest to today`() {
+    fun `web check-in itinerary extracts the yearless journey day on or after the message date`() {
         val result =
             evaluate(
                 "INDIGO",
@@ -109,8 +108,40 @@ class FlightJourneyRulesTest {
         assertThat(result?.extracted).containsEntry("flight", "6E 1234")
         assertThat(result?.extracted).containsEntry("route", "PAT-BLR(T1)")
         assertThat(result?.extracted).containsEntry("journey_date", "12Aug")
-        // Fixed today is 2026-08-16, so "12Aug" resolves to 2026-08-12.
+        // Anchor (message date) is 2026-08-10, so "12Aug" resolves to
+        // 2026-08-12 - the first 12-Aug on or after the message.
         assertThat(result?.typed?.date("journey_date")).isEqualTo(LocalDate.of(2026, 8, 12))
+    }
+
+    @Test
+    fun `itinerary received in Dec-2024 dates its yearless journey day 2024 - never a phantom future year`() {
+        // Real defect: an IndiGo SMS RECEIVED 11-Dec-2024 saying "11Dec,
+        // PAT-BLR" produced a travel card dated 11-Dec-2026 because the
+        // yearless inference anchored on the clock at re-sort time. Anchored
+        // on the message date it stays 2024 - already expired, so the card
+        // lands in Older instead of surfacing as an upcoming 2026 alert.
+        val result =
+            engine.evaluate(
+                rules,
+                "INDIGO",
+                "IndiGo: Dear flyer, your IndiGo PNR is HQBRXE - 6E 1234, 11Dec,PAT-BLR(T1) " +
+                    "0915-1200 HRS. For a hassle-free airport experience, please web check-in.",
+                LocalDate.of(2024, 12, 11),
+            )
+        assertThat(result?.typed?.date("journey_date")).isEqualTo(LocalDate.of(2024, 12, 11))
+    }
+
+    @Test
+    fun `late-December itinerary referring to early January resolves to the NEXT year`() {
+        val result =
+            engine.evaluate(
+                rules,
+                "INDIGO",
+                "IndiGo: Dear flyer, your IndiGo PNR is HQBRXE - 6E 1234, 2Jan,PAT-BLR(T1) " +
+                    "0915-1200 HRS. For a hassle-free airport experience, please web check-in.",
+                LocalDate.of(2024, 12, 28),
+            )
+        assertThat(result?.typed?.date("journey_date")).isEqualTo(LocalDate.of(2025, 1, 2))
     }
 
     @Test

@@ -495,7 +495,7 @@ class MessageRepositoryImpl(
         }
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
-        val enriched = classify(rulesSnapshot(), sender, body)
+        val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
         val normalized = SenderNormalizer.normalize(sender)
         // Message + derived transaction/account/reminder rows commit together:
         // a failure mid-derivation must never leave a message without its
@@ -591,7 +591,7 @@ class MessageRepositoryImpl(
         // (and its thread) here. Recipients are stored for a future group
         // UI - there is no group-thread UI this wave.
         val effectiveSender = sender?.takeIf { it.isNotBlank() && existing.sender.isBlank() } ?: existing.sender
-        val enriched = classify(rulesSnapshot(), effectiveSender, body)
+        val enriched = classify(rulesSnapshot(), effectiveSender, body, existing.timestamp)
         val normalized = SenderNormalizer.normalize(effectiveSender)
         return database.withTransaction {
             val row = messageDao.getById(messageId) ?: return@withTransaction null
@@ -677,7 +677,7 @@ class MessageRepositoryImpl(
     ): MessageRepository.IncomingIngest {
         // Classification still runs (pure CPU) so a binned message shows an
         // honest category if the user opens the bin - but nothing is derived.
-        val enriched = classify(rulesSnapshot(), sender, body)
+        val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
         val normalized = SenderNormalizer.normalize(sender)
         val binned = recycleBinEnabled()
         val entity =
@@ -744,7 +744,7 @@ class MessageRepositoryImpl(
                     page
                         .map { message ->
                             async(classifyDispatcher) {
-                                message to classify(snapshot, message.sender, message.body)
+                                message to classify(snapshot, message.sender, message.body, message.timestamp)
                             }
                         }.awaitAll()
                 }
@@ -830,7 +830,14 @@ class MessageRepositoryImpl(
         snapshot: RulesSnapshot,
         sender: String,
         body: String,
-    ): Enriched = enrich(sender, body, snapshot.userRules, snapshot.builtinRules)
+        /**
+         * When the message was received - the anchor for yearless-date
+         * inference ("11Dec" in a flight itinerary refers to the near future
+         * relative to when the message was SENT, never to the clock at
+         * classification time).
+         */
+        timestampMs: Long,
+    ): Enriched = enrich(sender, body, snapshot.userRules, snapshot.builtinRules, timestampMs)
 
     /**
      * Persists one import page in a single transaction using batch inserts.
@@ -962,14 +969,23 @@ class MessageRepositoryImpl(
         body: String,
         userRules: List<RuleDefinition>,
         builtinRules: List<RuleDefinition>,
+        timestampMs: Long,
     ): Enriched {
+        // All yearless-date inference below anchors on the MESSAGE date -
+        // the same rule DeliveryParser's "today"/"tomorrow" resolution
+        // already follows at persist time (see persistDerived).
+        val messageDate =
+            Instant
+                .ofEpochMilli(timestampMs)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
         // Same evaluation-input cap as the categorizer (see
         // MessageCategorizer.MAX_EVAL_BODY_LENGTH): the OTP/transaction/
         // reminder parsers below are regex-driven too, so they must never see
         // an unbounded body. Only evaluation is capped - the stored row keeps
         // the full text.
         val evalBody = body.take(MessageCategorizer.MAX_EVAL_BODY_LENGTH)
-        val result = categorizer.categorize(sender, body, userRules, builtinRules)
+        val result = categorizer.categorize(sender, body, userRules, builtinRules, messageDate)
         val extracts = result.extracted
 
         val otpCode =
@@ -1014,7 +1030,7 @@ class MessageRepositoryImpl(
                 null
             }
 
-        val parsedReminder = if (delivery == null) reminderParser.parse(sender, evalBody) else null
+        val parsedReminder = if (delivery == null) reminderParser.parse(sender, evalBody, messageDate) else null
         val reminder =
             when {
                 parsedReminder != null -> mergeReminder(parsedReminder, result.typed, extracts)
