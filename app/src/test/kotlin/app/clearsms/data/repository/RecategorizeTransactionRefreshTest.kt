@@ -29,9 +29,10 @@ import org.robolectric.RobolectricTestRunner
  * "Sort inbox again" REFRESHES derived transaction rows in place: stale
  * titles from older parser/rule versions are rewritten, repeated runs never
  * duplicate rows or drift totals, user notes survive onto the re-derived
- * rows, accounts (and their SMS-derived card limits) are never deleted, and
- * orphaned transaction rows from messages that no longer derive anything
- * disappear.
+ * rows, accounts a message still backs (and their user-set card limits) are
+ * kept, and orphaned transaction rows from messages that no longer derive
+ * anything disappear. The orphan-ACCOUNT sweep lives in
+ * [RecategorizeOrphanSweepTest].
  */
 @RunWith(RobolectricTestRunner::class)
 class RecategorizeTransactionRefreshTest {
@@ -127,7 +128,7 @@ class RecategorizeTransactionRefreshTest {
         }
 
     @Test
-    fun `user-set card limit survives the refresh because accounts are never deleted`() =
+    fun `user-set card limit survives the refresh because its message re-derives the account`() =
         runBlocking {
             repository.insertIncoming("VM-HDFCBK", rdBody, 1_000L)
             val account = db.accountDao().getAll().single()

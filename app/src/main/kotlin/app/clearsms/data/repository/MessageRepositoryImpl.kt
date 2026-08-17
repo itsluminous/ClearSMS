@@ -734,6 +734,9 @@ class MessageRepositoryImpl(
         // corpus (~900us/msg serial on a desktop JVM; worse on phone cores).
         val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
         val classifyDispatcher = Dispatchers.Default.limitedParallelism(parallelism)
+        // Account ids persistDerived touches anywhere in this run - the
+        // complement feeds the orphan sweep below.
+        val touchedAccounts = mutableSetOf<Long>()
         var processed = 0
         var afterId = 0L
         while (true) {
@@ -784,6 +787,7 @@ class MessageRepositoryImpl(
                         enriched,
                         preservedNote = previousNote,
                         preservedDismissedAt = previousDismissedAt,
+                        touchedAccounts = touchedAccounts,
                     )
                 }
             }
@@ -791,7 +795,43 @@ class MessageRepositoryImpl(
             afterId = page.last().id
             onProgress(processed, total)
         }
+        sweepOrphanedAccounts(touchedAccounts)
         return processed
+    }
+
+    /**
+     * Deletes account rows the re-sort left behind: rules and parsers
+     * evolve, so a message that once derived a transaction may stop doing
+     * so - its account then lingers in Finance with zero transactions and
+     * nothing ever refreshing it. An account is an orphan when the
+     * just-finished full pass NEVER touched it ([touchedAccounts]) AND no
+     * transaction links to it.
+     *
+     * What survives, and why:
+     * - balance-statement-only accounts (an NPS valuation, a card that only
+     *   ever reports its limit): their statements re-derive a balance/limit
+     *   upsert during the pass, which counts as a touch;
+     * - any account still owning a transaction row (belt and braces - a
+     *   touched-set bug must never delete real money history).
+     *
+     * User-set card limits live on the account row, so they die with a
+     * genuinely unbacked account - correct: nothing re-derives that
+     * account, so there is no row for the limit to live on.
+     *
+     * Deliberately NOT run after imports: the initial import starts from an
+     * empty database (nothing to strand), and catch-up imports only ADD
+     * derived rows for new provider messages - they never delete an
+     * existing message's transactions, so they cannot strand an account.
+     * Only a full re-derivation (this re-sort) can, so only it sweeps.
+     */
+    private suspend fun sweepOrphanedAccounts(touchedAccounts: Set<Long>) {
+        database.withTransaction {
+            for (account in accountDao.getAll()) {
+                if (account.id in touchedAccounts) continue
+                if (transactionDao.countByAccountId(account.id, excludeId = 0L) > 0) continue
+                accountDao.deleteById(account.id)
+            }
+        }
     }
 
     override suspend fun setBlocked(
@@ -1161,6 +1201,15 @@ class MessageRepositoryImpl(
          * message: a re-sort refresh must not resurrect a dismissed alert.
          */
         preservedDismissedAt: Long? = null,
+        /**
+         * Collector for the ids of every account this derivation touched -
+         * a transaction attached, a balance/limit upserted, a digit-less
+         * issuer attachment. [recategorizeAll] passes one across its whole
+         * run so accounts NO message re-derives can be swept as orphans;
+         * live ingestion and imports pass nothing (they only ever ADD
+         * derived rows, so they cannot strand an account).
+         */
+        touchedAccounts: MutableSet<Long>? = null,
     ) {
         enriched.transaction?.let { tx ->
             val accountNumber = tx.accountLast4 ?: ""
@@ -1202,12 +1251,15 @@ class MessageRepositoryImpl(
             when {
                 duplicate == null -> {
                     val accountId = resolveAccountId(tx, accountNumber, bankName, timestampMs)
+                    accountId?.let { touchedAccounts?.add(it) }
                     transactionDao.insert(unlinked.copy(accountId = accountId))
                 }
                 duplicate.bankName.isNotEmpty() && bankName.isNotEmpty() && duplicate.bankName != bankName ->
                     collapseCrossBankEcho(duplicate, unlinked, tx, timestampMs)
+                        ?.let { touchedAccounts?.add(it) }
                 else -> {
                     val accountId = resolveAccountId(tx, accountNumber, bankName, timestampMs)
+                    accountId?.let { touchedAccounts?.add(it) }
                     val candidate = unlinked.copy(accountId = accountId)
                     transactionDao.update(
                         TransactionDeduplication.collapse(duplicate, candidate).copy(id = duplicate.id),
@@ -1231,13 +1283,15 @@ class MessageRepositoryImpl(
                     statement.accountLast4
                         ?: soleRetirementAccountNumber(canonicalBank)
                         ?: return@let
-                upsertAccountBalance(
-                    accountNumber = accountNumber,
-                    bankName = canonicalBank,
-                    accountType = statement.accountType,
-                    balance = statement.balance,
-                    timestampMs = timestampMs,
-                )
+                val touchedId =
+                    upsertAccountBalance(
+                        accountNumber = accountNumber,
+                        bankName = canonicalBank,
+                        accountType = statement.accountType,
+                        balance = statement.balance,
+                        timestampMs = timestampMs,
+                    )
+                touchedAccounts?.add(touchedId)
             }
         }
         // A confirmed total-limit statement updates the card's total limit -
@@ -1248,14 +1302,16 @@ class MessageRepositoryImpl(
             val accountNumber = statement.accountLast4 ?: return@let
             val canonicalBank = SenderNameResolver.canonicalize(statement.bankName).orEmpty()
             if (!SenderNameResolver.isPlausibleIssuer(canonicalBank)) return@let
-            upsertAccountBalance(
-                accountNumber = accountNumber,
-                bankName = canonicalBank,
-                accountType = AccountType.CREDIT_CARD,
-                balance = null,
-                timestampMs = timestampMs,
-                totalLimit = statement.totalLimit,
-            )
+            val touchedId =
+                upsertAccountBalance(
+                    accountNumber = accountNumber,
+                    bankName = canonicalBank,
+                    accountType = AccountType.CREDIT_CARD,
+                    balance = null,
+                    timestampMs = timestampMs,
+                    totalLimit = statement.totalLimit,
+                )
+            touchedAccounts?.add(touchedId)
         }
         enriched.reminder?.let { reminder ->
             reminderDao.insert(
@@ -1394,7 +1450,7 @@ class MessageRepositoryImpl(
         candidate: TransactionEntity,
         tx: ParsedTransaction,
         timestampMs: Long,
-    ) {
+    ): Long? {
         val existingEvidence =
             transactionDao.countByBankAndTail(existing.bankName, existing.accountNumber, existing.id)
         val candidateEvidence =
@@ -1427,6 +1483,7 @@ class MessageRepositoryImpl(
             if (account.lastKnownBalance != null || account.creditLimit != null || account.availableLimit != null) return@let
             accountDao.deleteById(id)
         }
+        return accountId
     }
 
     private suspend fun upsertAccount(
