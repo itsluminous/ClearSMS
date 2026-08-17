@@ -17,6 +17,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.domain.model.Category
+import app.clearsms.testing.FakeSettingsRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +37,9 @@ import org.robolectric.Shadows.shadowOf
 class RecategorizeWorkerTest {
     private lateinit var context: Context
     private lateinit var workManager: WorkManager
+
+    /** Records the last-sorted version marker the worker writes on success. */
+    private val fakeSettings = FakeSettingsRepository()
 
     /** Gate released by the test; until then the fake re-sort stays RUNNING. */
     private val gate = CompletableDeferred<Unit>()
@@ -193,7 +197,7 @@ class RecategorizeWorkerTest {
                             appContext: Context,
                             workerClassName: String,
                             workerParameters: WorkerParameters,
-                        ): ListenableWorker = RecategorizeWorker(appContext, workerParameters, fakeRepository)
+                        ): ListenableWorker = RecategorizeWorker(appContext, workerParameters, fakeRepository, fakeSettings)
                     },
                 ).build()
         WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
@@ -226,6 +230,31 @@ class RecategorizeWorkerTest {
         val done = awaitInfo { it.state.isFinished }
         assertThat(done.state).isEqualTo(WorkInfo.State.SUCCEEDED)
         assertThat(done.outputData.getInt(RecategorizeWorker.OUTPUT_COUNT, -1)).isEqualTo(7)
+        // A completed run (this one was MANUAL - no auto tag) records the
+        // running version as fully sorted, so the automatic post-update
+        // trigger never re-fires for it.
+        assertThat(fakeSettings.lastSortedVersionCode.value).isEqualTo(app.clearsms.BuildConfig.VERSION_CODE)
+    }
+
+    @Test
+    fun `an AUTO-tagged run carries the tag and records the sorted version on completion`() {
+        RecategorizeWorker.enqueue(workManager, auto = true)
+        val running = awaitInfo { it.state == WorkInfo.State.RUNNING }
+        assertThat(running.tags).contains(RecategorizeWorker.TAG_AUTO)
+
+        gate.complete(Unit)
+        val done = awaitInfo { it.state.isFinished }
+        assertThat(done.state).isEqualTo(WorkInfo.State.SUCCEEDED)
+        assertThat(fakeSettings.lastSortedVersionCode.value).isEqualTo(app.clearsms.BuildConfig.VERSION_CODE)
+    }
+
+    @Test
+    fun `a manual run never carries the auto tag - the inbox banner stays hidden`() {
+        RecategorizeWorker.enqueue(workManager)
+        val running = awaitInfo { it.state == WorkInfo.State.RUNNING }
+        assertThat(running.tags).doesNotContain(RecategorizeWorker.TAG_AUTO)
+        gate.complete(Unit)
+        awaitInfo { it.state.isFinished }
     }
 
     @Test

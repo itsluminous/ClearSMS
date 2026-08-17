@@ -128,4 +128,10 @@ open class FakeSettingsRepository : SettingsRepository {
     override suspend fun setHandledOtpMessageId(value: Long) {
         handledOtpMessageId.value = value
     }
+
+    override val lastSortedVersionCode = MutableStateFlow(0)
+
+    override suspend fun setLastSortedVersionCode(value: Int) {
+        lastSortedVersionCode.value = value
+    }
 }

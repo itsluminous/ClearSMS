@@ -46,6 +46,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -244,39 +245,58 @@ fun InboxScreen(
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (defaultSmsBanner.visible) {
-                        item(key = "default_sms_banner") {
-                            DefaultSmsBanner(
-                                onSetDefault = {
-                                    defaultSmsLauncher.launch(DefaultSmsAppHelper.createRequestIntent(context))
-                                },
-                                onDismiss = defaultSmsBanner::dismiss,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
-                        }
-                    }
-                    if (!contactsPermission.status.isGranted) {
-                        item(key = "contacts_permission") {
-                            ContactsPermissionBanner(
-                                onGrant = { contactsPermission.launchPermissionRequest() },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
-                        }
-                    }
-                    state.latestOtp?.let { otp ->
-                        item(key = "otp_banner") {
-                            OtpBanner(
-                                code = otp.code,
-                                senderName = otp.senderName,
-                                displaySize = state.otpDisplaySize,
-                                onCopied = {
-                                    viewModel.markOtpHandled(otp.messageId)
-                                    scope.launch { snackbarHostState.showSnackbar(otpCopiedMessage) }
-                                },
-                                onDismiss = { viewModel.markOtpHandled(otp.messageId) },
-                                onOpenMessage = { onOpenMessage(otp.threadId, otp.messageId) },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
+                    // Top banners in the PINNED precedence order (OTP >
+                    // default-SMS > contacts > sorting) - the enum order IS
+                    // the on-screen order; see InboxBannerSlot.
+                    for (slot in InboxBannerSlot.entries) {
+                        when (slot) {
+                            InboxBannerSlot.OTP ->
+                                state.latestOtp?.let { otp ->
+                                    item(key = "otp_banner") {
+                                        OtpBanner(
+                                            code = otp.code,
+                                            senderName = otp.senderName,
+                                            displaySize = state.otpDisplaySize,
+                                            onCopied = {
+                                                viewModel.markOtpHandled(otp.messageId)
+                                                scope.launch { snackbarHostState.showSnackbar(otpCopiedMessage) }
+                                            },
+                                            onDismiss = { viewModel.markOtpHandled(otp.messageId) },
+                                            onOpenMessage = { onOpenMessage(otp.threadId, otp.messageId) },
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                    }
+                                }
+                            InboxBannerSlot.DEFAULT_SMS ->
+                                if (defaultSmsBanner.visible) {
+                                    item(key = "default_sms_banner") {
+                                        DefaultSmsBanner(
+                                            onSetDefault = {
+                                                defaultSmsLauncher.launch(DefaultSmsAppHelper.createRequestIntent(context))
+                                            },
+                                            onDismiss = defaultSmsBanner::dismiss,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                    }
+                                }
+                            InboxBannerSlot.CONTACTS_PERMISSION ->
+                                if (!contactsPermission.status.isGranted) {
+                                    item(key = "contacts_permission") {
+                                        ContactsPermissionBanner(
+                                            onGrant = { contactsPermission.launchPermissionRequest() },
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                    }
+                                }
+                            InboxBannerSlot.SORTING ->
+                                state.sortingBanner?.let { sorting ->
+                                    item(key = "sorting_banner") {
+                                        SortingProgressBanner(
+                                            banner = sorting,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                    }
+                                }
                         }
                     }
                     // "Unread only" is a view mode, not a category: it lives on
@@ -549,6 +569,41 @@ private fun ContactsPermissionBanner(
             )
             TextButton(onClick = onGrant) {
                 Text(stringResource(R.string.inbox_contacts_grant))
+            }
+        }
+    }
+}
+
+/**
+ * Compact progress banner for the AUTOMATIC post-update re-sort - it
+ * explains a sort the user did not ask for. Mirrors the Settings row's
+ * progress (same worker progress data); indeterminate until the total is
+ * known. Manual sorts never show it (see [SortingBannerPolicy]).
+ */
+@Composable
+private fun SortingProgressBanner(
+    banner: SortingBanner,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text = stringResource(R.string.inbox_sorting_banner),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Spacer(Modifier.height(8.dp))
+            if (banner.total > 0) {
+                LinearProgressIndicator(
+                    progress = { banner.processed.toFloat() / banner.total },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }

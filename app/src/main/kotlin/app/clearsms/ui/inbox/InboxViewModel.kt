@@ -7,6 +7,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import androidx.work.WorkManager
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
@@ -26,6 +27,7 @@ import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
 import app.clearsms.work.CatchUpSyncScheduler
+import app.clearsms.work.RecategorizeWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -111,6 +113,8 @@ data class InboxUiState(
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
     val swipeStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeEnd: SwipeAction = SwipeAction.DELETE,
+    /** Automatic post-update re-sort in flight; null hides the banner. */
+    val sortingBanner: SortingBanner? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -124,6 +128,7 @@ class InboxViewModel
         private val contactsSource: ContactsSource,
         private val settings: SettingsRepository,
         private val catchUpSyncScheduler: CatchUpSyncScheduler,
+        workManager: WorkManager,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val filter = MutableStateFlow(InboxFilterState())
@@ -208,6 +213,16 @@ class InboxViewModel
                     }
             }.flowOn(ioDispatcher)
 
+        /**
+         * The AUTO-triggered re-sort's progress, observed straight from
+         * WorkManager (the VM never owns the run). Manual sorts map to null
+         * here by design - see [SortingBannerPolicy].
+         */
+        private val sortingBanner: Flow<SortingBanner?> =
+            workManager
+                .getWorkInfosForUniqueWorkFlow(RecategorizeWorker.WORK_NAME)
+                .map { infos -> SortingBannerPolicy.select(infos) }
+
         private data class Chrome(
             val richAvatars: Boolean,
             val otpDisplaySize: OtpDisplaySize,
@@ -231,7 +246,8 @@ class InboxViewModel
                 messageRepository.observeUnreadCounts(),
                 latestOtp,
                 chrome,
-            ) { currentFilter, counts, otp, chromeState ->
+                sortingBanner,
+            ) { currentFilter, counts, otp, chromeState, sorting ->
                 InboxUiState(
                     filter = currentFilter,
                     unreadCounts = counts.associate { it.category to it.count },
@@ -242,6 +258,7 @@ class InboxViewModel
                     swipeStart = chromeState.swipeStart,
                     swipeEnd = chromeState.swipeEnd,
                     pillOrder = chromeState.pillOrder,
+                    sortingBanner = sorting,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState())
 

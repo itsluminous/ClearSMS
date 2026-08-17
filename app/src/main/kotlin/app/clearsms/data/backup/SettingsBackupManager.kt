@@ -141,7 +141,12 @@ internal object SettingsBackupCatalog {
      *   restoring it could hide a live OTP banner;
      * - `schedule_send_tip_shown` - per-install education state (the
      *   one-time "long-press Send to schedule" tip), like
-     *   `onboarding_complete`: each install teaches its own user once.
+     *   `onboarding_complete`: each install teaches its own user once;
+     * - `last_sorted_version_code` - device/version state: which app
+     *   versionCode last fully sorted THIS install's database. Restoring it
+     *   onto another install would suppress (or force) the automatic
+     *   post-update re-sort there, which must be decided by that device's
+     *   own sort history.
      */
     val excludedKeys: Set<String> =
         setOf(
@@ -149,6 +154,7 @@ internal object SettingsBackupCatalog {
             "onboarding_complete",
             "handled_otp_message_id",
             "schedule_send_tip_shown",
+            "last_sorted_version_code",
         )
 }
 

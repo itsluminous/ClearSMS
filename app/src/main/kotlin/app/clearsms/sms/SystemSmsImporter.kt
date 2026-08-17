@@ -74,6 +74,15 @@ class SystemSmsImporter
             val inserted: Int,
             val freshMessages: List<MessageEntity>,
             val freshCount: Int,
+            /**
+             * True when this run was the INITIAL history import (empty
+             * database - null watermark), as opposed to a catch-up run over
+             * an existing database. The initial import classifies EVERYTHING
+             * with the current rules, so its completion may record the
+             * version as fully sorted; a catch-up only adds new rows and
+             * must never claim that.
+             */
+            val initialRun: Boolean = false,
         )
 
         /**
@@ -88,7 +97,9 @@ class SystemSmsImporter
                 val total = checkpoint.processedCount + remaining
                 var processed = checkpoint.processedCount
                 onProgress(processed, total)
-                if (remaining == 0) return@withContext ImportResult(0, emptyList(), 0)
+                if (remaining == 0) {
+                    return@withContext ImportResult(0, emptyList(), 0, initialRun = repository.newestTimestamp() == null)
+                }
 
                 // Notification watermark, read BEFORE the first page commits:
                 // anything already stored has been seen (and, when eligible,
@@ -156,7 +167,7 @@ class SystemSmsImporter
                     checkpointStore.set(SyncCheckpointStore.Checkpoint(cursorId, processed))
                     onProgress(processed, total)
                 }
-                ImportResult(inserted, freshMessages, freshCount)
+                ImportResult(inserted, freshMessages, freshCount, initialRun = watermark == null)
             }
 
         /** Counts importable rows past the checkpoint (for progress totals). */

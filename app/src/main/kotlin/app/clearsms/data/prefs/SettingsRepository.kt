@@ -167,4 +167,16 @@ interface SettingsRepository {
     val alertsPillOrder: Flow<List<AlertFilter>>
 
     suspend fun setAlertsPillOrder(value: List<AlertFilter>)
+
+    /**
+     * App versionCode whose rules/parsers last fully sorted the database -
+     * set when the initial import completes and when any full re-sort
+     * (manual or automatic) completes; 0 when never. A mismatch against the
+     * running version triggers the automatic post-update re-sort, so users
+     * never need to remember "Sort inbox again". Device/version state,
+     * never backed up.
+     */
+    val lastSortedVersionCode: Flow<Int>
+
+    suspend fun setLastSortedVersionCode(value: Int)
 }

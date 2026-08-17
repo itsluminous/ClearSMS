@@ -151,6 +151,7 @@ class SettingsBackupManagerTest {
             repo.setOnboardingComplete(true)
             repo.setHandledOtpMessageId(42L)
             repo.setScheduleSendTipShown(true)
+            repo.setLastSortedVersionCode(3)
 
             val storedKeys =
                 dataStore.data
@@ -174,6 +175,7 @@ class SettingsBackupManagerTest {
             repo.setOnboardingComplete(true)
             repo.setHandledOtpMessageId(42L)
             repo.setScheduleSendTipShown(true)
+            repo.setLastSortedVersionCode(3)
 
             val settings = exportedSettings(export(dataStore))
             SettingsBackupCatalog.excludedKeys.forEach { key ->

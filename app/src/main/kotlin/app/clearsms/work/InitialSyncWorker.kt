@@ -16,7 +16,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import app.clearsms.BuildConfig
 import app.clearsms.R
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.notification.CatchUpNotifier
 import app.clearsms.notification.Channels
 import app.clearsms.sms.SystemSmsImporter
@@ -48,6 +50,7 @@ class InitialSyncWorker
         @Assisted params: WorkerParameters,
         private val systemSmsImporter: SystemSmsImporter,
         private val catchUpNotifier: CatchUpNotifier,
+        private val settings: SettingsRepository,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             Channels.ensureCreated(applicationContext)
@@ -70,6 +73,15 @@ class InitialSyncWorker
                 // initial onboarding import never reaches this call with a
                 // non-zero count (fresh-install watermark is null).
                 catchUpNotifier.notifyFresh(result.freshMessages, result.freshCount)
+                // The INITIAL import classified the whole history with the
+                // current rules - record this version as fully sorted so the
+                // automatic post-update re-sort never runs redundantly on a
+                // fresh install. Catch-up runs only add new rows and must
+                // never claim the version sorted (old rows still carry the
+                // previous version's categorization).
+                if (result.initialRun) {
+                    settings.setLastSortedVersionCode(BuildConfig.VERSION_CODE)
+                }
                 Result.success()
             } catch (e: Exception) {
                 Log.w(TAG, "Import attempt $runAttemptCount failed; will resume from checkpoint", e)

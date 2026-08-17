@@ -16,7 +16,9 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import app.clearsms.BuildConfig
 import app.clearsms.R
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.notification.Channels
 import dagger.assisted.Assisted
@@ -45,6 +47,7 @@ class RecategorizeWorker
         @Assisted appContext: Context,
         @Assisted params: WorkerParameters,
         private val messageRepository: MessageRepository,
+        private val settings: SettingsRepository,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             Channels.ensureCreated(applicationContext)
@@ -61,6 +64,11 @@ class RecategorizeWorker
                         )
                         postProgressNotification(manager, processed, total)
                     }
+                // Both trigger paths (manual tap AND the automatic
+                // post-update run) record the version as fully sorted, so
+                // the auto re-sort never re-fires for a version whose full
+                // pass already completed.
+                settings.setLastSortedVersionCode(BuildConfig.VERSION_CODE)
                 Result.success(workDataOf(OUTPUT_COUNT to count))
             } catch (e: CancellationException) {
                 // User-initiated cancel: pages already committed stay valid.
@@ -111,6 +119,9 @@ class RecategorizeWorker
 
         companion object {
             const val WORK_NAME = "recategorize"
+
+            /** Tag marking an AUTOMATICALLY triggered (post-update) run. */
+            const val TAG_AUTO = "recategorize_auto"
             const val PROGRESS_PROCESSED = "processed"
             const val PROGRESS_TOTAL = "total"
 
@@ -119,14 +130,24 @@ class RecategorizeWorker
             private const val TAG = "RecategorizeWorker"
             private const val NOTIFICATION_ID = 70_002
 
-            fun request(): OneTimeWorkRequest =
+            fun request(auto: Boolean = false): OneTimeWorkRequest =
                 OneTimeWorkRequestBuilder<RecategorizeWorker>()
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .apply { if (auto) addTag(TAG_AUTO) }
                     .build()
 
-            /** KEEP: triggering while a re-sort is running never restarts it. */
-            fun enqueue(workManager: WorkManager) {
-                workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request())
+            /**
+             * KEEP: triggering while a re-sort is running never restarts it.
+             * [auto] tags the request as the AUTOMATIC post-update run - the
+             * inbox shows an explanatory banner only for that tag, because
+             * the banner exists to explain a sort the user did NOT ask for
+             * (manual runs keep the settings-row progress alone).
+             */
+            fun enqueue(
+                workManager: WorkManager,
+                auto: Boolean = false,
+            ) {
+                workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request(auto))
             }
 
             fun cancel(workManager: WorkManager) {

@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -209,6 +210,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_ALERTS_PILL_ORDER] = value.toStoredOrder() }
     }
 
+    override val lastSortedVersionCode: Flow<Int> =
+        dataStore.data.map { it[KEY_LAST_SORTED_VERSION_CODE] ?: 0 }
+
+    override suspend fun setLastSortedVersionCode(value: Int) {
+        dataStore.edit { it[KEY_LAST_SORTED_VERSION_CODE] = value }
+    }
+
     private inline fun <reified T : Enum<T>> String?.toEnum(default: T): T =
         this?.let { name ->
             enumValues<T>().firstOrNull { it.name == name }
@@ -258,6 +266,7 @@ class SettingsRepositoryImpl(
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
         val KEY_BLOCKED_KEYWORDS = stringSetPreferencesKey("blocked_keywords")
+        val KEY_LAST_SORTED_VERSION_CODE = intPreferencesKey("last_sorted_version_code")
 
         /** Separator for the stored pill-order enum name lists. */
         const val ORDER_DELIMITER = ","

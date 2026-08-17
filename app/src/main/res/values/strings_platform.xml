@@ -85,4 +85,5 @@
 
     <!-- Manual re-sort -->
     <string name="resort_title">Sorting your inbox</string>
+    <string name="inbox_sorting_banner">Sorting your messages again after the update…</string>
 </resources>
