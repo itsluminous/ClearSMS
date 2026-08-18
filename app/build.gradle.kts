@@ -29,8 +29,8 @@ android {
         applicationId = "app.clearsms"
         minSdk = 23
         targetSdk = 35
-        versionCode = 47
-        versionName = "0.13.1"
+        versionCode = 48
+        versionName = "0.13.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
