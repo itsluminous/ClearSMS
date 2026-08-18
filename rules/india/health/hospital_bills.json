@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "hospital-bill-generated-01",
+      "name": "Hospital Bill Generated (amount, link, no due date)",
+      "priority": 262,
+      "match": {
+        "sender_pattern": "(?i)(?:SAKRAH|SAKRA)",
+        "body_pattern": "(?i)\\bbill\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+|is\\s+|was\\s+)?generated\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    }
+  ]
+}

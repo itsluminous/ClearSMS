@@ -1361,7 +1361,7 @@
       "name": "MF SIP Purchase (amount-first, fund after Folio)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)SIP\\s+Purchase\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+Folio\\s+\\S{1,20}\\s+in\\s+([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:\\s*-\\s*[A-Za-z][A-Za-z ]{0,30})?\\s+for\\b"
       },
       "action": {
@@ -1381,7 +1381,7 @@
       "name": "MF SIP Purchase (fund-first, amount after fund)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)SIP\\s+Purchase\\s+in\\s+Folio\\s+\\S{1,20}\\s+under\\s+([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:[- ](?:DP|Dir(?:ect)?|Reg(?:ular)?|Growth|IDCW)[A-Za-z -]{0,20})?\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
@@ -1401,7 +1401,7 @@
       "name": "MF SIP Units Allotted (dash-separated shape)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)SIP\\s*-\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+Folio\\s+\\S{1,20}\\s*-\\s*([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:\\s*-\\s*[A-Za-z][A-Za-z ]{0,30})?\\s*-\\s*[\\d.]{1,12}\\s+units\\s+allotted"
       },
       "action": {
@@ -2371,7 +2371,7 @@
       "name": "MF Purchase Processed (fund-house catch-all)",
       "priority": 310,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)\\b(?:SIP|lumpsum|purchase)\\b[\\s\\S]{0,120}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,160}?\\b(?:units|NAV)\\b",
         "body_must_not_contain": [
           "redemption",
@@ -2581,7 +2581,7 @@
       "priority": 302,
       "match": {
         "sender_pattern": "(?i)(?:INDIGO|AKASAA|AKASA|GOFRST|SPICEJ|AIRIND|AIRVIS|VSTARA)",
-        "body_pattern": "(?i)\\bconfirm\\s+(?:your|the)\\s+booking\\s+under\\s+PNR\\s*[-:]?\\s*([A-Z0-9]{5,8})\\b(?:,\\s*(\\d{1,2}(?:[\\s/-][A-Za-z]{3}[\\s/-]|[-/]\\d{1,2}[-/])\\d{2,4}))?(?:,\\s*from\\s+([A-Za-z0-9() ]{2,20}?\\s+to\\s+[A-Za-z0-9()]{2,10}))?(?:,\\s*([A-Z0-9]{2}\\s?-?\\s?\\d{2,4}))?(?:\\s+at\\s+(\\d{1,2}[:.]\\d{2}))?"
+        "body_pattern": "(?i)\\bconfirm\\s+(?:your|the)\\s+booking\\s+under\\s+PNR\\s*[-:]?\\s*([A-Z0-9]{5,8})\\b(?:,\\s*(\\d{1,2}(?:[\\s/-]?[A-Za-z]{3}(?:[\\s/-]\\d{2,4})?|[-/]\\d{1,2}[-/]\\d{2,4})))?(?:,\\s*from\\s+([A-Za-z0-9() ]{2,20}?\\s+to\\s+[A-Za-z0-9()]{2,10}))?(?:,\\s*([A-Z0-9]{2}\\s?-?\\s?\\d{2,4}))?(?:\\s+at\\s+(\\d{1,2}[:.]\\d{2}))?"
       },
       "action": {
         "category": "important",
@@ -2606,7 +2606,7 @@
       "priority": 301,
       "match": {
         "sender_pattern": "(?i)(?:INDIGO|AKASAA|AKASA|GOFRST|SPICEJ|AIRIND|AIRVIS|VSTARA)",
-        "body_pattern": "(?i)\\bhappy\\s+to\\s+confirm\\s+your\\s+booking\\b[.,\\s]{0,4}PNR\\s*[-:]?\\s*([A-Z0-9]{5,8})\\b(?:,\\s*(\\d{1,2}(?:[\\s/-][A-Za-z]{3}[\\s/-]|[-/]\\d{1,2}[-/])\\d{2,4}))?(?:,\\s*from\\s+([A-Za-z0-9() ]{2,20}?\\s+to\\s+[A-Za-z0-9()]{2,10}))?(?:,\\s*([A-Z0-9]{2}\\s?-?\\s?\\d{2,4}))?(?:\\s+at\\s+(\\d{1,2}[:.]\\d{2}))?"
+        "body_pattern": "(?i)\\bhappy\\s+to\\s+confirm\\s+your\\s+booking\\b[.,\\s]{0,4}PNR\\s*[-:]?\\s*([A-Z0-9]{5,8})\\b(?:,\\s*(\\d{1,2}(?:[\\s/-]?[A-Za-z]{3}(?:[\\s/-]\\d{2,4})?|[-/]\\d{1,2}[-/]\\d{2,4})))?(?:,\\s*from\\s+([A-Za-z0-9() ]{2,20}?\\s+to\\s+[A-Za-z0-9()]{2,10}))?(?:,\\s*([A-Z0-9]{2}\\s?-?\\s?\\d{2,4}))?(?:\\s+at\\s+(\\d{1,2}[:.]\\d{2}))?"
       },
       "action": {
         "category": "important",
@@ -2631,7 +2631,7 @@
       "priority": 304,
       "match": {
         "sender_pattern": "(?i)(?:INDIGO|AKASAA|AKASA|GOFRST|SPICEJ|AIRIND|AIRVIS|VSTARA)",
-        "body_pattern": "(?i)\\b(?:booking|ticket)\\s+(?:is\\s+|stands\\s+)?confirmed\\b[\\s\\S]{0,60}?\\bPNR[\\s:.-]{1,3}([A-Z0-9]{5,8})\\b[,.\\s]+([A-Z]{3}\\s?-\\s?[A-Z]{3})\\b[,.\\s]+(\\d{1,2}(?:[\\s/-][A-Za-z]{3}[\\s/-]|[-/]\\d{1,2}[-/])\\d{2,4})(?:,?\\s*(\\d{1,2}[:.]\\d{2}))?"
+        "body_pattern": "(?i)\\b(?:booking|ticket)\\s+(?:is\\s+|stands\\s+)?confirmed\\b[\\s\\S]{0,60}?\\bPNR[\\s:.-]{1,3}([A-Z0-9]{5,8})\\b[,.\\s]+([A-Z]{3}\\s?-\\s?[A-Z]{3})\\b[,.\\s]+(\\d{1,2}(?:[\\s/-]?[A-Za-z]{3}(?:[\\s/-]\\d{2,4})?|[-/]\\d{1,2}[-/]\\d{2,4}))(?:,?\\s*(\\d{1,2}[:.]\\d{2}))?"
       },
       "action": {
         "category": "important",
@@ -8741,6 +8741,139 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-refund-01",
+      "name": "SBI Card Credit-Balance Refund Initiated / Processed",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)\\brefund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,120}?\\b(?:has\\s+been\\s+|is\\s+)?(?:initiated|processed)\\b",
+        "body_must_contain": [
+          "Card"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "payu-merchant-settlement-01",
+      "name": "PayU Merchant Transaction / Settlement Notice",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)PAYU",
+        "body_pattern": "(?i)\\b(?:transaction|settlement|payment)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\b(?:successful|succeeded|processed|settled)\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "itd-tds-summary-01",
+      "name": "Income Tax Dept Quarterly / Cumulative TDS Summary",
+      "priority": 272,
+      "match": {
+        "sender_pattern": "(?i)(?:ITDEPT|ITDEFL|ITDCPC|INCTAX)",
+        "body_pattern": "(?i)\\b(?:total|cumulative)\\s+TDS\\b[^\\n]{0,160}?\\b(?:Qtr|quarter|FY|F\\.?Y\\.?)\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "hospital-bill-generated-01",
+      "name": "Hospital Bill Generated (amount, link, no due date)",
+      "priority": 262,
+      "match": {
+        "sender_pattern": "(?i)(?:SAKRAH|SAKRA)",
+        "body_pattern": "(?i)\\bbill\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+|is\\s+|was\\s+)?generated\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "dominos-order-confirmed-01",
+      "name": "Dominos Order Confirmation",
+      "priority": 221,
+      "match": {
+        "sender_pattern": "(?i)DOMINO",
+        "body_pattern": "(?i)\\border\\b[^\\n]{0,40}?\\b(?:confirmed|placed|received)\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "mybillbook-payment-recorded-01",
+      "name": "myBillBook Payment Recorded",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:MYBLBK|MYBILL)",
+        "body_pattern": "(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,80}?\\brecorded\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "mf-redemption-processed-01",
+      "name": "MF Redemption Processed (payout in flight)",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
+        "body_pattern": "(?i)\\bredemption\\b[^\\n]{0,120}?\\b(?:has\\s+been\\s+|is\\s+)?processed\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "mutual_fund"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "groww-settlement-credit-01",
+      "name": "Groww Monthly Settlement Credited (UTR)",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)GROWW",
+        "body_pattern": "(?i)\\bsettlement\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has\\s+been\\s+)?credited\\s+to\\s+your\\s+([A-Za-z ]{2,30}?)\\s+a\\/?c(?:count)?\\s+[Xx*]*(\\d{4})\\b[^\\n]{0,60}?\\bUTR\\b[:\\s]*([A-Za-z0-9]{8,22})\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "bank": "$2",
+          "account_last4": "$3",
+          "reference": "$4",
+          "type": "credit"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
     }
   ]
 }

@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "payu-merchant-settlement-01",
+      "name": "PayU Merchant Transaction / Settlement Notice",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)PAYU",
+        "body_pattern": "(?i)\\b(?:transaction|settlement|payment)\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,100}?\\b(?:successful|succeeded|processed|settled)\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    }
+  ]
+}

@@ -62,7 +62,7 @@ class TaxonomyRulesTest {
     @Test
     fun `exchange traded value notice is informational investment`() {
         val result =
-            evaluate("NSESMS", "Dear CTWXXXXX2R, Your traded value for 29-JUN-26 CM Rs 12050.88 combined. -National Stock Exchange")
+            evaluate("NSESMS", "Dear ABCDEXXXX1F, Your traded value for 29-JUN-26 CM Rs 12050.88 combined. -National Stock Exchange")
         assertThat(result?.matchedRuleId).isEqualTo("nse-traded-value-01")
         assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
