@@ -31,6 +31,14 @@ class TransactionParser {
         // request's execution arrives as its own "debited" message and
         // parses then.
         if (isPaymentRequestNotice(body)) return null
+        // A refund/payout that was only INITIATED - or a card CREDIT-BALANCE
+        // refund whose money lands in a different (bank) account - has not
+        // landed: "Refund" is itself a credit keyword, so without this veto
+        // the lifecycle notice would fabricate a credit that the receiving
+        // bank's own SMS later records again - a double count. A merchant
+        // refund "processed to your account" stays out of the veto and
+        // parses as the credit the repo's precedent records it as.
+        if (isPayoutInFlight(body)) return null
         // A statement / bill notice ("Statement is sent...", "E-statement of
         // ... has been mailed") reports money OWED, not money moved. Its
         // verbs ("sent", "generated") and its "Total of Rs X ... is due"
@@ -201,6 +209,19 @@ class TransactionParser {
      * debited, the refund arrives as its own message and parses then.)
      */
     fun isFailedPayment(body: String): Boolean = GuardLibrary.matches(GuardId.FAILED_PAYMENT, body)
+
+    /**
+     * True for refund/payout lifecycle notices whose money has NOT landed
+     * yet: "refund ... initiated" (nothing processed), and a card
+     * CREDIT-BALANCE refund initiated/processed - the quoted tail is the
+     * CARD's while the money lands in a different (bank) account. Such a
+     * notice must never yield a transaction - from the parser OR from rule
+     * extracts - because the receiving bank's own credit SMS records the
+     * money when it lands, and a second row here would double-count it
+     * (and misattribute it to the card). A merchant refund "processed to
+     * your account" deliberately stays OUT of the veto.
+     */
+    fun isPayoutInFlight(body: String): Boolean = GuardLibrary.matches(GuardId.PAYOUT_IN_FLIGHT, body)
 
     /**
      * True for UPI collect / payment-request notices ("You've received an

@@ -138,6 +138,35 @@
       "patterns": [
         "(?i)\\bcontribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?\\s+has\\s+been\\s+credited\\s+to\\s+your\\s+NPS\\b"
       ]
+    },
+    {
+      "id": "payout_in_flight",
+      "description": "Refund / payout lifecycle notices where money is COMING but has not landed. 'Refund' is itself a credit keyword, so without this veto the notice would fabricate a credit that the receiving bank's own SMS later records again (double count). Two deliberately narrow shapes: (1) 'refund ... initiated' - nothing has been processed yet, never a credit; (2) a card CREDIT-BALANCE refund initiated/processed - the quoted tail is the CARD's, but the money lands in a different (bank) account, so a credit derived here is both a double count and a misattribution. A merchant refund 'processed to your account ... will be credited by <date>' deliberately stays OUT of this guard: the repo's precedent records that refund at the merchant's confirmation (see the Flipkart refund fixtures).",
+      "patterns": [
+        "(?i)\\brefund\\b[^\\n]{0,100}?\\binitiated\\b",
+        "(?i)\\brefund\\b[^\\n]{0,60}?\\bcredit\\s+balance\\b[^\\n]{0,120}?\\b(?:initiated|processed)\\b"
+      ]
+    },
+    {
+      "id": "financial_evidence",
+      "description": "POSITIVE financial-correspondence markers - transactional artifacts, never amounts alone: folio / UTR / SR / service-request identifiers, units-allotted and NAV figures, instalment/redemption/settlement processed verbs, refund lifecycle verbs, TDS period summaries, masked PAN references, IFSC codes, 'payment ... recorded' ledger entries, and order-number-plus-amount confirmations. The categorizer demotes a PROMOTIONAL result to IMPORTANT when any of these fire (and no marketing pitch does): financial content must never classify promotional. A promo legitimately quotes money ('cashback up to Rs.500', 'loan @10.5%'), so every pattern here anchors on an artifact or a processed/initiated verb - an amount by itself is never evidence.",
+      "patterns": [
+        "(?i)\\bfolio\\s+(?:no\\.?|number|#)?\\s*[:#-]?\\s*[A-Z0-9][A-Z0-9/]{3,19}\\b",
+        "(?i)\\bUTR\\b\\s*[:#-]?\\s*[A-Za-z0-9]{8,22}\\b",
+        "(?i)\\bSR\\s*(?:no\\.?|number|#)?\\s*[:#-]?\\s*\\d{6,20}\\b",
+        "(?i)\\bNAV\\s+(?:of\\s+)?(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,4})?",
+        "(?i)\\b[\\d,]+(?:\\.\\d{1,4})?\\s+units\\s+allotted\\b",
+        "(?i)\\bunits\\s+allotted\\s*[:#-]?\\s*[\\d,]+(?:\\.\\d{1,4})?\\b",
+        "(?i)\\binsta?l?lment\\b[^\\n]{0,80}?\\bprocessed\\b",
+        "(?i)\\brefund\\b[^\\n]{0,100}?\\b(?:initiated|processed)\\b",
+        "(?i)\\bredemption\\b[^\\n]{0,100}?\\b(?:processed|accepted)\\b",
+        "(?i)\\bsettlement\\b[^\\n]{0,100}?\\b(?:processed|completed|credited)\\b",
+        "(?i)\\bTDS\\b[^\\n]{0,120}?\\b(?:FY|F\\.?Y\\.?|Qtr|quarter|Q[1-4])\\b",
+        "(?i)\\bPAN\\b\\s*[:#-]?\\s*[A-Z0-9Xx*]{10}\\b",
+        "(?i)\\bIFSC\\b\\s*[:#-]?\\s*[A-Z]{4}0[A-Z0-9]{6}\\b",
+        "(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,80}?\\brecorded\\b",
+        "(?i)\\border\\b[^\\n]{0,30}?(?:no\\.?|number|#|id)\\s*[:#-]?\\s*[A-Za-z0-9-]{4,20}\\b[^\\n]{0,80}?(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?"
+      ]
     }
   ]
 }

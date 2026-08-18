@@ -299,6 +299,10 @@ class GuardLibraryTest {
             GuardId.TIER_PREMIUM -> listOf("LIV Premium subscription active")
             GuardId.FUTURE_TENSE -> listOf("amount will be ")
             GuardId.INSTRUCTION_START -> listOf("know the transaction status")
+            GuardId.PAYOUT_IN_FLIGHT ->
+                listOf("Refund of Rs.1,240.50 towards credit balance has been initiated")
+            GuardId.FINANCIAL_EVIDENCE ->
+                listOf("SIP instalment of Rs.2,500.00 in Folio 5023/47 has been processed")
         }
 
     private fun repoFile(repoRelativePath: String): File =

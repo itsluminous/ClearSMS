@@ -1049,6 +1049,13 @@ class MessageRepositoryImpl(
                 // requested figure is carried under its own unsigned key
                 // below.
                 transactionParser.isPaymentRequestNotice(evalBody) -> null
+                // Refund/payout lifecycle notices whose money has not landed
+                // ("refund ... initiated"; card credit-balance refunds whose
+                // money lands in a different bank account): never a
+                // transaction, from the parser (already null there) or from
+                // rule extracts - the receiving bank's own credit SMS
+                // records the money when it lands.
+                transactionParser.isPayoutInFlight(evalBody) -> null
                 // Retirement units-credited echoes re-announce a
                 // contribution whose fund-confirmation SMS already recorded
                 // the credit: never a second transaction; the valuation

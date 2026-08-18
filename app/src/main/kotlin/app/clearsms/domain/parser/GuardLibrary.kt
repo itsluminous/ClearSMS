@@ -45,6 +45,12 @@ enum class GuardId(
     /** Retirement units-credited echoes of an already-recorded contribution. */
     RETIREMENT_UNITS_ECHO("retirement_units_echo"),
 
+    /** Refund/payout announced but not landed - never a credit yet. */
+    PAYOUT_IN_FLIGHT("payout_in_flight"),
+
+    /** Transactional artifacts proving financial correspondence - never promotional. */
+    FINANCIAL_EVIDENCE("financial_evidence"),
+
     /** Per-unit "every Rs X spent" pitch amounts - never a transaction. */
     HYPOTHETICAL_AMOUNT("hypothetical_amount"),
 

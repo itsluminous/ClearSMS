@@ -5,6 +5,8 @@ import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SubCategory
+import app.clearsms.domain.parser.GuardId
+import app.clearsms.domain.parser.GuardLibrary
 import app.clearsms.domain.parser.OtpParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.ScamDetector
@@ -48,7 +50,7 @@ class MessageCategorizer(
         // service. The full body is still stored and displayed unchanged.
         val evalBody = body.take(MAX_EVAL_BODY_LENGTH)
         return normalizeInformational(
-            enforceInvariants(sender, evalBody, rawCategorize(sender, evalBody, userRules, builtinRules, anchor)),
+            enforceInvariants(sender, evalBody, anchor, rawCategorize(sender, evalBody, userRules, builtinRules, anchor)),
         )
     }
 
@@ -115,6 +117,13 @@ class MessageCategorizer(
      *    reclassify a real spend. Transaction-ish extracts (amount/type/
      *    merchant) are dropped in the process so no transaction can derive
      *    downstream from the rule's captures.
+     * 4. Financial content is never PROMOTIONAL even when no transaction
+     *    derives: strong transactional artifacts (the data-driven
+     *    `financial_evidence` guard - folio/UTR/SR ids, units allotted, NAV,
+     *    instalment/redemption/settlement/refund lifecycle verbs, TDS
+     *    summaries, recorded payments, order-number-plus-amount) demote a
+     *    promotional result to IMPORTANT, unless the body is a marketing
+     *    pitch (the `marketing_pitch` guard vetoes the rescue).
      *
      * Exceptions, deliberately narrow:
      * - SCAM results stay put - a phishing message quoting an "OTP" or a
@@ -126,6 +135,7 @@ class MessageCategorizer(
     private fun enforceInvariants(
         sender: String,
         evalBody: String,
+        anchor: LocalDate,
         result: CategorizationResult,
     ): CategorizationResult {
         if (result.subCategory == SubCategory.SCAM) return result
@@ -170,6 +180,27 @@ class MessageCategorizer(
                 category = Category.IMPORTANT,
                 subCategory = result.subCategory ?: SubCategory.TRANSACTION,
             )
+        }
+
+        // Invariant 4: financial content is never PROMOTIONAL, even when no
+        // transaction derives. Evidence is a body of POSITIVE knowledge in
+        // data (the `financial_evidence` guard): transactional artifacts -
+        // folio / UTR / SR identifiers, units-allotted and NAV figures,
+        // instalment / redemption / settlement / refund lifecycle verbs, TDS
+        // period summaries, "payment ... recorded" ledger entries, an order
+        // number with its amount - never amounts alone, so a cashback pitch
+        // or a loan offer quoting money cannot qualify. A marketing pitch
+        // (the `marketing_pitch` guard) vetoes the rescue outright: pitch
+        // phrasing that name-drops an artifact stays promotional. The
+        // sub-category is refined where derivable (a parseable payment
+        // obligation is a BILL); everything else lands as GENERAL financial
+        // correspondence.
+        if (GuardLibrary.matches(GuardId.FINANCIAL_EVIDENCE, evalBody) &&
+            !GuardLibrary.matches(GuardId.MARKETING_PITCH, evalBody)
+        ) {
+            val subCategory =
+                if (reminderParser.parse(sender, evalBody, anchor) != null) SubCategory.BILL else SubCategory.GENERAL
+            return result.copy(category = Category.IMPORTANT, subCategory = subCategory)
         }
         return result
     }
