@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "mybillbook-payment-recorded-01",
+      "name": "myBillBook Payment Recorded",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:MYBLBK|MYBILL)",
+        "body_pattern": "(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,80}?\\brecorded\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
+    }
+  ]
+}

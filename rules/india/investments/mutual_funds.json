@@ -6,7 +6,7 @@
       "name": "MF SIP Purchase (amount-first, fund after Folio)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)SIP\\s+Purchase\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+Folio\\s+\\S{1,20}\\s+in\\s+([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:\\s*-\\s*[A-Za-z][A-Za-z ]{0,30})?\\s+for\\b"
       },
       "action": {
@@ -26,7 +26,7 @@
       "name": "MF SIP Purchase (fund-first, amount after fund)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)SIP\\s+Purchase\\s+in\\s+Folio\\s+\\S{1,20}\\s+under\\s+([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:[- ](?:DP|Dir(?:ect)?|Reg(?:ular)?|Growth|IDCW)[A-Za-z -]{0,20})?\\s+for\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
@@ -46,7 +46,7 @@
       "name": "MF SIP Units Allotted (dash-separated shape)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)SIP\\s*-\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+Folio\\s+\\S{1,20}\\s*-\\s*([A-Za-z][A-Za-z0-9 &()]{2,60}?)(?:\\s*-\\s*[A-Za-z][A-Za-z ]{0,30})?\\s*-\\s*[\\d.]{1,12}\\s+units\\s+allotted"
       },
       "action": {
@@ -66,7 +66,7 @@
       "name": "MF Purchase Processed (fund-house catch-all)",
       "priority": 310,
       "match": {
-        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF)",
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
         "body_pattern": "(?i)\\b(?:SIP|lumpsum|purchase)\\b[\\s\\S]{0,120}?(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,160}?\\b(?:units|NAV)\\b",
         "body_must_not_contain": [
           "redemption",
@@ -83,6 +83,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "id": "mf-redemption-processed-01",
+      "name": "MF Redemption Processed (payout in flight)",
+      "priority": 315,
+      "match": {
+        "sender_pattern": "(?i)(?:IPRUMF|HDFCMF|CNRBMF|CRMF|KOTAKM|AXISMF|PPFAMF|SBIMFM|NAVIMF|TATAMF|KFINMF|UTIMFS|MOTILA|MIRAEA|ABSLMF|DSPMF|NIPPON|EDELMF|CAMSMF|INVMFS|QUANTM)",
+        "body_pattern": "(?i)\\bredemption\\b[^\\n]{0,120}?\\b(?:has\\s+been\\s+|is\\s+)?processed\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "mutual_fund"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
     }
   ]
 }

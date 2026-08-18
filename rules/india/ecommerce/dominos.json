@@ -15,6 +15,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "dominos-order-confirmed-01",
+      "name": "Dominos Order Confirmation",
+      "priority": 221,
+      "match": {
+        "sender_pattern": "(?i)DOMINO",
+        "body_pattern": "(?i)\\border\\b[^\\n]{0,40}?\\b(?:confirmed|placed|received)\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "delivery"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
     }
   ]
 }

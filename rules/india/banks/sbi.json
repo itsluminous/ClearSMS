@@ -588,6 +588,24 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "sbi-card-refund-01",
+      "name": "SBI Card Credit-Balance Refund Initiated / Processed",
+      "priority": 318,
+      "match": {
+        "sender_pattern": "(?i)SBI",
+        "body_pattern": "(?i)\\brefund\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,120}?\\b(?:has\\s+been\\s+|is\\s+)?(?:initiated|processed)\\b",
+        "body_must_contain": [
+          "Card"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
     }
   ]
 }

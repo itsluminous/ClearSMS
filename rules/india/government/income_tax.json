@@ -53,6 +53,21 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "itd-tds-summary-01",
+      "name": "Income Tax Dept Quarterly / Cumulative TDS Summary",
+      "priority": 272,
+      "match": {
+        "sender_pattern": "(?i)(?:ITDEPT|ITDEFL|ITDCPC|INCTAX)",
+        "body_pattern": "(?i)\\b(?:total|cumulative)\\s+TDS\\b[^\\n]{0,160}?\\b(?:Qtr|quarter|FY|F\\.?Y\\.?)\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-18T00:00:00Z"
     }
   ]
 }
