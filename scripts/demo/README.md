@@ -1,6 +1,6 @@
 # Demo corpus & emulator seeding
 
-A fully **synthetic** SMS corpus (`messages.jsonl`, 72 messages) that
+A fully **synthetic** SMS corpus (`messages.jsonl`, 75 messages) that
 exercises nearly every ClearSMS feature, plus a seeding tool (`seed.py`)
 that replays it into an Android emulator. No message here belongs to a real
 person; every name, account tail, PNR, amount and OTP is invented.
