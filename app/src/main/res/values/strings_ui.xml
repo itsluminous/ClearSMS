@@ -217,6 +217,7 @@
     <string name="settings_block_list_summary">%1$d blocked sender(s)</string>
     <string name="settings_block_list_summary_with_keywords">%1$d blocked sender(s), %2$d blocked keyword(s)</string>
     <string name="settings_blocked_senders_header">Blocked senders</string>
+    <string name="settings_blocked_senders_note">Blocking hides the conversation and sends the sender\'s future messages straight to the recycle bin (or deletes them when the bin is off), silently. Unblocking stops that but doesn\'t restore already-binned messages - restore them from the recycle bin.</string>
     <string name="settings_blocked_keywords_header">Blocked keywords</string>
     <string name="settings_blocked_keywords_note">Incoming messages containing a keyword go straight to the recycle bin (or are deleted when the bin is off). No notification is shown.</string>
     <string name="settings_block_keyword_hint">Add keyword</string>

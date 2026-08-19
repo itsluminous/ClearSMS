@@ -160,6 +160,21 @@ interface SettingsRepository {
     suspend fun setBlockedKeywords(value: Set<String>)
 
     /**
+     * The blocked-sender list - THE single source of truth for sender
+     * blocking. Entries are stored normalized (see
+     * [app.clearsms.data.repository.SenderNormalizer]) so route variants of
+     * one sender ("VM-JIOPAY", "JIOPAY") share one entry. Consulted at
+     * ingestion (live delivery, catch-up and initial import, MMS download):
+     * a match is born soft-deleted into the recycle bin - or dropped when
+     * the bin is off - exactly like a blocked keyword. The per-row
+     * `isBlockedSender` flag is only a derived cache of this set. All
+     * writes go through [app.clearsms.data.repository.SenderBlocker].
+     */
+    val blockedSenders: Flow<Set<String>>
+
+    suspend fun setBlockedSenders(value: Set<String>)
+
+    /**
      * User-chosen order of the Alerts filter pills; same guarantees as
      * [inboxPillOrder]. Persisted as enum names, so [AlertFilter] staying in
      * the ui layer costs nothing at the storage level.

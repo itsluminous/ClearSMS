@@ -217,6 +217,7 @@ object DataModule {
             systemSmsReinserter = telephonyWriter,
             readNotificationCanceler = notificationDismisser,
             blockedKeywords = { settingsRepository.blockedKeywords.first() },
+            blockedSenders = { settingsRepository.blockedSenders.first() },
             recycleBinEnabled = { settingsRepository.recycleBinEnabled.first() },
             attachmentFileCleaner = attachmentStore::deleteFor,
         )

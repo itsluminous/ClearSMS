@@ -85,19 +85,6 @@ class UiPrefs
             dataStore.edit { it[KEY_LAST_AUTO_BACKUP_MS] = value }
         }
 
-        /** Senders the user blocked, mirrored here so the block list screen can display them. */
-        val blockedSenders: Flow<Set<String>> = dataStore.data.map { it[KEY_BLOCKED_SENDERS] ?: emptySet() }
-
-        suspend fun setSenderBlocked(
-            sender: String,
-            blocked: Boolean,
-        ) {
-            dataStore.edit { prefs ->
-                val current = prefs[KEY_BLOCKED_SENDERS] ?: emptySet()
-                prefs[KEY_BLOCKED_SENDERS] = if (blocked) current + sender else current - sender
-            }
-        }
-
         /**
          * Rules the user disabled, stored as "source|definitionJson" entries. A
          * disabled rule is removed from the database (so the engine skips it)
@@ -124,7 +111,11 @@ class UiPrefs
             val KEY_BACKUP_DIRECTORY_URI = stringPreferencesKey("backup_directory_uri")
             val KEY_BACKUP_DIRECTORY_ERROR = booleanPreferencesKey("backup_directory_error")
             val KEY_LAST_AUTO_BACKUP_MS = longPreferencesKey("last_auto_backup_ms")
-            val KEY_BLOCKED_SENDERS = stringSetPreferencesKey("blocked_senders")
+
+            // "blocked_senders" once lived here as the Settings dialog's
+            // mirror; the blocklist moved to SettingsRepository (backed up,
+            // single authority) - SenderBlocker.reconcileLegacy drains the
+            // old key on app start.
             val KEY_DISABLED_RULES = stringSetPreferencesKey("disabled_rules")
         }
     }

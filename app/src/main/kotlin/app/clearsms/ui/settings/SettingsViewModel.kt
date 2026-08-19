@@ -12,6 +12,7 @@ import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.backup.SettingsRestoreResult
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.FinanceTab
@@ -149,6 +150,7 @@ class SettingsViewModel
         private val settings: SettingsRepository,
         private val uiPrefs: UiPrefs,
         private val messageRepository: MessageRepository,
+        private val senderBlocker: SenderBlocker,
         private val backupManager: BackupManager,
         private val settingsBackupManager: SettingsBackupManager,
         private val workManager: WorkManager,
@@ -280,7 +282,7 @@ class SettingsViewModel
             combine(
                 settings.signature,
                 uiPrefs.backupFrequency,
-                uiPrefs.blockedSenders,
+                settings.blockedSenders,
                 uiPrefs.backupDirectoryUri,
                 uiPrefs.backupDirectoryError,
                 ::OtherState,
@@ -460,17 +462,9 @@ class SettingsViewModel
             BackupWorker.applyFrequency(context, value)
         }
 
-        fun blockSender(sender: String) =
-            launchIo {
-                messageRepository.setBlocked(sender, true)
-                uiPrefs.setSenderBlocked(sender, true)
-            }
+        fun blockSender(sender: String) = launchIo { senderBlocker.block(sender) }
 
-        fun unblockSender(sender: String) =
-            launchIo {
-                messageRepository.setBlocked(sender, false)
-                uiPrefs.setSenderBlocked(sender, false)
-            }
+        fun unblockSender(sender: String) = launchIo { senderBlocker.unblock(sender) }
 
         /**
          * Adds a validated keyword (the dialog runs

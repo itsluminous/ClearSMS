@@ -12,6 +12,7 @@ import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
@@ -124,6 +125,7 @@ class InboxViewModel
     constructor(
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
+        private val senderBlocker: SenderBlocker,
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
         private val settings: SettingsRepository,
@@ -316,8 +318,17 @@ class InboxViewModel
             viewModelScope.launch(ioDispatcher) { undoManager.undo() }
         }
 
+        /**
+         * Blocks [sender] through the SAME path Settings uses
+         * ([SenderBlocker]): the sender lands in the Settings block-list
+         * dialog (where unblocking lives), its existing conversation moves
+         * to the recycle bin, and future messages arrive born-deleted and
+         * silent. No confirm step - delete, the closest destructive
+         * neighbor, has none either - and no undo snackbar (see
+         * [SenderBlocker] for why); the bin keeps the messages restorable.
+         */
         fun block(sender: String) {
-            viewModelScope.launch(ioDispatcher) { messageRepository.setBlocked(sender, true) }
+            viewModelScope.launch(ioDispatcher) { senderBlocker.block(sender) }
         }
 
         /**

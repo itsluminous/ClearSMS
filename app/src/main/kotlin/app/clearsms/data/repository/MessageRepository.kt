@@ -331,8 +331,25 @@ interface MessageRepository {
      */
     suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> }): Int
 
+    /**
+     * Updates the derived per-row `isBlockedSender` cache for [sender]'s
+     * existing rows. NOT the blocking authority - that is the settings
+     * blocklist set, written via [app.clearsms.data.repository.SenderBlocker]
+     * (which calls this to keep the cache honest).
+     */
     suspend fun setBlocked(
         sender: String,
         blocked: Boolean,
     )
+
+    /**
+     * Moves [sender]'s live thread messages to the recycle bin (or deletes
+     * them outright when the bin is off) - the "blocking hides the existing
+     * conversation" effect. Provider copies are removed like a committed
+     * delete. No-op when the sender has no thread.
+     */
+    suspend fun binThreadForSender(sender: String) {}
+
+    /** Distinct senders flagged blocked at the row level (legacy reconcile input). */
+    suspend fun legacyBlockedSenderFlags(): List<String> = emptyList()
 }

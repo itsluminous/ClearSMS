@@ -83,6 +83,14 @@ class MessageRepositoryImpl(
      */
     private val blockedKeywords: suspend () -> Set<String> = { emptySet() },
     /**
+     * The user's blocked-sender set - the single blocking authority (see
+     * [app.clearsms.data.prefs.SettingsRepository.blockedSenders]). Entries
+     * are normalized on write, but matching re-normalizes defensively. A
+     * matching incoming message is born soft-deleted exactly like a blocked
+     * keyword. Defaults to none.
+     */
+    private val blockedSenders: suspend () -> Set<String> = { emptySet() },
+    /**
      * Whether the recycle bin is enabled - decides whether a keyword-blocked
      * message rests in the bin or is dropped outright, mirroring the app's
      * committed-delete semantics. Default matches the settings default (on).
@@ -488,15 +496,18 @@ class MessageRepositoryImpl(
         timestampMs: Long,
         systemSmsId: Long?,
     ): MessageRepository.IncomingIngest {
-        // Blocked keywords are checked FIRST: a matching message must never
-        // reach the inbox, notifications, or the finance derivations below.
-        if (BlockedKeywords.matches(body, blockedKeywords())) {
-            return ingestKeywordBlocked(sender, body, timestampMs, systemSmsId)
+        val normalized = SenderNormalizer.normalize(sender)
+        // Blocked keywords and blocked senders are checked FIRST: a matching
+        // message must never reach the inbox, notifications, or the finance
+        // derivations below - it is born soft-deleted (bin on) or dropped
+        // (bin off).
+        val senderBlocked = isSenderBlocked(normalized)
+        if (senderBlocked || BlockedKeywords.matches(body, blockedKeywords())) {
+            return ingestBornDeleted(sender, body, timestampMs, systemSmsId, blockedSender = senderBlocked)
         }
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
         val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
-        val normalized = SenderNormalizer.normalize(sender)
         // Message + derived transaction/account/reminder rows commit together:
         // a failure mid-derivation must never leave a message without its
         // finance rows (or vice versa). Retrying the delivery then re-runs the
@@ -505,7 +516,6 @@ class MessageRepositoryImpl(
         // no-ops.
         return database.withTransaction {
             val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
-            val blocked = isSenderBlocked(normalized)
 
             val entity =
                 MessageEntity(
@@ -519,7 +529,6 @@ class MessageRepositoryImpl(
                     subCategory = enriched.result.subCategory,
                     extractedOtp = enriched.otpCode,
                     extractedDataJson = encodeExtracted(enriched.extracted),
-                    isBlockedSender = blocked,
                 )
             // IGNORE (not REPLACE) on the unique systemSmsId index: a
             // concurrent catch-up import may have committed this provider row
@@ -593,45 +602,62 @@ class MessageRepositoryImpl(
         val effectiveSender = sender?.takeIf { it.isNotBlank() && existing.sender.isBlank() } ?: existing.sender
         val enriched = classify(rulesSnapshot(), effectiveSender, body, existing.timestamp)
         val normalized = SenderNormalizer.normalize(effectiveSender)
-        return database.withTransaction {
-            val row = messageDao.getById(messageId) ?: return@withTransaction null
-            val threadId =
-                if (normalized == row.normalizedSender) {
-                    row.threadId
-                } else {
-                    messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+        // A blocked sender's MMS is born soft-deleted like a blocked SMS:
+        // it completes (so the download machinery finishes cleanly), then
+        // rests in the bin - or, with the bin off, is removed outright
+        // below. Attachment rows are still written so a bin restore keeps
+        // its image. Unlike SMS there is no provider-copy delete here:
+        // keyword/sender blocking never touched the MMS provider.
+        val blocked = isSenderBlocked(normalized)
+        val completed =
+            database.withTransaction {
+                val row = messageDao.getById(messageId) ?: return@withTransaction null
+                val threadId =
+                    if (normalized == row.normalizedSender) {
+                        row.threadId
+                    } else {
+                        messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+                    }
+                val updated =
+                    row.copy(
+                        sender = effectiveSender,
+                        normalizedSender = normalized,
+                        threadId = threadId,
+                        body = body,
+                        isRead = if (blocked) true else row.isRead,
+                        category = enriched.result.category,
+                        subCategory = enriched.result.subCategory,
+                        extractedOtp = enriched.otpCode,
+                        extractedDataJson = encodeExtracted(enriched.extracted),
+                        isBlockedSender = blocked,
+                        deletedAt = if (blocked) row.timestamp else row.deletedAt,
+                        mmsStatus = MmsStatus.DOWNLOADED,
+                        mmsRecipients = encodeRecipients(recipients),
+                        attachmentKinds = attachmentKinds(attachments),
+                    )
+                messageDao.update(updated)
+                if (attachments.isNotEmpty()) {
+                    attachmentDao.insertAll(
+                        attachments.map {
+                            AttachmentEntity(
+                                messageId = messageId,
+                                mimeType = it.mimeType,
+                                fileName = it.fileName,
+                                sizeBytes = it.sizeBytes,
+                            )
+                        },
+                    )
                 }
-            val updated =
-                row.copy(
-                    sender = effectiveSender,
-                    normalizedSender = normalized,
-                    threadId = threadId,
-                    body = body,
-                    category = enriched.result.category,
-                    subCategory = enriched.result.subCategory,
-                    extractedOtp = enriched.otpCode,
-                    extractedDataJson = encodeExtracted(enriched.extracted),
-                    isBlockedSender = isSenderBlocked(normalized),
-                    mmsStatus = MmsStatus.DOWNLOADED,
-                    mmsRecipients = encodeRecipients(recipients),
-                    attachmentKinds = attachmentKinds(attachments),
-                )
-            messageDao.update(updated)
-            if (attachments.isNotEmpty()) {
-                attachmentDao.insertAll(
-                    attachments.map {
-                        AttachmentEntity(
-                            messageId = messageId,
-                            mimeType = it.mimeType,
-                            fileName = it.fileName,
-                            sizeBytes = it.sizeBytes,
-                        )
-                    },
-                )
+                // Blocked messages derive NOTHING - same as keyword blocking.
+                if (!blocked) persistDerived(messageId, row.timestamp, enriched)
+                updated
             }
-            persistDerived(messageId, row.timestamp, enriched)
-            updated
+        if (completed != null && blocked && !recycleBinEnabled()) {
+            // Bin off: dropped outright, mirroring the SMS path.
+            deleteMessages(listOf(completed.id))
+            return null
         }
+        return completed
     }
 
     override suspend fun markMmsFailed(messageId: Long) = messageDao.setMmsStatus(messageId, MmsStatus.FAILED)
@@ -660,20 +686,23 @@ class MessageRepositoryImpl(
     // endregion
 
     /**
-     * Ingests a keyword-blocked incoming message following the app's delete
-     * semantics: with the recycle bin ON the row is born soft-deleted
-     * (deletedAt set at ingest) and rests in the bin; with the bin OFF no
-     * row is written at all. Either way the system-provider copy is removed
-     * (like a committed delete), NO derived rows are produced - no
-     * transactions, accounts or reminders - and the returned entity carries
-     * a non-null deletedAt so [app.clearsms.notification.IncomingMessageRouter]
-     * and the catch-up fresh filter stay silent about it.
+     * Ingests a blocked (keyword- or sender-blocked) incoming message
+     * following the app's delete semantics: with the recycle bin ON the row
+     * is born soft-deleted (deletedAt set at ingest) and rests in the bin;
+     * with the bin OFF no row is written at all. Either way the
+     * system-provider copy is removed (like a committed delete), NO derived
+     * rows are produced - no transactions, accounts or reminders - and the
+     * returned entity carries a non-null deletedAt so
+     * [app.clearsms.notification.IncomingMessageRouter] and the catch-up
+     * fresh filter stay silent about it. [blockedSender] additionally sets
+     * the row's derived `isBlockedSender` cache flag.
      */
-    private suspend fun ingestKeywordBlocked(
+    private suspend fun ingestBornDeleted(
         sender: String,
         body: String,
         timestampMs: Long,
         systemSmsId: Long?,
+        blockedSender: Boolean,
     ): MessageRepository.IncomingIngest {
         // Classification still runs (pure CPU) so a binned message shows an
         // honest category if the user opens the bin - but nothing is derived.
@@ -694,6 +723,7 @@ class MessageRepositoryImpl(
                 subCategory = enriched.result.subCategory,
                 extractedOtp = enriched.otpCode,
                 extractedDataJson = encodeExtracted(enriched.extracted),
+                isBlockedSender = blockedSender,
                 deletedAt = timestampMs,
                 providerDeletePending = true,
             )
@@ -839,6 +869,17 @@ class MessageRepositoryImpl(
         blocked: Boolean,
     ) = messageDao.setBlockedSender(SenderNormalizer.normalize(sender), blocked)
 
+    override suspend fun binThreadForSender(sender: String) {
+        val threadId = messageDao.threadIdFor(SenderNormalizer.normalize(sender)) ?: return
+        // The same stage+commit pair a timed-out UI delete performs: bin on
+        // -> the thread rests in the bin (restorable); bin off -> dropped,
+        // provider copies removed either way.
+        val staged = stageDeleteThreads(listOf(threadId))
+        commitStagedDelete(staged, toBin = recycleBinEnabled())
+    }
+
+    override suspend fun legacyBlockedSenderFlags(): List<String> = messageDao.blockedSenderFlags()
+
     // region bulk import
 
     /**
@@ -893,19 +934,20 @@ class MessageRepositoryImpl(
      */
     internal suspend fun persistImportedPage(page: List<ImportedSmsRow>): List<MessageEntity> {
         if (page.isEmpty()) return emptyList()
-        // Keyword-blocked incoming rows follow the same delete semantics as
-        // the live path: bin ON -> inserted born-deleted (resting in the
+        // Keyword- and sender-blocked rows follow the same delete semantics
+        // as the live path: bin ON -> inserted born-deleted (resting in the
         // bin, no derived rows); bin OFF -> not inserted at all. Their
-        // provider copies are removed after the page commits.
+        // provider copies are removed after the page commits. The blocklist
+        // set is read (and normalized) ONCE per page.
         val keywords = blockedKeywords()
-        val binEnabled = if (keywords.isEmpty()) false else recycleBinEnabled()
+        val blockedSet = blockedSenders().mapTo(HashSet()) { SenderNormalizer.normalize(it) }
+        val binEnabled = if (keywords.isEmpty() && blockedSet.isEmpty()) false else recycleBinEnabled()
         val droppedSystemIds = mutableListOf<Long>()
         val binnedIds = mutableListOf<Long>()
         val inserted =
             database.withTransaction {
                 var maxThreadId = messageDao.maxThreadId() ?: 0L
                 val threadIds = HashMap<String, Long>()
-                val blockedBySender = HashMap<String, Boolean>()
                 val entities =
                     page.map { row ->
                         val normalized = SenderNormalizer.normalize(row.sender)
@@ -913,24 +955,28 @@ class MessageRepositoryImpl(
                             threadIds.getOrPut(normalized) {
                                 messageDao.threadIdFor(normalized) ?: ++maxThreadId
                             }
+                        // Applies to outgoing rows too: blocking bins the
+                        // WHOLE conversation, so an import must not leave a
+                        // ghost thread of only your own sent messages.
+                        val senderBlocked = normalized in blockedSet
                         val enriched = row.enriched
                         if (enriched != null) {
-                            val keywordBlocked = BlockedKeywords.matches(row.body, keywords)
+                            val born = senderBlocked || BlockedKeywords.matches(row.body, keywords)
                             MessageEntity(
                                 threadId = threadId,
                                 sender = row.sender,
                                 normalizedSender = normalized,
                                 body = row.body,
                                 timestamp = row.timestampMs,
-                                isRead = if (keywordBlocked) true else row.isRead,
+                                isRead = if (born) true else row.isRead,
                                 category = enriched.result.category,
                                 subCategory = enriched.result.subCategory,
                                 extractedOtp = enriched.otpCode,
                                 extractedDataJson = encodeExtracted(enriched.extracted),
-                                isBlockedSender = blockedBySender.getOrPut(normalized) { isSenderBlocked(normalized) },
+                                isBlockedSender = senderBlocked,
                                 systemSmsId = row.systemSmsId,
-                                deletedAt = if (keywordBlocked) row.timestampMs else null,
-                                providerDeletePending = keywordBlocked,
+                                deletedAt = if (born) row.timestampMs else null,
+                                providerDeletePending = born,
                             )
                         } else {
                             // Outgoing (sent) message: stored as a read personal
@@ -943,8 +989,11 @@ class MessageRepositoryImpl(
                                 timestamp = row.timestampMs,
                                 isRead = true,
                                 category = Category.PERSONAL,
+                                isBlockedSender = senderBlocked,
                                 systemSmsId = row.systemSmsId,
                                 isOutgoing = true,
+                                deletedAt = if (senderBlocked) row.timestampMs else null,
+                                providerDeletePending = senderBlocked,
                                 deliveryStatus =
                                     if (row.delivered) DeliveryStatus.DELIVERED else DeliveryStatus.SENT,
                             )
@@ -1698,7 +1747,16 @@ class MessageRepositoryImpl(
     private suspend fun definitions(source: String): List<RuleDefinition> =
         ruleDao.getEnabledBySource(source).mapNotNull { it.toDefinition(json) }
 
-    private suspend fun isSenderBlocked(normalizedSender: String): Boolean = messageDao.isSenderBlocked(normalizedSender)
+    /**
+     * Set-authoritative block check: matches [normalizedSender] against the
+     * normalized blocklist. Entries are stored normalized, but each is
+     * re-normalized here so a raw variant (a restored backup, a hand-typed
+     * "VM-JIOPAY") still matches. Never row-derived: the old
+     * EXISTS-over-rows check evaporated the block when its thread was
+     * deleted.
+     */
+    private suspend fun isSenderBlocked(normalizedSender: String): Boolean =
+        blockedSenders().any { SenderNormalizer.normalize(it) == normalizedSender }
 
     private fun deleteAttachmentFiles(messageIds: List<Long>) {
         val cleaner = attachmentFileCleaner ?: return

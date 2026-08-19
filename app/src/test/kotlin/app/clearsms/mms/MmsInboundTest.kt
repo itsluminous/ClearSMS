@@ -52,6 +52,7 @@ class MmsInboundTest {
     private lateinit var inbound: MmsInbound
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val json = Json { ignoreUnknownKeys = true }
+    private var blockedSenders = emptySet<String>()
 
     /** Records download requests instead of talking to the platform. */
     private class FakeDownloader : MmsDownloader {
@@ -104,6 +105,7 @@ class MmsInboundTest {
                     ),
                 bundledRuleLoader = BundledRuleLoader(context, db.ruleDao(), json, NoopStore),
                 json = json,
+                blockedSenders = { blockedSenders },
             )
         attachmentStore = AttachmentStore(context)
         val iconFactory = SenderIconFactory(context)
@@ -203,10 +205,9 @@ class MmsInboundTest {
         }
 
     @Test
-    fun `blocked sender MMS completes silently`() =
+    fun `blocked sender MMS completes silently into the bin`() =
         runBlocking {
-            repository.insertIncoming("+15551234567", "earlier", 500L)
-            repository.setBlocked("+15551234567", blocked = true)
+            blockedSenders = setOf("5551234567")
             context.getSystemService(NotificationManager::class.java).cancelAll()
             val id = inbound.onNotification(MmsPduFixtures.notificationInd())!!
             attachmentStore
@@ -215,7 +216,10 @@ class MmsInboundTest {
 
             inbound.onDownloadResult(id, succeeded = true, attempt = 0, contentLocation = { null })
 
-            assertThat(db.messageDao().getById(id)!!.body).isEqualTo("blocked hello")
+            val row = db.messageDao().getById(id)!!
+            assertThat(row.body).isEqualTo("blocked hello")
+            // Born-deleted: bin-resident, never inbox-visible, no notification.
+            assertThat(row.deletedAt).isNotNull()
             assertThat(shade().size()).isEqualTo(0)
         }
 

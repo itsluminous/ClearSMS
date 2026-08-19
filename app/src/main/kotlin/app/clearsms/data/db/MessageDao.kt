@@ -493,8 +493,15 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE systemSmsId = :systemSmsId LIMIT 1")
     suspend fun bySystemSmsId(systemSmsId: Long): MessageEntity?
 
-    @Query("SELECT EXISTS(SELECT 1 FROM messages WHERE normalizedSender = :normalizedSender AND isBlockedSender = 1)")
-    suspend fun isSenderBlocked(normalizedSender: String): Boolean
+    /**
+     * Distinct senders whose rows carry the legacy `isBlockedSender` flag.
+     * Blocking authority moved to the settings blocklist set; this scan only
+     * feeds [app.clearsms.data.repository.SenderBlocker]'s app-start
+     * reconcile, which folds flags written by older app versions (where the
+     * inbox block action set ONLY the row flag) into the set.
+     */
+    @Query("SELECT DISTINCT normalizedSender FROM messages WHERE isBlockedSender = 1")
+    suspend fun blockedSenderFlags(): List<String>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity): Long

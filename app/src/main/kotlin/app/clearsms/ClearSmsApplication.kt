@@ -3,6 +3,7 @@ package app.clearsms
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.work.AutoResortScheduler
 import dagger.hilt.android.HiltAndroidApp
@@ -27,6 +28,9 @@ class ClearSmsApplication :
     @Inject
     lateinit var autoResortScheduler: AutoResortScheduler
 
+    @Inject
+    lateinit var senderBlocker: SenderBlocker
+
     override fun onCreate() {
         super.onCreate()
         // Commits any deferred provider deletion that survived process death
@@ -37,6 +41,9 @@ class ClearSmsApplication :
         // with the updated rules automatically (Settings → Sort inbox again
         // without the user having to remember it).
         autoResortScheduler.onAppStart()
+        // Folds legacy block records (the old ui-prefs mirror and per-row
+        // flags) into the authoritative settings blocklist - idempotent.
+        senderBlocker.onAppStart()
     }
 
     override val workManagerConfiguration: Configuration

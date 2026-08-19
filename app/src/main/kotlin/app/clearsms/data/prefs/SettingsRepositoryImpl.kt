@@ -203,6 +203,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_BLOCKED_KEYWORDS] = value }
     }
 
+    override val blockedSenders: Flow<Set<String>> =
+        dataStore.data.map { it[KEY_BLOCKED_SENDERS] ?: emptySet() }
+
+    override suspend fun setBlockedSenders(value: Set<String>) {
+        dataStore.edit { it[KEY_BLOCKED_SENDERS] = value }
+    }
+
     override val alertsPillOrder: Flow<List<AlertFilter>> =
         dataStore.data.map { it[KEY_ALERTS_PILL_ORDER].toEnumOrder() }
 
@@ -266,6 +273,7 @@ class SettingsRepositoryImpl(
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
         val KEY_BLOCKED_KEYWORDS = stringSetPreferencesKey("blocked_keywords")
+        val KEY_BLOCKED_SENDERS = stringSetPreferencesKey("blocked_senders")
         val KEY_LAST_SORTED_VERSION_CODE = intPreferencesKey("last_sorted_version_code")
 
         /** Separator for the stored pill-order enum name lists. */

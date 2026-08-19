@@ -35,6 +35,7 @@ class MmsIngestionRepositoryTest {
     private lateinit var repository: MessageRepositoryImpl
     private val json = Json { ignoreUnknownKeys = true }
     private val cleanedIds = mutableListOf<Long>()
+    private var blockedSenders = emptySet<String>()
 
     private object NoopStore : DataStore<Preferences> {
         override val data: Flow<Preferences> = flowOf(emptyPreferences())
@@ -61,6 +62,7 @@ class MmsIngestionRepositoryTest {
                     ),
                 bundledRuleLoader = BundledRuleLoader(context, db.ruleDao(), json, NoopStore),
                 json = json,
+                blockedSenders = { blockedSenders },
                 attachmentFileCleaner = { cleanedIds += it },
             )
     }
@@ -201,12 +203,11 @@ class MmsIngestionRepositoryTest {
         }
 
     @Test
-    fun `a blocked sender's MMS row is flagged blocked`() =
+    fun `a blocked sender's MMS row is flagged blocked and born-deleted`() =
         runBlocking {
-            // Blocking marks the sender's existing rows; later ingests read
-            // the flag from them - so seed the thread BEFORE blocking.
-            repository.insertIncoming("+15551234567", "earlier", 500L)
-            repository.setBlocked("+15551234567", blocked = true)
+            // Blocking authority is the settings set, never the rows - so no
+            // pre-existing thread is needed for the block to hold.
+            blockedSenders = setOf("5551234567")
 
             val pending = insertPending(sender = "+15551234567")
             val updated =
@@ -220,6 +221,10 @@ class MmsIngestionRepositoryTest {
 
             assertThat(pending.isBlockedSender).isTrue()
             assertThat(updated.isBlockedSender).isTrue()
+            // Born-deleted like a blocked SMS: bin-resident, read, silent-eligible.
+            assertThat(updated.deletedAt).isNotNull()
+            assertThat(updated.isRead).isTrue()
+            assertThat(db.transactionDao().getAll()).isEmpty()
         }
 
     @Test
