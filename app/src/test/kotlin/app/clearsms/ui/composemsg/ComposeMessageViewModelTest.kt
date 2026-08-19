@@ -2,7 +2,9 @@ package app.clearsms.ui.composemsg
 
 import android.app.AlarmManager
 import android.content.Context
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -20,13 +22,19 @@ import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.testing.FakeSmsGateway
+import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.work.MessageScheduler
 import app.clearsms.work.ScheduledSendAlarms
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
@@ -83,12 +91,10 @@ class ComposeMessageViewModelTest {
                 .allowMainThreadQueries()
                 .build()
         dao = db.messageDao()
-        simChoiceStore =
-            SimChoiceStore(
-                PreferenceDataStoreFactory.create {
-                    File.createTempFile("sim_choice", ".preferences_pb")
-                },
-            )
+        // In-memory, per the testing convention: a temp-file DataStore runs
+        // its actor off the test scheduler and carries the upstream 1.1.x
+        // collector race (b/431787506) that only bites on 2-vCPU CI.
+        simChoiceStore = SimChoiceStore(InMemoryPreferencesDataStore())
         subscriptions = FakeSubscriptionSource()
     }
 
@@ -109,16 +115,31 @@ class ComposeMessageViewModelTest {
         }
     }
 
+    /** A DataStore whose reads park until [gate] completes (race harness). */
+    private class GatedPreferencesDataStore(
+        private val gate: CompletableDeferred<Unit>,
+    ) : DataStore<Preferences> {
+        private val state = MutableStateFlow(emptyPreferences())
+
+        override val data: Flow<Preferences> =
+            flow {
+                gate.await()
+                emitAll(state)
+            }
+
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+            val next = transform(state.value).toPreferences()
+            state.value = next
+            return next
+        }
+    }
+
     private fun viewModel(
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
         smsDao: MessageDao = dao,
+        simChoiceStore: SimChoiceStore = this.simChoiceStore,
     ): ComposeMessageViewModel {
-        val uiPrefs =
-            UiPrefs(
-                PreferenceDataStoreFactory.create {
-                    File.createTempFile("ui_settings", ".preferences_pb")
-                },
-            )
+        val uiPrefs = UiPrefs(InMemoryPreferencesDataStore())
         val smsSender = SmsSender(context, smsDao, TelephonyWriter(context), uiPrefs, Dispatchers.Unconfined, FakeSmsGateway())
         val mmsSender =
             MmsSender(
@@ -234,7 +255,10 @@ class ComposeMessageViewModelTest {
             vm.cycleSim()
 
             awaitUntil { simChoiceStore.rememberedFor("+15559876543") == 20 }
-            assertThat(vm.simState.value.slot).isEqualTo(2)
+            // The store write and the UI update are separate hops off the main
+            // thread, so the choice is asserted as it settles rather than
+            // instantaneously (which raced on 2-vCPU CI runners).
+            awaitUntil { vm.simState.value.slot == 2 }
         }
 
     @Test
@@ -370,5 +394,62 @@ class ComposeMessageViewModelTest {
 
             awaitUntil { vm.uiState.value.sendStatus == app.clearsms.ui.conversation.SendStatus.FAILED }
             assertThat(vm.uiState.value.body).isEqualTo("please arrive")
+        }
+
+    @Test
+    fun `a parked recipient lookup cannot undo an explicit sim tap`() =
+        runBlocking<Unit> {
+            // A tap while a per-recipient lookup is still parked in the memory
+            // read must win: when the lookup finally resumes it must not move
+            // the indicator. NOTE: this covers the cancel-while-suspended case
+            // only. The narrower race - cancellation arriving after the read
+            // resumed but before the assignment, which the generation guard in
+            // the view model also closes - cannot be forced from a test without
+            // a production test hook, so it is not pinned here.
+            val gate = CompletableDeferred<Unit>()
+            val gated = GatedPreferencesDataStore(gate)
+            subscriptions.sims =
+                listOf(
+                    SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Airtel"),
+                    SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Jio"),
+                )
+            subscriptions.defaultSub = 10
+
+            val vm = viewModel(simChoiceStore = SimChoiceStore(gated))
+            vm.onRecipientChange("+15557778888")
+            // The lookup is now parked inside the memory read.
+            vm.cycleSim()
+            assertThat(vm.simState.value.slot).isEqualTo(2)
+
+            gate.complete(Unit) // the parked lookup resumes and finishes
+            repeat(20) { kotlinx.coroutines.delay(10) }
+
+            assertThat(vm.simState.value.slot).isEqualTo(2)
+        }
+
+    @Test
+    fun `retyping the recipient after a tap still re-primes from memory`() =
+        runBlocking<Unit> {
+            // The generation guard must not freeze the SIM: a later recipient
+            // edit is a NEW generation and legitimately decides again.
+            subscriptions.sims =
+                listOf(
+                    SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Airtel"),
+                    SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Jio"),
+                )
+            subscriptions.defaultSub = 10
+            simChoiceStore.remember("+15551110000", 20)
+
+            val vm = viewModel()
+            vm.onRecipientChange("+15559990000")
+            awaitUntil { vm.simState.value.slot == 1 }
+            vm.cycleSim()
+            awaitUntil { vm.simState.value.slot == 2 }
+
+            // A different recipient with its own remembered SIM.
+            vm.onRecipientChange("+15551110000")
+
+            awaitUntil { vm.simState.value.slot == 2 }
+            assertThat(simChoiceStore.rememberedFor("+15551110000")).isEqualTo(20)
         }
 }

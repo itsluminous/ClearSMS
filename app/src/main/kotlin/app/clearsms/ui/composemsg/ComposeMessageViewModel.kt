@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 data class ComposeUiState(
@@ -131,6 +132,17 @@ class ComposeMessageViewModel
          */
         private var simRefreshJob: Job? = null
 
+        /**
+         * Generation counter for SIM decisions. Cancelling [simRefreshJob] is
+         * NOT enough on its own: once a lookup has passed its last suspension
+         * point (the per-recipient memory read), its tail runs to completion
+         * even if cancellation arrives mid-tail, and would overwrite a choice
+         * the user made in the meantime - the SIM visibly snapping back after
+         * a tap. Each explicit cycle and each new lookup takes a generation;
+         * a lookup only publishes its result while its generation is current.
+         */
+        private val simGeneration = AtomicInteger(0)
+
         init {
             // Prime the SIM chooser exactly like the conversation screen
             // does: the per-recipient memory decides once a recipient is
@@ -139,7 +151,7 @@ class ComposeMessageViewModel
             simRefreshJob =
                 viewModelScope.launch(ioDispatcher) {
                     activeSims = subscriptionSource.activeSims()
-                    refreshSimForRecipient()
+                    refreshSimForRecipient(simGeneration.incrementAndGet())
                 }
             // An inbound image share: copy it into app staging NOW (the
             // URI grant is tied to the activity) as a removable chip.
@@ -177,13 +189,17 @@ class ComposeMessageViewModel
             // The chosen recipient re-primes the SIM from the same
             // per-recipient memory the conversation screen writes.
             simRefreshJob?.cancel()
-            simRefreshJob = viewModelScope.launch(ioDispatcher) { refreshSimForRecipient() }
+            val generation = simGeneration.incrementAndGet()
+            simRefreshJob = viewModelScope.launch(ioDispatcher) { refreshSimForRecipient(generation) }
         }
 
         /** Cycles to the next SIM and remembers the choice for this recipient. */
         fun cycleSim() {
-            // The user's explicit tap outranks any in-flight recipient lookup.
+            // The user's explicit tap outranks any in-flight recipient lookup:
+            // cancelling asks it to stop, and taking a new generation stops the
+            // tail of one that already got past its last suspension point.
             simRefreshJob?.cancel()
+            simGeneration.incrementAndGet()
             val next = SimSelector.next(activeSims, chosenSim.value) ?: return
             chosenSim.value = next
             refreshSimUi()
@@ -193,9 +209,12 @@ class ComposeMessageViewModel
             }
         }
 
-        private suspend fun refreshSimForRecipient() {
+        private suspend fun refreshSimForRecipient(generation: Int) {
             val address = state.value.recipient.trim()
             val remembered = address.takeIf { it.isNotBlank() }?.let { simChoiceStore.rememberedFor(it) }
+            // A newer generation means the user cycled the SIM (or retyped the
+            // recipient) while this lookup was in flight: its answer is stale.
+            if (generation != simGeneration.get()) return
             chosenSim.value =
                 SimSelector.choose(
                     activeSims = activeSims,
