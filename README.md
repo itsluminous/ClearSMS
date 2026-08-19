@@ -376,19 +376,6 @@ behind *Settings → Appearance → Show logos and contact photos*, and every
 avatar renders as the same circular tile across the inbox, conversations,
 search, Finance and Alerts.
 
-## Stargazers
-
-If Clear SMS is useful to you, a star helps other people find it.
-
-<a href="https://star-history.com/#itsluminous/ClearSMS&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)"
-            srcset="https://api.star-history.com/svg?repos=itsluminous/ClearSMS&type=Date&theme=dark" />
-    <img alt="Stargazers over time"
-         src="https://api.star-history.com/svg?repos=itsluminous/ClearSMS&type=Date" width="600" />
-  </picture>
-</a>
-
 ## License
 
 [Apache License 2.0](LICENSE)
