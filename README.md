@@ -4,6 +4,7 @@
 [![Latest release](https://img.shields.io/github/v/release/itsluminous/ClearSMS?sort=semver)](https://github.com/itsluminous/ClearSMS/releases/latest)
 [![License](https://img.shields.io/github/license/itsluminous/ClearSMS)](LICENSE)
 [![Rules](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fitsluminous%2FClearSMS%2Fmain%2Fapp%2Fsrc%2Fmain%2Fassets%2Fdefault_rules.json&query=%24.rules.length&label=rules&color=teal)](rules/)
+[![Stars](https://img.shields.io/github/stars/itsluminous/ClearSMS?style=flat&color=gold)](https://github.com/itsluminous/ClearSMS/stargazers)
 
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
 organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
@@ -51,6 +52,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Recycle bin (on by default, 30-day retention, restore & delete-forever)
 - [x] Pinned conversations
 - [x] Blocked senders & blocked keywords (both go straight to the bin, silently; blocking also bins the existing conversation)
+- [ ] Contact names (instead of bare numbers) in the blocked-senders list
 - [ ] Group-MMS conversation UI (group messages currently attribute to their sender)
 - [ ] MMS delivery reports
 - [ ] Attachments persisted in drafts
@@ -373,6 +375,19 @@ generated brand tile → category glyph → letter avatar. All of it is gated
 behind *Settings → Appearance → Show logos and contact photos*, and every
 avatar renders as the same circular tile across the inbox, conversations,
 search, Finance and Alerts.
+
+## Stargazers
+
+If Clear SMS is useful to you, a star helps other people find it.
+
+<a href="https://star-history.com/#itsluminous/ClearSMS&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)"
+            srcset="https://api.star-history.com/svg?repos=itsluminous/ClearSMS&type=Date&theme=dark" />
+    <img alt="Stargazers over time"
+         src="https://api.star-history.com/svg?repos=itsluminous/ClearSMS&type=Date" width="600" />
+  </picture>
+</a>
 
 ## License
 
