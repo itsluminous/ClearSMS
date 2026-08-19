@@ -1,0 +1,3 @@
+- Settings > Block & allow list now suggests contacts as you type, the same
+  way the new-message screen does. Tap a suggestion to fill in its number,
+  then press Block. Sender IDs like JIOPAY still work by typing them.
