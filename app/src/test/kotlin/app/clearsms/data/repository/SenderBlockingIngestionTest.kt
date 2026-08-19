@@ -239,4 +239,61 @@ class SenderBlockingIngestionTest {
             // Provider copies of the binned rows were removed.
             assertThat(deletedSystemIds).containsExactly(1L, 2L)
         }
+
+    @Test
+    fun `a message reusing a binned message's provider id is NOT lost`() =
+        runBlocking {
+            // The live emulator failure: a blocked sender's thread is binned
+            // (provider copies deleted, ids freed), then the provider hands a
+            // freed id to the next arrival. Treating "same provider id" as
+            // "same message" discarded it - present in the system provider,
+            // absent from the app, no notification, no trace.
+            // A normal (visible) message keeps its provider id 42.
+            val first = repository.ingestIncoming("SPAMCO", "visible message", 1_000L, systemSmsId = 42L)
+            assertThat(db.messageDao().bySystemSmsId(42L)).isNotNull()
+
+            // The user blocks the sender: the thread goes to the bin and its
+            // provider copies are deleted, freeing provider id 42.
+            blockedSenders = setOf("SPAMCO")
+            repository.commitStagedDelete(listOf(first.entity.id), toBin = true)
+
+            // The provider hands the freed id 42 to the next arrival.
+            val ingest = repository.ingestIncoming("SPAMCO", "second blocked message", 2_000L, systemSmsId = 42L)
+
+            assertThat(ingest.duplicate).isFalse()
+            assertThat(ingest.entity.body).isEqualTo("second blocked message")
+            // Both messages survive, each resting in the bin, and neither still
+            // claims id 42 (a born-deleted message's provider copy is deleted
+            // at once, so it releases the id immediately).
+            val stored = db.messageDao().getById(ingest.entity.id)!!
+            assertThat(stored.deletedAt).isNotNull()
+            assertThat(stored.systemSmsId).isNull()
+            assertThat(db.messageDao().getById(first.entity.id)!!.body).isEqualTo("visible message")
+        }
+
+    @Test
+    fun `an unblocked sender's message reusing a binned provider id is NOT lost`() =
+        runBlocking {
+            // Same hazard on the ordinary path: bin any message (its provider
+            // copy goes), and the next arrival may inherit that provider id.
+            repository.ingestIncoming("HDFCBK", "old message", 1_000L, systemSmsId = 7L)
+            val old = db.messageDao().bySystemSmsId(7L)!!
+            repository.commitStagedDelete(listOf(old.id), toBin = true)
+
+            val ingest = repository.ingestIncoming("HDFCBK", "new message", 2_000L, systemSmsId = 7L)
+
+            assertThat(ingest.duplicate).isFalse()
+            assertThat(db.messageDao().bySystemSmsId(7L)!!.body).isEqualTo("new message")
+        }
+
+    @Test
+    fun `a true redelivery of the same message is still deduplicated`() =
+        runBlocking {
+            repository.ingestIncoming("HDFCBK", "same body", 3_000L, systemSmsId = 9L)
+
+            val again = repository.ingestIncoming("HDFCBK", "same body", 3_000L, systemSmsId = 9L)
+
+            assertThat(again.duplicate).isTrue()
+            assertThat(again.entity.id).isEqualTo(db.messageDao().bySystemSmsId(9L)!!.id)
+        }
 }

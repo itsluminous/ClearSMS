@@ -14,6 +14,7 @@ import app.clearsms.data.db.MmsStatus
 import app.clearsms.data.db.ReminderEntity
 import app.clearsms.data.db.ThreadPinEntity
 import app.clearsms.data.db.TransactionEntity
+import app.clearsms.data.db.isSameMessageAs
 import app.clearsms.data.prefs.BlockedKeywords
 import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleDefinition
@@ -269,6 +270,25 @@ class MessageRepositoryImpl(
         readNotificationCanceler?.cancelThreads(threadIds)
     }
 
+    /**
+     * Clears `systemSmsId` on stored rows that claim a provider id one of
+     * [page]'s messages now owns but are NOT that message (provider ids are
+     * reusable - see [app.clearsms.data.db.isSameMessageAs]).
+     */
+    private suspend fun releaseReusedSystemIds(page: List<ImportedSmsRow>) {
+        val ids = page.map { it.systemSmsId }
+        if (ids.isEmpty()) return
+        val byId = page.associateBy { it.systemSmsId }
+        SqliteChunker.chunk(ids).forEach { chunk ->
+            messageDao.bySystemSmsIds(chunk).forEach { stored ->
+                val incoming = byId[stored.systemSmsId] ?: return@forEach
+                if (!stored.isSameMessageAs(incoming.body, incoming.timestampMs)) {
+                    messageDao.clearSystemSmsId(stored.id)
+                }
+            }
+        }
+    }
+
     /** Forwards provider ids to the platform deleter in bounded chunks. */
     private fun deleteFromProvider(systemIds: List<Long>) {
         val deleter = systemSmsDeleter ?: return
@@ -327,7 +347,10 @@ class MessageRepositoryImpl(
         deleteFromProvider(systemIds)
         database.withTransaction {
             if (toBin) {
-                chunks.forEach { messageDao.clearProviderPending(it) }
+                // The provider copy is gone; releasing the row's claim on that
+                // (reusable) provider id keeps a future message that reuses it
+                // from being mistaken for this one.
+                chunks.forEach { messageDao.clearProviderPendingAndSystemId(it) }
             } else {
                 chunks.forEach { attachmentDao.deleteForMessages(it) }
                 chunks.forEach { messageDao.deleteByIds(it) }
@@ -540,9 +563,14 @@ class MessageRepositoryImpl(
             val id = messageDao.insertIgnore(entity)
             if (id == -1L && systemSmsId != null) {
                 val existing = messageDao.bySystemSmsId(systemSmsId)
-                if (existing != null) {
+                if (existing != null && existing.isSameMessageAs(body, timestampMs)) {
                     return@withTransaction MessageRepository.IncomingIngest(existing, duplicate = true)
                 }
+                // Same provider id, DIFFERENT message: the provider reused a
+                // freed id (its `_id` is a plain INTEGER PRIMARY KEY). The old
+                // row's provider copy is long gone, so it releases the id
+                // rather than swallowing this message.
+                existing?.let { messageDao.clearSystemSmsId(it.id) }
             }
             // A -1 without a surviving row cannot happen inside this write
             // transaction (nulls are exempt from the unique index), but a
@@ -738,10 +766,18 @@ class MessageRepositoryImpl(
                 val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
                 val row = entity.copy(threadId = threadId)
                 val id = messageDao.insertIgnore(row)
-                if (id == -1L && systemSmsId != null) {
-                    messageDao.bySystemSmsId(systemSmsId)
+                if (id != -1L) {
+                    row.copy(id = id)
                 } else {
-                    row.copy(id = if (id == -1L) messageDao.insert(row) else id)
+                    // Provider-id reuse handling, as in ingestIncoming: only a
+                    // row carrying the SAME message is this message.
+                    val existing = systemSmsId?.let { messageDao.bySystemSmsId(it) }
+                    if (existing != null && existing.isSameMessageAs(body, timestampMs)) {
+                        existing
+                    } else {
+                        existing?.let { messageDao.clearSystemSmsId(it.id) }
+                        row.copy(id = messageDao.insert(row))
+                    }
                 }
             }
         // Same commit the undo-window delete performs: the provider row is
@@ -999,6 +1035,12 @@ class MessageRepositoryImpl(
                             )
                         }
                     }
+                // Release stale claims on REUSED provider ids before inserting:
+                // a row whose provider copy was deleted may still hold an id
+                // the provider has since handed to one of these messages, and
+                // insertAllIgnore would silently skip the newcomer (a
+                // permanently missing message in a catch-up import).
+                releaseReusedSystemIds(page)
                 val toInsert =
                     entities.map { entity ->
                         if (entity.deletedAt != null && !binEnabled) {

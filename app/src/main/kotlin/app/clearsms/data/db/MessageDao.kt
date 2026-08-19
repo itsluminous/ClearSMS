@@ -618,7 +618,24 @@ interface MessageDao {
     )
     suspend fun pendingSystemIdsFor(ids: List<Long>): List<Long>
 
-    /** Marks the deferred provider deletion as committed (rows rest in the bin). */
+    /**
+     * Bin commit (marks the deferred provider deletion as committed): the provider copy is GONE, so the row's `systemSmsId` must
+     * go with it. Provider row ids are reusable (the telephony store's `_id`
+     * is a plain INTEGER PRIMARY KEY, so SQLite hands a freed id to the next
+     * insert). A row keeping a dangling id claims that id in the unique
+     * index, and the next incoming message that happens to reuse it looks
+     * like a duplicate and is silently dropped.
+     */
+    @Query("UPDATE messages SET providerDeletePending = 0, systemSmsId = NULL WHERE id IN (:ids)")
+    suspend fun clearProviderPendingAndSystemId(ids: List<Long>)
+
+    @Query("SELECT * FROM messages WHERE systemSmsId IN (:systemSmsIds)")
+    suspend fun bySystemSmsIds(systemSmsIds: List<Long>): List<MessageEntity>
+
+    /** Releases one row's claim on a reused provider id (see above). */
+    @Query("UPDATE messages SET systemSmsId = NULL WHERE id = :id")
+    suspend fun clearSystemSmsId(id: Long)
+
     @Query("UPDATE messages SET providerDeletePending = 0 WHERE id IN (:ids)")
     suspend fun clearProviderPending(ids: List<Long>)
 

@@ -131,3 +131,17 @@ data class MessageEntity(
      */
     val sendFailureReason: String? = null,
 )
+
+/**
+ * Identity check for a row found by provider id. Provider row ids are
+ * REUSABLE (the telephony store's `_id` is a plain INTEGER PRIMARY KEY, so a
+ * freed id goes to the next insert), which means "same systemSmsId" alone
+ * does not mean "same message" - it also matches a stale row whose provider
+ * copy was deleted. Body plus timestamp settles it: the pair is what the
+ * provider itself round-trips, and two genuinely distinct messages sharing
+ * both would be indistinguishable anyway.
+ */
+fun MessageEntity.isSameMessageAs(
+    body: String,
+    timestampMs: Long,
+): Boolean = this.body == body && this.timestamp == timestampMs
