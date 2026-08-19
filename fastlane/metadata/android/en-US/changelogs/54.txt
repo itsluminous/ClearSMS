@@ -1,0 +1,3 @@
+- Tapping the SIM icon in a new message now always sticks. A per-recipient
+  SIM lookup finishing just after your tap could previously flip the
+  indicator back to the other SIM.
