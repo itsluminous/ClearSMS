@@ -1,0 +1,38 @@
+Clear SMS is an open-source, privacy-first SMS app that automatically organizes your inbox - completely offline, on your device.
+
+<b>Smart inbox</b><ul>
+<li>Messages are automatically sorted into Important, Promotional, Personal, OTP and Unknown using a transparent, regex-based rules engine - no ML black box, every rule is human-readable JSON you can inspect and edit.</li>
+<li>390+ community-maintained rules plus a 715k sender-ID directory.</li>
+<li>Full-text search with category and time filters, heuristic scam-awareness flagging.</li>
+</ul>
+
+<b>Finance dashboard</b><ul>
+<li>Debit/credit transactions are extracted from bank SMS into accounts, credit cards and spend summaries with hand-rolled charts.</li>
+<li>Balance tracking with an optional biometric balance lock.</li>
+</ul>
+
+<b>Bills and alerts</b><ul>
+<li>Upcoming bills, autopay, insurance and credit-card due dates in one Alerts view.</li>
+<li>Train and flight journeys, package deliveries with courier and tracking id.</li>
+</ul>
+
+<b>Messaging</b><ul>
+<li>Full SMS send and receive (default-SMS-app role), MMS send and receive with on-device image compression.</li>
+<li>Dual-SIM support, message scheduling, drafts, delivery reports, pinned conversations.</li>
+<li>Recycle bin with 30-day retention, undo for delete and archive, blocked senders and keywords.</li>
+</ul>
+
+<b>OTP handling</b><ul>
+<li>Big, copyable OTP notifications, optional auto-copy and configurable auto-delete.</li>
+</ul>
+
+<b>Private by design</b><ul>
+<li>No INTERNET permission - no servers, no telemetry, no analytics, no trackers.</li>
+<li>No Firebase, no Play Services - pure AOSP compatible.</li>
+<li>Local backup and restore for messages and settings; your data never leaves your device.</li>
+<li>The only network activity is the Android system's own MMS transaction with your carrier - inherent to how MMS works.</li>
+</ul>
+
+<b>Material You</b> - dynamic color on Android 12+, light/dark/system themes.
+
+Categorization rules are maintained by the community and bundled into every release. Contribute rules or report gaps at the project repository.

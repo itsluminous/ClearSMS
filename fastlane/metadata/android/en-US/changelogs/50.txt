@@ -1,0 +1,9 @@
+First release prepared for F-Droid.
+
+- Single universal APK replaces the five per-ABI APKs (the app has no
+  native code, so they were identical in size anyway).
+- Play-Store dependency-info blob removed from the APK.
+- App-store metadata (descriptions, screenshots, icon) now ships in the
+  repository under fastlane/.
+- Jio/Vi plan-expiry notices are treated as important recharge reminders
+  instead of promotions.

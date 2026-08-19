@@ -118,17 +118,12 @@ Everything shipped, and what's on the roadmap:
 
 ## Download
 
-Signed APKs are attached to every [GitHub release](https://github.com/itsluminous/ClearSMS/releases/latest).
-Pick the build matching your device's CPU, or take the universal APK if unsure:
-
-| APK | Use for |
-| --- | --- |
-| `ClearSMS-arm64-v8a.apk` | Almost all phones from ~2017 onward (64-bit ARM) |
-| `ClearSMS-armeabi-v7a.apk` | Older 32-bit ARM devices |
-| `ClearSMS-x86_64.apk` / `ClearSMS-x86.apk` | Emulators and x86 tablets |
-| `ClearSMS-universal.apk` | Any device (largest file) |
-
-Check your device's ABI with `adb shell getprop ro.product.cpu.abi`.
+- **GitHub**: a signed `ClearSMS.apk` is attached to every
+  [release](https://github.com/itsluminous/ClearSMS/releases/latest). It runs on
+  any device (the app has no native code, so one APK covers every CPU).
+- **F-Droid**: submission in progress - the F-Droid build is
+  [reproducible](docs/publishing-fdroid.md) and carries the same signature as
+  the GitHub APK, so you can install from one source and update from the other.
 
 ## Building
 
@@ -148,13 +143,13 @@ Run checks the same way CI does:
 ./gradlew ktlintCheck lintDebug testDebugUnitTest
 ```
 
-Release builds are split per ABI: `./gradlew assembleRelease` produces four
-per-architecture APKs (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) plus a
-universal APK under `app/build/outputs/apk/release/`. Without signing
-environment variables (see below) these are unsigned. Release APKs are
-shrunk with R8 and resource shrinking but **not obfuscated**
-(`-dontobfuscate` in `app/proguard-rules.pro`), keeping the shipped APK
-auditable.
+`./gradlew assembleRelease` produces a single universal APK under
+`app/build/outputs/apk/release/` (the app has no native code, so per-ABI
+splits would gain nothing). Without signing environment variables (see
+below) it is unsigned. Release APKs are shrunk with R8 and resource
+shrinking but **not obfuscated** (`-dontobfuscate` in
+`app/proguard-rules.pro`), keeping the shipped APK auditable and the build
+reproducible for F-Droid verification.
 
 > Follow-up: Gradle dependency verification / lockfiles are not yet
 > configured; CI validates the Gradle wrapper checksum but does not yet pin
@@ -194,8 +189,11 @@ gh secret set SIGNING_KEY_PASSWORD
 ```
 
 Pushing a tag matching `v*` (e.g. `v0.1.0`) creates a GitHub Release with the
-per-ABI (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) and universal APKs
-attached, with auto-generated release notes.
+signed `ClearSMS.apk` attached, with auto-generated release notes. Before
+tagging, add a changelog file for the new versionCode at
+`fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` - F-Droid
+shows it as the "What's New" text (see
+[docs/publishing-fdroid.md](docs/publishing-fdroid.md)).
 
 ## Contributing Rules
 

@@ -29,8 +29,8 @@ android {
         applicationId = "app.clearsms"
         minSdk = 23
         targetSdk = 35
-        versionCode = 49
-        versionName = "0.13.3"
+        versionCode = 50
+        versionName = "0.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -68,18 +68,19 @@ android {
         }
     }
 
-    // Per-ABI APKs keep downloads small; the universal APK works on any device.
-    // Per-ABI versionCode differentiation is deliberately not applied: it is
-    // only required when uploading multiple APKs to the Play Store, not for
-    // GitHub-based distribution where users pick the matching APK (or the
-    // universal one).
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
-        }
+    // A single universal APK is produced deliberately. The app contains no
+    // native code (no .so libraries), so per-ABI splits used to yield five
+    // byte-for-byte-equal-sized APKs - pure release overhead. A single APK is
+    // also what F-Droid requires: its build server expects exactly one APK
+    // per build block, and reproducible builds verify one artifact.
+
+    // Strip the Play-Store "dependency info" block (a Google-encrypted binary
+    // blob AGP embeds by default). It is useless outside the Play Store and
+    // the F-Droid scanner rejects APKs that contain it. Removing it also
+    // helps reproducible builds.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     compileOptions {
@@ -162,17 +163,17 @@ android {
     }
 }
 
-// Publish human-friendly artifact names: ClearSMS-<abi>.apk for release builds
-// (what ends up attached to a GitHub release) and ClearSMS-<abi>-debug.apk for
-// debug builds, instead of Gradle's default app-<abi>-<buildType>.apk.
+// Publish human-friendly artifact names: ClearSMS.apk for release builds
+// (what ends up attached to a GitHub release, and what the F-Droid build
+// metadata's Binaries URL points at) and ClearSMS-debug.apk for debug builds,
+// instead of Gradle's default app-<buildType>.apk.
 androidComponents {
     onVariants { variant ->
         val suffix = if (variant.buildType == "release") "" else "-${variant.buildType}"
         variant.outputs.forEach { output ->
-            val abi = output.filters.firstOrNull()?.identifier ?: "universal"
             (output as? com.android.build.api.variant.impl.VariantOutputImpl)
                 ?.outputFileName
-                ?.set("ClearSMS-$abi$suffix.apk")
+                ?.set("ClearSMS$suffix.apk")
         }
     }
 }
