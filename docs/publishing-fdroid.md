@@ -43,12 +43,16 @@ Things that keep the build reproducible (do not undo these):
   embeds `META-INF/version-control-info.textproto` with the git revision and
   the checkout path. F-Droid patches `build.gradle.kts` before building, so
   that recorded state cannot be relied on to match.
+- No VectorDrawable may use a gradient (`aapt:attr` + `<gradient>`). Gradients
+  require API 24, so with `minSdk` 23 AGP silently rasterises such a vector
+  into six density PNG fallbacks (`build/generated/res/pngs/`). Those are
+  rendered through Java2D/ImageIO, whose byte output varies with the JDK build
+  and host platform - two Linux builds (GitHub CI and F-Droid's builder)
+  already disagreed on them. `app/src/main/res/drawable/ic_launcher_foreground.xml`
+  therefore uses a flat low-alpha fill. Check with
+  `find app/build/generated/res/pngs -name '*.png'` - it must find nothing.
 - `isCrunchPngs = false` - aapt2's PNG cruncher is not byte-stable across
-  build-tools versions and host platforms. Two files (`res/ww.png`,
-  `res/yi.png`) came out a few bytes apart between a Linux CI build and a
-  macOS build of the same commit, which shifts every subsequent zip offset
-  and makes `apksigcopier` fail with "APK Signing Block offset < central
-  directory offset".
+  build-tools versions and host platforms.
 - `dependenciesInfo { includeInApk = false }` - removes Google's
   non-deterministic, encrypted dependency-info block.
 - A single universal APK (no ABI splits) - one artifact to verify.
@@ -94,9 +98,9 @@ Repo: https://github.com/itsluminous/ClearSMS.git
 Binaries: https://github.com/itsluminous/ClearSMS/releases/download/v%v/ClearSMS.apk
 
 Builds:
-  - versionName: 0.14.3
-    versionCode: 53
-    commit: v0.14.3
+  - versionName: 0.14.5
+    versionCode: 55
+    commit: v0.14.5
     subdir: app
     gradle:
       - yes
@@ -108,8 +112,8 @@ AllowedAPKSigningKeys: acb5eddbb1bbc2d3cd125776eebab345c083c92b9db7f4a33e55f5d13
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: 0.14.3
-CurrentVersionCode: 53
+CurrentVersion: 0.14.5
+CurrentVersionCode: 55
 ```
 
 Notes for reviewers (worth repeating in the merge-request description):

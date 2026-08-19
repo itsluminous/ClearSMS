@@ -5,30 +5,24 @@
      adaptive-icon safe zone: on the 108x108 canvas only the inner 66dp circle
      (radius 33 from center 54,54) is guaranteed visible after masking; the
      farthest point here (the bubble tail tip, incl. stroke) sits ~32.2 from
-     center. -->
+     center.
+
+     Deliberately gradient-free, matching mipmap-anydpi/ic_launcher.xml: a
+     VectorDrawable gradient requires API 24, so with minSdk 23 AGP silently
+     rasterises this vector into six density PNGs as an API-23 fallback. Those
+     PNGs are rendered through Java2D/ImageIO, whose byte output varies with
+     the JDK build and host platform - it broke F-Droid's reproducible-build
+     verification (see docs/publishing-fdroid.md). A flat low-alpha fill keeps
+     the tonal wash without generating anything. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Soft "blurred" tonal fill inside the bubble: a low-alpha white linear
-         gradient (glow from the top-left), since vectors cannot blur. -->
+    <!-- Soft tonal fill inside the bubble: flat low-alpha white. -->
     <path
-        android:pathData="M43,36 h22 a9,9 0 0 1 9,9 v12 a9,9 0 0 1 -9,9 H47 l-9.3,8.2 q-2.3,2 -3.7,-0.8 V45 a9,9 0 0 1 9,-9 z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="40"
-                android:startY="38"
-                android:endX="66"
-                android:endY="66">
-                <item android:offset="0" android:color="#59FFFFFF" />
-                <item android:offset="0.55" android:color="#24FFFFFF" />
-                <item android:offset="1" android:color="#0AFFFFFF" />
-            </gradient>
-        </aapt:attr>
-    </path>
+        android:fillColor="#2EFFFFFF"
+        android:pathData="M43,36 h22 a9,9 0 0 1 9,9 v12 a9,9 0 0 1 -9,9 H47 l-9.3,8.2 q-2.3,2 -3.7,-0.8 V45 a9,9 0 0 1 9,-9 z" />
     <!-- Bubble outline (stroke 7 on the 108 canvas ≈ 3.1dp at 48dp). -->
     <path
         android:strokeColor="#FFFFFFFF"

@@ -1,0 +1,7 @@
+Reproducible-build fix so the F-Droid build can be verified against this
+signed APK.
+
+- The launcher icon's inner tonal wash is now a flat fill instead of a
+  gradient. A gradient needs API 24, so with minSdk 23 the build silently
+  rasterised the icon into six density PNGs whose bytes varied with the
+  build machine. The icon looks the same; six generated PNGs are gone.
