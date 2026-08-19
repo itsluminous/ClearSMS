@@ -50,7 +50,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Undo for delete & archive (Gmail-style snackbar)
 - [x] Recycle bin (on by default, 30-day retention, restore & delete-forever)
 - [x] Pinned conversations
-- [x] Blocked senders & blocked keywords (keyword matches go straight to the bin)
+- [x] Blocked senders & blocked keywords (both go straight to the bin, silently; blocking also bins the existing conversation)
 - [ ] Group-MMS conversation UI (group messages currently attribute to their sender)
 - [ ] MMS delivery reports
 - [ ] Attachments persisted in drafts
