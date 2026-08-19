@@ -1,0 +1,10 @@
+Fixes two ways an incoming message could go missing silently.
+
+- The Android SMS store reuses the row id of a deleted message. Clear SMS
+  treated that id as permanent, so after you deleted or blocked something,
+  the next message arriving with a reused id was mistaken for one already
+  seen and dropped - it stayed in the system store but never appeared in
+  the app. Blocking a sender made this very likely.
+- A message arriving at the same moment you changed a setting (block a
+  sender, add a keyword, toggle the recycle bin) could get stuck waiting
+  on that setting and never be stored.
