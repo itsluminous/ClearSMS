@@ -39,11 +39,38 @@ acb5eddbb1bbc2d3cd125776eebab345c083c92b9db7f4a33e55f5d139dd0448
 
 Things that keep the build reproducible (do not undo these):
 
-- `dependenciesInfo { includeInApk = false }` in `app/build.gradle.kts` -
-  removes Google's non-deterministic, encrypted dependency-info block.
+- `vcsInfo { include = false }` on the release build type - AGP otherwise
+  embeds `META-INF/version-control-info.textproto` with the git revision and
+  the checkout path. F-Droid patches `build.gradle.kts` before building, so
+  that recorded state cannot be relied on to match.
+- `isCrunchPngs = false` - aapt2's PNG cruncher is not byte-stable across
+  build-tools versions and host platforms. Two files (`res/ww.png`,
+  `res/yi.png`) came out a few bytes apart between a Linux CI build and a
+  macOS build of the same commit, which shifts every subsequent zip offset
+  and makes `apksigcopier` fail with "APK Signing Block offset < central
+  directory offset".
+- `dependenciesInfo { includeInApk = false }` - removes Google's
+  non-deterministic, encrypted dependency-info block.
 - A single universal APK (no ABI splits) - one artifact to verify.
 - `-dontobfuscate` in `app/proguard-rules.pro` - stable R8 output.
-- CI builds with JDK 17 (temurin); the fdroiddata recipe pins the same.
+- CI builds with JDK 17 (temurin).
+
+### Checking reproducibility yourself
+
+After a release is published, verify that a local build matches the
+released APK exactly - this is the same check F-Droid runs:
+
+```bash
+pip install apksigcopier
+export PATH="$ANDROID_HOME/build-tools/<version>:$PATH"   # for apksigner
+git checkout v<version>
+./gradlew clean assembleRelease                            # unsigned
+curl -sLO https://github.com/itsluminous/ClearSMS/releases/download/v<version>/ClearSMS.apk
+apksigcopier compare ClearSMS.apk --unsigned app/build/outputs/apk/release/ClearSMS.apk
+```
+
+No output and exit code 0 means the builds are identical. To see *which*
+entries differ when it fails, compare the zip entry CRCs of the two APKs.
 
 ## The fdroiddata recipe
 
@@ -67,31 +94,32 @@ Repo: https://github.com/itsluminous/ClearSMS.git
 Binaries: https://github.com/itsluminous/ClearSMS/releases/download/v%v/ClearSMS.apk
 
 Builds:
-  - versionName: 0.14.0
-    versionCode: 50
-    commit: v0.14.0
+  - versionName: 0.14.3
+    versionCode: 53
+    commit: v0.14.3
     subdir: app
     gradle:
       - yes
+    output: build/outputs/apk/release/ClearSMS.apk
     scanignore:
-      - app/src/main/assets/sender_ids.db
       - rules/sender_ids/india_sender_ids.json.gz
 
 AllowedAPKSigningKeys: acb5eddbb1bbc2d3cd125776eebab345c083c92b9db7f4a33e55f5d139dd0448
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: 0.14.0
-CurrentVersionCode: 50
+CurrentVersion: 0.14.3
+CurrentVersionCode: 53
 ```
 
 Notes for reviewers (worth repeating in the merge-request description):
 
-- `app/src/main/assets/sender_ids.db` is a **data file**, not code: a SQLite
-  index of SMS sender IDs compiled from the JSON master
-  `rules/sender_ids/india_sender_ids.json.gz` by
-  `scripts/build_sender_db.py` (both in-repo, both auditable). The `.gz` is
-  gzipped JSON. Hence the `scanignore` entries.
+- The single `scanignore` entry covers `rules/sender_ids/india_sender_ids.json.gz`,
+  gzipped JSON that is the community master of the sender-ID directory;
+  `scripts/build_sender_db.py` compiles it into the SQLite asset
+  `app/src/main/assets/sender_ids.db`. Both are in-repo and auditable. Note
+  that only paths the scanner actually flags may be listed: an unused
+  `scanignore` entry is a hard error (`Unused scanignore path: ...`).
 - The app requests no INTERNET permission; the bundled brand logos under
   `app/src/main/assets/logos/` are MIT-licensed artwork with provenance in
   `app/src/main/assets/logos/MANIFEST.md` and licence texts in `NOTICE`.

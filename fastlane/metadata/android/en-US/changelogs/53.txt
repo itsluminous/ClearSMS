@@ -1,0 +1,6 @@
+Reproducible-build fixes so the F-Droid build can be verified against
+this signed APK (no user-visible changes):
+
+- The git revision is no longer embedded in the APK.
+- PNG resources are stored as-is instead of being re-compressed, which
+  was not byte-stable across build machines.

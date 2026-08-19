@@ -29,8 +29,8 @@ android {
         applicationId = "app.clearsms"
         minSdk = 23
         targetSdk = 35
-        versionCode = 52
-        versionName = "0.14.2"
+        versionCode = 53
+        versionName = "0.14.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,6 +53,24 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            // Reproducible builds (F-Droid verifies our APK byte-for-byte against
+            // its own rebuild from source - see docs/publishing-fdroid.md):
+            //
+            // 1. AGP otherwise embeds META-INF/version-control-info.textproto
+            //    containing the git revision and the checkout path. F-Droid
+            //    patches build.gradle.kts before building, so the recorded VCS
+            //    state cannot be relied on to match - and the path leaks the
+            //    build machine's layout.
+            vcsInfo {
+                include = false
+            }
+            // 2. aapt2's PNG cruncher is not byte-stable across build-tools
+            //    versions and host platforms: res/ww.png and res/yi.png came
+            //    out 4-6 bytes apart between a Linux CI build and a macOS
+            //    build of the same commit, which shifts every following zip
+            //    offset and breaks signature verification. Storing PNGs as-is
+            //    is deterministic; the size cost is a few KB.
+            isCrunchPngs = false
             // R8 code shrinking + resource shrinking keep the APK small.
             // Obfuscation is disabled in proguard-rules.pro (-dontobfuscate):
             // the app is open source, so auditability is preserved while dead
