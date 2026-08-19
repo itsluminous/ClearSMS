@@ -26,6 +26,9 @@ import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
+import app.clearsms.ui.composemsg.ContactSuggestion
+import app.clearsms.ui.composemsg.ContactSuggestions
+import app.clearsms.ui.composemsg.contactSuggestionFeed
 import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.work.BackupWorker
 import app.clearsms.work.RecategorizeWorker
@@ -40,6 +43,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -151,6 +155,7 @@ class SettingsViewModel
         private val uiPrefs: UiPrefs,
         private val messageRepository: MessageRepository,
         private val senderBlocker: SenderBlocker,
+        private val contactSuggestions: ContactSuggestions,
         private val backupManager: BackupManager,
         private val settingsBackupManager: SettingsBackupManager,
         private val workManager: WorkManager,
@@ -158,6 +163,9 @@ class SettingsViewModel
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val busy = MutableStateFlow(false)
+
+        /** Current text in the block dialog's sender field (drives autocomplete). */
+        private val senderQuery = MutableStateFlow("")
 
         /** Non-null while the OTP-cleanup confirmation dialog should be showing. */
         private val pendingOtpClearFlow = MutableStateFlow<PendingOtpClear?>(null)
@@ -460,6 +468,27 @@ class SettingsViewModel
             // The setting is only honored if it actually drives the
             // schedule: OFF cancels the periodic work, DAILY/WEEKLY enqueue it.
             BackupWorker.applyFrequency(context, value)
+        }
+
+        /**
+         * Contact autocomplete for the block dialog's sender field, sharing
+         * [ContactSuggestions] and compose's 200 ms debounce so both surfaces
+         * behave identically. Blocking also accepts bare sender IDs
+         * ("JIOPAY"), which simply match no contact - a pick is never
+         * required. Without READ_CONTACTS the query fails soft to empty.
+         */
+        val senderSuggestions: StateFlow<List<ContactSuggestion>> =
+            contactSuggestionFeed(senderQuery, contactSuggestions::search)
+                .flowOn(ioDispatcher)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        fun onSenderQueryChange(value: String) {
+            senderQuery.value = value
+        }
+
+        /** Clears the list after a pick (or when the dialog closes). */
+        fun clearSenderSuggestions() {
+            senderQuery.value = ""
         }
 
         fun blockSender(sender: String) = launchIo { senderBlocker.block(sender) }

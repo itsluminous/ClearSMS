@@ -79,9 +79,11 @@ import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.components.DeleteConfirmationDialog
+import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.otpPreviewFontSp
+import app.clearsms.ui.composemsg.ContactSuggestion
 import app.clearsms.ui.finance.displayName
 import app.clearsms.ui.navigation.orderedPills
 import kotlinx.coroutines.launch
@@ -137,6 +139,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingOtpClear by viewModel.pendingOtpClear.collectAsStateWithLifecycle()
+    val senderSuggestions by viewModel.senderSuggestions.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
     var searchActive by rememberSaveable { mutableStateOf(false) }
@@ -573,11 +576,17 @@ fun SettingsScreen(
             BlockListDialog(
                 blocked = state.blockedSenders,
                 blockedKeywords = state.blockedKeywords,
+                senderSuggestions = senderSuggestions,
+                onSenderQueryChange = viewModel::onSenderQueryChange,
+                onClearSenderSuggestions = viewModel::clearSenderSuggestions,
                 onBlock = viewModel::blockSender,
                 onUnblock = viewModel::unblockSender,
                 onAddKeyword = viewModel::addBlockedKeyword,
                 onRemoveKeyword = viewModel::removeBlockedKeyword,
-                onDismiss = { dialog = null },
+                onDismiss = {
+                    viewModel.clearSenderSuggestions()
+                    dialog = null
+                },
             )
         SettingsDialog.BACKUP_FREQUENCY ->
             RadioDialog(
@@ -1341,6 +1350,9 @@ private fun SignatureDialog(
 private fun BlockListDialog(
     blocked: List<String>,
     blockedKeywords: List<String>,
+    senderSuggestions: List<ContactSuggestion>,
+    onSenderQueryChange: (String) -> Unit,
+    onClearSenderSuggestions: () -> Unit,
     onBlock: (String) -> Unit,
     onUnblock: (String) -> Unit,
     onAddKeyword: (String) -> Unit,
@@ -1368,7 +1380,10 @@ private fun BlockListDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = newSender,
-                        onValueChange = { newSender = it },
+                        onValueChange = {
+                            newSender = it
+                            onSenderQueryChange(it)
+                        },
                         modifier = Modifier.weight(1f),
                         label = { Text(stringResource(R.string.settings_block_add_hint)) },
                         singleLine = true,
@@ -1378,9 +1393,40 @@ private fun BlockListDialog(
                             if (newSender.isNotBlank()) {
                                 onBlock(newSender.trim())
                                 newSender = ""
+                                onClearSenderSuggestions()
                             }
                         },
                     ) { Text(stringResource(R.string.settings_block_add)) }
+                }
+                // Contact autocomplete, same source and debounce as the compose
+                // screen. Plain rows (not a LazyColumn): this dialog already
+                // scrolls, and nesting a scrollable inside it would break both.
+                // Picking fills the field with the NUMBER - blocking keys on the
+                // normalized sender, and a display name is not blockable - while
+                // the explicit Block press stays the confirmation.
+                senderSuggestions.forEach { suggestion ->
+                    ListItem(
+                        modifier =
+                            Modifier.clickable {
+                                newSender = suggestion.number
+                                onClearSenderSuggestions()
+                            },
+                        leadingContent = {
+                            SenderAvatar(
+                                name = suggestion.name,
+                                richAvatars = true,
+                                photoUri = suggestion.photoUri,
+                            )
+                        },
+                        headlineContent = { Text(suggestion.name) },
+                        supportingContent = {
+                            Text(
+                                text = suggestion.number,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    )
                 }
                 blocked.forEach { sender ->
                     Row(

@@ -63,7 +63,8 @@ Everything shipped, and what's on the roadmap:
 - [x] Full-text search with category & time filters
 - [x] Scam-awareness flagging
 - [x] Rule manager: search, enable/disable, tap-to-edit your rules, duplicate bundled ones
-- [ ] Compose-screen contact suggestions & alphabet fast-scroll
+- [x] Contact suggestions while typing a recipient (compose) or a sender to block
+- [ ] Alphabet fast-scroll in the contact list
 
 **Finance & alerts**
 - [x] Transactions extracted into accounts, cards & wallets with spend charts

@@ -31,10 +31,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -151,9 +149,7 @@ class ComposeMessageViewModel
         }
 
         val suggestions: StateFlow<List<ContactSuggestion>> =
-            recipientQuery
-                .debounce(200)
-                .map { query -> contactSuggestions.search(query) }
+            contactSuggestionFeed(recipientQuery, contactSuggestions::search)
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
