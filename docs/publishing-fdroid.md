@@ -54,7 +54,7 @@ drift is handled automatically by F-Droid's checkupdates bot):
 ```yaml
 Categories:
   - Phone & SMS
-  - Money
+  - Finance Manager
 License: Apache-2.0
 AuthorName: itsluminous
 AuthorEmail: rules@clearsms.app
