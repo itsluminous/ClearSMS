@@ -80,6 +80,11 @@
           "score": 3
         },
         {
+          "comment": "Prepaid plan/pack/validity expiry recharge notices ('Your plan ... is expiring today. Recharge IMMEDIATELY ...'): the recharge IS the obligation, so the expiry types as a generic bill reminder - the same family as the Airtel pack-expiry and ACT recharge precedents. Anchored on all three legs (the plan/pack/validity subject, its expiry verb, AND a recharge call-to-action AFTER it) so a promo's 'offer expires' with a leading 'Recharge with Rs.299 plan' or a voucher lapse never types.",
+          "pattern": "(?i)\\b(?:plan|pack|validity)\\b[^\\n]{0,50}?\\bexpir(?:e[sd]?|ing|y)\\b[^\\n]{0,80}?\\brecharge\\b",
+          "score": 3
+        },
+        {
           "pattern": "(?i)\\bbill\\b",
           "sender_table_ref": "known_biller_senders",
           "score": 3,

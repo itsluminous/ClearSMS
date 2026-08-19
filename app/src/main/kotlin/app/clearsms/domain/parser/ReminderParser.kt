@@ -113,6 +113,21 @@ class ReminderParser(
                     ?.get(1)
                     ?.let { parseDate(it, anchor) }
             }?.let { return it }
+        // Relative due-day words anchored to an expiry verb: "expiring
+        // today", "expires tomorrow". A prepaid plan/pack expiry states its
+        // deadline as a day word instead of a date - the obligation is due ON
+        // that day relative to the message's own date (the anchor), the same
+        // policy yearless dates follow. Deliberately narrow: only the expiry
+        // verb anchors a day word - a bare "today" elsewhere in a body
+        // ("today itself", urgency filler) must never date a reminder. Tried
+        // after the dated anchors so an explicit date always wins.
+        EXPIRY_RELATIVE_DAY_ANCHOR.find(body)?.let { match ->
+            return if (match.groupValues[1].equals("tomorrow", ignoreCase = true)) {
+                anchor.plusDays(1)
+            } else {
+                anchor
+            }
+        }
         // Looser "Pay <...> by <date>" (e.g. "Pay Total Amount Due of Rs X by
         // 05-08-26", "Pay instantly by 05/08/2026"), accepted only when the
         // body actually talks about something being due.
@@ -394,6 +409,15 @@ class ReminderParser(
          * between "Pay" and "by" in real card statements).
          */
         val PAY_BY_LOOSE_ANCHOR = Regex("(?i)\\bpay\\b[^\\n]{0,100}?\\bby\\s+($DATE)")
+
+        /**
+         * Relative due-day word directly anchored to an expiry verb:
+         * "expiring today", "expires tomorrow" (prepaid plan/pack expiry
+         * notices state their deadline this way). Present tense only - "has
+         * expired" is a lapsed obligation with no forward due date, so
+         * "expired" deliberately does not anchor.
+         */
+        val EXPIRY_RELATIVE_DAY_ANCHOR = Regex("(?i)\\bexpir(?:es|ing)\\s+(today|tomorrow)\\b")
 
         val DUE_WORD_REGEX = Regex("(?i)\\bdue\\b")
 

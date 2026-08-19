@@ -8874,6 +8874,42 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-18T00:00:00Z"
+    },
+    {
+      "id": "jio-plan-expiry-01",
+      "name": "Jio Plan Expiry Recharge Reminder",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:JIONET|JIOPAY|JIO)",
+        "body_pattern": "(?i)(?:your[^\\n]{0,30}?\\b(?:plan|pack)\\b(?:\\s+(?:for|on)\\s+[^\\n]{0,40}?)?\\s+(?:is\\s+(?:about\\s+to\\s+)?expiring|is\\s+about\\s+to\\s+expire|has\\s+expired|expires|will\\s+expire)\\b|\\bvalidity\\b[^\\n]{0,40}?\\b(?:is\\s+expiring|has\\s+expired|expires|will\\s+expire)\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "operator": "Jio"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "vi-plan-expiry-01",
+      "name": "Vi Plan Expiry Recharge Reminder",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:VICARE|MYVI|VIFIBR)",
+        "body_pattern": "(?i)(?:your[^\\n]{0,30}?\\b(?:plan|pack)\\b(?:\\s+(?:for|on)\\s+[^\\n]{0,40}?)?\\s+(?:is\\s+(?:about\\s+to\\s+)?expiring|is\\s+about\\s+to\\s+expire|has\\s+expired|expires|will\\s+expire)\\b|\\bvalidity\\b[^\\n]{0,40}?\\b(?:is\\s+expiring|has\\s+expired|expires|will\\s+expire)\\b)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "operator": "Vi"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-19T00:00:00Z"
     }
   ]
 }
