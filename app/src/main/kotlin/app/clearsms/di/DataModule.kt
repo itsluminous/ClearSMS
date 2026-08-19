@@ -48,10 +48,16 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.util.Optional
 import javax.inject.Qualifier
@@ -198,6 +204,7 @@ object DataModule {
     @Provides
     @Singleton
     fun provideMessageRepositoryImpl(
+        @ApplicationScope appScope: CoroutineScope,
         database: ClearSmsDatabase,
         categorizer: MessageCategorizer,
         bundledRuleLoader: BundledRuleLoader,
@@ -216,9 +223,15 @@ object DataModule {
             systemSmsReadWriter = telephonyWriter,
             systemSmsReinserter = telephonyWriter,
             readNotificationCanceler = notificationDismisser,
-            blockedKeywords = { settingsRepository.blockedKeywords.first() },
-            blockedSenders = { settingsRepository.blockedSenders.first() },
-            recycleBinEnabled = { settingsRepository.recycleBinEnabled.first() },
+            // HOT caches, one collector each attached for the app's lifetime.
+            // A cold `.first()` per incoming message races concurrent
+            // DataStore writes (upstream b/431787506: a NEW collector during
+            // updateData may never emit) - an SMS arriving while the user
+            // toggled any of these settings would suspend in ingest forever
+            // and silently drop the message (found live: unblock + arrival).
+            blockedKeywords = hotGate(appScope, settingsRepository.blockedKeywords, emptySet()),
+            blockedSenders = hotGate(appScope, settingsRepository.blockedSenders, emptySet()),
+            recycleBinEnabled = hotGate(appScope, settingsRepository.recycleBinEnabled, true),
             attachmentFileCleaner = attachmentStore::deleteFor,
         )
 
@@ -272,4 +285,39 @@ object DataModule {
         dataStore: DataStore<Preferences>,
         json: Json,
     ): SettingsBackupManager = SettingsBackupManager(dataStore, json, BuildConfig.VERSION_NAME)
+
+    /** Test seam for [hotGate] - the contract is pinned by HotGateTest. */
+    @androidx.annotation.VisibleForTesting
+    fun <T> hotGateForTest(
+        scope: CoroutineScope,
+        source: Flow<T>,
+        initial: T,
+    ): suspend () -> T = hotGate(scope, source, initial)
+
+    /**
+     * Bridges a DataStore-backed settings flow to a suspend getter that can
+     * never hang ingest: ONE shared collector starts eagerly at app start and
+     * lives forever, so per-message reads consult a warm cache instead of
+     * opening a fresh cold collector. Cold per-read collectors race concurrent
+     * DataStore writes (upstream b/431787506 - a collector attaching during
+     * updateData may never emit), which suspended ingest forever and silently
+     * dropped the message. Reads await the first real emission briefly (the
+     * eager collect at quiet app start makes this near-instant), then fall
+     * back to [initial] rather than ever blocking a message.
+     */
+    private fun <T> hotGate(
+        scope: CoroutineScope,
+        source: Flow<T>,
+        initial: T,
+    ): suspend () -> T {
+        val ready = CompletableDeferred<Unit>()
+        val state =
+            source
+                .onEach { if (!ready.isCompleted) ready.complete(Unit) }
+                .stateIn(scope, SharingStarted.Eagerly, initial)
+        return {
+            withTimeoutOrNull(2_000) { ready.await() }
+            state.value
+        }
+    }
 }
