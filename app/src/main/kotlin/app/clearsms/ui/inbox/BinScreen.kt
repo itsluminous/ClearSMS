@@ -20,7 +20,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +41,7 @@ import app.clearsms.R
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SwipeDismissSnackbarHost
 
 /**
  * Recycle bin: deleted messages resting for 30 days. Reached from
@@ -74,7 +74,7 @@ fun BinScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.bin_title)) },

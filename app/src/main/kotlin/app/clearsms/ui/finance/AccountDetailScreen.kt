@@ -27,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +60,7 @@ import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
@@ -94,7 +94,7 @@ fun AccountDetailScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

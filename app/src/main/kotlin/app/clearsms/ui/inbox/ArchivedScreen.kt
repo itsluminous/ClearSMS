@@ -29,7 +29,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -56,6 +55,7 @@ import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SwipeDismissSnackbarHost
 
 /**
  * Archived conversations, with per-row and multi-select unarchive / delete.
@@ -101,7 +101,7 @@ fun ArchivedScreen(
     BackHandler(enabled = selection.active) { viewModel.exitSelection() }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             if (selection.active) {
                 TopAppBar(

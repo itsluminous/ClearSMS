@@ -52,7 +52,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -96,6 +95,7 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.OtpBanner
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.displayName
@@ -184,7 +184,7 @@ fun InboxScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             if (selection.active) {
                 InboxSelectionBar(

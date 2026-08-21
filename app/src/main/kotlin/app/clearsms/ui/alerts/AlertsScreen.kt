@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +60,7 @@ import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.finance.reminderGlyph
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.navigation.orderedPills
@@ -106,7 +106,7 @@ fun AlertsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.alerts_title)) },

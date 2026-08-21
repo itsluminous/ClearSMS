@@ -43,7 +43,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -84,6 +83,7 @@ import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.MaskedAmountText
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.navigation.orderedPills
 import app.clearsms.ui.theme.LocalSemanticAmountColors
@@ -138,7 +138,7 @@ fun FinanceScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.finance_title)) },
