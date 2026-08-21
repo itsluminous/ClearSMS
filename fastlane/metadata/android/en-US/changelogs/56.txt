@@ -1,0 +1,4 @@
+- Notification bars at the bottom of the screen (for example "Message sent"
+  or a schedule confirmation) can now be swiped away, so they no longer sit
+  on top of the message you just sent. Swiping one away never triggers its
+  button - swiping an UNDO bar keeps the deletion.
