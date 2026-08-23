@@ -27,6 +27,30 @@
       "created_at": "2026-08-12T00:00:00Z"
     },
     {
+      "id": "irctc-journey-02",
+      "name": "IRCTC/CRIS compact journey ticket (PNR-/Trn:/Dt:/Frm-to)",
+      "priority": 323,
+      "match": {
+        "sender_pattern": "(?i)IRCTC",
+        "body_pattern": "(?i)\\bPNR[-:\\s]*(\\d{10})[\\s\\S]{0,24}?\\bTrn[-:\\s]*(\\d{3,5})[\\s\\S]{0,24}?\\bDt[-:\\s]*(\\d{1,2}-\\d{1,2}-\\d{2,4})[\\s\\S]{0,24}?\\bFrm\\s+([A-Z]{2,6})\\s+to\\s+([A-Z]{2,6})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel",
+        "extract": {
+          "pnr": "$1",
+          "train": "$2",
+          "journey_date": "$3",
+          "route": "$4 to $5"
+        },
+        "extract_types": {
+          "journey_date": "date"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-23T00:00:00Z"
+    },
+    {
       "id": "irctc-cancel-01",
       "name": "IRCTC Ticket Cancellation",
       "priority": 321,
