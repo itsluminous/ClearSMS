@@ -1,0 +1,3 @@
+- Train reservation messages in the compact Indian Railways format (PNR-,
+  Trn:, Dt:, Frm ... to ...) now appear as journey cards in Alerts. They were
+  filed under travel but carried no date, so Alerts stayed empty.
