@@ -110,9 +110,27 @@ jobs:
       # app/src/main/assets/logos/, regenerated via
       # scripts/build_logo_pack.py --bundle), so releases no longer build
       # or attach a separate logo-pack zip.
+      # The release body is the SAME user-facing changelog F-Droid shows, so
+      # the two never tell different stories. A missing file cannot break the
+      # release: the step writes a minimal stand-in instead of failing, and
+      # GitHub's generated commit list is appended either way.
+      - name: Prepare release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          code=$(grep -m1 'versionCode *=' app/build.gradle.kts | tr -dc '0-9')
+          notes="fastlane/metadata/android/en-US/changelogs/${code}.txt"
+          if [ -s "$notes" ]; then
+            cp "$notes" release-notes.md
+          else
+            echo "See the commit list below for what changed." > release-notes.md
+          fi
+          echo "--- release notes ---"; cat release-notes.md
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/*.apk
+          body_path: release-notes.md
           generate_release_notes: true

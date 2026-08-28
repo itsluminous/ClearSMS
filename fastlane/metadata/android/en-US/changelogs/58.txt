@@ -1,0 +1,17 @@
+Tappable links, and a fix for credit-card statements.
+
+- Links in messages now open when tapped: web addresses (with or without
+  https), email addresses, UPI payment links, and phone numbers written out
+  by the sender. Tapping a bare mobile number opens your phone app with the
+  number filled in - it never places the call by itself.
+- Numbers that only look like phone numbers are left alone. A ten-digit
+  train PNR, a transaction id, a card or account number, a date and an
+  amount are all recognised as text rather than something to dial.
+- Links inside a message flagged as a possible scam warn you first, naming
+  the actual risk: a payment link can arrive with the amount and recipient
+  pre-filled, and a caller may pose as your bank to ask for an OTP.
+- Credit-card statements from BOBCARD are now filed as bills with a
+  reminder in Alerts, carrying the total due, the minimum due and the due
+  date. They were previously treated as promotions and added no reminder.
+- Statements from other card issuers that Clear SMS has no specific rule
+  for are no longer classified as promotions either.
