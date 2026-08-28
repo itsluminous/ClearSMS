@@ -40,6 +40,28 @@
       "created_at": "2026-08-12T00:00:00Z"
     },
     {
+      "id": "bobcard-stmt-01",
+      "name": "BOBCARD Credit Card Statement Generated (total/min due)",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)BOBCRD",
+        "body_pattern": "(?i)\\bstatement\\s+for\\s+BOBCARD\\s+[Xx*]*(\\d{2,4})\\b[\\s\\S]{0,40}?\\bgenerated\\b[\\s\\S]{0,20}?\\btotal\\s*[:\\s]\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,20}?\\bmin(?:imum)?\\s+due\\s*[:\\s]\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+by\\s+(\\d{1,2}-\\d{1,2}-\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$2",
+          "min_due": "$3",
+          "due_date": "$4",
+          "account_last4": "$1",
+          "bank": "BOBCARD"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-08-28T00:00:00Z"
+    },
+    {
       "id": "bobcard-dispatch-01",
       "name": "BOBCARD Dispatched Via Courier",
       "priority": 300,
