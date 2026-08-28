@@ -373,6 +373,12 @@
     <string name="link_scam_title">Open link from a suspicious message?</string>
     <string name="link_scam_body">This message is flagged as a possible scam. Links in scam messages are used to steal money and personal details.\n\n%1$s</string>
     <string name="link_scam_open">Open anyway</string>
+    <string name="link_scam_title_call">Call a number from a suspicious message?</string>
+    <string name="link_scam_body_call">This message is flagged as a possible scam. Callers may pose as your bank and ask for an OTP, PIN or remote access - no genuine bank ever will.\n\n%1$s</string>
+    <string name="link_scam_call">Call anyway</string>
+    <string name="link_scam_title_payment">Open a payment app from a suspicious message?</string>
+    <string name="link_scam_body_payment">This message is flagged as a possible scam. Payment links can arrive with the amount and recipient already filled in, so approving one sends YOUR money.\n\n%1$s</string>
+    <string name="link_scam_pay">Continue anyway</string>
     <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
     <string name="url_release_notes" translatable="false">https://github.com/itsluminous/ClearSMS/releases/tag/v%1$s</string>
     <string name="url_donate_paypal" translatable="false">https://paypal.me/prakashait</string>

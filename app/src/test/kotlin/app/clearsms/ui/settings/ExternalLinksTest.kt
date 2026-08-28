@@ -79,4 +79,30 @@ class ExternalLinksTest {
         assertThat(ExternalLinks.open(context, context.getString(R.string.url_donate_upi))).isFalse()
         assertThat(ExternalLinks.open(context, context.getString(R.string.url_source_code))).isFalse()
     }
+
+    @Test
+    fun `a tel link dials rather than views`() {
+        // ACTION_DIAL opens the phone app with the number filled in and waits
+        // for the user; it needs no CALL_PHONE permission and cannot place the
+        // call itself - the right contract for a number from an SMS.
+        val intent = ExternalLinks.intent("tel:9871112222")
+
+        assertThat(intent.action).isEqualTo(Intent.ACTION_DIAL)
+        assertThat(intent.data.toString()).isEqualTo("tel:9871112222")
+    }
+
+    @Test
+    fun `a upi link is handed over as a view intent`() {
+        val intent = ExternalLinks.intent("upi://pay?pa=someone@examplebank&am=50")
+
+        assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
+        assertThat(intent.data?.scheme).isEqualTo("upi")
+    }
+
+    @Test
+    fun `a web link stays a view intent`() {
+        val intent = ExternalLinks.intent("https://porter.in/rd/abc")
+
+        assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
+    }
 }

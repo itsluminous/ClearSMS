@@ -48,7 +48,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Per-thread drafts with inbox preview
 - [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry
 - [x] Share & forward selected messages; share text or images from other apps into a new message
-- [x] Tappable links in messages (scam-flagged messages confirm first)
+- [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
 - [x] Recycle bin (on by default, 30-day retention, restore & delete-forever)
 - [x] Pinned conversations

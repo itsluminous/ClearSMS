@@ -51,11 +51,90 @@ class BodyLinkFinderTest {
     }
 
     @Test
-    fun `a phone number is deliberately not linked`() {
-        // Bodies are full of digit groups; a wrong tel: link is worse than none.
+    fun `a bare mobile number becomes a dialable link`() {
+        val body = "Your delivery agent Shafiulla can be reached on 9871112222 before 6pm"
+
+        val link = BodyLinkFinder.find(body).single()
+        assertThat(link.text).isEqualTo("9871112222")
+        assertThat(link.url).isEqualTo("tel:9871112222")
+        assertThat(link.kind).isEqualTo(BodyLinkKind.PHONE)
+    }
+
+    @Test
+    fun `an international number keeps its country code`() {
+        val body = "Call +91 98765 43210 for assistance"
+
+        val link = BodyLinkFinder.find(body).single()
+        assertThat(link.kind).isEqualTo(BodyLinkKind.PHONE)
+        assertThat(link.url).isEqualTo("tel:+919876543210")
+    }
+
+    @Test
+    fun `a ten digit PNR is NOT dialable`() {
+        // The sharpest trap in this corpus: an Indian PNR is ten digits, the
+        // same shape as a mobile number.
+        val body = "PNR-1234567890\nTrn:22345\nDt:24-08-26\nFrm BXR to AY"
+
+        assertThat(BodyLinkFinder.find(body)).isEmpty()
+    }
+
+    @Test
+    fun `reference and transaction ids are NOT dialable`() {
+        for (body in listOf(
+            "Transaction No. 2998038740 for Rs. 56.00 done",
+            "Your order 9876543210 has shipped",
+            "Ref no 9123456780 for your claim",
+            "A/c 9988776655 credited",
+            "Card 9876543210 blocked",
+            "Ticket 9876501234 raised",
+        )) {
+            assertThat(BodyLinkFinder.find(body).filter { it.kind == BodyLinkKind.PHONE }).isEmpty()
+        }
+    }
+
+    @Test
+    fun `a helpline short code is not linked`() {
+        // Three and four digit runs are everywhere here (amounts, years), so a
+        // dialer opening on "Rs 200" is the worse failure.
         val body = "For Enquiry/Complaint/Assistance,please dial 139 IR-CRIS"
 
         assertThat(BodyLinkFinder.find(body)).isEmpty()
+    }
+
+    @Test
+    fun `long digit runs like card and account numbers are not dialable`() {
+        for (body in listOf(
+            "4111111111111111 charged",
+            "UTR 987654321012345 settled",
+            "12345678901 is your consumer number",
+        )) {
+            assertThat(BodyLinkFinder.find(body).filter { it.kind == BodyLinkKind.PHONE }).isEmpty()
+        }
+    }
+
+    @Test
+    fun `an amount is never dialable`() {
+        val body = "Rs 9876543210 debited"
+
+        assertThat(BodyLinkFinder.find(body).filter { it.kind == BodyLinkKind.PHONE }).isEmpty()
+    }
+
+    @Test
+    fun `a tel link written out by the sender is honoured`() {
+        val body = "Reach support at tel:18001234567 any time"
+
+        val link = BodyLinkFinder.find(body).single()
+        assertThat(link.kind).isEqualTo(BodyLinkKind.PHONE)
+        assertThat(link.url).startsWith("tel:")
+    }
+
+    @Test
+    fun `a number inside a url path does not become a second link`() {
+        val body = "Track at example.com/orders/9876543210 now"
+
+        val links = BodyLinkFinder.find(body)
+        assertThat(links).hasSize(1)
+        assertThat(links.single().kind).isEqualTo(BodyLinkKind.WEB)
     }
 
     @Test
@@ -63,15 +142,16 @@ class BodyLinkFinderTest {
         val body = "Write to care@example.com for help"
 
         assertThat(urls(body)).containsExactly("mailto:care@example.com")
+        assertThat(BodyLinkFinder.find(body).single().kind).isEqualTo(BodyLinkKind.EMAIL)
     }
 
     @Test
-    fun `a upi payment link is deliberately NOT tappable`() {
-        // Opening a payment app with a stranger's amount pre-filled is the
-        // exact flow SMS scams use; payment requests stay notices, not actions.
+    fun `a upi payment link is tappable and typed as a payment`() {
         val body = "Approve the request in your UPI app: upi://pay?pa=someone@examplebank&am=50"
 
-        assertThat(urls(body).none { it.startsWith("upi://") }).isTrue()
+        val link = BodyLinkFinder.find(body).single()
+        assertThat(link.url).startsWith("upi://pay")
+        assertThat(link.kind).isEqualTo(BodyLinkKind.PAYMENT)
     }
 
     @Test

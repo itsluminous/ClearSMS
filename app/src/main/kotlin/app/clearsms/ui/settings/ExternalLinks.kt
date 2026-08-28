@@ -12,8 +12,19 @@ import android.net.Uri
  * permission and needs none to delegate a link to another app.
  */
 object ExternalLinks {
-    /** The exact intent [open] fires, exposed so tests can assert on it. */
-    fun intent(url: String): Intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    /**
+     * The exact intent [open] fires, exposed so tests can assert on it.
+     *
+     * A `tel:` URI uses ACTION_DIAL, not ACTION_VIEW: dial opens the phone
+     * app with the number filled in and waits for the user to press call,
+     * needs no CALL_PHONE permission, and cannot place a call by itself - the
+     * right contract for a number that arrived in an SMS.
+     */
+    fun intent(url: String): Intent {
+        val uri = Uri.parse(url)
+        val action = if (uri.scheme.equals("tel", ignoreCase = true)) Intent.ACTION_DIAL else Intent.ACTION_VIEW
+        return Intent(action, uri)
+    }
 
     /**
      * Launches the link; returns false instead of crashing when no app can

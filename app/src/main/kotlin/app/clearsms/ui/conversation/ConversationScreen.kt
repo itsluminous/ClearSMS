@@ -82,6 +82,7 @@ import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
+import app.clearsms.ui.components.BodyLink
 import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
@@ -134,7 +135,7 @@ fun ConversationScreen(
     val attachmentsByMessage by viewModel.attachments.collectAsStateWithLifecycle()
     var viewedImage by remember { mutableStateOf<AttachmentEntity?>(null) }
     // Non-null while a link inside a scam-flagged message awaits confirmation.
-    var pendingScamLink by remember { mutableStateOf<String?>(null) }
+    var pendingScamLink by remember { mutableStateOf<BodyLink?>(null) }
 
     // Compose-bar attachments being staged for an MMS send, and the
     // attach sheet's visibility. Attachment state deliberately does not
@@ -376,14 +377,15 @@ fun ConversationScreen(
                         expanded = expandedId == item.id,
                         attachments = attachmentsByMessage[item.id].orEmpty(),
                         onImageTap = { viewedImage = it },
-                        onLinkClick = { url ->
+                        onLinkClick = { link ->
                             // A link inside a message flagged as a likely scam
                             // asks first: tapping through is how these messages
-                            // do their damage.
+                            // do their damage - and a payment or a phone call
+                            // deserves a warning that names that risk.
                             if (ScamLinkGate.confirmBeforeOpening(item.message?.subCategory)) {
-                                pendingScamLink = url
+                                pendingScamLink = link
                             } else {
-                                openLink(url)
+                                openLink(link.url)
                             }
                         },
                         onClick = {
@@ -493,18 +495,18 @@ fun ConversationScreen(
     }
 
     // Full-screen viewer for a tapped MMS image.
-    pendingScamLink?.let { url ->
+    pendingScamLink?.let { link ->
         AlertDialog(
             onDismissRequest = { pendingScamLink = null },
-            title = { Text(stringResource(R.string.link_scam_title)) },
-            text = { Text(stringResource(R.string.link_scam_body, url)) },
+            title = { Text(stringResource(ScamLinkGate.titleRes(link.kind))) },
+            text = { Text(stringResource(ScamLinkGate.bodyRes(link.kind), link.text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         pendingScamLink = null
-                        openLink(url)
+                        openLink(link.url)
                     },
-                ) { Text(stringResource(R.string.link_scam_open)) }
+                ) { Text(stringResource(ScamLinkGate.confirmRes(link.kind))) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingScamLink = null }) {
@@ -784,7 +786,7 @@ private fun MessageBubble(
     selectionActive: Boolean = false,
     attachments: List<AttachmentEntity> = emptyList(),
     onImageTap: (AttachmentEntity) -> Unit = {},
-    onLinkClick: (String) -> Unit = {},
+    onLinkClick: (BodyLink) -> Unit = {},
 ) {
     val alignment = if (item.outgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor =

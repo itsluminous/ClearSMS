@@ -21,15 +21,16 @@ import androidx.compose.ui.text.style.TextDecoration
  * come in several background colours, and an accent that stays legible on all
  * of them does not exist - the surrounding text colour always does.
  *
- * Taps are routed through [onLinkClick] instead of Compose's default URL
- * handling so the caller decides what happens: a scam-flagged message can ask
- * for confirmation first, and a device with no browser can say so in a
- * snackbar instead of throwing.
+ * Taps are routed through [onLinkClick] with the whole [BodyLink] - not just
+ * its URL - instead of Compose's default URL handling, so the caller can act
+ * on the KIND: a scam-flagged message warns differently about a payment, a
+ * phone call and a web page, and a device with no app for the scheme can say
+ * so in a snackbar instead of throwing.
  */
 @Composable
 fun LinkifiedBodyText(
     body: String,
-    onLinkClick: (String) -> Unit,
+    onLinkClick: (BodyLink) -> Unit,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
     color: Color = Color.Unspecified,
@@ -56,7 +57,7 @@ fun LinkifiedBodyText(
                                             fontWeight = FontWeight.Medium,
                                         ),
                                 ),
-                        ) { onLinkClick(link.url) },
+                        ) { onLinkClick(link) },
                     )
                     append(link.text)
                     pop()
