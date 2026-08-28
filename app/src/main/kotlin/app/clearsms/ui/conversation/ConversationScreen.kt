@@ -54,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,7 @@ import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
+import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
@@ -89,7 +91,9 @@ import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
 import app.clearsms.ui.components.rememberAttachmentLaunchers
+import app.clearsms.ui.settings.ExternalLinks
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** How long the opened-message highlight stays fully visible... */
 private const val HIGHLIGHT_HOLD_MS = 1_600
@@ -129,6 +133,8 @@ fun ConversationScreen(
     // currently opened in the full-screen viewer.
     val attachmentsByMessage by viewModel.attachments.collectAsStateWithLifecycle()
     var viewedImage by remember { mutableStateOf<AttachmentEntity?>(null) }
+    // Non-null while a link inside a scam-flagged message awaits confirmation.
+    var pendingScamLink by remember { mutableStateOf<String?>(null) }
 
     // Compose-bar attachments being staged for an MMS send, and the
     // attach sheet's visibility. Attachment state deliberately does not
@@ -152,6 +158,15 @@ fun ConversationScreen(
     var scheduleEditTarget by rememberSaveable { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val noLinkHandler = stringResource(R.string.settings_link_no_handler)
+    val linkScope = rememberCoroutineScope()
+    // A device with no browser (or no app for the scheme) says so rather than
+    // throwing, which is why links do not use Compose's default URL handling.
+    val openLink: (String) -> Unit = { url ->
+        if (!ExternalLinks.open(context, url)) {
+            linkScope.launch { snackbarHostState.showSnackbar(noLinkHandler) }
+        }
+    }
 
     // Send outcomes surface as snackbars; a failure offers a Retry action.
     val sentMessage = stringResource(R.string.message_sent)
@@ -361,6 +376,16 @@ fun ConversationScreen(
                         expanded = expandedId == item.id,
                         attachments = attachmentsByMessage[item.id].orEmpty(),
                         onImageTap = { viewedImage = it },
+                        onLinkClick = { url ->
+                            // A link inside a message flagged as a likely scam
+                            // asks first: tapping through is how these messages
+                            // do their damage.
+                            if (ScamLinkGate.confirmBeforeOpening(item.message?.subCategory)) {
+                                pendingScamLink = url
+                            } else {
+                                openLink(url)
+                            }
+                        },
                         onClick = {
                             when (
                                 MessageMetadata.tapAction(
@@ -468,6 +493,27 @@ fun ConversationScreen(
     }
 
     // Full-screen viewer for a tapped MMS image.
+    pendingScamLink?.let { url ->
+        AlertDialog(
+            onDismissRequest = { pendingScamLink = null },
+            title = { Text(stringResource(R.string.link_scam_title)) },
+            text = { Text(stringResource(R.string.link_scam_body, url)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingScamLink = null
+                        openLink(url)
+                    },
+                ) { Text(stringResource(R.string.link_scam_open)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingScamLink = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     viewedImage?.let { attachment ->
         MmsImageViewerDialog(attachment = attachment, onDismiss = { viewedImage = null })
     }
@@ -738,6 +784,7 @@ private fun MessageBubble(
     selectionActive: Boolean = false,
     attachments: List<AttachmentEntity> = emptyList(),
     onImageTap: (AttachmentEntity) -> Unit = {},
+    onLinkClick: (String) -> Unit = {},
 ) {
     val alignment = if (item.outgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor =
@@ -844,7 +891,12 @@ private fun MessageBubble(
                             )
                         }
                         item.body.isNotBlank() || attachments.isEmpty() ->
-                            Text(text = item.body, style = MaterialTheme.typography.bodyLarge, color = textColor)
+                            LinkifiedBodyText(
+                                body = item.body,
+                                onLinkClick = onLinkClick,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textColor,
+                            )
                         // Image/file-only MMS: the attachments ARE the message.
                         else -> Unit
                     }

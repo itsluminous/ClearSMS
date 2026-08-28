@@ -370,6 +370,9 @@
     <string name="settings_donate_upi">UPI</string>
     <string name="settings_donate_upi_summary">Support app development with a UPI payment</string>
     <string name="settings_link_no_handler">No app found to open this link</string>
+    <string name="link_scam_title">Open link from a suspicious message?</string>
+    <string name="link_scam_body">This message is flagged as a possible scam. Links in scam messages are used to steal money and personal details.\n\n%1$s</string>
+    <string name="link_scam_open">Open anyway</string>
     <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
     <string name="url_release_notes" translatable="false">https://github.com/itsluminous/ClearSMS/releases/tag/v%1$s</string>
     <string name="url_donate_paypal" translatable="false">https://paypal.me/prakashait</string>
