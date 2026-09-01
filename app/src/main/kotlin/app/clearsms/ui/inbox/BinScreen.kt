@@ -1,5 +1,6 @@
 package app.clearsms.ui.inbox
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteForever
@@ -59,6 +62,8 @@ fun BinScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var confirmDeleteForever by remember { mutableStateOf<Long?>(null) }
     var confirmEmptyBin by remember { mutableStateOf(false) }
+    // Non-null while a binned message is being previewed.
+    var previewItem by remember { mutableStateOf<InboxItem?>(null) }
 
     val restoredMessage = stringResource(R.string.bin_restored)
     val restoredAppOnlyMessage = stringResource(R.string.bin_restored_app_only)
@@ -115,6 +120,7 @@ fun BinScreen(
                     richAvatars = state.richAvatars,
                     onRestore = { viewModel.restore(item.message.id) },
                     onDeleteForever = { confirmDeleteForever = item.message.id },
+                    onPreview = { previewItem = item },
                 )
             }
         }
@@ -140,6 +146,51 @@ fun BinScreen(
             },
         )
     }
+    previewItem?.let { item ->
+        val message = item.message
+        AlertDialog(
+            onDismissRequest = { previewItem = null },
+            title = {
+                Column {
+                    Text(item.display.name, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = item.timeLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            text = {
+                // The whole body, scrollable: a long binned message is exactly
+                // the case where the truncated row was not enough to decide.
+                // Plain text, not linkified - this is a preview for a restore
+                // or delete decision, and a stray tap opening a link (in what
+                // may well be a blocked sender's message) would be a surprise.
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    CategoryBadge(category = message.category)
+                    Spacer(Modifier.height(8.dp))
+                    Text(text = message.body, style = MaterialTheme.typography.bodyMedium)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        previewItem = null
+                        viewModel.restore(message.id)
+                    },
+                ) { Text(stringResource(R.string.bin_restore)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        previewItem = null
+                        confirmDeleteForever = message.id
+                    },
+                ) { Text(stringResource(R.string.bin_delete_forever)) }
+            },
+        )
+    }
+
     if (confirmEmptyBin) {
         AlertDialog(
             onDismissRequest = { confirmEmptyBin = false },
@@ -168,9 +219,14 @@ private fun BinRow(
     richAvatars: Boolean,
     onRestore: () -> Unit,
     onDeleteForever: () -> Unit,
+    onPreview: () -> Unit,
 ) {
     val message = item.message
     ListItem(
+        // Rows in the bin are truncated to two lines, which is rarely enough
+        // to decide between restoring and deleting forever - tapping opens the
+        // whole message.
+        modifier = Modifier.clickable(onClick = onPreview),
         leadingContent = {
             SenderAvatar(
                 name = item.display.name,

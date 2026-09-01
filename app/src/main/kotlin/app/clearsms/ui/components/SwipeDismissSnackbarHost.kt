@@ -1,6 +1,7 @@
 package app.clearsms.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -45,8 +46,28 @@ fun SwipeDismissSnackbarHost(
                 state = swipeState,
                 // Nothing is revealed behind a snackbar: it simply slides off.
                 backgroundContent = { Box(modifier = Modifier) },
-                content = { Snackbar(data) },
+                content = {
+                    Snackbar(
+                        snackbarData = data,
+                        // Slightly translucent so the message underneath still
+                        // shows through. Kept high enough that the text keeps
+                        // its contrast - see SNACKBAR_CONTAINER_ALPHA.
+                        containerColor =
+                            MaterialTheme.colorScheme.inverseSurface
+                                .copy(alpha = SNACKBAR_CONTAINER_ALPHA),
+                        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        actionColor = MaterialTheme.colorScheme.inversePrimary,
+                    )
+                },
             )
         }
     }
 }
+
+/**
+ * Opacity of the snackbar background. Below roughly 0.85 the text starts
+ * fighting whatever sits behind it (message bubbles are busy), and at 1.0 the
+ * bar reads as a solid slab covering the message just sent - so it stays just
+ * translucent enough to see through without costing legibility.
+ */
+const val SNACKBAR_CONTAINER_ALPHA = 0.90f

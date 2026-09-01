@@ -98,4 +98,34 @@ class SwipeDismissSnackbarHostConventionTest {
                 "SettingsScreen.kt",
             )
     }
+
+    @Test
+    fun `the snackbar background is translucent but still legible`() {
+        // The message just sent sits behind the bar, so a little of it should
+        // show through - without the text losing contrast against a busy
+        // bubble, which is what the lower bound guards.
+        assertWithMessage("snackbar opacity should let some background through")
+            .that(SNACKBAR_CONTAINER_ALPHA)
+            .isLessThan(1f)
+        assertWithMessage("below ~0.85 the text starts fighting the bubbles behind it")
+            .that(SNACKBAR_CONTAINER_ALPHA)
+            .isAtLeast(0.85f)
+    }
+
+    @Test
+    fun `the host sets its own container and content colours together`() {
+        val source = File(srcRoot, componentFile).readText()
+
+        // A translucent container with the default content colour would be a
+        // contrast bug waiting to happen, so both are set explicitly.
+        assertWithMessage("container colour must apply the alpha")
+            .that(source)
+            .contains("copy(alpha = SNACKBAR_CONTAINER_ALPHA)")
+        assertWithMessage("content colour must be set alongside the container")
+            .that(source)
+            .contains("contentColor =")
+        assertWithMessage("the action label needs a colour that survives the transparency")
+            .that(source)
+            .contains("actionColor =")
+    }
 }
