@@ -1,0 +1,15 @@
+Preview messages before emptying the bin, and notification bars that stay
+out of the way.
+
+- Tapping a message in the recycle bin now opens it, so you can read the
+  whole thing before choosing between Restore and Delete forever. Deleting
+  forever still asks for confirmation.
+- The bar that appears at the bottom ("Message sent", "1 archived") is now
+  see-through, so the message underneath stays visible instead of being
+  covered. Its text carries a soft halo to stay readable against whatever
+  shows through.
+- On the inbox that bar used to float around mid-screen, because it was
+  being stacked above the compose button. The compose button now steps
+  aside while the bar is showing, so the bar sits at the bottom - and its
+  Undo stays reachable rather than hidden behind the button.
+- Clear SMS is on F-Droid, and the README now links to it.
