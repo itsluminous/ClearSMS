@@ -182,6 +182,8 @@ fun InboxScreen(
     // System back exits selection mode instead of leaving the screen.
     BackHandler(enabled = selection.active) { viewModel.exitSelection() }
 
+    // Reading this in composition is what makes the FAB yield below.
+    val snackbarShowing = snackbarHostState.currentSnackbarData != null
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
@@ -224,7 +226,13 @@ fun InboxScreen(
             }
         },
         floatingActionButton = {
-            if (!selection.active) {
+            // Material stacks the snackbar ABOVE the FAB so the FAB cannot
+            // cover its action, which on a tall screen pushes "Undo" towards
+            // the middle. The FAB steps aside for the few seconds a snackbar
+            // is up instead: composing a new message is never the urgent
+            // action while an undo is still on offer, and the snackbar then
+            // sits at the bottom where it is expected.
+            if (!selection.active && !snackbarShowing) {
                 FloatingActionButton(onClick = onCompose) {
                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_compose))
                 }

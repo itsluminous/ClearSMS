@@ -151,8 +151,13 @@ fun RulesScreen(
         },
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreateRule) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.rules_new_rule))
+            // Same reasoning as the inbox: Material puts the snackbar above the
+            // FAB, so the FAB yields while one is showing to keep it at the
+            // bottom rather than floating mid-screen.
+            if (snackbarHostState.currentSnackbarData == null) {
+                FloatingActionButton(onClick = onCreateRule) {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.rules_new_rule))
+                }
             }
         },
     ) { padding ->

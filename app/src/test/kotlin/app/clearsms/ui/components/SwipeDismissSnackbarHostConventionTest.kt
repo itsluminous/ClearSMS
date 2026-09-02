@@ -176,4 +176,34 @@ class SwipeDismissSnackbarHostConventionTest {
             .that(source)
             .contains("actionColor =")
     }
+
+    @Test
+    fun `screens with a floating action button let it yield to the snackbar`() {
+        // Material stacks the snackbar ABOVE the FAB so the FAB cannot cover
+        // its action. On a tall screen that lifts the bar towards the middle -
+        // and on the inbox it also has the app's bottom navigation beneath it,
+        // compounding the offset. The FAB steps aside while a snackbar shows so
+        // the bar sits at the bottom, where it is expected and where the swipe
+        // gesture is comfortable.
+        val fabScreens =
+            srcRoot
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter { it.readText().contains("floatingActionButton = {") }
+                .toList()
+
+        // RuleWizardScreen also has a FAB but shows no snackbars, so the loop
+        // below skips it; listing all three keeps this honest about the sweep.
+        assertWithMessage("the FAB-bearing screens changed - check whether the new one shows snackbars")
+            .that(fabScreens.map { it.name }.sorted())
+            .containsExactly("InboxScreen.kt", "RuleWizardScreen.kt", "RulesScreen.kt")
+
+        for (screen in fabScreens) {
+            val source = screen.readText()
+            if (!source.contains("SwipeDismissSnackbarHost")) continue
+            assertWithMessage("${screen.name} must hide its FAB while a snackbar is showing")
+                .that(source)
+                .contains("currentSnackbarData")
+        }
+    }
 }
