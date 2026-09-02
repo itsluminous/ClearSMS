@@ -1,5 +1,6 @@
 package app.clearsms.ui.components
 
+import androidx.compose.ui.geometry.Offset
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
@@ -56,9 +57,18 @@ class SwipeDismissSnackbarHostConventionTest {
         assertWithMessage("both swipe directions must dismiss (no direction filter)")
             .that(source)
             .contains("!= SwipeToDismissBoxValue.Settled")
-        // A swipe must never trigger the snackbar's action (e.g. UNDO).
+        // A swipe must never trigger the snackbar's action (e.g. UNDO). The
+        // assertion is scoped to the SWIPE handler: the action button in the
+        // same file does call performAction, and quite rightly.
+        val swipeHandler =
+            source
+                .substringAfter("LaunchedEffect(swipeState.currentValue)")
+                .substringBefore("val contentColor")
+        assertWithMessage("the swipe handler must dismiss")
+            .that(swipeHandler)
+            .contains("data.dismiss()")
         assertWithMessage("a swipe must not perform the snackbar action")
-            .that(source)
+            .that(swipeHandler)
             .doesNotContain("performAction")
     }
 
@@ -100,16 +110,54 @@ class SwipeDismissSnackbarHostConventionTest {
     }
 
     @Test
-    fun `the snackbar background is translucent but still legible`() {
-        // The message just sent sits behind the bar, so a little of it should
-        // show through - without the text losing contrast against a busy
-        // bubble, which is what the lower bound guards.
-        assertWithMessage("snackbar opacity should let some background through")
+    fun `the snackbar background is translucent`() {
+        assertWithMessage("snackbar opacity should let the message underneath show through")
             .that(SNACKBAR_CONTAINER_ALPHA)
             .isLessThan(1f)
-        assertWithMessage("below ~0.85 the text starts fighting the bubbles behind it")
+        // A floor remains: below roughly half, the bar stops reading as a
+        // surface at all and the text has nothing to sit on, shadow or not.
+        assertWithMessage("the bar must still read as a surface")
             .that(SNACKBAR_CONTAINER_ALPHA)
-            .isAtLeast(0.85f)
+            .isAtLeast(0.5f)
+    }
+
+    @Test
+    fun `text carries a shadow whenever the background alone cannot guarantee contrast`() {
+        // The two are a pair: this level of transparency is only readable
+        // because the label and action are haloed. If the shadow ever goes,
+        // the alpha has to go back up with it.
+        val shadow = snackbarTextShadow()
+
+        assertWithMessage("a translucent bar needs haloed text")
+            .that(SNACKBAR_CONTAINER_ALPHA < 0.85f)
+            .isTrue()
+        assertWithMessage("the halo must actually be drawn")
+            .that(shadow.blurRadius)
+            .isGreaterThan(0f)
+        assertWithMessage("the halo must be dark enough to lift light glyphs off a pale background")
+            .that(shadow.color.alpha)
+            .isAtLeast(0.5f)
+        assertWithMessage("a halo reads better than a drop shadow at label sizes")
+            .that(shadow.offset)
+            .isEqualTo(Offset.Zero)
+    }
+
+    @Test
+    fun `taking over the snackbar content keeps the action and dismiss affordances`() {
+        val source = File(srcRoot, componentFile).readText()
+
+        // Rendering our own content means the defaults are gone, so both must
+        // be rebuilt - an UNDO snackbar with no working action is a data-loss
+        // bug, not a cosmetic one.
+        assertWithMessage("the action must still invoke performAction")
+            .that(source)
+            .contains("data.performAction()")
+        assertWithMessage("a snackbar asking for a dismiss affordance must still get one")
+            .that(source)
+            .contains("data.visuals.withDismissAction")
+        assertWithMessage("the message text must come from the snackbar data")
+            .that(source)
+            .contains("data.visuals.message")
     }
 
     @Test
