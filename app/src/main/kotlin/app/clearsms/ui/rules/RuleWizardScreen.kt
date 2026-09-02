@@ -85,6 +85,7 @@ private val SUB_CATEGORY_OPTIONS =
 @Composable
 fun RuleWizardScreen(
     onBack: () -> Unit,
+    onOpenSortSetting: () -> Unit = onBack,
     viewModel: RuleWizardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -104,7 +105,12 @@ fun RuleWizardScreen(
             title = { Text(stringResource(R.string.rule_saved_needs_resort_title)) },
             text = { Text(stringResource(R.string.rule_saved_needs_resort_body)) },
             confirmButton = {
-                TextButton(onClick = onBack) { Text(stringResource(R.string.action_ok)) }
+                TextButton(onClick = onOpenSortSetting) {
+                    Text(stringResource(R.string.rule_saved_show_me))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onBack) { Text(stringResource(R.string.action_not_now)) }
             },
         )
     }

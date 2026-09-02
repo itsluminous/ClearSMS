@@ -77,6 +77,7 @@ import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MmsStatus
 import app.clearsms.mms.SendFailureReason
+import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AmountKind
@@ -95,12 +96,6 @@ import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.settings.ExternalLinks
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/** How long the opened-message highlight stays fully visible... */
-private const val HIGHLIGHT_HOLD_MS = 1_600
-
-/** ...and how long it then takes to fade out. */
-private const val HIGHLIGHT_FADE_MS = 600
 
 /** Conversation thread: chat bubbles, date separators, parsed-detail cards and reply. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -239,9 +234,9 @@ fun ConversationScreen(
     // Hold the highlight fully visible, then let the bubble fade it out.
     LaunchedEffect(highlightedItemId) {
         if (highlightedItemId != null) {
-            delay(HIGHLIGHT_HOLD_MS.toLong())
+            delay(HighlightTiming.HOLD_MS)
             highlightedItemId = null
-            delay(HIGHLIGHT_FADE_MS.toLong())
+            delay(HighlightTiming.FADE_MS.toLong())
             highlight.onHighlightFinished()
         }
     }
@@ -803,18 +798,18 @@ private fun MessageBubble(
         }
 
     // Background behind the opened message. The screen holds `highlighted`
-    // true for HIGHLIGHT_HOLD_MS, then this fades to transparent. The tint is
+    // true for HighlightTiming.HOLD_MS, then this fades to transparent. The tint is
     // a primary-color wash - the previous secondaryContainer was visually
     // indistinguishable from the message bubbles, so the "highlight" was
     // invisible in practice.
     val highlightColor by animateColorAsState(
         targetValue =
             if (highlighted) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                MaterialTheme.colorScheme.primary.copy(alpha = HighlightTiming.WASH_ALPHA)
             } else {
                 Color.Transparent
             },
-        animationSpec = tween(durationMillis = HIGHLIGHT_FADE_MS),
+        animationSpec = tween(durationMillis = HighlightTiming.FADE_MS),
         label = "message_highlight",
     )
 

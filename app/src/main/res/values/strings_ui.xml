@@ -297,6 +297,8 @@
     <string name="balance_unavailable_text">Device authentication is temporarily unavailable. Balances stay hidden - try again in a moment.</string>
     <string name="action_ok">OK</string>
     <string name="rule_saved_needs_resort_title">Rule saved</string>
+    <string name="rule_saved_show_me">Take me there</string>
+    <string name="action_not_now">Not now</string>
     <string name="rule_saved_needs_resort_body">This rule matches on the message text rather than a specific sender, so it could apply to any message. To apply it to messages you already have, go to Settings and tap "Sort inbox again". New messages use it right away.</string>
     <string name="settings_section_notification">Notifications</string>
     <string name="settings_delivery_reports">SMS delivery reports</string>

@@ -49,6 +49,7 @@ import app.clearsms.ui.search.SearchScreen
 import app.clearsms.ui.settings.LicensesScreen
 import app.clearsms.ui.settings.PermissionsInfoScreen
 import app.clearsms.ui.settings.PrivacyPolicyScreen
+import app.clearsms.ui.settings.SettingsItem
 import app.clearsms.ui.settings.SettingsScreen
 import app.clearsms.ui.theme.ClearSmsTheme
 
@@ -262,8 +263,22 @@ private fun MainScaffold(
                     },
                 )
             }
-            composable(Routes.SETTINGS) {
+            composable(
+                route = Routes.SETTINGS,
+                arguments =
+                    listOf(
+                        navArgument("highlight") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
                 SettingsScreen(
+                    highlight =
+                        entry.arguments
+                            ?.getString("highlight")
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { name -> SettingsItem.entries.firstOrNull { it.name == name } },
                     onBack = { navController.popBackStack() },
                     onManageRules = { navController.navigate(Routes.RULES) },
                     onArchived = { navController.navigate(Routes.ARCHIVED) },
@@ -297,7 +312,16 @@ private fun MainScaffold(
                         },
                     ),
             ) {
-                RuleWizardScreen(onBack = { navController.popBackStack() })
+                RuleWizardScreen(
+                    onBack = { navController.popBackStack() },
+                    // A rule that needs the full re-sort sends the user straight
+                    // to the setting that runs it, highlighted on arrival - the
+                    // same gesture search uses to point at a message.
+                    onOpenSortSetting = {
+                        navController.popBackStack()
+                        navController.navigate(Routes.settings(SettingsItem.SORT_AGAIN.name))
+                    },
+                )
             }
         }
     }

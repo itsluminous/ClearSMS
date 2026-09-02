@@ -11,7 +11,15 @@ object Routes {
     const val FINANCE = "finance"
     const val ALERTS = "alerts"
     const val SEARCH = "search"
-    const val SETTINGS = "settings"
+    const val SETTINGS = "settings?highlight={highlight}"
+
+    /**
+     * Settings, optionally scrolled to one row with a brief highlight - the
+     * same "here it is" gesture search uses when it opens a message. [item] is
+     * a [app.clearsms.ui.settings.SettingsItem] name.
+     */
+    fun settings(item: String? = null) = "settings?highlight=${Uri.encode(item.orEmpty())}"
+
     const val PRIVACY_POLICY = "settings/privacy"
     const val LICENSES = "settings/licenses"
     const val PERMISSIONS_INFO = "settings/permissions"
