@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.HighlightOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -88,8 +89,24 @@ fun RuleWizardScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.saved) {
-        if (state.saved) onBack()
+    // A sender-bound rule has already been applied by the time this fires, so
+    // the screen just closes and the inbox visibly reflects it. A rule that
+    // could match anything is held here to say so - closing silently is what
+    // made saving a rule look like it did nothing.
+    val needsFullResort = state.applyOutcome is RuleApplyOutcome.NeedsFullResort
+    LaunchedEffect(state.saved, needsFullResort) {
+        if (state.saved && !needsFullResort) onBack()
+    }
+
+    if (state.saved && needsFullResort) {
+        AlertDialog(
+            onDismissRequest = onBack,
+            title = { Text(stringResource(R.string.rule_saved_needs_resort_title)) },
+            text = { Text(stringResource(R.string.rule_saved_needs_resort_body)) },
+            confirmButton = {
+                TextButton(onClick = onBack) { Text(stringResource(R.string.action_ok)) }
+            },
+        )
     }
 
     Scaffold(

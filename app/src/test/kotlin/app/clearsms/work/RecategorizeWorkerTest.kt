@@ -54,6 +54,8 @@ class RecategorizeWorkerTest {
                 return 7
             }
 
+            override suspend fun recategorizeSenderCore(senderCore: String): Int = 0
+
             override fun observeInbox(
                 category: Category?,
                 unreadOnly: Boolean,

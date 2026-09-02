@@ -7,6 +7,7 @@ import app.clearsms.data.rules.RuleEngine
 import app.clearsms.data.rules.RuleMatch
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.data.rules.toEntity
+import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeRuleRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +82,7 @@ class RuleWizardEditTest {
     ): RuleWizardViewModel =
         RuleWizardViewModel(
             savedStateHandle = SavedStateHandle(mapOf("ruleId" to ruleId, "duplicate" to duplicate)),
+            messageRepository = FakeMessageRepository(),
             ruleRepository = repository,
             ruleEngine = RuleEngine(),
             json = json,
@@ -164,6 +166,7 @@ class RuleWizardEditTest {
             val vm =
                 RuleWizardViewModel(
                     savedStateHandle = SavedStateHandle(mapOf("sender" to "HDFCBK", "body" to "Rs 500 debited from a/c")),
+                    messageRepository = FakeMessageRepository(),
                     ruleRepository = repository,
                     ruleEngine = RuleEngine(),
                     json = json,

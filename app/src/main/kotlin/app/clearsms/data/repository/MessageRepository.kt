@@ -332,6 +332,18 @@ interface MessageRepository {
     suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> }): Int
 
     /**
+     * Re-sorts only the messages whose sender contains [senderCore], returning
+     * how many were processed.
+     *
+     * This is what makes a rule added from a message take effect at once: a
+     * sender-bound rule can only affect that sender's messages, so re-sorting
+     * the whole inbox for it would be minutes of work for a handful of rows.
+     * Rules NOT bound to a sender still need the full re-sort - the caller is
+     * expected to tell the user so rather than silently doing nothing.
+     */
+    suspend fun recategorizeSenderCore(senderCore: String): Int
+
+    /**
      * Updates the derived per-row `isBlockedSender` cache for [sender]'s
      * existing rows. NOT the blocking authority - that is the settings
      * blocklist set, written via [app.clearsms.data.repository.SenderBlocker]

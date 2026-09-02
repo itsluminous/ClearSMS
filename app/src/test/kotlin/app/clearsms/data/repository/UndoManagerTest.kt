@@ -336,6 +336,14 @@ class UndoManagerTest {
 
         override suspend fun recategorizeAll(onProgress: suspend (Int, Int) -> Unit): Int = 0
 
+        /** Sender-scoped re-sort: records the request, does no work. */
+        var recategorizedSenderCores = mutableListOf<String>()
+
+        override suspend fun recategorizeSenderCore(senderCore: String): Int {
+            recategorizedSenderCores += senderCore
+            return 0
+        }
+
         override suspend fun setBlocked(
             sender: String,
             blocked: Boolean,

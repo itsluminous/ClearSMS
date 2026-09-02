@@ -3,6 +3,7 @@ package app.clearsms.ui.rules
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.RuleRepository
 import app.clearsms.data.rules.RuleAction
 import app.clearsms.data.rules.RuleDefinition
@@ -12,7 +13,9 @@ import app.clearsms.data.rules.toDefinition
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.rules.CapturePick
+import app.clearsms.domain.rules.RuleApplyScope
 import app.clearsms.domain.rules.RuleComposer
+import app.clearsms.domain.rules.RuleScopeResolver
 import app.clearsms.domain.rules.RuleSuggester
 import app.clearsms.domain.rules.SuggestedToken
 import app.clearsms.domain.rules.TokenKind
@@ -85,6 +88,11 @@ data class RuleWizardUiState(
     val priority: String = DEFAULT_USER_PRIORITY.toString(),
     val validationError: WizardValidationError? = null,
     val saved: Boolean = false,
+    /**
+     * Set once the rule is stored: whether it was applied to existing messages
+     * straight away, or needs the user to run the full re-sort.
+     */
+    val applyOutcome: RuleApplyOutcome? = null,
 ) {
     /** The pattern actually used: the advanced override when present. */
     val effectiveBodyPattern: String get() = patternOverride ?: composedBodyPattern
@@ -99,6 +107,7 @@ class RuleWizardViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val ruleRepository: RuleRepository,
+        private val messageRepository: MessageRepository,
         private val ruleEngine: RuleEngine,
         private val json: Json,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -242,7 +251,26 @@ class RuleWizardViewModel
             val definition = buildDefinition(current) ?: return
             viewModelScope.launch(ioDispatcher) {
                 ruleRepository.addUserRule(definition)
-                state.value = state.value.copy(saved = true)
+                // A saved rule that changes nothing on screen reads as broken,
+                // so a sender-bound rule is applied to that sender's existing
+                // messages at once. A rule that could match anything needs the
+                // full re-sort, which the UI asks the user to run rather than
+                // spending minutes of phone time unbidden.
+                val outcome =
+                    when (
+                        val scope =
+                            RuleScopeResolver.resolve(
+                                senderPattern = current.composedSenderPattern,
+                                sourceSender = current.sourceSender,
+                                boundToSender = current.bindSender,
+                                senderPatternEdited = current.senderPatternOverride != null,
+                            )
+                    ) {
+                        is RuleApplyScope.Sender ->
+                            RuleApplyOutcome.Applied(messageRepository.recategorizeSenderCore(scope.senderCore))
+                        RuleApplyScope.Everything -> RuleApplyOutcome.NeedsFullResort
+                    }
+                state.value = state.value.copy(saved = true, applyOutcome = outcome)
             }
         }
 
@@ -351,3 +379,14 @@ class RuleWizardViewModel
             const val DEFAULT_KEYWORD_PRESELECT = 2
         }
     }
+
+/** What happened to existing messages when a rule was saved. */
+sealed interface RuleApplyOutcome {
+    /** The rule was sender-bound: [messages] existing messages were re-sorted. */
+    data class Applied(
+        val messages: Int,
+    ) : RuleApplyOutcome
+
+    /** The rule could match anything, so the user has to run the full re-sort. */
+    data object NeedsFullResort : RuleApplyOutcome
+}

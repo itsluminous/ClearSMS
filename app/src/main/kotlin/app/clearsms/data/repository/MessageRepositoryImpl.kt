@@ -821,48 +821,83 @@ class MessageRepositoryImpl(
             // either fully commits or fully rolls back, so cancelling a
             // running re-sort never leaves a message updated without its
             // derived rows refreshed. The transaction now only writes.
-            database.withTransaction {
-                for ((message, enriched) in classified) {
-                    messageDao.update(
-                        message.copy(
-                            category = enriched.result.category,
-                            subCategory = enriched.result.subCategory,
-                            extractedOtp = enriched.otpCode,
-                            extractedDataJson = encodeExtracted(enriched.extracted),
-                        ),
-                    )
-                    // Reminders AND transactions are REFRESHED (deleted + re-derived
-                    // inside this page transaction) so existing rows pick up parser
-                    // and rule fixes - corrected titles, amounts, categories - and
-                    // stale rows from messages that no longer derive anything
-                    // disappear. Delete-before-insert keeps the run idempotent (a
-                    // message never owns two transaction rows), and finance totals
-                    // stay intact because every surviving message re-derives the
-                    // same amounts. User-entered data survives: the transaction
-                    // note is carried onto the re-derived row, and account rows
-                    // (which hold user-set card limits) are upserted, never deleted.
-                    // A reminder's dismissal flag survives the same way - a
-                    // re-sort must never resurrect a dismissed alert.
-                    val previousDismissedAt = reminderDao.findByRawSmsId(message.id)?.dismissedAt
-                    reminderDao.deleteByRawSmsId(message.id)
-                    val previousNote = transactionDao.findByRawSmsId(message.id)?.note
-                    transactionDao.deleteByRawSmsId(message.id)
-                    persistDerived(
-                        message.id,
-                        message.timestamp,
-                        enriched,
-                        preservedNote = previousNote,
-                        preservedDismissedAt = previousDismissedAt,
-                        touchedAccounts = touchedAccounts,
-                    )
-                }
-            }
+            refreshClassifiedPage(classified, touchedAccounts)
             processed += page.size
             afterId = page.last().id
             onProgress(processed, total)
         }
         sweepOrphanedAccounts(touchedAccounts)
         return processed
+    }
+
+    /**
+     * Commits one page of re-classified messages: the row itself, then its
+     * derived reminder and transaction rows, refreshed so parser and rule
+     * fixes reach existing history. Shared by the full re-sort and the
+     * sender-scoped one so the two can never drift in what they preserve.
+     *
+     * One transaction per page (mirrors persistImportedPage): a page either
+     * fully commits or fully rolls back, so cancelling a running re-sort never
+     * leaves a message updated without its derived rows refreshed.
+     */
+    private suspend fun refreshClassifiedPage(
+        classified: List<Pair<MessageEntity, Enriched>>,
+        touchedAccounts: MutableSet<Long>,
+    ) {
+        database.withTransaction {
+            for ((message, enriched) in classified) {
+                messageDao.update(
+                    message.copy(
+                        category = enriched.result.category,
+                        subCategory = enriched.result.subCategory,
+                        extractedOtp = enriched.otpCode,
+                        extractedDataJson = encodeExtracted(enriched.extracted),
+                    ),
+                )
+                // User-entered data survives: the transaction note is carried
+                // onto the re-derived row, account rows (which hold user-set
+                // card limits) are upserted rather than deleted, and a
+                // reminder's dismissal flag is preserved - a re-sort must never
+                // resurrect a dismissed alert.
+                val previousDismissedAt = reminderDao.findByRawSmsId(message.id)?.dismissedAt
+                reminderDao.deleteByRawSmsId(message.id)
+                val previousNote = transactionDao.findByRawSmsId(message.id)?.note
+                transactionDao.deleteByRawSmsId(message.id)
+                persistDerived(
+                    message.id,
+                    message.timestamp,
+                    enriched,
+                    preservedNote = previousNote,
+                    preservedDismissedAt = previousDismissedAt,
+                    touchedAccounts = touchedAccounts,
+                )
+            }
+        }
+    }
+
+    /**
+     * Re-sorts only the messages a sender-bound rule can affect - the set whose
+     * sender contains [senderCore]. Adding a rule from a message is the common
+     * case (Change category), and re-sorting the whole inbox for one sender
+     * would be minutes of work for a handful of rows.
+     *
+     * No orphan-account sweep runs here, unlike the full re-sort: the sweep
+     * reasons about accounts NOT touched by the run, which for a single sender
+     * is almost every account in the database.
+     */
+    override suspend fun recategorizeSenderCore(senderCore: String): Int {
+        val core = senderCore.trim()
+        if (core.isEmpty()) return 0
+        val messages = messageDao.liveMessagesBySenderCore(core)
+        if (messages.isEmpty()) return 0
+        val snapshot = rulesSnapshot()
+        val touchedAccounts = mutableSetOf<Long>()
+        val classified =
+            messages.map { message ->
+                message to classify(snapshot, message.sender, message.body, message.timestamp)
+            }
+        refreshClassifiedPage(classified, touchedAccounts)
+        return messages.size
     }
 
     /**

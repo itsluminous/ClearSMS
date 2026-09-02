@@ -261,11 +261,24 @@ interface MessageDao {
      * Keyset page for full-table scans (re-categorization): rows after
      * [afterId] in id order. Stable under in-place updates, unlike OFFSET.
      */
+
     @Query("SELECT * FROM messages WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
     suspend fun pageAfter(
         afterId: Long,
         limit: Int,
     ): List<MessageEntity>
+
+    /**
+     * LIVE messages whose sender contains [core] - the shape a rule built from
+     * a message carries ("(?i)HDFCBK" matches "VM-HDFCBK"), so this is the set
+     * such a rule can possibly affect. Binned rows are excluded: a blocked or
+     * keyword-binned message must not gain derived finance rows from a re-sort.
+     */
+    @Query(
+        "SELECT * FROM messages WHERE normalizedSender LIKE '%' || :core || '%' " +
+            "AND deletedAt IS NULL ORDER BY id ASC",
+    )
+    suspend fun liveMessagesBySenderCore(core: String): List<MessageEntity>
 
     @Query("SELECT threadId FROM messages WHERE normalizedSender = :normalizedSender LIMIT 1")
     suspend fun threadIdFor(normalizedSender: String): Long?
