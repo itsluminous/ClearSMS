@@ -10,6 +10,7 @@ import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
@@ -90,6 +91,11 @@ class OtpNotifier
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                     .setPublicVersion(publicVersion)
+                    // Tap opens the conversation at the OTP message - the same
+                    // convention every other notifier follows (GitHub issue #8
+                    // family: a notification whose tap does nothing reads as
+                    // broken even when its actions work).
+                    .setContentIntent(conversationIntent(message))
                     .setAutoCancel(true)
             for (action in NotificationActionPlanner.forOtp(selected)) {
                 when (action) {
@@ -153,6 +159,27 @@ class OtpNotifier
         }
 
         private fun notificationId(messageId: Long) = NotificationIds.otp(messageId)
+
+        /**
+         * Deep link into the conversation, scrolled to the OTP message -
+         * mirrors [TransactionNotifier.contentIntent] (explicit component so
+         * no other app claiming the scheme can intercept it).
+         */
+        private fun conversationIntent(message: MessageEntity): PendingIntent {
+            val uri = "clearsms://conversation/${message.threadId}?messageId=${message.id}".toUri()
+            val intent =
+                Intent(Intent.ACTION_VIEW, uri)
+                    .setClassName(context, "app.clearsms.MainActivity")
+                    .putExtra(MessageNotifier.EXTRA_THREAD_ID, message.threadId)
+                    .putExtra(MessageActionReceiver.EXTRA_MESSAGE_ID, message.id)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            return PendingIntent.getActivity(
+                context,
+                notificationId(message.id),
+                intent,
+                NotificationIntents.flags(),
+            )
+        }
 
         companion object {
             /** "123456" → "1 2 3 4 5 6", bold and scaled per [displaySize]. */

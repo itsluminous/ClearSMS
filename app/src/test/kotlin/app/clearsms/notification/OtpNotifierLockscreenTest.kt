@@ -78,4 +78,12 @@ class OtpNotifierLockscreenTest {
         val actions = build(setOf(NotificationAction.SHARE_OTP)).actions.orEmpty()
         assertThat(actions.map { it.title.toString() }).containsExactly("Copy", "Share").inOrder()
     }
+
+    @Test
+    fun `tap carries a content intent into the conversation`() {
+        // Regression guard (issue #8 family): every notifier must give the
+        // notification body a tap target - an OTP card whose tap does nothing
+        // reads as broken even though its Copy action works.
+        assertThat(build().contentIntent).isNotNull()
+    }
 }
