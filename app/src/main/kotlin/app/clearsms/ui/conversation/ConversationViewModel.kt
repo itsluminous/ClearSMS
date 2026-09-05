@@ -1,5 +1,6 @@
 package app.clearsms.ui.conversation
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -17,11 +18,13 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
+import app.clearsms.di.ApplicationScope
 import app.clearsms.di.IoDispatcher
 import app.clearsms.mms.MmsInbound
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.mms.StagedAttachment
+import app.clearsms.notification.OtpClipboard
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SimChoiceStore
@@ -42,7 +45,9 @@ import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
 import app.clearsms.work.MessageScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -160,6 +165,8 @@ class ConversationViewModel
         private val mmsInbound: MmsInbound,
         settings: SettingsRepository,
         private val json: Json,
+        @ApplicationContext private val appContext: Context,
+        @ApplicationScope private val applicationScope: CoroutineScope,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
@@ -547,6 +554,16 @@ class ConversationViewModel
          * thread. Serves copy (clipboard), share (chooser) and forward
          * (compose prefill) - one text-of-selection rule for all three.
          */
+
+        /**
+         * Copies an extracted OTP through the app's single clipboard rule -
+         * sensitive-flagged clip plus timed clear (see [OtpClipboard]), the
+         * same code the notification's Copy action runs. The APPLICATION
+         * scope keeps the 60s clear timer alive after the user leaves the
+         * conversation; a screen-lived scope would cancel it on navigation.
+         */
+        fun copyOtp(otp: String) = OtpClipboard.copy(appContext, otp, applicationScope)
+
         fun selectedText(onReady: (String) -> Unit) {
             val ids = selectionState.value.selected.toList()
             exitSelection()

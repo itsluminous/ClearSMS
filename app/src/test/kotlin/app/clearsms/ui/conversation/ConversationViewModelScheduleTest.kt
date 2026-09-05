@@ -199,6 +199,8 @@ class ConversationViewModelScheduleTest {
             mmsInbound = mmsInbound,
             settings = FakeSettingsRepository(),
             json = json,
+            appContext = context,
+            applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             ioDispatcher = Dispatchers.Unconfined,
         )
     }

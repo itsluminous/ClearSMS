@@ -87,4 +87,14 @@ object OtpClipboard {
         currentLabel: String?,
         ourLabel: String,
     ): Boolean = currentLabel == ourLabel
+
+    /**
+     * Whether the app should show its OWN "OTP copied" confirmation after a
+     * [copy]. From Android 13 the system overlays its own confirmation UI on
+     * every `setPrimaryClip`, so an app toast/snackbar on top of it would be
+     * a double confirmation - the platform guidance is to show copy feedback
+     * only below 13. One rule for every copy surface (notification action,
+     * in-app button) so they can never diverge.
+     */
+    fun appShouldConfirm(sdkInt: Int = Build.VERSION.SDK_INT): Boolean = sdkInt < Build.VERSION_CODES.TIRAMISU
 }

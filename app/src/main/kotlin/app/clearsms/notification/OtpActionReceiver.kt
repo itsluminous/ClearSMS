@@ -45,7 +45,11 @@ class OtpActionReceiver : BroadcastReceiver() {
             ACTION_COPY -> {
                 // Sensitive-flagged clip + timed clear; see OtpClipboard.
                 OtpClipboard.copy(context, otp, applicationScope)
-                Toast.makeText(context, R.string.otp_copied, Toast.LENGTH_SHORT).show()
+                // Android 13+ shows the system's own clipboard confirmation;
+                // a toast on top of it would be a double confirmation.
+                if (OtpClipboard.appShouldConfirm()) {
+                    Toast.makeText(context, R.string.otp_copied, Toast.LENGTH_SHORT).show()
+                }
                 otpNotifier.cancel(messageId)
             }
             ACTION_SHARE -> {

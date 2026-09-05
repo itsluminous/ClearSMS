@@ -29,6 +29,17 @@ class OtpClipboardTest {
     private val label get() = context.getString(R.string.otp_clip_label)
 
     @Test
+    fun `app confirms its own copy below api 33`() {
+        assertThat(OtpClipboard.appShouldConfirm(Build.VERSION_CODES.S)).isTrue()
+    }
+
+    @Test
+    fun `app confirmation is suppressed from api 33 where the system shows its own`() {
+        assertThat(OtpClipboard.appShouldConfirm(Build.VERSION_CODES.TIRAMISU)).isFalse()
+        assertThat(OtpClipboard.appShouldConfirm(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)).isFalse()
+    }
+
+    @Test
     fun `copy on api 33 flags the clip sensitive`() {
         OtpClipboard.copy(
             context,

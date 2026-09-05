@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,6 +78,7 @@ import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MmsStatus
 import app.clearsms.mms.SendFailureReason
+import app.clearsms.notification.OtpClipboard
 import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -161,6 +163,19 @@ fun ConversationScreen(
     val openLink: (String) -> Unit = { url ->
         if (!ExternalLinks.open(context, url)) {
             linkScope.launch { snackbarHostState.showSnackbar(noLinkHandler) }
+        }
+    }
+
+    // ONE in-app OTP-copy rule for the metadata-region button and the
+    // selection bar's Copy OTP: the notification path's clipboard code
+    // (sensitive flag + timed clear) plus its "OTP copied" wording - but as
+    // a snackbar, and only below Android 13, where the system already shows
+    // its own clipboard confirmation (a second one would be noise).
+    val otpCopied = stringResource(R.string.otp_copied)
+    val copyOtp: (String) -> Unit = { otp ->
+        viewModel.copyOtp(otp)
+        if (OtpClipboard.appShouldConfirm()) {
+            linkScope.launch { snackbarHostState.showSnackbar(otpCopied) }
         }
     }
 
@@ -276,7 +291,7 @@ fun ConversationScreen(
                         }
                     },
                     onSelectAll = viewModel::selectAll,
-                    onCopyOtp = { otp -> clipboard.setText(AnnotatedString(otp)) },
+                    onCopyOtp = copyOtp,
                     onCreateRule = { body ->
                         viewModel.exitSelection()
                         onCreateRule(state.address, body)
@@ -401,6 +416,7 @@ fun ConversationScreen(
                             }
                         },
                         onLongClick = { viewModel.enterSelection(item.id) },
+                        onCopyOtp = copyOtp,
                         selectionActive = selection.active,
                     )
                 }
@@ -777,6 +793,7 @@ private fun MessageBubble(
     showDetails: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onCopyOtp: (String) -> Unit = {},
     expanded: Boolean = false,
     selectionActive: Boolean = false,
     attachments: List<AttachmentEntity> = emptyList(),
@@ -946,6 +963,20 @@ private fun MessageBubble(
             AnimatedVisibility(visible = expanded) {
                 Column(horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start) {
                     MessageMetadataLine(item)
+                    // Persistent in-app twin of the OTP notification's Copy
+                    // action (issue #4): ONLY for messages with an extracted
+                    // OTP - same wording, same clipboard rule.
+                    item.message?.extractedOtp?.let { otp ->
+                        TextButton(onClick = { onCopyOtp(otp) }) {
+                            Icon(
+                                Icons.Outlined.ContentCopy,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.action_copy_otp))
+                        }
+                    }
                     if (DetailCardVisibility.shouldShow(item.details, showDetails)) {
                         ParsedDetailCard(details = item.details)
                     }
