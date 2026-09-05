@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Forward
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
@@ -86,6 +88,7 @@ import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
 import app.clearsms.ui.components.BodyLink
+import app.clearsms.ui.components.DialableNumber
 import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.ScheduleTimePicker
@@ -298,9 +301,31 @@ fun ConversationScreen(
                     },
                 )
             } else {
+                // Dialability of the SENDER, by the same rule message-body
+                // links use (DialableNumber): alphanumeric TRAI ids and
+                // short codes get NO call button, and their name tap
+                // explains itself instead of silently doing nothing.
+                val dialableSender = remember(state.address) { DialableNumber.of(state.address) }
+                val serviceSenderNote = stringResource(R.string.conversation_service_sender)
                 TopAppBar(
                     title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier =
+                                Modifier.clickable(onClickLabel = stringResource(R.string.conversation_sender_details)) {
+                                    val action = SenderContactAction.onNameTap(state.address, state.contactLookupUri)
+                                    val intent = SenderContactAction.intent(action)
+                                    if (intent == null) {
+                                        linkScope.launch { snackbarHostState.showSnackbar(serviceSenderNote) }
+                                    } else {
+                                        // No contacts app is as real as no
+                                        // browser: say so, don't crash.
+                                        runCatching { context.startActivity(intent) }.onFailure {
+                                            linkScope.launch { snackbarHostState.showSnackbar(noLinkHandler) }
+                                        }
+                                    }
+                                },
+                        ) {
                             SenderAvatar(
                                 name = state.title,
                                 richAvatars = state.richAvatars,
@@ -322,6 +347,18 @@ fun ConversationScreen(
                             onClick = onBack,
                             icon = Icons.AutoMirrored.Outlined.ArrowBack,
                         )
+                    },
+                    actions = {
+                        if (dialableSender != null) {
+                            // ACTION_DIAL via ExternalLinks' tel: mapping -
+                            // opens the dialer prefilled, never places the
+                            // call itself (no permission, by design).
+                            TooltipIconButton(
+                                label = stringResource(R.string.conversation_call),
+                                onClick = { openLink("tel:$dialableSender") },
+                                icon = Icons.Outlined.Call,
+                            )
+                        }
                     },
                 )
             }

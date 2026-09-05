@@ -55,4 +55,16 @@ class SenderDisplayResolverTest {
         assertThat(display.name).isEqualTo("Asha Rao")
         assertThat(display.isContact).isTrue()
     }
+
+    @Test
+    fun `contact lookup uri passes through for the name-tap open-contact action`() {
+        val withUri: (String) -> ContactInfo? = {
+            ContactInfo("Asha Rao", lookupUri = "content://com.android.contacts/contacts/lookup/k/9")
+        }
+        val display = resolveSenderDisplay("9876543210", withUri, directory)
+        assertThat(display.contactLookupUri)
+            .isEqualTo("content://com.android.contacts/contacts/lookup/k/9")
+        // Non-contacts never carry one.
+        assertThat(resolveSenderDisplay("VM-HDFCBK", contactLookup, directory).contactLookupUri).isNull()
+    }
 }

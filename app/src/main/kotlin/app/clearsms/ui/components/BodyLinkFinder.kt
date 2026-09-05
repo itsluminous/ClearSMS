@@ -60,7 +60,7 @@ object BodyLinkFinder {
 
     /**
      * A candidate digit run: optional `+`, then digits with optional single
-     * spaces or hyphens between them. Deliberately loose - [dialableNumber]
+     * spaces or hyphens between them. Deliberately loose - [DialableNumber]
      * decides what actually counts, which is far easier to reason about than
      * one regex trying to express every grouping style ("+91 98765 43210",
      * "98765-43210", "9876543210").
@@ -128,7 +128,7 @@ object BodyLinkFinder {
             val before = body.substring(0, match.range.first)
             if (referenceContext.containsMatchIn(before)) return@forEach
             if (currencyContext.containsMatchIn(before)) return@forEach
-            val dialable = dialableNumber(match.value) ?: return@forEach
+            val dialable = DialableNumber.of(match.value) ?: return@forEach
             found +=
                 BodyLink(
                     start = match.range.first,
@@ -150,27 +150,7 @@ object BodyLinkFinder {
         return kept
     }
 
-    /**
-     * The dialable form of a candidate run, or null when it is not a number a
-     * person would call:
-     *
-     * - with a country code: 8-15 digits (the E.164 range);
-     * - a bare Indian mobile: exactly 10 digits starting 6-9;
-     * - a bare toll-free line: 11 digits starting 1800.
-     *
-     * Everything else - 11-digit transaction ids, 16-digit cards, 6-digit
-     * dates, PINs - is left as text. The 10-digit PNR case is caught by the
-     * reference-word check at the call site, since its SHAPE is legitimate.
-     */
-    private fun dialableNumber(candidate: String): String? {
-        val compact = candidate.filter { !it.isWhitespace() && it != '-' }
-        val digits = compact.removePrefix("+")
-        if (digits.any { !it.isDigit() }) return null
-        return when {
-            compact.startsWith("+") && digits.length in 8..15 -> compact
-            digits.length == 10 && digits.first() in '6'..'9' -> digits
-            digits.length == 11 && digits.startsWith("1800") -> digits
-            else -> null
-        }
-    }
+    // The dialable-number judgement lives in [DialableNumber] - shared with
+    // the conversation top bar so body links and the call/save affordances
+    // apply ONE rule.
 }

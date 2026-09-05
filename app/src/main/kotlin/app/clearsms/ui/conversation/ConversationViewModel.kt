@@ -123,6 +123,8 @@ data class ConversationUiState(
     val address: String = "",
     val photoUri: String? = null,
     val isKnownSender: Boolean = false,
+    /** Saved contact's lookup URI (name tap opens it); null for non-contacts. */
+    val contactLookupUri: String? = null,
     val glyph: BrandGlyph = BrandGlyph.NONE,
     val richAvatars: Boolean = true,
     /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
@@ -364,6 +366,7 @@ class ConversationViewModel
                     address = first?.sender.orEmpty(),
                     photoUri = display?.photoUri,
                     isKnownSender = display?.isKnownSender ?: false,
+                    contactLookupUri = display?.contactLookupUri,
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,

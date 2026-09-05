@@ -3,6 +3,7 @@ package app.clearsms.sms
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import android.util.Log
@@ -16,6 +17,8 @@ import javax.inject.Singleton
 data class ContactInfo(
     val name: String,
     val photoUri: String? = null,
+    /** `ContactsContract` lookup URI for opening the contact (ACTION_VIEW). */
+    val lookupUri: String? = null,
 )
 
 /**
@@ -79,6 +82,8 @@ class ContactsSource
                 arrayOf(
                     ContactsContract.PhoneLookup.DISPLAY_NAME,
                     ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI,
+                    ContactsContract.PhoneLookup._ID,
+                    ContactsContract.PhoneLookup.LOOKUP_KEY,
                 )
             return try {
                 context.contentResolver
@@ -89,6 +94,7 @@ class ContactsSource
                                 ContactInfo(
                                     name = name,
                                     photoUri = if (cursor.isNull(1)) null else cursor.getString(1),
+                                    lookupUri = lookupUriAt(cursor),
                                 )
                             }
                         } else {
@@ -99,6 +105,17 @@ class ContactsSource
                 Log.w(TAG, "Contact lookup failed", e)
                 null
             }
+        }
+
+        /**
+         * Stable lookup URI for the matched row (for ACTION_VIEW on the
+         * contact), or null when either column is missing.
+         */
+        private fun lookupUriAt(cursor: Cursor): String? {
+            if (cursor.isNull(2) || cursor.isNull(3)) return null
+            return ContactsContract.Contacts
+                .getLookupUri(cursor.getLong(2), cursor.getString(3))
+                ?.toString()
         }
 
         companion object {

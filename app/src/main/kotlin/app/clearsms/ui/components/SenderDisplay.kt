@@ -10,6 +10,8 @@ data class SenderDisplay(
     val isContact: Boolean = false,
     /** The name came from the bundled sender ID directory. */
     val isKnownSender: Boolean = false,
+    /** Lookup URI of the saved contact, for opening it; null for non-contacts. */
+    val contactLookupUri: String? = null,
 )
 
 /**
@@ -28,7 +30,12 @@ fun resolveSenderDisplay(
     directoryLookup: (String) -> String?,
 ): SenderDisplay {
     contactLookup(sender)?.let { contact ->
-        return SenderDisplay(name = contact.name, photoUri = contact.photoUri, isContact = true)
+        return SenderDisplay(
+            name = contact.name,
+            photoUri = contact.photoUri,
+            isContact = true,
+            contactLookupUri = contact.lookupUri,
+        )
     }
     directoryLookup(sender)?.let { name ->
         return SenderDisplay(name = name, isKnownSender = true)

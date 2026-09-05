@@ -73,6 +73,9 @@
     <string name="conversation_schedule_edit_time">Edit time</string>
     <string name="conversation_schedule_cancel">Cancel send</string>
     <string name="conversation_schedule_past_time">Pick a time in the future</string>
+    <string name="conversation_call">Call</string>
+    <string name="conversation_sender_details">Sender details</string>
+    <string name="conversation_service_sender">This is a service sender - it has no phone number to call or save</string>
     <string name="conversation_show_message_details">Show message details</string>
     <string name="conversation_hide_message_details">Hide message details</string>
 
