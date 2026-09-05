@@ -94,7 +94,7 @@ class MmsSenderTest {
         val source = File(context.cacheDir, name)
         source.writeBytes(bytes)
         val uri = Uri.fromFile(source)
-        return requireNotNull(stager.stage(uri))
+        return (stager.stage(uri) as StagingResult.Staged).attachment
     }
 
     @Test

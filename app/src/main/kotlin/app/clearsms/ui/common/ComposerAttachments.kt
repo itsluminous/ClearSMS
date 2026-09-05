@@ -4,6 +4,7 @@ import android.net.Uri
 import app.clearsms.mms.MmsSizeLimits
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.mms.StagedAttachment
+import app.clearsms.mms.StagingResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,20 +102,27 @@ class ComposerAttachments(
         accept(stager.stage(uri))
     }
 
-    /** Budget gate: an attachment that does not fit is discarded with an inline error. */
-    private fun accept(staged: StagedAttachment?) {
-        if (staged == null) {
-            errorFlow.value = AttachmentError.UNREADABLE
-            return
+    /**
+     * Staging verdicts become inline errors; a staged attachment still
+     * has to fit the RUNNING message budget (staging caps each item
+     * individually, this gate caps their sum).
+     */
+    private fun accept(result: StagingResult) {
+        when (result) {
+            StagingResult.Unreadable -> errorFlow.value = AttachmentError.UNREADABLE
+            StagingResult.TooLarge -> errorFlow.value = AttachmentError.TOO_LARGE
+            is StagingResult.Staged -> {
+                val staged = result.attachment
+                val current = list.value
+                val total = current.sumOf { it.sizeBytes } + staged.sizeBytes
+                if (total > MmsSizeLimits.TOTAL_BUDGET_BYTES) {
+                    stager.discard(staged)
+                    errorFlow.value = AttachmentError.TOO_LARGE
+                    return
+                }
+                list.value = current + staged
+                errorFlow.value = null
+            }
         }
-        val current = list.value
-        val total = current.sumOf { it.sizeBytes } + staged.sizeBytes
-        if (total > MmsSizeLimits.TOTAL_BUDGET_BYTES) {
-            stager.discard(staged)
-            errorFlow.value = AttachmentError.TOO_LARGE
-            return
-        }
-        list.value = current + staged
-        errorFlow.value = null
     }
 }

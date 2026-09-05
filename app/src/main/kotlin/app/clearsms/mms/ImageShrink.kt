@@ -2,7 +2,7 @@ package app.clearsms.mms
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import java.io.ByteArrayOutputStream
+import java.io.File
 
 /**
  * Size discipline for outgoing MMS, applied when an attachment is staged
@@ -21,6 +21,19 @@ object MmsSizeLimits {
     const val TOTAL_BUDGET_BYTES = 1_000_000L
 
     /**
+     * Largest source image accepted for staging. Recompressible images
+     * are judged by pixels, not bytes (any photo recompresses under
+     * [TOTAL_BUDGET_BYTES] at [MAX_IMAGE_EDGE_PX]/[JPEG_QUALITY]), but the
+     * staging copy still costs disk and I/O, so a line is drawn at 50 MB:
+     * comfortably above the largest genuine phone-camera JPEG (a 200 MP
+     * flagship photo is ~40 MB) while refusing pathological picks - the
+     * 377 MB selection in issue #6 - before a single byte is copied.
+     * Non-recompressible content is capped at [TOTAL_BUDGET_BYTES]
+     * directly, because it travels as-is or not at all.
+     */
+    const val MAX_STAGED_IMAGE_BYTES = 50_000_000L
+
+    /**
      * Longest-edge cap for recompressed images: 2048 px keeps a photo
      * crisp on any phone screen while cutting a 12 MP camera image to a
      * fraction of its size before JPEG quality even applies.
@@ -32,60 +45,70 @@ object MmsSizeLimits {
 }
 
 /**
- * Recompresses images to fit carrier MMS limits. Only static images are
- * touched: GIFs (recompression would destroy animation) and non-images
- * pass through byte-identical. A JPEG/PNG/etc. is decoded, downsampled to
- * [MmsSizeLimits.MAX_IMAGE_EDGE_PX] on its longest edge, and re-encoded
- * as JPEG at [MmsSizeLimits.JPEG_QUALITY] - but only when that actually
- * helps: if the original bytes are already smaller, they are kept.
+ * Recompresses images to fit carrier MMS limits, working file-to-file so
+ * a huge source is NEVER held in memory whole: the bounds pass uses
+ * `inJustDecodeBounds`, the pixel decode is downsampled with
+ * `inSampleSize`, and the JPEG re-encode streams straight into the target
+ * file. Only static images are touched: GIFs (recompression would destroy
+ * animation) and non-images pass through untouched. A JPEG/PNG/etc. is
+ * downsampled to [MmsSizeLimits.MAX_IMAGE_EDGE_PX] on its longest edge
+ * and re-encoded at [MmsSizeLimits.JPEG_QUALITY] - but only when that
+ * actually helps: if the original file is already smaller, it is kept.
  */
 object ImageShrink {
     /** Whether [mimeType] is eligible for recompression. */
     fun isCompressible(mimeType: String): Boolean = mimeType.startsWith("image/") && mimeType != "image/gif"
 
     /**
-     * The bytes (and mime type) to actually attach for [data] declared as
-     * [mimeType]. Non-compressible input, undecodable input, and input
-     * the recompression cannot improve are returned unchanged.
+     * The file (and mime type) to actually attach for [source] declared as
+     * [mimeType]. When recompression helps, the JPEG is written to
+     * [target] and returned; otherwise [source] is returned unchanged and
+     * [target] is cleaned up. Non-compressible and undecodable input
+     * always passes through as [source].
      */
     fun shrink(
-        data: ByteArray,
+        source: File,
         mimeType: String,
-    ): Shrunk {
-        if (!isCompressible(mimeType)) return Shrunk(data, mimeType)
+        target: File,
+    ): ShrunkFile {
+        if (!isCompressible(mimeType)) return ShrunkFile(source, mimeType)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return Shrunk(data, mimeType)
+        BitmapFactory.decodeFile(source.path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return ShrunkFile(source, mimeType)
 
         val needsResize = maxOf(bounds.outWidth, bounds.outHeight) > MmsSizeLimits.MAX_IMAGE_EDGE_PX
         val options =
             BitmapFactory.Options().apply {
                 inSampleSize = sampleSizeFor(maxOf(bounds.outWidth, bounds.outHeight))
             }
-        val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size, options) ?: return Shrunk(data, mimeType)
+        val bitmap = BitmapFactory.decodeFile(source.path, options) ?: return ShrunkFile(source, mimeType)
         val scaled = scaleToEdgeCap(bitmap)
-        val encoded = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, MmsSizeLimits.JPEG_QUALITY, encoded)
-        if (scaled !== bitmap) scaled.recycle()
-        bitmap.recycle()
-        val jpeg = encoded.toByteArray()
+        try {
+            target.outputStream().use { out ->
+                scaled.compress(Bitmap.CompressFormat.JPEG, MmsSizeLimits.JPEG_QUALITY, out)
+            }
+        } finally {
+            if (scaled !== bitmap) scaled.recycle()
+            bitmap.recycle()
+        }
         // Keep the original when recompression did not help (a small,
         // already-efficient image) UNLESS the dimensions had to shrink.
-        return if (jpeg.size < data.size || needsResize) Shrunk(jpeg, "image/jpeg") else Shrunk(data, mimeType)
+        return if (target.length() < source.length() || needsResize) {
+            ShrunkFile(target, "image/jpeg")
+        } else {
+            target.delete()
+            ShrunkFile(source, mimeType)
+        }
     }
 
-    /** Output of [shrink]: the bytes to attach and their (possibly new) mime. */
-    data class Shrunk(
-        val data: ByteArray,
+    /** Output of [shrink]: the file to attach and its (possibly new) mime. */
+    data class ShrunkFile(
+        val file: File,
         val mimeType: String,
-    ) {
-        override fun equals(other: Any?): Boolean = other is Shrunk && other.mimeType == mimeType && other.data.contentEquals(data)
-
-        override fun hashCode(): Int = 31 * mimeType.hashCode() + data.contentHashCode()
-    }
+    )
 
     /** Power-of-two downsample so the decode itself stays within memory. */
-    private fun sampleSizeFor(longestEdge: Int): Int {
+    internal fun sampleSizeFor(longestEdge: Int): Int {
         var sample = 1
         var edge = longestEdge
         while (edge / 2 >= MmsSizeLimits.MAX_IMAGE_EDGE_PX) {

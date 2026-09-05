@@ -60,6 +60,8 @@ Everything shipped, and what's on the roadmap:
 - [ ] Attachments persisted in drafts
 - [ ] Scheduling for messages with attachments (currently SMS-only)
 - [ ] Blocked keywords applied to MMS bodies
+- [ ] Video compression for MMS (oversized videos are refused with a clear
+      message; real transcoding needs MediaCodec/Media3 Transformer)
 
 **Smart inbox**
 - [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown (390+ community rules + 715k sender directory)
