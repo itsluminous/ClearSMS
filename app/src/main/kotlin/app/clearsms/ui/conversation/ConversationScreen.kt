@@ -169,7 +169,7 @@ fun ConversationScreen(
         }
     }
 
-    // ONE in-app OTP-copy rule for the metadata-region button and the
+    // ONE in-app OTP-copy rule for the always-visible bubble button and the
     // selection bar's Copy OTP: the notification path's clipboard code
     // (sensitive flag + timed clear) plus its "OTP copied" wording - but as
     // a snackbar, and only below Android 13, where the system already shows
@@ -997,23 +997,30 @@ private fun MessageBubble(
                     }
                 }
             }
+            // ALWAYS-visible in-app twin of the OTP notification's Copy
+            // action (issue #4, widened: "persistent" means on the message
+            // itself, not behind the tap-to-expand region). ONLY for
+            // messages with an extracted OTP - same wording, same clipboard
+            // rule. A small LABELLED TextButton rather than the repo's
+            // TooltipIconButton: a bare copy icon under a bubble is
+            // ambiguous (copy the body? the OTP?), and the label is the
+            // disambiguation. It sits OUTSIDE the bubble's combinedClickable
+            // surface, so tapping it neither expands metadata nor selects;
+            // hidden during selection mode (see OtpCopyAffordance).
+            if (OtpCopyAffordance.visible(item.message?.extractedOtp, selectionActive)) {
+                TextButton(onClick = { item.message?.extractedOtp?.let(onCopyOtp) }) {
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.action_copy_otp))
+                }
+            }
             AnimatedVisibility(visible = expanded) {
                 Column(horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start) {
                     MessageMetadataLine(item)
-                    // Persistent in-app twin of the OTP notification's Copy
-                    // action (issue #4): ONLY for messages with an extracted
-                    // OTP - same wording, same clipboard rule.
-                    item.message?.extractedOtp?.let { otp ->
-                        TextButton(onClick = { onCopyOtp(otp) }) {
-                            Icon(
-                                Icons.Outlined.ContentCopy,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.action_copy_otp))
-                        }
-                    }
                     if (DetailCardVisibility.shouldShow(item.details, showDetails)) {
                         ParsedDetailCard(details = item.details)
                     }
