@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.SimCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -30,6 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,9 +60,19 @@ data class SimUiState(
     /**
      * Accessibility description of the icon indicator ("SIM 1 of 2 -
      * Airtel"). Built here, not as a resource, so the mapping stays
-     * unit-testable and consistent with the raw operator-name toast.
+     * unit-testable and consistent with the tap toast.
      */
-    val contentDescription: String get() = "SIM $slot of $simCount - $operatorName"
+    val contentDescription: String get() = "SIM $slot of $simCount$nameSuffix"
+
+    /**
+     * Tap-toast label, slot FIRST ("SIM 1 - Airtel"): with the same carrier
+     * on both SIMs the operator name alone is ambiguous, the slot never is.
+     * The name (the platform's SubscriptionInfo display name, which is the
+     * user's nickname when one is set) stays for users who rely on it.
+     */
+    val tapLabel: String get() = "SIM $slot$nameSuffix"
+
+    private val nameSuffix: String get() = if (operatorName.isBlank()) "" else " - $operatorName"
 }
 
 /**
@@ -113,9 +128,10 @@ fun MessageComposerBar(
                 shape = RoundedCornerShape(28.dp),
                 maxLines = 4,
             )
-            // Compact SIM indicator, dual-SIM devices only: a SIM-card outline
-            // with the slot number drawn inside shows the SIM the next send
-            // uses; tapping cycles SIMs and toasts the operator name.
+            // Compact SIM indicator, dual-SIM devices only: a plain SIM-card
+            // outline whose ONLY content is the slot number - the stock icon's
+            // contact dots made the digit illegible (GitHub #7). Tapping
+            // cycles SIMs and toasts the slot-first label.
             if (sim.visible) {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -125,21 +141,25 @@ fun MessageComposerBar(
                             .clickable(
                                 onClick = {
                                     onCycleSim()
-                                    Toast.makeText(context, sim.operatorName, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, sim.tapLabel, Toast.LENGTH_SHORT).show()
                                 },
                                 onClickLabel = stringResource(R.string.conversation_sim_switch),
                             ).padding(6.dp),
                 ) {
                     Icon(
-                        Icons.Outlined.SimCard,
+                        SimOutlineGlyph,
                         contentDescription = sim.contentDescription,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    // Same tint as the icon; onSurfaceVariant stays legible on
-                    // the bar surface in both light and dark themes.
+                    // The digit IS the indicator: as large as the outline's
+                    // interior (~11dp wide at the 24dp icon size) allows
+                    // without clipping. Same tint as the outline;
+                    // onSurfaceVariant stays legible on the bar surface in
+                    // both light and dark themes.
                     Text(
                         text = sim.slot.toString(),
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -219,3 +239,41 @@ internal fun scheduleHintVisible(
     draft: String,
     attachmentCount: Int = 0,
 ): Boolean = draft.isNotBlank() && attachmentCount == 0
+
+/**
+ * A plain SIM-card outline - the familiar clipped-corner card shape and
+ * nothing inside it. Replaces the stock Material outlined `SimCard` icon,
+ * whose chip-contact dots competed with the slot digit and made it
+ * unreadable (GitHub #7). Stroke-only, so [Icon]'s tint colors just the
+ * outline and the digit sits directly on the bar surface. No dots, no chip
+ * contacts - the overlaid slot digit is the glyph's only content.
+ */
+private val SimOutlineGlyph: ImageVector by lazy {
+    ImageVector
+        .Builder(
+            name = "SimOutlineGlyph",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                // Any opaque color works: Icon recolors the whole vector via tint.
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 1.6f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(6.5f, 8.5f)
+                // The clipped corner that reads as "SIM card".
+                lineTo(11.5f, 3.5f)
+                lineTo(16f, 3.5f)
+                quadTo(17.5f, 3.5f, 17.5f, 5f)
+                lineTo(17.5f, 19f)
+                quadTo(17.5f, 20.5f, 16f, 20.5f)
+                lineTo(8f, 20.5f)
+                quadTo(6.5f, 20.5f, 6.5f, 19f)
+                close()
+            }
+        }.build()
+}

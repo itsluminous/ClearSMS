@@ -44,4 +44,22 @@ class ComposerBarContractTest {
                 .toList()
         assertThat(definitions).containsExactly("ui/components/MessageComposerBar.kt")
     }
+
+    @Test
+    fun `sim glyph is the plain outline - the dotted stock icon must not resurface`() {
+        // GitHub #7: the stock SimCard icon's chip-contact dots made the slot
+        // digit unreadable. The indicator must draw the bare outline plus the
+        // digit, nothing else.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        assertThat(bar).doesNotContain("Icons.Outlined.SimCard")
+        // No import of the stock icon either (KDoc may still NAME it as the
+        // thing this glyph replaced - that is documentation, not usage).
+        assertThat(bar.lines().filter { it.startsWith("import ") && it.contains("SimCard") }).isEmpty()
+        assertThat(bar).contains("SimOutlineGlyph")
+        // Exactly one path in the glyph: the outline. A second path (or a
+        // fill) would be where dots/contacts creep back in.
+        val glyph = bar.substringAfter("SimOutlineGlyph: ImageVector")
+        assertThat(Regex("""\bpath\(""").findAll(glyph).count()).isEqualTo(1)
+        assertThat(glyph).doesNotContain("fill =")
+    }
 }

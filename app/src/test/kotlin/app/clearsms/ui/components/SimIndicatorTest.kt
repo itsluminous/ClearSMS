@@ -34,4 +34,30 @@ class SimIndicatorTest {
         val state = SimUiState(visible = true, slot = 1, simCount = 2, operatorName = "Airtel")
         assertThat(state.contentDescription).isEqualTo("SIM 1 of 2 - Airtel")
     }
+
+    @Test
+    fun `tap label leads with the slot so same-carrier SIMs stay distinguishable`() {
+        // Same operator on both SIMs: only the slot tells them apart.
+        val slot1 = SimUiState(visible = true, slot = 1, simCount = 2, operatorName = "Airtel")
+        val slot2 = SimUiState(visible = true, slot = 2, simCount = 2, operatorName = "Airtel")
+        assertThat(slot1.tapLabel).isEqualTo("SIM 1 - Airtel")
+        assertThat(slot2.tapLabel).isEqualTo("SIM 2 - Airtel")
+        assertThat(slot1.tapLabel).isNotEqualTo(slot2.tapLabel)
+    }
+
+    @Test
+    fun `blank operator name degrades to the bare slot label`() {
+        val state = SimUiState(visible = true, slot = 2, simCount = 2, operatorName = "")
+        assertThat(state.tapLabel).isEqualTo("SIM 2")
+        assertThat(state.contentDescription).isEqualTo("SIM 2 of 2")
+    }
+
+    @Test
+    fun `user-assigned nickname flows through as the name after the slot`() {
+        // DeviceSubscriptionSource maps SubscriptionInfo.displayName - the
+        // user's nickname when one is set - into SimInfo.displayName, which
+        // the ViewModels pass here as operatorName.
+        val state = SimUiState(visible = true, slot = 1, simCount = 2, operatorName = "Work")
+        assertThat(state.tapLabel).isEqualTo("SIM 1 - Work")
+    }
 }
