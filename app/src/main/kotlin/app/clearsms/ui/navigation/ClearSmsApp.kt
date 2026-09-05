@@ -1,5 +1,7 @@
 package app.clearsms.ui.navigation
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +55,8 @@ import app.clearsms.ui.settings.PrivacyPolicyScreen
 import app.clearsms.ui.settings.SettingsItem
 import app.clearsms.ui.settings.SettingsScreen
 import app.clearsms.ui.theme.ClearSmsTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 private data class BottomDestination(
     val route: String,
@@ -66,6 +71,13 @@ fun ClearSmsApp(
     initialBody: String?,
     initialImageUri: String?,
     onOnboarded: () -> Unit,
+    /**
+     * Intents delivered after this composition started - a notification tap
+     * while the app is already running. The graph only resolves deep links
+     * from the intent the NavController was built with, so these are handed to
+     * it explicitly or the tap does nothing.
+     */
+    laterIntents: Flow<Intent> = emptyFlow(),
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
     val state by appViewModel.uiState.collectAsStateWithLifecycle()
@@ -80,6 +92,7 @@ fun ClearSmsApp(
                         initialRecipient = initialRecipient,
                         initialBody = initialBody,
                         initialImageUri = initialImageUri,
+                        laterIntents = laterIntents,
                         startDestination = state.defaultDestination,
                     )
                 }
@@ -93,6 +106,7 @@ private fun MainScaffold(
     initialRecipient: String?,
     initialBody: String?,
     initialImageUri: String?,
+    laterIntents: Flow<Intent>,
     startDestination: StartDestination,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -111,6 +125,28 @@ private fun MainScaffold(
     LaunchedEffect(initialRecipient, initialBody, initialImageUri) {
         if (!initialRecipient.isNullOrBlank() || !initialBody.isNullOrBlank() || !initialImageUri.isNullOrBlank()) {
             navController.navigate(Routes.compose(initialRecipient, initialBody, initialImageUri))
+        }
+    }
+
+    // Intents delivered while the activity was already alive (notification
+    // taps and shares into a running app - MainActivity.onNewIntent). The
+    // graph never sees them by itself, so translate each into explicit
+    // navigation here or the tap/share silently does nothing (issue #8).
+    val context = LocalContext.current
+    LaunchedEffect(navController) {
+        laterIntents.collect { intent ->
+            when (val action = LaterIntentTriage.classify(intent)) {
+                is LaterIntentAction.Navigate -> navController.navigate(action.route)
+                is LaterIntentAction.OpenCompose -> {
+                    if (action.rejectedAttachment) {
+                        // Same courtesy as the onCreate path: never fail a
+                        // share silently.
+                        Toast.makeText(context, R.string.share_only_images, Toast.LENGTH_LONG).show()
+                    }
+                    action.route?.let { navController.navigate(it) }
+                }
+                LaterIntentAction.None -> Unit
+            }
         }
     }
 

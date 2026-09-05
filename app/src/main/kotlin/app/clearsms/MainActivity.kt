@@ -11,6 +11,7 @@ import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.ui.navigation.ClearSmsApp
 import app.clearsms.work.WorkScheduler
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableSharedFlow
 import javax.inject.Inject
 
 /**
@@ -33,6 +34,19 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var balanceVisibility: BalanceVisibility
 
+    /**
+     * Intents that arrive while this activity is already alive - a
+     * notification tap with the app in the background is the common case.
+     *
+     * The navigation graph resolves deep links from the intent the
+     * NavController was created with, which is the one onCreate saw. Without
+     * this relay a later `clearsms://conversation/...` was accepted, stored by
+     * setIntent, and then read by nobody: the app came to the foreground on
+     * whatever screen it was last on, which is exactly the reported "can't
+     * open on notification".
+     */
+    private val laterIntents = MutableSharedFlow<Intent>(extraBufferCapacity = 4)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -49,12 +63,24 @@ class MainActivity : FragmentActivity() {
         }
         setContent {
             ClearSmsApp(
+                laterIntents = laterIntents,
                 initialRecipient = send.recipient,
                 initialBody = send.body,
                 initialImageUri = send.imageUri,
                 onOnboarded = { WorkScheduler.scheduleAll(applicationContext) },
             )
         }
+    }
+
+    /**
+     * With `singleTop`, a notification tap resumes this instance instead of
+     * building a second one, and the intent lands here.
+     */
+    override fun onNewIntent(intent: Intent) {
+        val sanitized = IntentTriage.sanitizeDeepLink(intent) ?: intent
+        super.onNewIntent(sanitized)
+        setIntent(sanitized)
+        laterIntents.tryEmit(sanitized)
     }
 
     override fun onStop() {
