@@ -1,10 +1,4 @@
 Changing a message's category now takes effect immediately.
 
-- Picking "Change category" on a message added the rule but left the message
-  where it was until you re-sorted the whole inbox by hand. A rule tied to a
-  sender - which is what that option creates - is now applied to that
-  sender's existing messages straight away.
-- Rules that match on the message text instead of a sender could apply to
-  anything, so they are not applied unbidden: the app says so, and offers to
-  take you to Settings, scrolled to "Sort inbox again" with the option
-  briefly highlighted. New messages use such rules right away regardless.
+- Picking "Change category" on a message added the rule but left the message where it was until you re-sorted the whole inbox by hand. A rule tied to a sender - which is what that option creates - is now applied to that sender's existing messages straight away. Closes #1 
+- Rules that match on the message text instead of a sender could apply to anything, so they are not applied unbidden: the app says so, and offers to take you to Settings, scrolled to "Sort inbox again" with the option briefly highlighted. New messages use such rules right away regardless.
