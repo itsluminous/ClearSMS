@@ -1,0 +1,13 @@
+First release from public bug reports - thank you to everyone who filed one.
+
+Fixed
+- Tapping a notification opens the conversation again, and now highlights the message it was about. It had stopped working whenever the app was already running in the background, and OTP notifications did not respond to taps at all.
+- Attaching a very large file no longer crashes the app. Files are copied in small pieces instead of being read into memory whole, photos are compressed on the way in, and anything too big to send is refused with a clear message. Video compression is still not implemented, so oversized videos are refused rather than shrunk.
+- "Your authorisation code is: 1234" is now recognised as an OTP, in both the -isation and -ization spellings.
+
+Added
+- A call button in the conversation header, and tapping the sender's name opens their contact or offers to create it. Service senders such as HDFCBK have no number to call, so they say so instead of doing nothing.
+- A Copy OTP button that is always visible on an OTP message, attached to the message it belongs to, so you no longer have to tap the message first.
+
+Changed
+- The dual-SIM indicator is now a plain SIM outline with a large 1 or 2 inside, instead of a dotted icon that was hard to read. Where the SIM is named, the slot comes first ("SIM 1 - Airtel"), which matters when both SIMs are on the same network.
