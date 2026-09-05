@@ -12,6 +12,26 @@ organizes your inbox. It categorizes messages (Important / Promotional / Persona
 extracts transactions into a personal finance dashboard, surfaces bill reminders, and
 handles OTPs intelligently - all completely offline, on your device.
 
+## Download
+
+<a href="https://f-droid.org/packages/app.clearsms/">
+  <img alt="Get it on F-Droid" height="80"
+       src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />
+</a>
+<a href="https://github.com/itsluminous/ClearSMS/releases/latest">
+  <img alt="Get it on GitHub" height="80"
+       src="docs/badges/get-it-on-github.png" />
+</a>
+
+- **GitHub**: a signed `ClearSMS.apk` is attached to every
+  [release](https://github.com/itsluminous/ClearSMS/releases/latest). It runs on
+  any device (the app has no native code, so one APK covers every CPU).
+- **F-Droid**: available at
+  [f-droid.org/packages/app.clearsms](https://f-droid.org/packages/app.clearsms/).
+  The F-Droid build is [reproducible](docs/publishing-fdroid.md) and carries the
+  same signature as the GitHub APK, so you can install from one source and
+  update from the other.
+
 ## Features
 
 - **Smart inbox** - messages are automatically sorted into Important, Promotional,
@@ -51,7 +71,9 @@ Everything shipped, and what's on the roadmap:
 - [x] Share & forward selected messages; share text or images from other apps into a new message
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
-- [x] Recycle bin (on by default, 30-day retention, restore & delete-forever)
+- [x] Swipe-away in-app notification bars ("Message sent", schedule confirmations); swiping an UNDO bar keeps the deletion
+- [x] Recycle bin (on by default, 30-day retention, restore & delete-forever; tap a binned message to read it in full first)
+- [x] Call button in a conversation, and tap-the-name to view or create the contact (service senders explain themselves instead of doing nothing)
 - [x] Pinned conversations
 - [x] Blocked senders & blocked keywords (both go straight to the bin, silently; blocking also bins the existing conversation)
 - [ ] Contact names (instead of bare numbers) in the blocked-senders list
@@ -64,7 +86,9 @@ Everything shipped, and what's on the roadmap:
       message; real transcoding needs MediaCodec/Media3 Transformer)
 
 **Smart inbox**
-- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown (390+ community rules + 715k sender directory)
+- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown (460+ community rules + 715k sender directory)
+- [x] Automatic full re-sort after an app update ships new rules, with a progress banner in the inbox
+- [x] A rule added from a message applies to that sender's existing messages at once (body-only rules point you at the full re-sort instead)
 - [x] Category filter pills (reorderable) with tags hidden under single-category filters
 - [x] Full-text search with category & time filters
 - [x] Scam-awareness flagging
@@ -75,8 +99,8 @@ Everything shipped, and what's on the roadmap:
 **Finance & alerts**
 - [x] Transactions extracted into accounts, cards & wallets with spend charts
 - [x] Balance tracking with biometric balance lock
-- [x] Bills, autopay, insurance & credit-card due reminders (CRED and undated bills included)
-- [x] Train & flight journeys in Alerts
+- [x] Bills, autopay, insurance & credit-card due reminders (CRED, BOBCARD statements and undated bills included)
+- [x] Train & flight journeys in Alerts (including compact Indian Railways PNR messages)
 - [x] Deliveries with courier & tracking id
 - [x] Time-aware alerts with a complete, restorable "Older" archive
 - [x] Cross-bank UPI duplicate collapsing; retirement contributions as credits
@@ -86,6 +110,7 @@ Everything shipped, and what's on the roadmap:
 **Notifications & OTP**
 - [x] Parsed transaction notifications with semantic colors and brand logos
 - [x] Big copyable OTP notifications, auto-copy, auto-delete policies, one-shot cleanup
+- [x] Always-visible Copy OTP button on OTP messages in a conversation
 - [x] Notifications clear when messages are read in-app (recycle-bin-aware actions)
 - [x] Missed-message notifications after signal loss or default-app switches
 - [ ] App-wide biometric/PIN lock (today the lock covers Finance balances)
@@ -122,22 +147,6 @@ Everything shipped, and what's on the roadmap:
 - **Your data stays on your device.** Backups are local files you control.
 - **Transparent categorization.** Every rule is human-readable JSON you can inspect,
   edit, export, and contribute back.
-
-## Download
-
-- **GitHub**: a signed `ClearSMS.apk` is attached to every
-  [release](https://github.com/itsluminous/ClearSMS/releases/latest). It runs on
-  any device (the app has no native code, so one APK covers every CPU).
-- **F-Droid**: available at
-  [f-droid.org/packages/app.clearsms](https://f-droid.org/packages/app.clearsms/).
-  The F-Droid build is [reproducible](docs/publishing-fdroid.md) and carries the
-  same signature as the GitHub APK, so you can install from one source and
-  update from the other.
-
-<a href="https://f-droid.org/packages/app.clearsms/">
-  <img alt="Get it on F-Droid" height="80"
-       src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />
-</a>
 
 ## Building
 
