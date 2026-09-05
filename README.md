@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/github/license/itsluminous/ClearSMS)](LICENSE)
 [![Rules](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fitsluminous%2FClearSMS%2Fmain%2Fapp%2Fsrc%2Fmain%2Fassets%2Fdefault_rules.json&query=%24.rules.length&label=rules&color=teal)](rules/)
 [![Stars](https://img.shields.io/github/stars/itsluminous/ClearSMS?style=flat&color=gold)](https://github.com/itsluminous/ClearSMS/stargazers)
+[![Forks](https://img.shields.io/github/forks/itsluminous/ClearSMS?style=flat&color=blue)](https://github.com/itsluminous/ClearSMS/forks)
 
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
 organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
@@ -14,13 +15,13 @@ handles OTPs intelligently - all completely offline, on your device.
 
 ## Download
 
-<a href="https://f-droid.org/packages/app.clearsms/">
-  <img alt="Get it on F-Droid" height="80"
-       src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />
-</a>
 <a href="https://github.com/itsluminous/ClearSMS/releases/latest">
   <img alt="Get it on GitHub" height="80"
        src="docs/badges/get-it-on-github.png" />
+</a>
+<a href="https://f-droid.org/packages/app.clearsms/">
+  <img alt="Get it on F-Droid" height="80"
+       src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />
 </a>
 
 - **GitHub**: a signed `ClearSMS.apk` is attached to every
@@ -31,6 +32,20 @@ handles OTPs intelligently - all completely offline, on your device.
   The F-Droid build is [reproducible](docs/publishing-fdroid.md) and carries the
   same signature as the GitHub APK, so you can install from one source and
   update from the other.
+
+## Screenshots
+
+| Smart inbox | Finance | Alerts |
+| :---: | :---: | :---: |
+| ![Inbox](docs/screenshots/inbox.png) | ![Finance dashboard](docs/screenshots/finance.png) | ![Alerts](docs/screenshots/alerts.png) |
+
+| Account detail | Extracted transaction | Search |
+| :---: | :---: | :---: |
+| ![Account detail](docs/screenshots/account-detail.png) | ![Extracted transaction](docs/screenshots/extracted-transaction.png) | ![Search](docs/screenshots/search.png) |
+
+| Parsed notifications | OTP notification | Balance lock | Dark theme |
+| :---: | :---: | :---: | :---: |
+| ![Parsed transaction notifications](docs/screenshots/notifications.png) | ![OTP notification](docs/screenshots/otp-notification.png) | ![Biometric balance lock](docs/screenshots/balance-lock.png) | ![Dark theme](docs/screenshots/dark-inbox.png) |
 
 ## Features
 
@@ -120,20 +135,6 @@ Everything shipped, and what's on the roadmap:
 - [x] Local backup & restore for messages AND settings (timestamped files, chosen folder, scheduled)
 - [x] Settings backup with security-sensitive keys excluded by design
 - [ ] Encrypted backups
-
-## Screenshots
-
-| Smart inbox | Finance | Alerts |
-| :---: | :---: | :---: |
-| ![Inbox](docs/screenshots/inbox.png) | ![Finance dashboard](docs/screenshots/finance.png) | ![Alerts](docs/screenshots/alerts.png) |
-
-| Account detail | Extracted transaction | Search |
-| :---: | :---: | :---: |
-| ![Account detail](docs/screenshots/account-detail.png) | ![Extracted transaction](docs/screenshots/extracted-transaction.png) | ![Search](docs/screenshots/search.png) |
-
-| Parsed notifications | OTP notification | Balance lock | Dark theme |
-| :---: | :---: | :---: | :---: |
-| ![Parsed transaction notifications](docs/screenshots/notifications.png) | ![OTP notification](docs/screenshots/otp-notification.png) | ![Biometric balance lock](docs/screenshots/balance-lock.png) | ![Dark theme](docs/screenshots/dark-inbox.png) |
 
 ## Privacy Principles
 
