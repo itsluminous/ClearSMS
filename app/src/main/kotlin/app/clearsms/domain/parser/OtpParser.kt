@@ -36,10 +36,20 @@ class OtpParser {
     }
 
     private companion object {
-        /** e.g. "OTP is 482910", "code: 4821", "413423 is SECRET OTP". */
+        /**
+         * e.g. "OTP is 482910", "code: 4821", "413423 is SECRET OTP". The
+         * keyword list names "authorisation code" / "authorization code"
+         * explicitly (both spellings - the reported Ergo Hestia wording),
+         * and the separator accepts "is", ":" AND "is:" - mirroring the
+         * bundled generic-otp-01 rule's grammar, which already anchored
+         * "code is: 1234" while this list did not.
+         */
         val KEYWORD_PATTERNS =
             listOf(
-                Regex("(?i)(?:otp|verification\\s+code|security\\s+code|code|password|pin)\\s*(?:is|:)?\\s*(\\d{4,8})(?!\\d)"),
+                Regex(
+                    "(?i)(?:otp|verification\\s+code|security\\s+code|authori[sz]ation\\s+code|code|password|pin)" +
+                        "\\s*(?:is\\s*:?|:)?\\s*(\\d{4,8})(?!\\d)",
+                ),
                 // "your"/"the" optional with up to three brand/adjective words
                 // ("413423 is SECRET OTP", "482910 is your HDFC Bank OTP").
                 Regex(

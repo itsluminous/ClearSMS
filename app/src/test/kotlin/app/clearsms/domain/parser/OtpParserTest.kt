@@ -101,4 +101,38 @@ class OtpParserTest {
         val result = parser.parse("Your OTP is 48291045 for Aadhaar authentication.")
         assertThat(result?.code).isEqualTo("48291045")
     }
+
+    @Test
+    fun `authorisation code with is-colon separator - the exact reported wording`() {
+        // Issue #1 comment (Ergo Hestia), synthetic code: "is:" was falling
+        // through the anchored patterns because the separator allowed only
+        // "is" OR ":", never both.
+        val result = parser.parse("Your authorisation code is: 1234")
+        assertThat(result?.code).isEqualTo("1234")
+    }
+
+    @Test
+    fun `authorization code american spelling anchors too`() {
+        val result = parser.parse("Your authorization code is: 987654")
+        assertThat(result?.code).isEqualTo("987654")
+    }
+
+    @Test
+    fun `authorisation code anchors on the strict anchored-only path`() {
+        // parseAnchored is what beats a transaction categorization and what
+        // notification extraction trusts - the fix must hold there, not
+        // just in the contextual fallback.
+        assertThat(parser.parseAnchored("Your authorisation code is: 1234")?.code).isEqualTo("1234")
+        assertThat(parser.parseAnchored("Your authorization code is: 5678")?.code).isEqualTo("5678")
+    }
+
+    @Test
+    fun `bare four digit number is still not an otp`() {
+        // Near-miss: four digits with no anchoring keyword must stay
+        // unmatched - the bare-number fallback accepts SIX digits only.
+        assertThat(parser.parse("Your bill of 1234 is generated for this month.")).isNull()
+        // Even WITH a verification-context word in the body, an unanchored
+        // four-digit number is not a code.
+        assertThat(parser.parse("Never share any code with anyone. Ticket 1234 raised.")).isNull()
+    }
 }

@@ -552,13 +552,6 @@ class ConversationViewModel
         }
 
         /**
-         * Concatenates the selected message bodies in chronological
-         * (timestamp) order and hands the text to [onReady] on the main
-         * thread. Serves copy (clipboard), share (chooser) and forward
-         * (compose prefill) - one text-of-selection rule for all three.
-         */
-
-        /**
          * Copies an extracted OTP through the app's single clipboard rule -
          * sensitive-flagged clip plus timed clear (see [OtpClipboard]), the
          * same code the notification's Copy action runs. The APPLICATION
@@ -567,6 +560,12 @@ class ConversationViewModel
          */
         fun copyOtp(otp: String) = OtpClipboard.copy(appContext, otp, applicationScope)
 
+        /**
+         * Concatenates the selected message bodies in chronological
+         * (timestamp) order and hands the text to [onReady] on the main
+         * thread. Serves copy (clipboard), share (chooser) and forward
+         * (compose prefill) - one text-of-selection rule for all three.
+         */
         fun selectedText(onReady: (String) -> Unit) {
             val ids = selectionState.value.selected.toList()
             exitSelection()
