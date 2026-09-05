@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +43,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -883,139 +885,176 @@ private fun MessageBubble(
                 .padding(horizontal = 16.dp, vertical = 3.dp),
         contentAlignment = alignment,
     ) {
+        // ALWAYS-visible in-app twin of the OTP notification's Copy action
+        // (issue #4). ONLY for messages with an extracted OTP - same wording,
+        // same clipboard rule; hidden during selection mode (see
+        // OtpCopyAffordance). Rendered as a row ATTACHED to the bubble: same
+        // surface colour, squared seam with a hairline divider, outer corners
+        // keeping the bubble's radius - one continuous shape, so the button
+        // unambiguously belongs to THIS message, while staying outside the
+        // bubble's combinedClickable (tapping it neither expands nor selects).
+        val showOtpCopy = OtpCopyAffordance.visible(item.message?.extractedOtp, selectionActive)
+        // The bubble's asymmetric bottom corners (small radius on the "tail"
+        // side) migrate to the attached button row when it is present.
+        val bottomStartRadius = if (item.outgoing) 20.dp else 6.dp
+        val bottomEndRadius = if (item.outgoing) 6.dp else 20.dp
         Column(
             modifier = Modifier.widthIn(max = 320.dp),
             horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start,
         ) {
-            Surface(
-                shape =
-                    RoundedCornerShape(
-                        topStart = 20.dp,
-                        topEnd = 20.dp,
-                        bottomStart = if (item.outgoing) 20.dp else 6.dp,
-                        bottomEnd = if (item.outgoing) 6.dp else 20.dp,
-                    ),
-                color = bubbleColor,
-                modifier =
-                    Modifier
-                        // Comfortable touch target for the tap-to-reveal gesture.
-                        .defaultMinSize(minHeight = 48.dp)
-                        .combinedClickable(
-                            onClick = onClick,
-                            onClickLabel =
-                                stringResource(
-                                    if (expanded) {
-                                        R.string.conversation_hide_message_details
-                                    } else {
-                                        R.string.conversation_show_message_details
-                                    },
-                                ),
-                            onLongClick = onLongClick,
-                            onLongClickLabel = stringResource(R.string.inbox_row_actions),
-                        ),
+            Column(
+                // When the button row is attached, size the unit to the widest
+                // of bubble/button and stretch both to it, so their edges are
+                // flush and the pair reads as one object.
+                modifier = if (showOtpCopy) Modifier.width(IntrinsicSize.Max) else Modifier,
+                horizontalAlignment = if (item.outgoing) Alignment.End else Alignment.Start,
             ) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    // MMS content: image thumbnails and file chips above the
-                    // text. The body renders only when there is text; the
-                    // pending/failed download states replace it.
-                    if (attachments.isNotEmpty()) {
-                        MmsAttachmentContent(attachments = attachments, onImageTap = onImageTap)
-                    }
-                    when {
-                        item.message?.mmsStatus == MmsStatus.PENDING ->
-                            Text(
-                                text = stringResource(R.string.mms_downloading),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontStyle = FontStyle.Italic,
-                                color = textColor.copy(alpha = 0.8f),
-                            )
-                        item.message?.mmsStatus == MmsStatus.FAILED -> {
-                            Text(
-                                text = stringResource(R.string.mms_download_failed),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            Text(
-                                text = stringResource(R.string.mms_failed_tap_retry),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                            )
-                        }
-                        item.body.isNotBlank() || attachments.isEmpty() ->
-                            LinkifiedBodyText(
-                                body = item.body,
-                                onLinkClick = onLinkClick,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = textColor,
-                            )
-                        // Image/file-only MMS: the attachments ARE the message.
-                        else -> Unit
-                    }
-                    Text(
-                        text = item.timeLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = textColor.copy(alpha = 0.7f),
-                        modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
-                    )
-                    // In-flight, failed and scheduled sends stay visible on
-                    // the bubble itself; resolved statuses live in the
-                    // metadata line.
-                    when (item.deliveryStatus) {
-                        DeliveryStatus.SCHEDULED -> {
-                            val context = LocalContext.current
-                            val is24Hour = remember { DateFormat.is24HourFormat(context) }
-                            val at = item.message?.scheduledAt ?: item.timestamp
-                            Text(
-                                text =
+                Surface(
+                    shape =
+                        RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            // Squared seam against the attached button row.
+                            bottomStart = if (showOtpCopy) 0.dp else bottomStartRadius,
+                            bottomEnd = if (showOtpCopy) 0.dp else bottomEndRadius,
+                        ),
+                    color = bubbleColor,
+                    modifier =
+                        Modifier
+                            .then(if (showOtpCopy) Modifier.fillMaxWidth() else Modifier)
+                            // Comfortable touch target for the tap-to-reveal gesture.
+                            .defaultMinSize(minHeight = 48.dp)
+                            .combinedClickable(
+                                onClick = onClick,
+                                onClickLabel =
                                     stringResource(
-                                        R.string.conversation_scheduled_for,
-                                        MessageMetadata.timestampLabel(at, is24Hour),
+                                        if (expanded) {
+                                            R.string.conversation_hide_message_details
+                                        } else {
+                                            R.string.conversation_show_message_details
+                                        },
                                     ),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.align(Alignment.End),
-                            )
+                                onLongClick = onLongClick,
+                                onLongClickLabel = stringResource(R.string.inbox_row_actions),
+                            ),
+                ) {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        // MMS content: image thumbnails and file chips above the
+                        // text. The body renders only when there is text; the
+                        // pending/failed download states replace it.
+                        if (attachments.isNotEmpty()) {
+                            MmsAttachmentContent(attachments = attachments, onImageTap = onImageTap)
                         }
-                        DeliveryStatus.SENDING, DeliveryStatus.FAILED ->
-                            Text(
-                                text =
-                                    if (item.deliveryStatus == DeliveryStatus.FAILED) {
-                                        stringResource(R.string.conversation_not_sent)
-                                    } else {
-                                        stringResource(R.string.conversation_sending)
-                                    },
-                                style = MaterialTheme.typography.labelSmall,
-                                color =
-                                    if (item.deliveryStatus == DeliveryStatus.FAILED) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        textColor.copy(alpha = 0.7f)
-                                    },
-                                modifier = Modifier.align(Alignment.End),
-                            )
-                        else -> Unit
+                        when {
+                            item.message?.mmsStatus == MmsStatus.PENDING ->
+                                Text(
+                                    text = stringResource(R.string.mms_downloading),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = FontStyle.Italic,
+                                    color = textColor.copy(alpha = 0.8f),
+                                )
+                            item.message?.mmsStatus == MmsStatus.FAILED -> {
+                                Text(
+                                    text = stringResource(R.string.mms_download_failed),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                Text(
+                                    text = stringResource(R.string.mms_failed_tap_retry),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                )
+                            }
+                            item.body.isNotBlank() || attachments.isEmpty() ->
+                                LinkifiedBodyText(
+                                    body = item.body,
+                                    onLinkClick = onLinkClick,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = textColor,
+                                )
+                            // Image/file-only MMS: the attachments ARE the message.
+                            else -> Unit
+                        }
+                        Text(
+                            text = item.timeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = textColor.copy(alpha = 0.7f),
+                            modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
+                        )
+                        // In-flight, failed and scheduled sends stay visible on
+                        // the bubble itself; resolved statuses live in the
+                        // metadata line.
+                        when (item.deliveryStatus) {
+                            DeliveryStatus.SCHEDULED -> {
+                                val context = LocalContext.current
+                                val is24Hour = remember { DateFormat.is24HourFormat(context) }
+                                val at = item.message?.scheduledAt ?: item.timestamp
+                                Text(
+                                    text =
+                                        stringResource(
+                                            R.string.conversation_scheduled_for,
+                                            MessageMetadata.timestampLabel(at, is24Hour),
+                                        ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.align(Alignment.End),
+                                )
+                            }
+                            DeliveryStatus.SENDING, DeliveryStatus.FAILED ->
+                                Text(
+                                    text =
+                                        if (item.deliveryStatus == DeliveryStatus.FAILED) {
+                                            stringResource(R.string.conversation_not_sent)
+                                        } else {
+                                            stringResource(R.string.conversation_sending)
+                                        },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color =
+                                        if (item.deliveryStatus == DeliveryStatus.FAILED) {
+                                            MaterialTheme.colorScheme.error
+                                        } else {
+                                            textColor.copy(alpha = 0.7f)
+                                        },
+                                    modifier = Modifier.align(Alignment.End),
+                                )
+                            else -> Unit
+                        }
                     }
                 }
-            }
-            // ALWAYS-visible in-app twin of the OTP notification's Copy
-            // action (issue #4, widened: "persistent" means on the message
-            // itself, not behind the tap-to-expand region). ONLY for
-            // messages with an extracted OTP - same wording, same clipboard
-            // rule. A small LABELLED TextButton rather than the repo's
-            // TooltipIconButton: a bare copy icon under a bubble is
-            // ambiguous (copy the body? the OTP?), and the label is the
-            // disambiguation. It sits OUTSIDE the bubble's combinedClickable
-            // surface, so tapping it neither expands metadata nor selects;
-            // hidden during selection mode (see OtpCopyAffordance).
-            if (OtpCopyAffordance.visible(item.message?.extractedOtp, selectionActive)) {
-                TextButton(onClick = { item.message?.extractedOtp?.let(onCopyOtp) }) {
-                    Icon(
-                        Icons.Outlined.ContentCopy,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.action_copy_otp))
+                if (showOtpCopy) {
+                    val rowShape =
+                        RoundedCornerShape(
+                            bottomStart = bottomStartRadius,
+                            bottomEnd = bottomEndRadius,
+                        )
+                    Surface(
+                        shape = rowShape,
+                        color = bubbleColor,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column {
+                            // Hairline scrim between text and action, so the
+                            // button still reads as tappable within the shared
+                            // surface. Tints with selection like the rest.
+                            HorizontalDivider(
+                                thickness = 1.dp,
+                                color = textColor.copy(alpha = 0.25f),
+                            )
+                            TextButton(
+                                onClick = { item.message?.extractedOtp?.let(onCopyOtp) },
+                                shape = rowShape,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.ContentCopy,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.action_copy_otp))
+                            }
+                        }
+                    }
                 }
             }
             AnimatedVisibility(visible = expanded) {
