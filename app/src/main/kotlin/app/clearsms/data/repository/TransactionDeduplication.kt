@@ -73,6 +73,22 @@ object TransactionDeduplication {
         return trimmed
     }
 
+    /**
+     * Merchant value used by the tier-2 differ vetoes. A counterparty
+     * account-tail title ("A/c **0121" - the parser's WHO-fallback when a
+     * body names no merchant) describes the SAME payment's other leg, never
+     * a different purchase - and such rows previously carried NO merchant at
+     * all - so it is treated as blank here, keeping every pre-existing dedup
+     * outcome (the UPI cross-bank echo above all) exactly as it was.
+     */
+    private fun distinguishingMerchant(name: String?): String {
+        val trimmed = name?.trim().orEmpty()
+        return if (COUNTERPARTY_TAIL_REGEX.matches(trimmed)) "" else trimmed
+    }
+
+    /** The parser's counterparty-tail title shape ("A/c **0121"). */
+    private val COUNTERPARTY_TAIL_REGEX = Regex("(?i)^a/c\\s+[Xx*]*\\d{3,4}$")
+
     /** True when [a] and [b] describe the same payment under any tier. */
     fun isDuplicate(
         a: TransactionEntity,
@@ -130,8 +146,8 @@ object TransactionDeduplication {
         if (linkedToDifferentAccounts(a, b)) return false
         if (abs(a.timestamp - b.timestamp) > NEAR_DUPLICATE_WINDOW_MS) return false
         if (a.balance != null && b.balance != null && a.balance != b.balance) return false
-        val merchantA = a.merchantName?.trim().orEmpty()
-        val merchantB = b.merchantName?.trim().orEmpty()
+        val merchantA = distinguishingMerchant(a.merchantName)
+        val merchantB = distinguishingMerchant(b.merchantName)
         if (merchantA.isNotEmpty() && merchantB.isNotEmpty() && !merchantA.equals(merchantB, ignoreCase = true)) return false
         return true
     }
@@ -207,8 +223,8 @@ object TransactionDeduplication {
         // Differing post-transaction balances = the money moved twice.
         if (a.balance != null && b.balance != null && a.balance != b.balance) return false
         // Differing merchants = two purchases (same-amount SIPs, split pays).
-        val merchantA = a.merchantName?.trim().orEmpty()
-        val merchantB = b.merchantName?.trim().orEmpty()
+        val merchantA = distinguishingMerchant(a.merchantName)
+        val merchantB = distinguishingMerchant(b.merchantName)
         if (merchantA.isNotEmpty() && merchantB.isNotEmpty() && !merchantA.equals(merchantB, ignoreCase = true)) return false
         return true
     }

@@ -95,7 +95,17 @@ class TransactionParser {
         // issuer (CRED, Flipkart, ...) is demoted to the merchant slot so it
         // can never spawn an account (see SenderNameResolver.isPlausibleIssuer).
         val bankIsIssuer = SenderNameResolver.isPlausibleIssuer(resolvedBank, body)
-        val title = merchant ?: resolvedBank?.takeIf { !bankIsIssuer }
+        // Title priority: a real merchant, then a demoted non-issuer brand,
+        // then the transaction's stated PURPOSE ("for NEFT transaction",
+        // a "for <narration>" descriptor), then the COUNTERPARTY (who the
+        // money went to / came from). WHY beats WHO; both beat a row that
+        // names only the user's own bank. When none exists the title stays
+        // null - never a fabricated placeholder.
+        val title =
+            merchant
+                ?: resolvedBank?.takeIf { !bankIsIssuer }
+                ?: extractPurpose(effectiveBody)
+                ?: extractCounterparty(effectiveBody, type)
         return ParsedTransaction(
             amount = amount,
             type = type,
@@ -388,6 +398,20 @@ class TransactionParser {
             if (PRECEDING_URL_REGEX.containsMatchIn(precedingWindow)) continue
             if (GuardLibrary.matches(GuardId.INSTRUCTION_START, candidate)) continue
             candidate = candidate.removePrefix("VPA ").removePrefix("vpa ").trim()
+            // A capture cut short by a "/" ended inside an "A/c"-shaped
+            // token: "to a/c **0121" captures "a", "to HDFC Bank A/c ..."
+            // captures "HDFC Bank A". That phrase is an ACCOUNT destination,
+            // never a merchant - drop the truncated letter, and when what
+            // remains is empty or the account's own bank name, reject the
+            // candidate entirely (the counterparty fallback handles the
+            // transfer target instead).
+            if (body.length > match.range.last + 1 && body[match.range.last + 1] == '/') {
+                val tokens = candidate.split(' ')
+                if (tokens.last().length == 1) {
+                    candidate = tokens.dropLast(1).joinToString(" ").trim()
+                    if (candidate.isEmpty() || candidate.endsWith("bank", ignoreCase = true)) continue
+                }
+            }
             // Cut trailing narration like "on 12-07-26", "Ref 12345" or "via UPI".
             candidate =
                 MERCHANT_STOP_REGEX
@@ -506,6 +530,68 @@ class TransactionParser {
         if (LONG_DIGIT_RUN_REGEX.containsMatchIn(descriptor)) return null
         return descriptor
     }
+
+    /**
+     * The transaction's stated PURPOSE: the "for <descriptor>" clause
+     * anchored to the account phrase - "A/c XX1234 for NEFT transaction via
+     * ...", "A/c XX1234 on 05-SEP-26 for XXXX-TPT-<label>-<name>". Consulted
+     * only when no merchant exists. The capture is trimmed like a merchant
+     * (trailing "via/on/ref/avl" narration cut), normalized like an "Info:"
+     * field (leading masked reference stripped), and a leading transfer-rail
+     * code (TPT/NEFT/IMPS/...) hyphenated onto a longer descriptor is
+     * dropped - the rail says HOW the money moved; the payer-typed label and
+     * name say WHY, which is the part worth a row title. A bare rail purpose
+     * ("for NEFT transaction") survives whole: it is all the message offers.
+     */
+    private fun extractPurpose(body: String): String? {
+        var raw =
+            PURPOSE_REGEX
+                .find(body)
+                ?.groupValues
+                ?.get(1)
+                ?.trim() ?: return null
+        if (GuardLibrary.matches(GuardId.INSTRUCTION_START, raw)) return null
+        raw =
+            MERCHANT_STOP_REGEX
+                .split(raw)
+                .first()
+                .trim()
+                .trimEnd('.', ',', ':', ';', '-')
+        if (PURPOSE_NOISE_REGEX.containsMatchIn(raw)) return null
+        val descriptor = normalizeMerchantCandidate(raw) ?: return null
+        val trimmed = LEADING_RAIL_CODE_REGEX.replace(descriptor, "").trim()
+        return trimmed.takeIf { it.length >= 2 && it.first().isLetter() } ?: descriptor
+    }
+
+    /**
+     * The OTHER party of a transfer, direction-aware; consulted only when
+     * neither a merchant nor a purpose exists. For a DEBIT the counterparty
+     * is the RECEIVER - the "to a/c <tail>" account; the "from a/c" is the
+     * user's OWN account, and surfacing it would label the user as their own
+     * payee, which is worse than showing nothing. For a CREDIT it is the
+     * SENDER - the "from VPA <handle>" / "from a/c <tail>" party; there the
+     * "to a/c" is the user's own receiving account. "your" is rejected in
+     * both directions so "to your a/c" / "from your a/c" can never surface.
+     */
+    private fun extractCounterparty(
+        body: String,
+        type: TransactionType,
+    ): String? =
+        when (type) {
+            TransactionType.DEBIT ->
+                DEBIT_RECEIVER_REGEX
+                    .find(body)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.let { "A/c $it" }
+            TransactionType.CREDIT ->
+                CREDIT_SENDER_VPA_REGEX.find(body)?.groupValues?.get(1)
+                    ?: CREDIT_SENDER_ACCOUNT_REGEX
+                        .find(body)
+                        ?.groupValues
+                        ?.get(1)
+                        ?.let { "A/c $it" }
+        }
 
     private fun categorize(
         merchant: String?,
@@ -718,6 +804,47 @@ class TransactionParser {
 
         /** "Info: <narration>" field (HDFC-style), up to the sentence end. */
         val INFO_REGEX = Regex("(?i)\\bInfo\\s*[:.]\\s*([^\\n.]{2,80})")
+
+        // region purpose / counterparty title fallbacks
+
+        /**
+         * "A/c XX1234 for <purpose>" - the "for" clause anchored to the
+         * account-tail phrase (with an optional " on <date>" between), so a
+         * free-floating "for details" / "for Rs.X" elsewhere in the body can
+         * never become a title. Periods end the capture ("<name>.Avl bal").
+         */
+        val PURPOSE_REGEX =
+            Regex(
+                "(?i)\\b(?:a/c|a\\\\c|acct|account)\\s*(?:no\\.?)?\\s*[Xx*]*\\d{3,4}(?!\\d)" +
+                    "(?:\\s+on\\s+\\S{1,12})?" +
+                    "\\s+for\\s+([A-Za-z][^\\n.]{1,79})",
+            )
+
+        /** A purpose capture that is an amount / account / help phrase - noise. */
+        val PURPOSE_NOISE_REGEX =
+            Regex("(?i)^(?:rs\\.?|inr|\\u20b9)\\s*\\d|^(?:a/c|acct|account|details?|dispute|help|assistance|quer(?:y|ies))\\b")
+
+        /**
+         * A transfer-rail code hyphenated onto a longer narration
+         * ("TPT-MonthlyRent-<name>") - the rail is channel, not purpose.
+         * Only strips when a descriptor follows, so a bare "NEFT transaction"
+         * purpose survives whole.
+         */
+        val LEADING_RAIL_CODE_REGEX = Regex("(?i)^(?:tpt|neft|imps|rtgs|upi|ach|ecs|nach)\\s*-\\s*(?=[A-Za-z])")
+
+        /** DEBIT receiver: "to a/c **0121" - never "to your a/c" (the user's own). */
+        val DEBIT_RECEIVER_REGEX =
+            Regex("(?i)\\bto\\s+(?!your\\b)(?:a/c|a\\\\c|acct|account)\\s*(?:no\\.?)?\\s*([Xx*]*\\d{3,4})(?!\\d)")
+
+        /** CREDIT sender VPA: "from VPA name@bank" / "from name@bank". */
+        val CREDIT_SENDER_VPA_REGEX =
+            Regex("(?i)\\bfrom\\s+(?:vpa\\s+)?([A-Za-z0-9][A-Za-z0-9._-]{1,60}@[A-Za-z][A-Za-z0-9.]{1,30})")
+
+        /** CREDIT sender account: "from a/c *8659" - never "from your a/c". */
+        val CREDIT_SENDER_ACCOUNT_REGEX =
+            Regex("(?i)\\bfrom\\s+(?!your\\b)(?:a/c|a\\\\c|acct|account)\\s*(?:no\\.?)?\\s*([Xx*]*\\d{3,4})(?!\\d)")
+
+        // endregion
 
         /** Leading masked reference in an Info narration ("XXXXXXXXXX6894- "). */
         val LEADING_REFERENCE_REGEX = Regex("^[Xx*]*\\d+\\s*-\\s*")
