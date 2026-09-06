@@ -73,3 +73,6 @@
 {"sender": "SBICRD", "body": "Refund of Rs.1,240.50 towards credit balance on your SBI Card ending 5416 has been initiated. It will be credited to your linked bank account within 7 working days. SR 482913605.", "days_ago": 1.42, "read": 0, "direction": "in"}
 {"sender": "QUANTM", "body": "Your SIP instalment of Rs.2,500.00 in Folio 5023/47 under quant Small Cap Fund - Direct Plan Growth has been processed. Units allotted: 9.827 at NAV Rs.254.41.", "days_ago": 3.18, "read": 1, "direction": "in"}
 {"sender": "ITDEPT", "body": "Total TDS by all deductors of PAN ABXPK1234X for Qtr ending 30-Jun-26 is Rs 48,500 and cumulative TDS for FY 26-27 is Rs 48,500. View 26AS for details - Income Tax Department.", "days_ago": 12.7, "read": 1, "direction": "in"}
+{"sender": "HDFCBK", "body": "Amt Deducted! Rs.41,000.00 from your HDFC Bank A/c XX4321 for NEFT transaction via HDFC Bank Online Banking", "days_ago": 12.31, "read": 1, "direction": "in"}
+{"sender": "HDFCBK", "body": "HDFC Bank:Rs. 8,000.00 debited from a/c *4321 on 28/08/26 to a/c **5644 (UPI Ref No. 728800112233)", "days_ago": 9.12, "read": 1, "direction": "in"}
+{"sender": "HDFCBK", "body": "Credit Alert! Rs.15,400.00 credited to HDFC Bank A/c XX4321 on 31-08-26 from VPA kiranblr@okaxis", "days_ago": 6.44, "read": 1, "direction": "in"}

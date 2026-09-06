@@ -840,7 +840,7 @@ class TransactionParser {
         val CREDIT_SENDER_VPA_REGEX =
             Regex("(?i)\\bfrom\\s+(?:vpa\\s+)?([A-Za-z0-9][A-Za-z0-9._-]{1,60}@[A-Za-z][A-Za-z0-9.]{1,30})")
 
-        /** CREDIT sender account: "from a/c *8659" - never "from your a/c". */
+        /** CREDIT sender account: "from a/c *1234" - never "from your a/c". */
         val CREDIT_SENDER_ACCOUNT_REGEX =
             Regex("(?i)\\bfrom\\s+(?!your\\b)(?:a/c|a\\\\c|acct|account)\\s*(?:no\\.?)?\\s*([Xx*]*\\d{3,4})(?!\\d)")
 
