@@ -233,6 +233,12 @@ class FinanceViewModel
             txLimit.value = TransactionPaging.nextLimit(txLimit.value)
         }
 
+        /** Loads the full SMS body behind a transaction for the expanded row. */
+        suspend fun smsBodyFor(rawSmsId: Long): String? =
+            withContext(ioDispatcher) {
+                messageLookup.byId(rawSmsId)?.body
+            }
+
         /** Conversation target for the SMS behind [rawSmsId]; null when it was deleted. */
         suspend fun sourceMessageFor(rawSmsId: Long): MessageRef? =
             withContext(ioDispatcher) {

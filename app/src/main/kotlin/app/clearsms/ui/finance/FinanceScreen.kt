@@ -106,6 +106,10 @@ fun FinanceScreen(
     val showOlderCards by viewModel.showOlderCards.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var accountsCollapsed by rememberSaveable { mutableStateOf(false) }
+    // Single-expansion contract shared with the account detail screen: at
+    // most one transaction row (across the Transactions and Recharges
+    // pills) shows its inline details at a time.
+    var expandedTxId by rememberSaveable { mutableStateOf<Long?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
@@ -214,12 +218,18 @@ fun FinanceScreen(
                 FinanceTab.TRANSACTIONS ->
                     transactionsSection(
                         state = state,
+                        expandedTxId = expandedTxId,
+                        onToggleExpanded = { expandedTxId = TransactionExpansion.toggle(expandedTxId, it) },
+                        loadSms = viewModel::smsBodyFor,
                         onOpenTransaction = openTransaction,
                         onLoadMore = viewModel::loadMore,
                     )
                 FinanceTab.RECHARGES ->
                     rechargesSection(
                         state = state,
+                        expandedTxId = expandedTxId,
+                        onToggleExpanded = { expandedTxId = TransactionExpansion.toggle(expandedTxId, it) },
+                        loadSms = viewModel::smsBodyFor,
                         onOpenTransaction = openTransaction,
                     )
             }
@@ -504,6 +514,9 @@ private fun LazyListScope.creditCardsSection(
 
 private fun LazyListScope.transactionsSection(
     state: FinanceUiState,
+    expandedTxId: Long?,
+    onToggleExpanded: (Long) -> Unit,
+    loadSms: suspend (rawSmsId: Long) -> String?,
     onOpenTransaction: (TransactionEntity) -> Unit,
     onLoadMore: () -> Unit,
 ) {
@@ -512,7 +525,16 @@ private fun LazyListScope.transactionsSection(
         return
     }
     items(state.latestTransactions, key = { "tx_${it.id}" }) { tx ->
-        TransactionRow(tx = tx, showRichAvatars = state.showRichAvatars, onOpenTransaction = onOpenTransaction)
+        TransactionRow(
+            tx = tx,
+            showRichAvatars = state.showRichAvatars,
+            expanded = expandedTxId == tx.id,
+            onToggleExpanded = { onToggleExpanded(tx.id) },
+            loadSms = { loadSms(tx.rawSmsId) },
+            balanceGated = state.balanceGated,
+            balancesRevealed = state.balancesRevealed,
+            onOpenTransaction = onOpenTransaction,
+        )
     }
     item(key = "tx_load_more") {
         LoadMoreRow(
@@ -526,6 +548,9 @@ private fun LazyListScope.transactionsSection(
 /** Prepaid recharges only - same row rendering as the transactions pill. */
 private fun LazyListScope.rechargesSection(
     state: FinanceUiState,
+    expandedTxId: Long?,
+    onToggleExpanded: (Long) -> Unit,
+    loadSms: suspend (rawSmsId: Long) -> String?,
     onOpenTransaction: (TransactionEntity) -> Unit,
 ) {
     if (state.rechargeTransactions.isEmpty()) {
@@ -533,47 +558,87 @@ private fun LazyListScope.rechargesSection(
         return
     }
     items(state.rechargeTransactions, key = { "rc_${it.id}" }) { tx ->
-        TransactionRow(tx = tx, showRichAvatars = state.showRichAvatars, onOpenTransaction = onOpenTransaction)
+        TransactionRow(
+            tx = tx,
+            showRichAvatars = state.showRichAvatars,
+            expanded = expandedTxId == tx.id,
+            onToggleExpanded = { onToggleExpanded(tx.id) },
+            loadSms = { loadSms(tx.rawSmsId) },
+            balanceGated = state.balanceGated,
+            balancesRevealed = state.balancesRevealed,
+            onOpenTransaction = onOpenTransaction,
+        )
     }
 }
 
+/**
+ * One transaction row on the Transactions/Recharges pills. Tapping now
+ * expands the row inline - the same shared expansion as the account detail
+ * screen ([TransactionExpansionDetails]), full SMS text included - and the
+ * jump to the source conversation moved onto the expansion's Open message
+ * button instead of being the whole row's tap.
+ */
 @Composable
 private fun TransactionRow(
     tx: TransactionEntity,
     showRichAvatars: Boolean,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    loadSms: suspend () -> String?,
+    balanceGated: Boolean,
+    balancesRevealed: Boolean,
     onOpenTransaction: (TransactionEntity) -> Unit,
 ) {
-    ListItem(
-        modifier =
-            Modifier.clickable(
-                onClickLabel = stringResource(R.string.finance_open_source_sms),
-            ) { onOpenTransaction(tx) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-        leadingContent = {
-            SenderAvatar(
-                name = financeTransactionAvatarName(tx.merchantName, tx.bankName),
-                richAvatars = showRichAvatars,
-                isKnownSender = tx.bankName.isNotBlank(),
-                glyph = BrandGlyph.BANK,
-            )
-        },
-        headlineContent = {
-            Text(
-                text = tx.merchantName ?: tx.bankName.ifBlank { stringResource(R.string.finance_transaction) },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        supportingContent = {
-            Text(
-                text =
-                    listOfNotNull(tx.bankName.takeIf { it.isNotBlank() }, tx.accountNumber.takeIf { it.isNotBlank() })
-                        .joinToString(" · ") + "  " + RelativeTime.format(tx.timestamp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        trailingContent = { AmountText(amount = tx.amount, type = tx.type) },
-    )
+    Column {
+        ListItem(
+            modifier =
+                Modifier.clickable(
+                    onClickLabel =
+                        if (expanded) {
+                            stringResource(R.string.finance_collapse_section)
+                        } else {
+                            stringResource(R.string.finance_expand_section)
+                        },
+                    onClick = onToggleExpanded,
+                ),
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+            leadingContent = {
+                SenderAvatar(
+                    name = financeTransactionAvatarName(tx.merchantName, tx.bankName),
+                    richAvatars = showRichAvatars,
+                    isKnownSender = tx.bankName.isNotBlank(),
+                    glyph = BrandGlyph.BANK,
+                )
+            },
+            headlineContent = {
+                Text(
+                    text = tx.merchantName ?: tx.bankName.ifBlank { stringResource(R.string.finance_transaction) },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            supportingContent = {
+                Text(
+                    text =
+                        listOfNotNull(tx.bankName.takeIf { it.isNotBlank() }, tx.accountNumber.takeIf { it.isNotBlank() })
+                            .joinToString(" · ") + "  " + RelativeTime.format(tx.timestamp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingContent = { AmountText(amount = tx.amount, type = tx.type) },
+        )
+        AnimatedVisibility(visible = expanded) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                TransactionExpansionDetails(
+                    tx = tx,
+                    loadSms = loadSms,
+                    balanceGated = balanceGated,
+                    balancesRevealed = balancesRevealed,
+                    onOpenMessage = { onOpenTransaction(tx) },
+                )
+            }
+        }
+    }
 }
 
 /** "Load more" control, replaced by a subtle terminator once everything is loaded. */
