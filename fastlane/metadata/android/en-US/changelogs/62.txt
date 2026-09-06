@@ -1,0 +1,5 @@
+Finance transactions are easier to read.
+
+- Tapping a transaction now expands to show the whole message. Some messages previously expanded to little more than a reference number, so reading them meant opening the conversation.
+- Transactions and Recharges lists expand in place too, instead of jumping straight to the SMS. The link to the full conversation is still there, inside the expanded row.
+- A transaction now says what it was for, when the message tells us: "NEFT transaction", or a transfer's own description. When there is no reason to show, it names the other side instead - who sent a credit, or who received a debit. Your own account is never shown as the other side.
