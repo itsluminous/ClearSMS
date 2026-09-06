@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,11 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,7 +49,6 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
-import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
@@ -78,6 +70,9 @@ fun AccountDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var noteDialogFor by remember { mutableStateOf<TransactionEntity?>(null) }
+    // Single-expansion contract shared with the Finance tab's lists:
+    // at most one row shows its inline details at a time.
+    var expandedTxId by rememberSaveable { mutableStateOf<Long?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
@@ -212,6 +207,8 @@ fun AccountDetailScreen(
                 items(group.transactions, key = { "tx_${it.id}" }) { tx ->
                     TransactionRow(
                         tx = tx,
+                        expanded = expandedTxId == tx.id,
+                        onToggleExpanded = { expandedTxId = TransactionExpansion.toggle(expandedTxId, tx.id) },
                         loadSms = { viewModel.smsBodyFor(tx.rawSmsId) },
                         balanceGated = state.balanceGated,
                         balancesRevealed = state.balancesRevealed,
@@ -245,19 +242,14 @@ fun AccountDetailScreen(
 @Composable
 private fun TransactionRow(
     tx: TransactionEntity,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
     loadSms: suspend () -> String?,
     balanceGated: Boolean,
     balancesRevealed: Boolean,
     onAddNote: () -> Unit,
     onOpenMessage: () -> Unit,
 ) {
-    var expanded by rememberSaveable(tx.id) { mutableStateOf(false) }
-    var smsBody by remember(tx.id) { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(expanded) {
-        if (expanded && smsBody == null) smsBody = loadSms()
-    }
-
     Card(
         modifier =
             Modifier.fillMaxWidth().clickable(
@@ -267,7 +259,8 @@ private fun TransactionRow(
                     } else {
                         stringResource(R.string.finance_expand_section)
                     },
-            ) { expanded = !expanded },
+                onClick = onToggleExpanded,
+            ),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -296,70 +289,14 @@ private fun TransactionRow(
                 )
             }
             AnimatedVisibility(visible = expanded) {
-                Column {
-                    Spacer(Modifier.height(8.dp))
-                    tx.balance?.let {
-                        // "Balance after" is a real account balance, so the
-                        // privacy gate masks it like the Finance dashboard;
-                        // the transaction amount above stays visible.
-                        val masked = BalanceMask.isMasked(balanceGated, balancesRevealed)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val balanceText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(it)
-                            val line = stringResource(R.string.account_balance_after, balanceText)
-                            val balanceColor = LocalSemanticAmountColors.current.balance
-                            val hiddenDescription = stringResource(R.string.balance_hidden)
-                            Text(
-                                text =
-                                    buildAnnotatedString {
-                                        append(line)
-                                        if (!masked) {
-                                            val at = line.indexOf(balanceText)
-                                            if (at >= 0) {
-                                                addStyle(SpanStyle(color = balanceColor), at, at + balanceText.length)
-                                            }
-                                        }
-                                    },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier =
-                                    if (masked) {
-                                        Modifier.clearAndSetSemantics { contentDescription = hiddenDescription }
-                                    } else {
-                                        Modifier
-                                    },
-                            )
-                        }
-                    }
-                    tx.referenceNumber?.let {
-                        Text(
-                            text = stringResource(R.string.account_reference, it),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    // The raw SMS body quotes the balance verbatim, so it
-                    // stays hidden while balances are masked - otherwise the
-                    // gate would be trivially bypassed by expanding a row.
-                    if (!BalanceMask.isMasked(balanceGated, balancesRevealed)) {
-                        smsBody?.let { body ->
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = body,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Normal,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Row {
-                        TextButton(onClick = onAddNote) {
-                            Text(stringResource(R.string.account_add_note))
-                        }
-                        TextButton(onClick = onOpenMessage) {
-                            Text(stringResource(R.string.account_open_message))
-                        }
-                    }
-                }
+                TransactionExpansionDetails(
+                    tx = tx,
+                    loadSms = loadSms,
+                    balanceGated = balanceGated,
+                    balancesRevealed = balancesRevealed,
+                    onOpenMessage = onOpenMessage,
+                    onAddNote = onAddNote,
+                )
             }
         }
     }
