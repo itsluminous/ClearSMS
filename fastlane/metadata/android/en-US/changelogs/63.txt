@@ -1,0 +1,3 @@
+Fixes a navigation bug introduced in 0.17.0.
+
+- Tapping a reminder notification opened the Alerts page correctly, but from then on the Inbox tab opened Alerts too, and kept doing so. The notification was adding Alerts to the Inbox tab's own history, which the tab then restored every time you returned to it. Tab notifications now switch to the tab properly, so every tab keeps opening its own screen.
