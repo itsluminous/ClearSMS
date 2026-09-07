@@ -1,7 +1,7 @@
 [versions]
 agp = "8.7.3"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.28"
+kotlin = "2.4.10"
+ksp = "2.3.11"
 composeBom = "2024.12.01"
 activityCompose = "1.9.3"
 navigationCompose = "2.8.5"
