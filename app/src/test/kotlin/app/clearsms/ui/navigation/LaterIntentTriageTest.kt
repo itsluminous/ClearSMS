@@ -22,19 +22,44 @@ class LaterIntentTriageTest {
     @Test
     fun `conversation deep link navigates to the conversation route`() {
         val action = LaterIntentTriage.classify(view("clearsms://conversation/42"))
-        assertThat(action).isEqualTo(LaterIntentAction.Navigate(Routes.conversation(42L)))
+        assertThat(action).isEqualTo(LaterIntentAction.Navigate(Routes.conversation(42L), selectTab = false))
     }
 
     @Test
     fun `conversation deep link with messageId carries it into the route`() {
         val action = LaterIntentTriage.classify(view("clearsms://conversation/42?messageId=7"))
-        assertThat(action).isEqualTo(LaterIntentAction.Navigate(Routes.conversation(42L, 7L)))
+        assertThat(action).isEqualTo(LaterIntentAction.Navigate(Routes.conversation(42L, 7L), selectTab = false))
     }
 
     @Test
     fun `alerts deep link navigates to alerts`() {
         val action = LaterIntentTriage.classify(view("clearsms://alerts"))
-        assertThat(action).isEqualTo(LaterIntentAction.Navigate(Routes.ALERTS))
+        assertThat(action).isEqualTo(LaterIntentAction.Navigate(Routes.ALERTS, selectTab = true))
+    }
+
+    // --- tab-targeted deep links must SELECT the tab, never plain-push ----
+
+    /**
+     * Regression: a bill-due notification deep-links to `clearsms://alerts`,
+     * a bottom-bar destination. If that route is plain-pushed onto the
+     * currently selected tab's stack, the next bottom-bar tap pops it with
+     * `saveState = true` - keying it as the START destination's saved
+     * stack - and `restoreState = true` then replays it on every visit:
+     * "after the notification, the Inbox tab opens Alerts", persistently.
+     */
+    @Test
+    fun `deep link to a top-level tab demands tab-selecting navigation`() {
+        for (uri in listOf("clearsms://alerts", "clearsms://ALERTS")) {
+            val action = LaterIntentTriage.classify(view(uri))
+            assertThat(action).isInstanceOf(LaterIntentAction.Navigate::class.java)
+            assertThat((action as LaterIntentAction.Navigate).selectTab).isTrue()
+        }
+    }
+
+    @Test
+    fun `deep link to a conversation stays a plain push`() {
+        val action = LaterIntentTriage.classify(view("clearsms://conversation/42?messageId=7"))
+        assertThat((action as LaterIntentAction.Navigate).selectTab).isFalse()
     }
 
     // --- hostile or malformed deep links do nothing -----------------------

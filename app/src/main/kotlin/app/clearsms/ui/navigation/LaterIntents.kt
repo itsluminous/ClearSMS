@@ -17,6 +17,18 @@ internal sealed interface LaterIntentAction {
     /** A valid `clearsms://` deep link: navigate straight to [route]. */
     data class Navigate(
         val route: String,
+        /**
+         * True when [route] is a bottom-bar destination: it must be
+         * navigated exactly like a bottom-bar tap (popUpTo the graph's
+         * start destination with saveState, launchSingleTop, restoreState),
+         * never plain-pushed. A plain push lands on whichever tab is
+         * currently selected; the next bottom-bar tap then pops it with
+         * `saveState = true` - which keys the popped entries as the START
+         * destination's saved stack - and `restoreState = true` replays
+         * them on every later visit to that tab. That is the "after an
+         * Alerts notification, the Inbox tab opens Alerts" regression.
+         */
+        val selectTab: Boolean,
     ) : LaterIntentAction
 
     /**
@@ -44,7 +56,9 @@ internal sealed interface LaterIntentAction {
  */
 internal object LaterIntentTriage {
     fun classify(intent: Intent): LaterIntentAction {
-        deepLinkRoute(intent)?.let { return LaterIntentAction.Navigate(it) }
+        deepLinkRoute(intent)?.let {
+            return LaterIntentAction.Navigate(it, selectTab = it in Routes.topLevel)
+        }
         val send = IntentTriage.extractSendIntent(intent)
         val route =
             if (!send.recipient.isNullOrBlank() || !send.body.isNullOrBlank() || !send.imageUri.isNullOrBlank()) {

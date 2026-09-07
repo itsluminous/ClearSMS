@@ -19,6 +19,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -33,7 +36,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.navDeepLink
 import app.clearsms.R
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.ui.alerts.AlertsScreen
@@ -78,6 +80,14 @@ fun ClearSmsApp(
      * it explicitly or the tap does nothing.
      */
     laterIntents: Flow<Intent> = emptyFlow(),
+    /**
+     * The (sanitized) intent this activity was CREATED with - the cold-start
+     * notification tap. The graph declares no `navDeepLink`s: NavController's
+     * built-in handling would plain-push the destination, which corrupts the
+     * bottom bar's saved tab state (see [LaterIntentAction.Navigate.selectTab]),
+     * so cold starts navigate through the same triage as a warm tap.
+     */
+    initialIntent: Intent? = null,
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
     val state by appViewModel.uiState.collectAsStateWithLifecycle()
@@ -93,6 +103,7 @@ fun ClearSmsApp(
                         initialBody = initialBody,
                         initialImageUri = initialImageUri,
                         laterIntents = laterIntents,
+                        initialIntent = initialIntent,
                         startDestination = state.defaultDestination,
                     )
                 }
@@ -107,6 +118,7 @@ private fun MainScaffold(
     initialBody: String?,
     initialImageUri: String?,
     laterIntents: Flow<Intent>,
+    initialIntent: Intent?,
     startDestination: StartDestination,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -128,6 +140,21 @@ private fun MainScaffold(
         }
     }
 
+    // Cold-start notification tap: the deep link in the creation intent,
+    // navigated through the SAME triage as a warm tap so a tab-targeted
+    // link selects its tab (a share/compose intent is handled above; the
+    // graph declares no navDeepLinks - see ClearSmsApp's initialIntent doc).
+    // Consumed exactly once: rememberSaveable keeps a rotation, process
+    // death or recents relaunch from replaying the navigation.
+    var initialIntentConsumed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!initialIntentConsumed) {
+            initialIntentConsumed = true
+            val action = initialIntent?.let(LaterIntentTriage::classify)
+            if (action is LaterIntentAction.Navigate) navController.navigateDeepLink(action)
+        }
+    }
+
     // Intents delivered while the activity was already alive (notification
     // taps and shares into a running app - MainActivity.onNewIntent). The
     // graph never sees them by itself, so translate each into explicit
@@ -136,7 +163,7 @@ private fun MainScaffold(
     LaunchedEffect(navController) {
         laterIntents.collect { intent ->
             when (val action = LaterIntentTriage.classify(intent)) {
-                is LaterIntentAction.Navigate -> navController.navigate(action.route)
+                is LaterIntentAction.Navigate -> navController.navigateDeepLink(action)
                 is LaterIntentAction.OpenCompose -> {
                     if (action.rejectedAttachment) {
                         // Same courtesy as the onCreate path: never fail a
@@ -219,10 +246,7 @@ private fun MainScaffold(
                     onSettings = { navController.navigate(Routes.SETTINGS) },
                 )
             }
-            composable(
-                route = Routes.ALERTS,
-                deepLinks = listOf(navDeepLink { uriPattern = "clearsms://alerts" }),
-            ) {
+            composable(Routes.ALERTS) {
                 AlertsScreen(
                     onOpenMessage = { threadId, messageId ->
                         navController.navigate(Routes.conversation(threadId, messageId))
@@ -248,11 +272,6 @@ private fun MainScaffold(
                             type = NavType.LongType
                             defaultValue = -1L
                         },
-                    ),
-                deepLinks =
-                    listOf(
-                        navDeepLink { uriPattern = "clearsms://conversation/{threadId}" },
-                        navDeepLink { uriPattern = "clearsms://conversation/{threadId}?messageId={messageId}" },
                     ),
             ) {
                 ConversationScreen(
@@ -360,5 +379,25 @@ private fun MainScaffold(
                 )
             }
         }
+    }
+}
+
+/**
+ * Navigates a notification deep link. A route targeting a bottom-bar tab is
+ * selected exactly like a bottom-bar tap - the same options the
+ * NavigationBarItem onClick uses - so it can never be swept into another
+ * tab's saved back stack (see [LaterIntentAction.Navigate.selectTab]).
+ * Everything else (a conversation, with its optional `?messageId=`
+ * highlight) keeps the plain push it always had.
+ */
+private fun NavHostController.navigateDeepLink(action: LaterIntentAction.Navigate) {
+    if (action.selectTab) {
+        navigate(action.route) {
+            popUpTo(graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    } else {
+        navigate(action.route)
     }
 }

@@ -24,8 +24,11 @@ import javax.inject.Inject
  * Intent triage (see [IntentTriage]):
  * - ACTION_SEND / ACTION_SENDTO with sms:/smsto:/mms:/mmsto: URIs (default
  *   SMS app requirement) open the compose screen with recipient/body.
- * - ACTION_VIEW `clearsms://` deep links (notification taps) are handled by
- *   the navigation graph only - they must never leak into the compose screen.
+ * - ACTION_VIEW `clearsms://` deep links (notification taps) are translated
+ *   into explicit navigation by the composition (LaterIntentTriage) - never
+ *   by the NavController's own deep-link handling, which would plain-push a
+ *   top-level tab onto the current tab's back stack, and never the compose
+ *   screen.
  * - Hostile or malformed deep links from third-party apps are stripped before
  *   they reach the navigation controller.
  */
@@ -38,9 +41,9 @@ class MainActivity : FragmentActivity() {
      * Intents that arrive while this activity is already alive - a
      * notification tap with the app in the background is the common case.
      *
-     * The navigation graph resolves deep links from the intent the
-     * NavController was created with, which is the one onCreate saw. Without
-     * this relay a later `clearsms://conversation/...` was accepted, stored by
+     * Only the creation intent reaches the composition by itself (the
+     * `initialIntent` handed to ClearSmsApp in onCreate). Without this relay
+     * a later `clearsms://conversation/...` was accepted, stored by
      * setIntent, and then read by nobody: the app came to the foreground on
      * whatever screen it was last on, which is exactly the reported "can't
      * open on notification".
@@ -64,6 +67,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             ClearSmsApp(
                 laterIntents = laterIntents,
+                initialIntent = intent,
                 initialRecipient = send.recipient,
                 initialBody = send.body,
                 initialImageUri = send.imageUri,
