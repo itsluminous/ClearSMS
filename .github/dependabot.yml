@@ -1,0 +1,103 @@
+# Dependabot version updates for ClearSMS.
+# Docs: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+#
+# Scope notes:
+# - The `gradle` ecosystem reads the version catalog at gradle/libs.versions.toml
+#   (a documented standard location), so `directory: "/"` is correct — no extra
+#   pointing needed.
+# - Per current GitHub docs, the gradle ecosystem MAY also propose Gradle
+#   wrapper updates (gradle/wrapper/*, gradlew*). CI validates the wrapper
+#   checksum (gradle/actions wrapper-validation), so review wrapper PRs with
+#   that in mind rather than merging blindly.
+# - Dependabot never touches the bundled assets/rules (rules/, app/src/main/assets/).
+# - No `pip` ecosystem: scripts/ uses only the Python stdlib (no manifest exists).
+# - No `labels:` key: Dependabot applies (and auto-creates) its default
+#   `dependencies` label, so no repo label needs to be created first.
+# - `commit-message.prefix-development` is omitted: docs list it as supported
+#   only for bundler/composer/mix/maven/npm/pip/uv — not gradle or github-actions.
+# - No `ignore:` rules for the minSdk 23 / compileSdk 35 and F-Droid
+#   reproducibility constraints: no dependabot.yml key can express "reject
+#   bumps that raise compileSdk/minSdk". Instead, major androidx/library bumps
+#   (the usual carriers of such requirements) are EXCLUDED from the grouped
+#   PRs below, so each arrives as its own clearly-visible PR to vet manually.
+#   Blanket-ignoring majors would hide them entirely, which is worse.
+
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Solo maintainer: cap concurrent version-update PRs (security PRs are exempt).
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Kotlin and KSP MUST move together: KSP releases are pinned per Kotlin
+      # version (e.g. 2.0.21-1.0.28); a lone bump of either breaks the build.
+      # The Compose compiler ships with Kotlin 2.x via the
+      # org.jetbrains.kotlin.plugin.compose plugin, which this group covers.
+      # All update-types included — the pair must always travel as one PR.
+      # (Deliberately does NOT match org.jetbrains.kotlinx:* — those libraries
+      # version independently of the compiler.)
+      kotlin-and-ksp:
+        patterns:
+          - "org.jetbrains.kotlin.*"
+          - "org.jetbrains.kotlin:*"
+          - "com.google.devtools.ksp*"
+      # AGP plus tooling version-locked to it (com.android.tools:* incl.
+      # desugar_jdk_libs, which tracks AGP's minimum requirements).
+      android-gradle-plugin:
+        patterns:
+          - "com.android*"
+      # Hilt/Dagger and the androidx.hilt integration artifacts; listed before
+      # the androidx group so androidx.hilt lands here (first-match wins).
+      hilt:
+        patterns:
+          - "com.google.dagger*"
+          - "androidx.hilt*"
+      # Test libraries together — low-risk, reviewed as one PR. Listed before
+      # androidx so androidx.test lands here.
+      test-libraries:
+        patterns:
+          - "junit:junit"
+          - "com.google.truth*"
+          - "org.robolectric*"
+          - "androidx.test*"
+          - "app.cash.turbine*"
+      # kotlinx libraries (coroutines, serialization) release in lockstep.
+      kotlinx:
+        patterns:
+          - "org.jetbrains.kotlinx*"
+      # AndroidX + Compose BOM: minor/patch only, in one PR. Majors are
+      # excluded so a bump that may raise compileSdk/minSdk arrives as an
+      # individual, obvious PR (see scope notes above).
+      androidx:
+        patterns:
+          - "androidx.*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Everything else (coil, accompanist, material, ktlint plugin, ...):
+      # minor/patch batched; majors surface individually for the same reason.
+      other-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/" # scans .github/workflows/ (only android.yml today)
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      # A handful of actions in one workflow — batch them all into one PR.
+      github-actions:
+        patterns:
+          - "*"
