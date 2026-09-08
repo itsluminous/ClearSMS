@@ -64,7 +64,7 @@ class BackfillMessageDirections : AutoMigrationSpec {
             for (row in sent) {
                 db.execSQL(
                     "INSERT INTO backfill_sent (id, address, body, date, delivered) VALUES (?, ?, ?, ?, ?)",
-                    arrayOf(row.id, row.address, row.body, row.dateMs, if (row.delivered) 1 else 0),
+                    arrayOf<Any?>(row.id, row.address, row.body, row.dateMs, if (row.delivered) 1 else 0),
                 )
             }
             db.execSQL(

@@ -251,7 +251,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                 INSERT INTO reminders (type, dueDate, totalDue, minDue, accountLast4, bankName, label, rawSmsId, createdAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.trimIndent(),
-                arrayOf(type, dueDate, totalDue, minDue, accountLast4, bankName, label, rawSmsId, createdAt),
+                arrayOf<Any?>(type, dueDate, totalDue, minDue, accountLast4, bankName, label, rawSmsId, createdAt),
             )
         }
 
@@ -282,7 +282,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                     }
                 }
             for ((id, bank) in updates) {
-                db.execSQL("UPDATE transactions SET bankName = ? WHERE id = ?", arrayOf(bank, id))
+                db.execSQL("UPDATE transactions SET bankName = ? WHERE id = ?", arrayOf<Any?>(bank, id))
             }
         }
 
@@ -347,7 +347,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                 val (balance, creditLimit) = merged
                 db.execSQL(
                     "UPDATE accounts SET bankName = ?, lastKnownBalance = ?, creditLimit = ? WHERE id = ?",
-                    arrayOf(bank, balance, creditLimit, survivor.id),
+                    arrayOf<Any?>(bank, balance, creditLimit, survivor.id),
                 )
             }
         }
@@ -453,7 +453,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                     val blankNewer = blank.lastUpdated > survivor.lastUpdated
                     db.execSQL(
                         "UPDATE accounts SET lastKnownBalance = ?, availableLimit = ?, creditLimit = ?, lastUpdated = ? WHERE id = ?",
-                        arrayOf(
+                        arrayOf<Any?>(
                             if (blankNewer) blank.balance ?: survivor.balance else survivor.balance,
                             if (blankNewer) blank.availableLimit ?: survivor.availableLimit else survivor.availableLimit,
                             if (blankNewer) blank.creditLimit ?: survivor.creditLimit else survivor.creditLimit,
@@ -473,7 +473,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
             for (account in accounts) {
                 db.execSQL(
                     "UPDATE transactions SET accountId = ? WHERE accountNumber = ? AND bankName = ?",
-                    arrayOf(account.id, account.accountNumber, account.bankName),
+                    arrayOf<Any?>(account.id, account.accountNumber, account.bankName),
                 )
             }
             // Remaining rows: canonicalization variants and blank-bank
@@ -505,7 +505,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                 if (owner != null) {
                     db.execSQL(
                         "UPDATE transactions SET accountId = ? WHERE accountId IS NULL AND accountNumber = ? AND bankName = ?",
-                        arrayOf(owner.id, tail, bank),
+                        arrayOf<Any?>(owner.id, tail, bank),
                     )
                 }
             }
@@ -555,7 +555,7 @@ abstract class ClearSmsDatabase : RoomDatabase() {
                 db.execSQL(
                     "UPDATE transactions SET merchantName = ?, bankName = ?, accountId = ?, " +
                         "balance = ?, referenceNumber = ?, note = ? WHERE id = ?",
-                    arrayOf(
+                    arrayOf<Any?>(
                         survivor.merchantName,
                         survivor.bankName,
                         survivor.accountId,
