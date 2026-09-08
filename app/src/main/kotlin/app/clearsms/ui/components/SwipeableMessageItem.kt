@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -118,16 +117,6 @@ fun SwipeableMessageItem(
         }
     val startEnabled = startAction != SwipeAction.NONE
     val endEnabled = endAction != SwipeAction.NONE
-    LaunchedEffect(state.currentValue) {
-        val direction = state.currentValue.toDirection()
-        if (direction != null) {
-            val action = resolveSwipeAction(direction, startAction, endAction)
-            // The row always animates back to rest; the ViewModel hides the
-            // row through its own state so no dismissed gap is left behind.
-            state.animateTo(RowSwipeAnchor.SETTLED)
-            if (action != SwipeAction.NONE) onAction(action)
-        }
-    }
     val scope = rememberCoroutineScope()
     // Anchors in raw pointer coordinates, mirroring Material3: a disabled
     // direction simply has no anchor, so the offset clamps at rest and the
@@ -154,7 +143,7 @@ fun SwipeableMessageItem(
     Box(
         modifier
             .onSizeChanged { size -> state.updateAnchors(anchorsFor(size.width)) }
-            .pointerInput(startEnabled, endEnabled, deadZone, state) {
+            .pointerInput(startAction, endAction, deadZone, state) {
                 if (!startEnabled && !endEnabled) return@pointerInput
                 val slop = viewConfiguration.touchSlop
                 awaitEachGesture {
@@ -212,7 +201,24 @@ fun SwipeableMessageItem(
                         change.consume()
                     }
                     val velocity = tracker.calculateVelocity().x
-                    scope.launch { state.settle(velocity) }
+                    scope.launch {
+                        state.settle(velocity)
+                        // If the settle crossed a trigger anchor, perform the
+                        // action and bring the row back to rest ourselves.
+                        // (Doing this in a LaunchedEffect keyed on
+                        // state.currentValue self-cancels: the return
+                        // animation flips currentValue back to SETTLED, which
+                        // restarts the effect and kills the running
+                        // animation, freezing the row and dropping the
+                        // action.) The ViewModel hides the row through its
+                        // own state so no dismissed gap is left behind.
+                        val direction = state.currentValue.toDirection()
+                        if (direction != null) {
+                            val action = resolveSwipeAction(direction, startAction, endAction)
+                            if (action != SwipeAction.NONE) onAction(action)
+                            state.animateTo(RowSwipeAnchor.SETTLED)
+                        }
+                    }
                 }
             },
     ) {
