@@ -15,6 +15,7 @@ import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.domain.model.TransactionType
 import app.clearsms.ui.alerts.AlertFilter
@@ -298,6 +299,10 @@ private class FakeSettingsRepository : SettingsRepository {
     override suspend fun setSwipeActionStart(value: SwipeAction) = Unit
 
     override val swipeActionEnd = MutableStateFlow(SwipeAction.DELETE)
+
+    override val swipeDeadZone = MutableStateFlow(SwipeDeadZone.DEFAULT)
+
+    override suspend fun setSwipeDeadZone(value: SwipeDeadZone) = Unit
 
     override suspend fun setSwipeActionEnd(value: SwipeAction) = Unit
 

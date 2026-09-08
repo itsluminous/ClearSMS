@@ -179,15 +179,24 @@ fun MessageComposerBar(
                             ).padding(6.dp)
                             .semantics { contentDescription = stripHint },
                 ) {
-                    // The glyph IS the explanation: an accented letter
-                    // becoming its plain twin.
-                    Text(
-                        text = "é→e",
-                        fontSize = 12.sp,
-                        lineHeight = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
+                    // A single bold accented letter at EXACTLY the SIM
+                    // indicator's footprint (shared ComposeBarIndicatorMetrics,
+                    // so the two cannot drift) - the old wide arrow chip
+                    // ("e-grave becomes e") was visually heavier than its
+                    // neighbours. That explanation now lives in the
+                    // long-press hint text.
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(ComposeBarIndicatorMetrics.IconSize),
+                    ) {
+                        Text(
+                            text = "è",
+                            fontSize = ComposeBarIndicatorMetrics.GlyphFontSize,
+                            lineHeight = ComposeBarIndicatorMetrics.GlyphFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                 }
             }
             // Compact SIM indicator, dual-SIM devices only: a plain SIM-card
@@ -235,8 +244,8 @@ fun MessageComposerBar(
                     // both light and dark themes.
                     Text(
                         text = sim.slot.toString(),
-                        fontSize = 12.sp,
-                        lineHeight = 12.sp,
+                        fontSize = ComposeBarIndicatorMetrics.GlyphFontSize,
+                        lineHeight = ComposeBarIndicatorMetrics.GlyphFontSize,
                         fontWeight = FontWeight.Bold,
                         color = simTint,
                     )
@@ -331,6 +340,21 @@ internal fun accentFoldPlan(
 ): AccentFold.Plan? = if (attachmentCount > 0) null else AccentFold.plan(draft)
 
 /**
+ * The ONE set of size constants for the compose bar's small indicator
+ * glyphs. The SIM slot indicator AND the accent-strip affordance both draw
+ * from here - operator requirement: the accent affordance sits at exactly
+ * the SIM indicator's footprint, and sharing the constants (instead of two
+ * eyeballed dp values) means the two cannot drift apart.
+ */
+internal object ComposeBarIndicatorMetrics {
+    /** Icon footprint - the SIM outline's intrinsic size. */
+    val IconSize = 24.dp
+
+    /** Glyph drawn inside the footprint (the SIM slot digit; the accent è). */
+    val GlyphFontSize = 12.sp
+}
+
+/**
  * The colour the SIM indicator (outline + digit) is drawn in, pure so the
  * decision is unit-testable without a Compose harness. The system's SIM
  * colour ([android.telephony.SubscriptionInfo.getIconTint]) wins when
@@ -366,8 +390,8 @@ private val SimOutlineGlyph: ImageVector by lazy {
     ImageVector
         .Builder(
             name = "SimOutlineGlyph",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
+            defaultWidth = ComposeBarIndicatorMetrics.IconSize,
+            defaultHeight = ComposeBarIndicatorMetrics.IconSize,
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).apply {

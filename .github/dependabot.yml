@@ -33,6 +33,34 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    # Versions PROVEN unadoptable while the project stays on AGP 8.x with
+    # compileSdk 35 (see branch deps/2026-09-sweep). Each entry names the hard
+    # blocker; delete this whole block when AGP 9 is adopted deliberately.
+    ignore:
+      # AGP 9.x requires Gradle >= 9.6 and re-validation of the reproducible,
+      # non-obfuscated F-Droid release build. Adopt deliberately, not weekly.
+      - dependency-name: "com.android.application"
+        versions: ["[9,)"]
+      - dependency-name: "com.android.tools.build:gradle"
+        versions: ["[9,)"]
+      # Hilt >= 2.59 hard-requires AGP >= 9.0.0.
+      - dependency-name: "com.google.dagger*"
+        versions: ["[2.59,)"]
+      # androidx.hilt 1.4.0 requires AGP 9.1 / compileSdk 36.
+      - dependency-name: "androidx.hilt*"
+        versions: ["[1.4.0,)"]
+      # Kotlin 2.4 emits metadata 2.4, rejected by every Hilt below 2.59.
+      - dependency-name: "org.jetbrains.kotlin*"
+        versions: ["[2.4,)"]
+      # KSP >= 2.3.8 calls AndroidComponentsExtension.addKspConfigurations,
+      # which AGP 8.x does not have.
+      - dependency-name: "com.google.devtools.ksp*"
+        versions: ["[2.3.8,)"]
+      # These minors demand compileSdk 36/37 + AGP 9.1 (AAR metadata checks).
+      - dependency-name: "androidx.navigation:navigation-compose"
+        versions: ["[2.10,)"]
+      - dependency-name: "androidx.core:core-ktx"
+        versions: ["[1.19,)"]
     groups:
       # Kotlin and KSP MUST move together: KSP releases are pinned per Kotlin
       # version (e.g. 2.0.21-1.0.28); a lone bump of either breaks the build.

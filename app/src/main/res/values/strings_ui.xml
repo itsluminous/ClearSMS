@@ -89,7 +89,7 @@
     <string name="compose_recipient">To</string>
     <string name="compose_message">Message</string>
     <string name="compose_strip_accents">Remove accents</string>
-    <string name="compose_strip_accents_hint">Accented letters make this text send as %1$d SMS. Tap to swap them for plain letters (é→e) and send %2$d.</string>
+    <string name="compose_strip_accents_hint">Accented letters make this text send as %1$d SMS. Tap to swap them for plain letters (è→e) and send %2$d.</string>
     <string name="compose_accents_removed">Accents removed: %1$d SMS → %2$d</string>
 
     <!-- Finance -->
@@ -320,6 +320,16 @@
     <string name="settings_transaction_notifications_summary">Show the parsed amount instead of the raw message</string>
     <string name="settings_swipe_right">Swipe right action</string>
     <string name="settings_swipe_left">Swipe left action</string>
+    <string name="settings_swipe_dead_zone">Swipe dead zone</string>
+    <string name="settings_swipe_dead_zone_summary_off">Off - swipes start anywhere on a row</string>
+    <string name="settings_swipe_dead_zone_summary_on">On - %1$d%% wide band on every row</string>
+    <string name="settings_swipe_dead_zone_enable">Use dead zone</string>
+    <string name="settings_swipe_dead_zone_hint">Swipes never start inside the shaded band. The rest of the row always stays swipeable, and taps and scrolling work everywhere.</string>
+    <string name="settings_swipe_dead_zone_position">Position</string>
+    <string name="settings_swipe_dead_zone_width">Width</string>
+    <string name="settings_swipe_dead_zone_height">Height</string>
+    <string name="settings_swipe_dead_zone_percent">%1$d%%</string>
+    <string name="settings_swipe_dead_zone_preview_description">Preview of three inbox rows with the swipe dead zone shaded on each</string>
     <string name="settings_section_startup">Startup</string>
     <string name="settings_default_screen">Default screen</string>
     <string name="settings_default_inbox_filter">Default inbox filter</string>

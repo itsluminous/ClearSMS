@@ -113,6 +113,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringSetEntry("notification_actions"),
             SettingsBackupEntry.StringEntry("swipe_action_start"),
             SettingsBackupEntry.StringEntry("swipe_action_end"),
+            SettingsBackupEntry.StringEntry("swipe_dead_zone"),
             SettingsBackupEntry.StringEntry("default_destination"),
             SettingsBackupEntry.StringEntry("default_inbox_filter"),
             SettingsBackupEntry.StringEntry("default_finance_filter"),

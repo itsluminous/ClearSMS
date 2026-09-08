@@ -108,10 +108,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         // BuildConfig.VERSION_NAME feeds the Settings → About release-notes link.
@@ -178,6 +174,12 @@ android {
         getByName("test") {
             kotlin.srcDir("src/test/kotlin")
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

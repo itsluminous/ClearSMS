@@ -68,12 +68,12 @@ class DerivedTransactionSubcategoriesTest {
         runBlocking {
             repository.insertIncoming(
                 "VM-NSDLNP",
-                "PRAN XX8227: Units for (APR-2026) contribution of Rs.44,236.00 credited " +
+                "PRAN XX9001: Units for (APR-2026) contribution of Rs.33,111.00 credited " +
                     "with NAV of 07/05/26 -Protean",
                 1_000L,
             )
             val tx = db.transactionDao().getAll().single()
-            assertThat(tx.amount).isEqualTo(44236.0)
+            assertThat(tx.amount).isEqualTo(33111.0)
             // Money RECEIVED into the retirement account: employer NPS
             // contributions never leave a tracked bank account, so a debit
             // here fabricated spend (CR: retirement credits).
@@ -84,7 +84,7 @@ class DerivedTransactionSubcategoriesTest {
             // tail identifies it, and whichever CRA reports it (Protean,
             // KFintech) the issuer is the ONE unified "NPS" institution.
             val account = db.accountDao().getAll().single()
-            assertThat(account.accountNumber).isEqualTo("8227")
+            assertThat(account.accountNumber).isEqualTo("9001")
             assertThat(account.bankName).isEqualTo("NPS")
         }
 
@@ -93,7 +93,7 @@ class DerivedTransactionSubcategoriesTest {
         runBlocking {
             repository.insertIncoming(
                 "VM-NSDLNP",
-                "Investment value in Tier I (PRANXX8227) as on 30.06.2026 is Rs 10,51,328.93. " +
+                "Investment value in Tier I (PRANXX9001) as on 30.06.2026 is Rs 10,51,328.93. " +
                     "For details login to CRA system -Protean",
                 1_000L,
             )

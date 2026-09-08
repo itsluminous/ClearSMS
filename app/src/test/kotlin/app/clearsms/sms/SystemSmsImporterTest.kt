@@ -410,7 +410,7 @@ class SystemSmsImporterTest {
                 .filter { it.id > afterId && (it.type == 1 || it.type == 2) }
                 .sortedBy { it.id }
                 .take(limit)
-                .forEach { cursor.addRow(arrayOf(it.id, it.address, it.body, it.date, it.type, it.read)) }
+                .forEach { cursor.addRow(arrayOf<Any?>(it.id, it.address, it.body, it.date, it.type, it.read)) }
             return cursor
         }
 

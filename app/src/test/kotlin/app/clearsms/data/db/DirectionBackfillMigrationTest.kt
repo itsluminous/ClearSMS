@@ -57,7 +57,7 @@ class DirectionBackfillMigrationTest {
                                   isRead, isArchived, category, isBlockedSender, systemSmsId)
             VALUES (?, 1, ?, ?, ?, ?, 1, 0, 'PERSONAL', 0, ?)
             """.trimIndent(),
-            arrayOf(id, sender, sender, body, timestamp, systemSmsId),
+            arrayOf<Any?>(id, sender, sender, body, timestamp, systemSmsId),
         )
     }
 

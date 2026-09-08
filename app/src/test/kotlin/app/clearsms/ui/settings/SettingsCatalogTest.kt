@@ -87,6 +87,9 @@ class SettingsCatalogTest {
                 "Default inbox filter",
                 "Swipe right action",
                 "Swipe left action",
+                // Directly under the two swipe-action rows it refines: the
+                // per-row band where a swipe never starts (issue #16).
+                "Swipe dead zone",
                 "Sort inbox again",
             ).inOrder()
         assertThat(bySection["Finance"])
@@ -166,10 +169,12 @@ class SettingsCatalogTest {
                 // Messages section (GitHub #17): opt-in auto accent folding
                 // when it makes a text send as fewer SMS.
                 "Strip accents when sending",
+                // Inbox: the per-row swipe dead zone editor (issue #16).
+                "Swipe dead zone",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 9 additions = 41 rows.
+        // No row lost, none dropped: 32 survivors + 10 additions = 42 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)
