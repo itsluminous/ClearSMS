@@ -1422,7 +1422,7 @@
       "priority": 320,
       "match": {
         "sender_pattern": "(?i)(?:PTNNPS|PTNCRA|NPSCRA|NPSIVR|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
-        "body_pattern": "(?i)PRAN\\s+[A-Zx*]{0,8}(\\d{3,4})\\s*:\\s*Units\\s+for\\s+\\([A-Z]{3}-\\d{4}\\)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited"
+        "body_pattern": "(?i)PRAN\\s+[A-Zx*]{0,8}(\\d{3,4})\\s*[-:]\\s*Units\\s+for\\s+\\([A-Z]{3}-\\d{4}\\)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited"
       },
       "action": {
         "category": "important",

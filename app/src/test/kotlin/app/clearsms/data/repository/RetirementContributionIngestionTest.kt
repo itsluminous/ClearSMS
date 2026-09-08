@@ -125,6 +125,33 @@ class RetirementContributionIngestionTest {
         }
 
     @Test
+    fun `nps units-credited with a dash after the PRAN tail still keys the NPS account`() =
+        runBlocking {
+            // Protean also sends the units-credited shape with a dash instead
+            // of a colon after the PRAN tail ("PRAN XX4413- Units for ...").
+            // The rule used to require ':' so this shape fell through to the
+            // generic retirement fallback: an unattributed credit (empty
+            // accountNumber, null accountId) that never keyed the NPS account.
+            val entity =
+                repository.insertIncoming(
+                    "VM-NPSCRA-S",
+                    "PRAN XX4413- Units for (AUG-2026) contribution of Rs.52318.00 credited " +
+                        "with NAV of 07/09/26 -Protean",
+                    1_000L,
+                )
+            assertThat(entity.category).isEqualTo(Category.IMPORTANT)
+            val tx = db.transactionDao().getAll().single()
+            assertThat(tx.type).isEqualTo(TransactionType.CREDIT)
+            assertThat(tx.amount).isEqualTo(52318.0)
+            assertThat(tx.accountNumber).isEqualTo("4413")
+            assertThat(tx.bankName).isEqualTo("NPS")
+            assertThat(tx.category).isEqualTo(MerchantCategory.INVESTMENT)
+            val account = db.accountDao().getAll().single()
+            assertThat(account.bankName).isEqualTo("NPS")
+            assertThat(tx.accountId).isEqualTo(account.id)
+        }
+
+    @Test
     fun `epf passbook contribution ingests as a CREDIT with the right amount and the passbook balance`() =
         runBlocking {
             repository.insertIncoming(
