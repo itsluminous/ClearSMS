@@ -121,13 +121,23 @@ interface MessageDao {
     @Query("SELECT id FROM messages WHERE threadId = :threadId AND deletedAt IS NULL")
     suspend fun messageIdsInThread(threadId: Long): List<Long>
 
-    /** How many messages in the thread are newer than [messageId] (its index in DESC order). */
+    /**
+     * How many messages in the thread sort BEFORE [messageId] - its exact
+     * index under [pagingThread]'s `ORDER BY timestamp DESC, id DESC`. The
+     * tie-break on `id` must match the pager's: counting `timestamp >` alone
+     * misses same-timestamp rows with a higher id (bulk imports produce
+     * whole runs of tied timestamps), so the computed initial page could
+     * fall short of the target and the highlight never attached. Stays a
+     * single indexed COUNT (threadId+timestamp index), so resolving even a
+     * very old message costs one cheap query.
+     */
     @Query(
         """
-        SELECT COUNT(*) FROM messages
-        WHERE threadId = :threadId
-          AND deletedAt IS NULL
-          AND timestamp > (SELECT timestamp FROM messages WHERE id = :messageId)
+        SELECT COUNT(*) FROM messages m,
+            (SELECT timestamp AS ts FROM messages WHERE id = :messageId) target
+        WHERE m.threadId = :threadId
+          AND m.deletedAt IS NULL
+          AND (m.timestamp > target.ts OR (m.timestamp = target.ts AND m.id > :messageId))
         """,
     )
     suspend fun newerCountInThread(

@@ -590,9 +590,9 @@ class ConversationViewModel
             )
 
         private suspend fun initialPosition(): Int? =
-            highlightTarget
-                ?.let { messageRepository.positionInThread(threadId, it) }
-                ?.takeIf { it > 0 }
+            initialPagingKeyFor(
+                highlightTarget?.let { messageRepository.positionInThread(threadId, it) },
+            )
 
         private companion object {
             const val PAGE_SIZE = 60
