@@ -82,6 +82,9 @@ class SettingsCatalogTest {
                 "Default inbox filter",
                 "Swipe right action",
                 "Swipe left action",
+                // Directly under the two swipe-action rows it refines: the
+                // per-row band where a swipe never starts (issue #16).
+                "Swipe dead zone",
                 "Sort inbox again",
             ).inOrder()
         assertThat(bySection["Finance"])
@@ -158,10 +161,12 @@ class SettingsCatalogTest {
                 // Backup & restore: the automatic-backup directory row that
                 // gates the backup frequency.
                 "Backup location",
+                // Inbox: the per-row swipe dead zone editor (issue #16).
+                "Swipe dead zone",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 8 additions = 40 rows.
+        // No row lost, none dropped: 32 survivors + 9 additions = 41 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)

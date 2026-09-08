@@ -54,6 +54,7 @@ enum class SettingsItem(
     DEFAULT_INBOX_FILTER(SettingsSection.INBOX, R.string.settings_default_inbox_filter),
     SWIPE_RIGHT(SettingsSection.INBOX, R.string.settings_swipe_right),
     SWIPE_LEFT(SettingsSection.INBOX, R.string.settings_swipe_left),
+    SWIPE_DEAD_ZONE(SettingsSection.INBOX, R.string.settings_swipe_dead_zone),
     SORT_AGAIN(SettingsSection.INBOX, R.string.settings_sort_again),
     FINANCE_PILL_ORDER(SettingsSection.FINANCE, R.string.settings_pill_order),
     SHOW_BALANCE(SettingsSection.FINANCE, R.string.settings_show_balance),

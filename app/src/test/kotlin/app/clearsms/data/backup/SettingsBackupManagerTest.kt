@@ -13,6 +13,7 @@ import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import com.google.common.truth.Truth.assertThat
@@ -64,6 +65,7 @@ class SettingsBackupManagerTest {
         repo.setNotificationActions(setOf(NotificationAction.SHARE, NotificationAction.COPY_OTP))
         repo.setSwipeActionStart(SwipeAction.TOGGLE_READ)
         repo.setSwipeActionEnd(SwipeAction.NONE)
+        repo.setSwipeDeadZone(SwipeDeadZone(enabled = true, centerXPercent = 30, widthPercent = 60, heightPercent = 50))
         repo.setDefaultDestination(StartDestination.FINANCE)
         repo.setDefaultInboxFilter(null)
         repo.setDefaultFinanceFilter(FinanceTab.CREDIT_CARDS)
@@ -89,6 +91,8 @@ class SettingsBackupManagerTest {
             .isEqualTo(setOf(NotificationAction.SHARE, NotificationAction.COPY_OTP))
         assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.TOGGLE_READ)
         assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.NONE)
+        assertThat(repo.swipeDeadZone.first())
+            .isEqualTo(SwipeDeadZone(enabled = true, centerXPercent = 30, widthPercent = 60, heightPercent = 50))
         assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.FINANCE)
         assertThat(repo.defaultInboxFilter.first()).isNull()
         assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.CREDIT_CARDS)

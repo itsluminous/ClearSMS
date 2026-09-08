@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.math.sign
@@ -98,6 +99,7 @@ private fun RowSwipeAnchor.toDirection(): SwipeDirection? =
 fun SwipeableMessageItem(
     startAction: SwipeAction,
     endAction: SwipeAction,
+    deadZone: SwipeDeadZone,
     onAction: (SwipeAction) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
@@ -152,7 +154,7 @@ fun SwipeableMessageItem(
     Box(
         modifier
             .onSizeChanged { size -> state.updateAnchors(anchorsFor(size.width)) }
-            .pointerInput(startEnabled, endEnabled, state) {
+            .pointerInput(startEnabled, endEnabled, deadZone, state) {
                 if (!startEnabled && !endEnabled) return@pointerInput
                 val slop = viewConfiguration.touchSlop
                 awaitEachGesture {
@@ -161,6 +163,19 @@ fun SwipeableMessageItem(
                     // still being handled (mirrors SwipeToDismissBox, which
                     // disables gestures until the state settles again).
                     if (state.currentValue != RowSwipeAnchor.SETTLED) return@awaitEachGesture
+                    // The user's dead zone: a touch starting inside the band
+                    // can scroll, tap or long-press, but never swipe. Uses the
+                    // same SwipeDeadZone.bounds() geometry the settings
+                    // preview draws, via blocksTouchAt.
+                    if (size.width > 0 &&
+                        size.height > 0 &&
+                        deadZone.blocksTouchAt(
+                            xFraction = down.position.x / size.width,
+                            yFraction = down.position.y / size.height,
+                        )
+                    ) {
+                        return@awaitEachGesture
+                    }
                     val tracker = VelocityTracker()
                     tracker.addPointerInputChange(down)
                     var totalDx = 0f

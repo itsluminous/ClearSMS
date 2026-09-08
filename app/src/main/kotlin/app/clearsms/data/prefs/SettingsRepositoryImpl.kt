@@ -16,6 +16,7 @@ import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import kotlinx.coroutines.flow.Flow
@@ -125,6 +126,15 @@ class SettingsRepositoryImpl(
 
     override suspend fun setSwipeActionEnd(value: SwipeAction) {
         dataStore.edit { it[KEY_SWIPE_ACTION_END] = value.name }
+    }
+
+    override val swipeDeadZone: Flow<SwipeDeadZone> =
+        // decode is lenient: anything malformed falls back to the default
+        // (off), matching how other readers treat unknown stored values.
+        dataStore.data.map { SwipeDeadZone.decode(it[KEY_SWIPE_DEAD_ZONE]) }
+
+    override suspend fun setSwipeDeadZone(value: SwipeDeadZone) {
+        dataStore.edit { it[KEY_SWIPE_DEAD_ZONE] = value.encode() }
     }
 
     override val defaultDestination: Flow<StartDestination> =
@@ -262,6 +272,7 @@ class SettingsRepositoryImpl(
         val KEY_NOTIFICATION_ACTIONS = stringSetPreferencesKey("notification_actions")
         val KEY_SWIPE_ACTION_START = stringPreferencesKey("swipe_action_start")
         val KEY_SWIPE_ACTION_END = stringPreferencesKey("swipe_action_end")
+        val KEY_SWIPE_DEAD_ZONE = stringPreferencesKey("swipe_dead_zone")
         val KEY_DEFAULT_DESTINATION = stringPreferencesKey("default_destination")
         val KEY_DEFAULT_INBOX_FILTER = stringPreferencesKey("default_inbox_filter")
         val KEY_DEFAULT_FINANCE_FILTER = stringPreferencesKey("default_finance_filter")
