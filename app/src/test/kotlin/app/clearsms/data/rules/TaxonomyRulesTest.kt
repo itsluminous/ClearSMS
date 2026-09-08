@@ -172,26 +172,49 @@ class TaxonomyRulesTest {
     @Test
     fun `nps contribution is an investment credit with the pran tail`() {
         val result =
-            evaluate("PTNNPS", "PRAN XX8227: Units for (APR-2026) contribution of Rs.44,236.00 credited with NAV of 07/05/26 -Protean")
+            evaluate("PTNNPS", "PRAN XX9001: Units for (APR-2026) contribution of Rs.33,111.00 credited with NAV of 07/05/26 -Protean")
         assertThat(result?.matchedRuleId).isEqualTo("nps-contribution-01")
         assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
-        assertThat(result?.extracted?.get("amount")).isEqualTo("44,236.00")
+        assertThat(result?.extracted?.get("amount")).isEqualTo("33,111.00")
         // Units credited INTO the retirement account are money received -
         // an employer contribution never debits a tracked bank account.
         assertThat(result?.extracted?.get("type")).isEqualTo("credit")
         assertThat(result?.extracted?.get("merchant")).isEqualTo("NPS")
-        assertThat(result?.extracted?.get("account_last4")).isEqualTo("8227")
+        assertThat(result?.extracted?.get("account_last4")).isEqualTo("9001")
     }
 
     @Test
     fun `nps investment value statement is informational and never a transaction`() {
         val result =
-            evaluate("PTNNPS", "Investment value in Tier I (PRANXX8227) as on 30.06.2026 is Rs 10,51,328.93. -Protean")
+            evaluate("PTNNPS", "Investment value in Tier I (PRANXX9001) as on 30.06.2026 is Rs 10,51,328.93. -Protean")
         assertThat(result?.matchedRuleId).isEqualTo("nps-balance-01")
         assertThat(result?.category).isEqualTo(Category.IMPORTANT)
         assertThat(result?.extracted).doesNotContainKey("amount")
         assertThat(result?.extracted).doesNotContainKey("type")
+    }
+
+    @Test
+    fun `nps contribution from a Protean CRA header matches the same rule`() {
+        // Protean's record-keeper fleet also sends from CRA headers
+        // (NPSCRA / PTNCRA / NPSIVR - directory-confirmed NSDL senders);
+        // the rule must not be tied to the PTNNPS header alone.
+        for (sender in listOf("VM-NPSCRA-S", "AD-PTNCRA-S", "JD-NPSIVR-S")) {
+            val result =
+                evaluate(
+                    sender,
+                    "PRAN XX4413: Units for (AUG-2026) contribution of Rs.52,318.00 credited with NAV of 07/09/26 -Protean",
+                )
+            assertThat(result?.matchedRuleId).isEqualTo("nps-contribution-01")
+            assertThat(result?.category).isEqualTo(Category.IMPORTANT)
+            assertThat(result?.category).isNotEqualTo(Category.PROMOTIONAL)
+            assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
+            assertThat(result?.extracted?.get("amount")).isEqualTo("52,318.00")
+            assertThat(result?.extracted?.get("type")).isEqualTo("credit")
+            // XX4413 is a PRAN tail on the NPS institution, never a bank account.
+            assertThat(result?.extracted?.get("account_last4")).isEqualTo("4413")
+            assertThat(result?.extracted?.get("bank")).isEqualTo("NPS")
+        }
     }
 
     // endregion

@@ -129,7 +129,7 @@ class RecategorizeOrphanSweepTest {
             // the balance-only refresher.
             repository.insertIncoming(
                 "VM-NSDLNP",
-                "PRAN XX8227: Units for (APR-2026) contribution of Rs.44,236.00 credited " +
+                "PRAN XX9001: Units for (APR-2026) contribution of Rs.33,111.00 credited " +
                     "with NAV of 07/05/26 -Protean",
                 1_000L,
             )

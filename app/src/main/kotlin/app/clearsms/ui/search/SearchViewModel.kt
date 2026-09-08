@@ -13,6 +13,8 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SearchQueryFormat
+import app.clearsms.data.repository.SenderMatchReason
+import app.clearsms.data.repository.SenderQueryResolver
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
@@ -21,6 +23,7 @@ import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
+import app.clearsms.ui.composemsg.ContactSuggestions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -54,6 +57,12 @@ data class SearchResultItem(
     val message: MessageEntity,
     val display: SenderDisplay,
     val glyph: BrandGlyph,
+    /**
+     * True when this row is here because its SENDER (contact name, resolved
+     * sender name or raw ID) matched and the body says nothing about the
+     * query - the UI labels these so they never look like a search bug.
+     */
+    val matchedOnSenderOnly: Boolean = false,
 )
 
 /**
@@ -78,6 +87,7 @@ class SearchViewModel
         private val messageRepository: MessageRepository,
         private val senderIdStore: SenderIdStore,
         private val contactsSource: ContactsSource,
+        private val contactSuggestions: ContactSuggestions,
         settings: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
@@ -96,6 +106,20 @@ class SearchViewModel
 
         /** Sender → display cache so paged rows never repeat provider lookups. */
         private val displayCache = ConcurrentHashMap<String, SenderDisplay>()
+
+        /**
+         * Sender matches of the request currently streaming, consumed by row
+         * mapping to label sender-only hits. Written before the pager starts;
+         * flatMapLatest cancels the previous stream, so a stale read is at
+         * worst one frame of a superseded page.
+         */
+        @Volatile
+        private var senderMatchContext: SenderMatchContext = SenderMatchContext("", emptyMap())
+
+        private data class SenderMatchContext(
+            val query: String,
+            val reasons: Map<String, SenderMatchReason>,
+        )
 
         private data class Request(
             val query: String,
@@ -121,6 +145,22 @@ class SearchViewModel
                     if (!SearchQueryFormat.isSearchable(request.query)) {
                         flowOf(EMPTY_RESULTS)
                     } else {
+                        // Names are not in the messages DB: resolve matching
+                        // contacts (one provider query) and sender IDs to the
+                        // addresses they denote FIRST, then the SQL merges
+                        // `sender IN (...)` with the body FTS match. Runs on
+                        // [ioDispatcher] via the flowOn below - the contacts
+                        // cursor never touches the main thread.
+                        val matches =
+                            SenderQueryResolver.resolve(
+                                query = request.query,
+                                senders = messageRepository.distinctSenders(),
+                                contactNumbersMatching = { q ->
+                                    contactSuggestions.search(q, limit = CONTACT_MATCH_LIMIT).map { it.number }
+                                },
+                                resolvedName = { sender -> senderIdStore.lookup(sender)?.name },
+                            )
+                        senderMatchContext = SenderMatchContext(request.query, matches.reasons)
                         Pager(
                             config =
                                 PagingConfig(
@@ -129,7 +169,12 @@ class SearchViewModel
                                     enablePlaceholders = false,
                                 ),
                             pagingSourceFactory = {
-                                messageRepository.pagedSearch(request.query, request.category, request.cutoffMs)
+                                messageRepository.pagedSearch(
+                                    request.query,
+                                    request.category,
+                                    request.cutoffMs,
+                                    matches.addresses,
+                                )
                             },
                         ).flow
                     }
@@ -170,10 +215,15 @@ class SearchViewModel
                         directoryLookup = { senderIdStore.lookup(it)?.name },
                     )
                 }
+            val context = senderMatchContext
+            val matchedOnSenderOnly =
+                context.reasons.containsKey(sender) &&
+                    !SenderQueryResolver.textMatches(context.query, body)
             return SearchResultItem(
                 message = this,
                 display = display,
                 glyph = brandGlyphFor(subCategory, display.name),
+                matchedOnSenderOnly = matchedOnSenderOnly,
             )
         }
 
@@ -191,6 +241,9 @@ class SearchViewModel
         companion object {
             const val DEBOUNCE_MS = 300L
             const val PAGE_SIZE = 30
+
+            /** Contacts fetched per name query; generous for one household. */
+            private const val CONTACT_MATCH_LIMIT = 50
 
             /** Empty results with settled load states (no eternal spinner). */
             private val EMPTY_RESULTS: PagingData<MessageEntity> =

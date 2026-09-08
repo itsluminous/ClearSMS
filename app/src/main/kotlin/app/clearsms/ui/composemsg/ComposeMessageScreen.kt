@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -45,6 +46,7 @@ import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.conversation.SendStatus
+import kotlinx.coroutines.launch
 
 /** New message: recipient with contact suggestions, body, signature-aware send. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +62,10 @@ fun ComposeMessageScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val notSentMessage = stringResource(R.string.message_not_sent)
     val retryLabel = stringResource(R.string.action_retry)
+    val undoLabel = stringResource(R.string.undo_action)
+    val accentScope = rememberCoroutineScope()
+    val accentsRemovedTemplate = stringResource(R.string.compose_accents_removed)
+    val accentsRemovedMessage = { before: Int, after: Int -> accentsRemovedTemplate.format(before, after) }
     var showSchedulePicker by rememberSaveable { mutableStateOf(false) }
 
     // Compose-bar attachments being staged for an MMS send, and the
@@ -131,6 +137,22 @@ fun ComposeMessageScreen(
                 onAttachClick = { showAttachmentSheet = true },
                 onRemoveAttachment = viewModel::removeAttachment,
                 attachmentError = attachmentError,
+                onAccentsStripped = { plan ->
+                    // Confirm the saving; UNDO restores the accented text.
+                    accentScope.launch {
+                        val result =
+                            snackbarHostState.showSnackbar(
+                                message =
+                                    accentsRemovedMessage(
+                                        plan.segmentsBefore,
+                                        plan.segmentsAfter,
+                                    ),
+                                actionLabel = undoLabel,
+                                duration = SnackbarDuration.Short,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) viewModel.onBodyChange(plan.original)
+                    }
+                },
             )
         },
     ) { padding ->

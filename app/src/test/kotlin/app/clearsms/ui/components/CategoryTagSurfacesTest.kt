@@ -20,8 +20,15 @@ class CategoryTagSurfacesTest {
     @Test
     fun `search results always carry the category tag`() {
         val search = source("ui/search/SearchScreen.kt")
-        // The badge is the row's overline, rendered with no surrounding condition.
-        assertThat(search).contains("overlineContent = { CategoryBadge(category = message.category) }")
+        // The badge leads the row's overline unconditionally; the
+        // sender-match label that can sit beside it is conditional, the
+        // badge itself must never be - and the inbox-only visibility flag
+        // may not leak in.
+        val lines = search.lines()
+        val badgeIndex = lines.indexOfFirst { "CategoryBadge(category = message.category)" in it }
+        assertThat(badgeIndex).isAtLeast(1)
+        assertThat(lines[badgeIndex - 1].trim()).doesNotContain("if ")
+        assertThat(search).doesNotContain("showsCategoryTags")
     }
 
     @Test

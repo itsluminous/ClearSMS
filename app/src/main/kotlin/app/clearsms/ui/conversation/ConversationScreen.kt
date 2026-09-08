@@ -215,6 +215,9 @@ fun ConversationScreen(
     // Deletes are undoable: the snackbar's UNDO reverts the staged action
     // before its deferred provider commit (see UndoManager).
     val undoLabel = stringResource(R.string.undo_action)
+    // Raw template ("Accents removed: %1$d SMS → %2$d") formatted at strip
+    // time - the counts exist only once the user taps the é→e affordance.
+    val accentsRemovedTemplate = stringResource(R.string.compose_accents_removed)
     val resources = LocalContext.current.resources
     LaunchedEffect(Unit) {
         viewModel.undoEventFlow.collect { event ->
@@ -391,6 +394,18 @@ fun ConversationScreen(
                         onAttachClick = { showAttachmentSheet = true },
                         onRemoveAttachment = viewModel::removeAttachment,
                         attachmentError = attachmentError,
+                        onAccentsStripped = { plan ->
+                            // Confirm the saving; UNDO restores the accented text.
+                            linkScope.launch {
+                                val result =
+                                    snackbarHostState.showSnackbar(
+                                        message = accentsRemovedTemplate.format(plan.segmentsBefore, plan.segmentsAfter),
+                                        actionLabel = undoLabel,
+                                        duration = SnackbarDuration.Short,
+                                    )
+                                if (result == SnackbarResult.ActionPerformed) viewModel.setDraft(plan.original)
+                            }
+                        },
                     )
                 else -> NotRepliableRow()
             }

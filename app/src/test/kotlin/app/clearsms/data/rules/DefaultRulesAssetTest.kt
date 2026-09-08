@@ -30,7 +30,7 @@ class DefaultRulesAssetTest {
     @Test
     fun `bundled document parses with contract models`() {
         val document = document()
-        assertThat(document.version).isEqualTo("1.2")
+        assertThat(document.version).isEqualTo("1.3")
         assertThat(document.rules).isNotEmpty()
     }
 

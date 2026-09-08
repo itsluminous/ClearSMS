@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -208,7 +209,26 @@ fun SearchScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    overlineContent = { CategoryBadge(category = message.category) },
+                    overlineContent = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            CategoryBadge(category = message.category)
+                            if (item.matchedOnSenderOnly) {
+                                // The body says nothing about the query - say
+                                // out loud that the SENDER matched, so the row
+                                // never looks like a false positive.
+                                Text(
+                                    text = stringResource(R.string.search_sender_match, message.sender),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    },
                 )
             }
         }

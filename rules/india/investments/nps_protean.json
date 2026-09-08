@@ -6,8 +6,8 @@
       "name": "NPS Contribution Units Credited",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
-        "body_pattern": "(?i)PRAN\\s+[A-Zx*]{0,8}(\\d{3,4})\\s*:\\s*Units\\s+for\\s+\\([A-Z]{3}-\\d{4}\\)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited"
+        "sender_pattern": "(?i)(?:PTNNPS|PTNCRA|NPSCRA|NPSIVR|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
+        "body_pattern": "(?i)PRAN\\s+[A-Zx*]{0,8}(\\d{3,4})\\s*[-:]\\s*Units\\s+for\\s+\\([A-Z]{3}-\\d{4}\\)\\s+contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited"
       },
       "action": {
         "category": "important",
@@ -28,7 +28,7 @@
       "name": "NPS Investment Value Statement",
       "priority": 318,
       "match": {
-        "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
+        "sender_pattern": "(?i)(?:PTNNPS|PTNCRA|NPSCRA|NPSIVR|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
         "body_pattern": "(?i)Investment\\s+value\\s+in\\s+(?:NPS\\s+)?Tier\\s+I{1,2}\\s+\\(PRAN[\\s-]?[A-Za-zXx*]{0,10}?(\\d{3,4})\\)\\s+as\\s+on\\s+[0-9./-]{6,10}\\s+is\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
       },
       "action": {
@@ -48,7 +48,7 @@
       "name": "NPS Contribution Credited (account shape)",
       "priority": 316,
       "match": {
-        "sender_pattern": "(?i)(?:PTNNPS|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
+        "sender_pattern": "(?i)(?:PTNNPS|PTNCRA|NPSCRA|NPSIVR|PROTEA|Protean|NSDLNP|NSDLPN|CRANPS)",
         "body_pattern": "(?i)Contribution\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+to\\s+your\\s+NPS\\s+account"
       },
       "action": {

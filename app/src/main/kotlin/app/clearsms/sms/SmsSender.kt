@@ -61,11 +61,19 @@ class SmsSender
             subscriptionId: Int? = null,
         ): Long =
             withContext(ioDispatcher) {
+                // Auto strip accents (opt-in, GitHub #17): fold accented
+                // letters to their GSM-7 twins ONLY when that reduces the
+                // billable segment count. Applied BEFORE persisting so the
+                // bubble shows exactly what was sent - Pulse SMS strips
+                // after display, which hides the rewrite from the user;
+                // ClearSMS keeps display == wire. resend/sendScheduled
+                // reuse the stored (already folded) body.
+                val sendBody = if (uiPrefs.stripAccents.first()) AccentFold.foldIfItSaves(body) else body
                 val timestamp = System.currentTimeMillis()
-                val providerUri = telephonyWriter.writeSent(destination, body, timestamp)
+                val providerUri = telephonyWriter.writeSent(destination, sendBody, timestamp)
                 val systemSmsId = providerUri?.lastPathSegment?.toLongOrNull()
-                val messageId = persistToRoom(destination, body, timestamp, systemSmsId, subscriptionId)
-                dispatch(messageId, destination, body, providerUri?.toString(), subscriptionId)
+                val messageId = persistToRoom(destination, sendBody, timestamp, systemSmsId, subscriptionId)
+                dispatch(messageId, destination, sendBody, providerUri?.toString(), subscriptionId)
                 messageId
             }
 

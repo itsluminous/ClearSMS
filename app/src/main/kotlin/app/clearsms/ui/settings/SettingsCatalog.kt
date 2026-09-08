@@ -38,6 +38,7 @@ enum class SettingsItem(
     ARCHIVED(SettingsSection.MESSAGES, R.string.settings_archived),
     RECYCLE_BIN(SettingsSection.MESSAGES, R.string.settings_recycle_bin),
     BLOCK_LIST(SettingsSection.MESSAGES, R.string.settings_block_list),
+    STRIP_ACCENTS(SettingsSection.MESSAGES, R.string.settings_strip_accents),
     SHOW_EXTRACTED_DETAILS(SettingsSection.MESSAGES, R.string.settings_show_transaction_details),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),

@@ -42,6 +42,24 @@ class UiPrefs
             dataStore.edit { it[KEY_DELIVERY_REPORTS] = value }
         }
 
+        /**
+         * Auto strip accents on send (GitHub #17): when ON, an outgoing SMS
+         * body has its accented letters folded to plain GSM-7 twins (č->c)
+         * IF AND ONLY IF that reduces the billable segment count - one
+         * diacritic otherwise flips the whole message from GSM-7 (160
+         * chars) to UCS-2 (70/67). Default OFF: silently rewriting what the
+         * user typed is opt-in (the reporter's ask); the compose bar's
+         * per-message é→e button covers everyone else. Lives beside
+         * [deliveryReports] - the other send-behaviour preference - and
+         * like it sits outside the settings backup by construction (this
+         * DataStore is not the backed-up settings store).
+         */
+        val stripAccents: Flow<Boolean> = dataStore.data.map { it[KEY_STRIP_ACCENTS] ?: false }
+
+        suspend fun setStripAccents(value: Boolean) {
+            dataStore.edit { it[KEY_STRIP_ACCENTS] = value }
+        }
+
         val backupFrequency: Flow<BackupFrequency> =
             dataStore.data.map { prefs ->
                 prefs[KEY_BACKUP_FREQUENCY]?.let { name ->
@@ -107,6 +125,7 @@ class UiPrefs
         private companion object {
             val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
             val KEY_DELIVERY_REPORTS = booleanPreferencesKey("delivery_reports")
+            val KEY_STRIP_ACCENTS = booleanPreferencesKey("strip_accents")
             val KEY_BACKUP_FREQUENCY = stringPreferencesKey("backup_frequency")
             val KEY_BACKUP_DIRECTORY_URI = stringPreferencesKey("backup_directory_uri")
             val KEY_BACKUP_DIRECTORY_ERROR = booleanPreferencesKey("backup_directory_error")

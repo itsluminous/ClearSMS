@@ -213,6 +213,23 @@ class MessageRepositoryImpl(
             else -> messageDao.pagingSearch(match, category, cutoffMs)
         }
 
+    override fun pagedSearch(
+        query: String,
+        category: Category?,
+        cutoffMs: Long?,
+        senderAddresses: List<String>,
+    ): PagingSource<Int, MessageEntity> {
+        if (senderAddresses.isEmpty()) return pagedSearch(query, category, cutoffMs)
+        return when (val match = SearchQueryFormat.toFtsMatch(query)) {
+            // Addresses are resolved from the same tokens the MATCH is built
+            // from, so a tokenless query never carries addresses in practice.
+            null -> EmptyPagingSource()
+            else -> messageDao.pagingSearchWithSenders(match, senderAddresses, category, cutoffMs)
+        }
+    }
+
+    override suspend fun distinctSenders(): List<String> = messageDao.distinctSenders()
+
     override fun observeArchived(): Flow<List<MessageEntity>> = messageDao.observeArchived()
 
     override suspend fun archivedThreadIds(): List<Long> = messageDao.archivedThreadIds()

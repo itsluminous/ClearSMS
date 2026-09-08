@@ -136,4 +136,61 @@ class MessageSearchDaoTest {
 
             assertThat(dao.search("sal*").first().map { it.id }).containsExactly(1L)
         }
+
+    @Test
+    fun `sender addresses widen the match beyond bodies`() =
+        runBlocking<Unit> {
+            dao.insert(message(1, "Your bill is ready", sender = "VM-SMPBNK"))
+            dao.insert(message(2, "Your bill is ready", sender = "AX-OTHER"))
+
+            val hits = load(dao.pagingSearchWithSenders("smpbnk*", listOf("VM-SMPBNK"), null, null))
+
+            assertThat(hits.map { it.id }).containsExactly(1L)
+        }
+
+    @Test
+    fun `a message matching both body and sender appears exactly once`() =
+        runBlocking<Unit> {
+            dao.insert(message(1, "Sample Bank statement ready", sender = "VM-SMPBNK"))
+            dao.insert(message(2, "Sample Bank offer", sender = "AX-OTHER"))
+
+            val hits = load(dao.pagingSearchWithSenders("sample*", listOf("VM-SMPBNK"), null, null))
+
+            assertThat(hits.map { it.id }).containsExactly(1L, 2L)
+        }
+
+    @Test
+    fun `filters and ordering apply to sender matches too`() =
+        runBlocking<Unit> {
+            dao.insert(message(1, "hello", sender = "VM-SMPBNK", category = Category.IMPORTANT, timestamp = 100))
+            dao.insert(message(2, "hello", sender = "VM-SMPBNK", category = Category.PROMOTIONAL, timestamp = 100))
+            dao.insert(message(3, "hello", sender = "VM-SMPBNK", category = Category.IMPORTANT, timestamp = 10))
+            dao.insert(message(4, "smpbnk in body", category = Category.IMPORTANT, timestamp = 200))
+
+            val hits =
+                load(dao.pagingSearchWithSenders("smpbnk*", listOf("VM-SMPBNK"), Category.IMPORTANT, cutoffMs = 50))
+
+            assertThat(hits.map { it.id }).containsExactly(4L, 1L).inOrder()
+        }
+
+    @Test
+    fun `empty sender list behaves exactly like the body-only search`() =
+        runBlocking<Unit> {
+            dao.insert(message(1, "Salary credited"))
+            dao.insert(message(2, "hello", sender = "VM-SMPBNK"))
+
+            val hits = load(dao.pagingSearchWithSenders("salary*", emptyList(), null, null))
+
+            assertThat(hits.map { it.id }).containsExactly(1L)
+        }
+
+    @Test
+    fun `distinct senders skips binned messages`() =
+        runBlocking<Unit> {
+            dao.insert(message(1, "a", sender = "VM-SMPBNK"))
+            dao.insert(message(2, "b", sender = "VM-SMPBNK"))
+            dao.insert(message(3, "c", sender = "AX-GONE").copy(deletedAt = 5L))
+
+            assertThat(dao.distinctSenders()).containsExactly("VM-SMPBNK")
+        }
 }

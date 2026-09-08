@@ -268,12 +268,14 @@ class ConversationViewModel
 
         private fun refreshSimUi() {
             val chosen = chosenSim.value
+            val chosenInfo = activeSims.firstOrNull { it.subscriptionId == chosen }
             simUi.value =
                 SimUiState(
                     visible = SimSelector.indicatorVisible(activeSims),
                     slot = SimSelector.slotNumberFor(activeSims, chosen) ?: 0,
                     simCount = activeSims.size,
-                    operatorName = activeSims.firstOrNull { it.subscriptionId == chosen }?.displayName.orEmpty(),
+                    operatorName = chosenInfo?.displayName.orEmpty(),
+                    iconTint = chosenInfo?.iconTint,
                 )
         }
 
@@ -588,9 +590,9 @@ class ConversationViewModel
             )
 
         private suspend fun initialPosition(): Int? =
-            highlightTarget
-                ?.let { messageRepository.positionInThread(threadId, it) }
-                ?.takeIf { it > 0 }
+            initialPagingKeyFor(
+                highlightTarget?.let { messageRepository.positionInThread(threadId, it) },
+            )
 
         private companion object {
             const val PAGE_SIZE = 60
