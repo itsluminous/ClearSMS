@@ -191,7 +191,7 @@ class FinanceRepairMigrationTest {
                                   category, subCategory, extractedOtp, extractedDataJson, isBlockedSender, systemSmsId)
             VALUES (?, 1, ?, ?, ?, 1000, 1, 0, 'IMPORTANT', NULL, NULL, NULL, 0, NULL)
             """.trimIndent(),
-            arrayOf(id, sender, sender.uppercase(), body),
+            arrayOf<Any?>(id, sender, sender.uppercase(), body),
         )
     }
 
@@ -208,7 +208,7 @@ class FinanceRepairMigrationTest {
                                       balance, referenceNumber, category, rawSmsId, note)
             VALUES (?, 100.0, 'DEBIT', NULL, ?, ?, 1000, NULL, NULL, 'OTHER', ?, NULL)
             """.trimIndent(),
-            arrayOf(id, accountNumber, bankName, rawSmsId),
+            arrayOf<Any?>(id, accountNumber, bankName, rawSmsId),
         )
     }
 

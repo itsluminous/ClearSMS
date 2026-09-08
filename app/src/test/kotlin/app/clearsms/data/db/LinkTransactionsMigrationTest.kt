@@ -34,7 +34,7 @@ class LinkTransactionsMigrationTest {
     ) = execSQL(
         "INSERT INTO accounts (id, accountNumber, bankName, type, lastKnownBalance, creditLimit, availableLimit, lastUpdated) " +
             "VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)",
-        arrayOf(id, number, bank, type, balance, lastUpdated),
+        arrayOf<Any?>(id, number, bank, type, balance, lastUpdated),
     )
 
     private fun SupportSQLiteDatabase.insertTransaction(
@@ -45,7 +45,7 @@ class LinkTransactionsMigrationTest {
     ) = execSQL(
         "INSERT INTO transactions (id, amount, type, merchantName, accountNumber, bankName, timestamp, balance, " +
             "referenceNumber, category, rawSmsId, note) VALUES (?, 10.0, 'DEBIT', NULL, ?, ?, ?, NULL, NULL, 'OTHER', ?, ?)",
-        arrayOf(id, number, bank, id, id, note),
+        arrayOf<Any?>(id, number, bank, id, id, note),
     )
 
     private fun ownerOf(

@@ -161,6 +161,7 @@ fun SettingsScreen(
     val backupFailed = stringResource(R.string.settings_backup_failed)
     val restoreFailed = stringResource(R.string.settings_restore_failed)
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
 
     // Source code / Donate rows: hand the URL to whatever app claims it; a
@@ -215,12 +216,12 @@ fun SettingsScreen(
                     SettingsEvent.BackupDone -> backupDone
                     SettingsEvent.BackupFailed -> backupFailed
                     SettingsEvent.BackupDirectoryDeclined ->
-                        context.getString(R.string.settings_backup_dir_declined)
+                        resources.getString(R.string.settings_backup_dir_declined)
                     is SettingsEvent.RestoreDone -> {
                         val r = event.result
                         buildString {
                             append(
-                                context.getString(
+                                resources.getString(
                                     R.string.settings_restore_done_counts,
                                     r.messages,
                                     r.transactions,
@@ -232,7 +233,7 @@ fun SettingsScreen(
                             if (r.defaultedValues > 0 || r.skippedRows > 0) {
                                 append(' ')
                                 append(
-                                    context.getString(
+                                    resources.getString(
                                         R.string.settings_restore_done_issues,
                                         r.defaultedValues,
                                         r.skippedRows,
@@ -243,16 +244,16 @@ fun SettingsScreen(
                     }
                     is SettingsEvent.RestoreFailed ->
                         event.reason
-                            ?.let { context.getString(R.string.settings_restore_failed_reason, it) }
+                            ?.let { resources.getString(R.string.settings_restore_failed_reason, it) }
                             ?: restoreFailed
                     SettingsEvent.SettingsBackupDone ->
-                        context.getString(R.string.settings_backup_settings_done)
+                        resources.getString(R.string.settings_backup_settings_done)
                     SettingsEvent.SettingsBackupFailed ->
-                        context.getString(R.string.settings_backup_settings_failed)
+                        resources.getString(R.string.settings_backup_settings_failed)
                     is SettingsEvent.SettingsRestoreDone ->
                         buildString {
                             append(
-                                context.getString(
+                                resources.getString(
                                     R.string.settings_restore_settings_done,
                                     event.result.applied,
                                 ),
@@ -260,7 +261,7 @@ fun SettingsScreen(
                             if (event.result.skipped > 0) {
                                 append(' ')
                                 append(
-                                    context.getString(
+                                    resources.getString(
                                         R.string.settings_restore_settings_skipped,
                                         event.result.skipped,
                                     ),
@@ -268,13 +269,13 @@ fun SettingsScreen(
                             }
                         }
                     SettingsEvent.SettingsRestoreFailed ->
-                        context.getString(R.string.settings_restore_settings_failed)
+                        resources.getString(R.string.settings_restore_settings_failed)
                     is SettingsEvent.SortDone ->
-                        context.getString(R.string.settings_sort_done_count, event.count)
+                        resources.getString(R.string.settings_sort_done_count, event.count)
                     is SettingsEvent.OtpCleared ->
-                        context.getString(R.string.settings_clear_otp_done, event.count)
+                        resources.getString(R.string.settings_clear_otp_done, event.count)
                     SettingsEvent.OtpClearEmpty ->
-                        context.getString(R.string.settings_clear_otp_empty)
+                        resources.getString(R.string.settings_clear_otp_empty)
                 },
             )
         }
