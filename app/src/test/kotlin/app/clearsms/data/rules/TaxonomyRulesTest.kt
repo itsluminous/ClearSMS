@@ -194,6 +194,29 @@ class TaxonomyRulesTest {
         assertThat(result?.extracted).doesNotContainKey("type")
     }
 
+    @Test
+    fun `nps contribution from a Protean CRA header matches the same rule`() {
+        // Protean's record-keeper fleet also sends from CRA headers
+        // (NPSCRA / PTNCRA / NPSIVR - directory-confirmed NSDL senders);
+        // the rule must not be tied to the PTNNPS header alone.
+        for (sender in listOf("VM-NPSCRA-S", "AD-PTNCRA-S", "JD-NPSIVR-S")) {
+            val result =
+                evaluate(
+                    sender,
+                    "PRAN XX4413: Units for (AUG-2026) contribution of Rs.52,318.00 credited with NAV of 07/09/26 -Protean",
+                )
+            assertThat(result?.matchedRuleId).isEqualTo("nps-contribution-01")
+            assertThat(result?.category).isEqualTo(Category.IMPORTANT)
+            assertThat(result?.category).isNotEqualTo(Category.PROMOTIONAL)
+            assertThat(result?.subCategory).isEqualTo(SubCategory.INVESTMENT)
+            assertThat(result?.extracted?.get("amount")).isEqualTo("52,318.00")
+            assertThat(result?.extracted?.get("type")).isEqualTo("credit")
+            // XX4413 is a PRAN tail on the NPS institution, never a bank account.
+            assertThat(result?.extracted?.get("account_last4")).isEqualTo("4413")
+            assertThat(result?.extracted?.get("bank")).isEqualTo("NPS")
+        }
+    }
+
     // endregion
 
     // region T3d/T3e - recharge and OTP
