@@ -6,8 +6,11 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderNormalizer
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.sms.AccentFold
 import app.clearsms.sms.SmsSender
+import app.clearsms.ui.common.UiPrefs
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,6 +35,7 @@ class MessageScheduler
         private val messageDao: MessageDao,
         private val smsSender: SmsSender,
         private val alarms: ScheduledSendAlarms,
+        private val uiPrefs: UiPrefs,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         /**
@@ -48,6 +52,11 @@ class MessageScheduler
             scheduledAtMs: Long,
         ): Long =
             withContext(ioDispatcher) {
+                // Same opt-in auto accent-fold as SmsSender.send, applied at
+                // scheduling time because the persisted body IS what
+                // sendScheduled later dispatches - the scheduled bubble must
+                // show exactly what will go on the wire.
+                val sendBody = if (uiPrefs.stripAccents.first()) AccentFold.foldIfItSaves(body) else body
                 val normalized = SenderNormalizer.normalize(destination)
                 val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
                 val messageId =
@@ -56,7 +65,7 @@ class MessageScheduler
                             threadId = threadId,
                             sender = destination,
                             normalizedSender = normalized,
-                            body = body,
+                            body = sendBody,
                             timestamp = scheduledAtMs,
                             isRead = true,
                             category = Category.PERSONAL,

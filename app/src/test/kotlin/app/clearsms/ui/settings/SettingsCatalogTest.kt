@@ -65,8 +65,13 @@ class SettingsCatalogTest {
                 .filter { it.section != null }
                 .groupBy({ sectionTitle(it.section!!) }, ::title)
         assertThat(bySection["Messages"])
-            .containsExactly("Archived messages", "Recycle bin", "Block & allow list", "Show extracted message details")
-            .inOrder()
+            .containsExactly(
+                "Archived messages",
+                "Recycle bin",
+                "Block & allow list",
+                "Strip accents when sending",
+                "Show extracted message details",
+            ).inOrder()
         assertThat(bySection["Appearance"])
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
             .inOrder()
@@ -158,10 +163,13 @@ class SettingsCatalogTest {
                 // Backup & restore: the automatic-backup directory row that
                 // gates the backup frequency.
                 "Backup location",
+                // Messages section (GitHub #17): opt-in auto accent folding
+                // when it makes a text send as fewer SMS.
+                "Strip accents when sending",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 8 additions = 40 rows.
+        // No row lost, none dropped: 32 survivors + 9 additions = 41 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)

@@ -59,7 +59,7 @@ class MessageSchedulerTest {
             )
         gateway = FakeSmsGateway()
         smsSender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.IO, gateway)
-        scheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), Dispatchers.IO)
+        scheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.IO)
         shadowAlarms = shadowOf(requireNotNull(context.getSystemService(AlarmManager::class.java)))
     }
 

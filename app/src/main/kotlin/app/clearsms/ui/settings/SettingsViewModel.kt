@@ -59,6 +59,8 @@ data class SettingsUiState(
     /** Privacy gate: false masks Finance balances behind the device lock. */
     val showBalance: Boolean = true,
     val deliveryReports: Boolean = false,
+    /** Auto-fold accented letters on send when it makes the SMS cheaper; default OFF. */
+    val stripAccents: Boolean = false,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
     val logoBackground: LogoBackground = LogoBackground.NONE,
@@ -234,6 +236,8 @@ class SettingsViewModel
             val deliveryReports: Boolean,
             val notificationActions: Set<NotificationAction>,
             val transactionNotifications: Boolean,
+            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            val stripAccents: Boolean = false,
         )
 
         private data class GestureStartupState(
@@ -263,7 +267,9 @@ class SettingsViewModel
                 settings.notificationActions,
                 settings.transactionNotifications,
                 ::NotificationState,
-            )
+            ).combine(uiPrefs.stripAccents) { notifications, strip ->
+                notifications.copy(stripAccents = strip)
+            }
         private val gestureStartup =
             combine(
                 settings.swipeActionStart,
@@ -321,6 +327,7 @@ class SettingsViewModel
                     logoBackground = appearanceState.logoBackground,
                     showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
+                    stripAccents = notificationState.stripAccents,
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
                     swipeActionStart = gestures.swipeStart,
@@ -392,6 +399,8 @@ class SettingsViewModel
         fun setDefaultFinanceFilter(value: FinanceTab) = launchIo { settings.setDefaultFinanceFilter(value) }
 
         fun setDeliveryReports(value: Boolean) = launchIo { uiPrefs.setDeliveryReports(value) }
+
+        fun setStripAccents(value: Boolean) = launchIo { uiPrefs.setStripAccents(value) }
 
         /** Current pill order per screen, for the reorder dialogs. */
         val inboxPillOrder: StateFlow<List<Category>> =

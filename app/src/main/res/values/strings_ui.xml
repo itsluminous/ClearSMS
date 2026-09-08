@@ -87,6 +87,9 @@
     <string name="compose_title">New message</string>
     <string name="compose_recipient">To</string>
     <string name="compose_message">Message</string>
+    <string name="compose_strip_accents">Remove accents</string>
+    <string name="compose_strip_accents_hint">Accented letters make this text send as %1$d SMS. Tap to swap them for plain letters (é→e) and send %2$d.</string>
+    <string name="compose_accents_removed">Accents removed: %1$d SMS → %2$d</string>
 
     <!-- Finance -->
     <string name="finance_title">Finance</string>
@@ -282,6 +285,8 @@
     <string name="settings_show_rich_avatars_off">Plain icon and monogram avatars</string>
     <string name="settings_show_transaction_details">Show extracted message details</string>
     <string name="settings_show_transaction_details_summary">Show the parsed card (amount, merchant, account) when you tap a bank or OTP message in a conversation</string>
+    <string name="settings_strip_accents">Strip accents when sending</string>
+    <string name="settings_strip_accents_summary">Swap accented letters for plain ones (č→c) automatically, only when that makes a text send as fewer SMS</string>
 
     <!-- Privacy: Show balance gate -->
     <string name="settings_show_balance">Show balance</string>

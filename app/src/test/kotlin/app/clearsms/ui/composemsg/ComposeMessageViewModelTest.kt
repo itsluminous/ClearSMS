@@ -161,7 +161,7 @@ class ComposeMessageViewModelTest {
             contactSuggestions = ContactSuggestions(context),
             subscriptionSource = subscriptions,
             simChoiceStore = simChoiceStore,
-            messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), Dispatchers.Unconfined),
+            messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
             scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
             ioDispatcher = Dispatchers.Unconfined,
         )

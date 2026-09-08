@@ -193,7 +193,7 @@ class ConversationViewModelScheduleTest {
                         File.createTempFile("sim_choice", ".preferences_pb")
                     },
                 ),
-            messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), Dispatchers.Unconfined),
+            messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
             scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
             attachmentDao = db.attachmentDao(),
             mmsInbound = mmsInbound,

@@ -762,6 +762,14 @@ private fun settingsRowEntries(
                     ) {
                         openDialog(SettingsDialog.BLOCK_LIST)
                     }
+                SettingsItem.STRIP_ACCENTS ->
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary = stringResource(R.string.settings_strip_accents_summary),
+                        checked = state.stripAccents,
+                        onToggle = viewModel::setStripAccents,
+                    )
                 SettingsItem.SHOW_EXTRACTED_DETAILS ->
                     toggle(
                         section = section,
