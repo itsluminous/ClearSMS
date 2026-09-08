@@ -452,4 +452,43 @@ class ComposeMessageViewModelTest {
             awaitUntil { vm.simState.value.slot == 2 }
             assertThat(simChoiceStore.rememberedFor("+15551110000")).isEqualTo(20)
         }
+
+    @Test
+    fun `the digit shown matches the subscription that sends - even after a stale lookup resolves late`() =
+        runBlocking<Unit> {
+            // GitHub #7 round 2, requirement 3: the icon must show the slot
+            // that will actually SEND. Same carrier on both SIMs (the
+            // reporter's setup), a recipient lookup parked in flight, an
+            // explicit tap, THEN the lookup resolving late - after all of
+            // it, the slot digit on screen and the subscription persisted on
+            // the outgoing row must agree.
+            val gate = CompletableDeferred<Unit>()
+            val gated = GatedPreferencesDataStore(gate)
+            subscriptions.sims =
+                listOf(
+                    SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Vodafone"),
+                    SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Vodafone"),
+                )
+            subscriptions.defaultSub = 10
+
+            val vm = viewModel(simChoiceStore = SimChoiceStore(gated))
+            vm.onRecipientChange("+15552224444")
+            // The lookup is parked in the memory read; the user taps to SIM 2.
+            vm.cycleSim()
+            assertThat(vm.simState.value.slot).isEqualTo(2)
+
+            gate.complete(Unit) // the stale lookup resumes and finishes
+            repeat(20) { kotlinx.coroutines.delay(10) }
+
+            val shownSlot = vm.simState.value.slot
+            vm.onBodyChange("hello")
+            vm.send()
+
+            awaitUntil { dao.threadIdFor("5552224444") != null }
+            val row = dao.observeThread(requireNotNull(dao.threadIdFor("5552224444"))).first().single()
+            // The digit and the sender agree: what the icon said is what sent.
+            assertThat(shownSlot).isEqualTo(2)
+            assertThat(row.subscriptionId).isEqualTo(20)
+            assertThat(vm.simState.value.slot).isEqualTo(shownSlot)
+        }
 }

@@ -3,7 +3,6 @@ package app.clearsms.ui.components
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +59,8 @@ data class SimUiState(
     val simCount: Int = 0,
     /** Operator / user-given subscription name, surfaced as a toast on tap. */
     val operatorName: String = "",
+    /** System SIM colour (ARGB) for the chosen subscription; null = none. */
+    val iconTint: Int? = null,
 ) {
     /**
      * Accessibility description of the icon indicator ("SIM 1 of 2 -
@@ -75,6 +76,16 @@ data class SimUiState(
      * user's nickname when one is set) stays for users who rely on it.
      */
     val tapLabel: String get() = "SIM $slot$nameSuffix"
+
+    /**
+     * Long-press identity hint, "Sends with SIM 1 - Airtel" (GitHub #7,
+     * round 2): tap already CYCLES and announces the new choice, so
+     * long-press is the non-mutating "tell me what this is" - it names the
+     * SIM the next send will use without changing anything. Slot first for
+     * the same reason as [tapLabel]: with the same carrier on both SIMs the
+     * name alone is ambiguous, the slot never is.
+     */
+    val hintLabel: String get() = "Sends with SIM $slot$nameSuffix"
 
     private val nameSuffix: String get() = if (operatorName.isBlank()) "" else " - $operatorName"
 }
@@ -182,37 +193,52 @@ fun MessageComposerBar(
             // Compact SIM indicator, dual-SIM devices only: a plain SIM-card
             // outline whose ONLY content is the slot number - the stock icon's
             // contact dots made the digit illegible (GitHub #7). Tapping
-            // cycles SIMs and toasts the slot-first label.
+            // cycles SIMs and toasts the slot-first label; long-press is the
+            // non-mutating identity hint ("Sends with SIM 1 - Airtel").
+            // Outline and digit take the system's SIM colour when it is
+            // legible on this theme's surface (see simIndicatorTint).
             if (sim.visible) {
+                val simIdentity = stringResource(R.string.conversation_sim_identity)
+                val simTint =
+                    simIndicatorTint(
+                        systemTint = sim.iconTint?.let { Color(it) },
+                        surface = MaterialTheme.colorScheme.surface,
+                        fallback = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier =
                         Modifier
                             .clip(RoundedCornerShape(14.dp))
-                            .clickable(
+                            .combinedClickable(
                                 onClick = {
                                     onCycleSim()
                                     Toast.makeText(context, sim.tapLabel, Toast.LENGTH_SHORT).show()
                                 },
                                 onClickLabel = stringResource(R.string.conversation_sim_switch),
+                                onLongClick = {
+                                    Toast.makeText(context, sim.hintLabel, Toast.LENGTH_LONG).show()
+                                },
+                                onLongClickLabel = simIdentity,
                             ).padding(6.dp),
                 ) {
                     Icon(
                         SimOutlineGlyph,
                         contentDescription = sim.contentDescription,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = simTint,
                     )
                     // The digit IS the indicator: as large as the outline's
                     // interior (~11dp wide at the 24dp icon size) allows
-                    // without clipping. Same tint as the outline;
-                    // onSurfaceVariant stays legible on the bar surface in
+                    // without clipping. Same tint as the outline, so the
+                    // system colour (or the onSurfaceVariant fallback) reads
+                    // as ONE mark that stays legible on the bar surface in
                     // both light and dark themes.
                     Text(
                         text = sim.slot.toString(),
                         fontSize = 12.sp,
                         lineHeight = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = simTint,
                     )
                 }
             }
@@ -303,6 +329,30 @@ internal fun accentFoldPlan(
     draft: String,
     attachmentCount: Int,
 ): AccentFold.Plan? = if (attachmentCount > 0) null else AccentFold.plan(draft)
+
+/**
+ * The colour the SIM indicator (outline + digit) is drawn in, pure so the
+ * decision is unit-testable without a Compose harness. The system's SIM
+ * colour ([android.telephony.SubscriptionInfo.getIconTint]) wins when
+ * present AND legible - it is the colour the user already sees for this SIM
+ * in system settings (GitHub #7). Legible means the WCAG 1.4.11 non-text
+ * contrast minimum, 3:1 against the surface the bar sits on (the same
+ * contrast-ratio arithmetic the brand tiles use, [contrastRatio], not a new
+ * invention) - so a dark system tint on a dark theme, or a pale one on
+ * light, falls back to [fallback] (onSurfaceVariant, the pre-tint colour)
+ * instead of vanishing. Absent tint falls back the same way; duplicate
+ * tints across SIMs are fine - the slot digit disambiguates, per round 1.
+ */
+internal fun simIndicatorTint(
+    systemTint: Color?,
+    surface: Color,
+    fallback: Color,
+): Color =
+    if (systemTint != null && contrastRatio(systemTint.copy(alpha = 1f), surface) >= 3.0) {
+        systemTint.copy(alpha = 1f)
+    } else {
+        fallback
+    }
 
 /**
  * A plain SIM-card outline - the familiar clipped-corner card shape and

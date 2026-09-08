@@ -62,4 +62,39 @@ class ComposerBarContractTest {
         assertThat(Regex("""\bpath\(""").findAll(glyph).count()).isEqualTo(1)
         assertThat(glyph).doesNotContain("fill =")
     }
+
+    @Test
+    fun `sim indicator keeps tap-to-cycle and adds a non-mutating long-press hint`() {
+        // GitHub #7 round 2: long-press = "tell me what this is", tap =
+        // existing cycle+toast. Both must live on the SAME affordance and
+        // neither may displace the other.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        val simBlock = bar.substringAfter("if (sim.visible)").substringBefore("// Send:")
+        assertThat(simBlock).contains("combinedClickable")
+        assertThat(simBlock).contains("onCycleSim()")
+        assertThat(simBlock).contains("sim.tapLabel")
+        // The long-press toast is the identity hint - and it must NOT cycle.
+        val longPress = simBlock.substringAfter("onLongClick =").substringBefore("onLongClickLabel")
+        assertThat(longPress).contains("sim.hintLabel")
+        assertThat(longPress).doesNotContain("onCycleSim")
+        // Both gestures stay discoverable to accessibility services.
+        assertThat(simBlock).contains("onClickLabel")
+        assertThat(simBlock).contains("onLongClickLabel")
+    }
+
+    @Test
+    fun `sim outline and digit share the one legibility-checked tint`() {
+        // The system SIM colour may only reach the screen through
+        // simIndicatorTint (the WCAG 3:1 gate) - never raw - and the outline
+        // and the digit must be ONE mark, not two independently-coloured ones.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        val simBlock = bar.substringAfter("if (sim.visible)").substringBefore("// Send:")
+        assertThat(simBlock).contains("simIndicatorTint(")
+        assertThat(simBlock).contains("sim.iconTint")
+        // Exactly one resolution, used for both the Icon tint and the Text
+        // color: the assignment plus two uses.
+        assertThat(Regex("""\bsimTint\b""").findAll(simBlock).count()).isEqualTo(3)
+        assertThat(simBlock).contains("tint = simTint")
+        assertThat(simBlock).contains("color = simTint")
+    }
 }

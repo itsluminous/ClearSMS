@@ -7,6 +7,15 @@ data class SimInfo(
     val slotIndex: Int,
     /** Operator / user-given name for the subscription ("Airtel", "Work"). */
     val displayName: String,
+    /**
+     * The system's SIM colour ([android.telephony.SubscriptionInfo.getIconTint],
+     * ARGB) - the same colour Android settings and the system SIM picker show
+     * for this subscription, so the app's indicator can match what the user
+     * already recognises. Null when the platform gave none (or transparent);
+     * duplicates across SIMs are possible and fine - the slot digit, not the
+     * colour, is what disambiguates.
+     */
+    val iconTint: Int? = null,
 )
 
 /**

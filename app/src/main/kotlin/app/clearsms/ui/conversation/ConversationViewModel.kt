@@ -268,12 +268,14 @@ class ConversationViewModel
 
         private fun refreshSimUi() {
             val chosen = chosenSim.value
+            val chosenInfo = activeSims.firstOrNull { it.subscriptionId == chosen }
             simUi.value =
                 SimUiState(
                     visible = SimSelector.indicatorVisible(activeSims),
                     slot = SimSelector.slotNumberFor(activeSims, chosen) ?: 0,
                     simCount = activeSims.size,
-                    operatorName = activeSims.firstOrNull { it.subscriptionId == chosen }?.displayName.orEmpty(),
+                    operatorName = chosenInfo?.displayName.orEmpty(),
+                    iconTint = chosenInfo?.iconTint,
                 )
         }
 

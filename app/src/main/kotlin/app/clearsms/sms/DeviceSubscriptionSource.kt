@@ -36,6 +36,9 @@ class DeviceSubscriptionSource
                     subscriptionId = info.subscriptionId,
                     slotIndex = info.simSlotIndex,
                     displayName = info.displayName?.toString().orEmpty(),
+                    // The colour the user already sees in system settings.
+                    // Fully transparent means "none was assigned".
+                    iconTint = info.iconTint.takeIf { it ushr 24 != 0 },
                 )
             }
         }

@@ -62,6 +62,7 @@
     <string name="send_failure_transient">A temporary network problem interrupted the send - retrying may work.</string>
     <string name="conversation_delivered">Delivered</string>
     <string name="conversation_sim_switch">Switch SIM</string>
+    <string name="conversation_sim_identity">Show which SIM sends</string>
     <string name="conversation_scheduled">Scheduled</string>
     <string name="conversation_scheduled_for">Scheduled for %1$s</string>
     <string name="conversation_schedule_send">Schedule send</string>
