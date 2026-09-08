@@ -87,6 +87,24 @@ open class FakeMessageRepository : MessageRepository {
         return ListPagingSource(emptyList())
     }
 
+    /** Distinct sender addresses handed to the search name-resolution step. */
+    val senders = mutableListOf<String>()
+
+    override suspend fun distinctSenders(): List<String> = senders
+
+    /** Sender addresses passed to each sender-aware pagedSearch call. */
+    val pagedSearchSenders = mutableListOf<List<String>>()
+
+    override fun pagedSearch(
+        query: String,
+        category: Category?,
+        cutoffMs: Long?,
+        senderAddresses: List<String>,
+    ): PagingSource<Int, MessageEntity> {
+        pagedSearchSenders += senderAddresses
+        return pagedSearch(query, category, cutoffMs)
+    }
+
     override fun observeArchived(): Flow<List<MessageEntity>> = archived
 
     override suspend fun archivedThreadIds(): List<Long> = archived.value.map { it.threadId }

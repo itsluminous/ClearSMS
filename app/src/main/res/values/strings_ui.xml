@@ -157,6 +157,7 @@
     <string name="search_date_30d">Last 30 days</string>
     <string name="search_date_year">Last year</string>
     <string name="search_min_length_hint">Type at least %1$d characters to search</string>
+    <string name="search_sender_match">Sender match · %1$s</string>
     <string name="archived_title">Archived</string>
     <string name="settings_section_messages">Messages</string>
     <string name="settings_archived">Archived messages</string>

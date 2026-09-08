@@ -8,6 +8,7 @@ import app.clearsms.domain.model.Category
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.ui.composemsg.ContactSuggestions
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +54,7 @@ class SearchViewModelTest {
             messageRepository = repository,
             senderIdStore = SenderIdStore(context),
             contactsSource = ContactsSource(context),
+            contactSuggestions = ContactSuggestions(context),
             settings = FakeSettingsRepository(),
             ioDispatcher = dispatcher,
         )
@@ -142,4 +144,35 @@ class SearchViewModelTest {
     fun `minimum length constant matches the format gate`() {
         assertThat(SearchQueryFormat.MIN_QUERY_LENGTH).isAtLeast(2)
     }
+
+    @Test
+    fun `a sender-id query resolves to addresses passed into the paged search`() =
+        runTest(dispatcher) {
+            repository.senders += listOf("VM-SMPBNK", "AX-OTHER")
+            val viewModel = viewModel()
+            val job = collectResults(viewModel)
+
+            viewModel.onQueryChange("smpbnk")
+            advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 100)
+
+            assertThat(repository.pagedSearchSenders.last()).containsExactly("VM-SMPBNK")
+            // Body search still ran alongside the sender match.
+            assertThat(repository.pagedSearchCalls.map { it.first }).containsExactly("smpbnk")
+            job.cancel()
+        }
+
+    @Test
+    fun `a query matching no sender still reaches the body search with no addresses`() =
+        runTest(dispatcher) {
+            repository.senders += "VM-SMPBNK"
+            val viewModel = viewModel()
+            val job = collectResults(viewModel)
+
+            viewModel.onQueryChange("electricity")
+            advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 100)
+
+            assertThat(repository.pagedSearchSenders.last()).isEmpty()
+            assertThat(repository.pagedSearchCalls.map { it.first }).containsExactly("electricity")
+            job.cancel()
+        }
 }

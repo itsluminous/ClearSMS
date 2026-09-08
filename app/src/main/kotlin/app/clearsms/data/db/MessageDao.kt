@@ -184,6 +184,35 @@ interface MessageDao {
         cutoffMs: Long?,
     ): PagingSource<Int, MessageEntity>
 
+    /**
+     * [pagingSearch] widened to also match messages whose sender address is
+     * in [senders] (contact / directory / raw-ID name matches, resolved
+     * BEFORE the query by `SenderQueryResolver`). A single SELECT, so a
+     * message matching both its body and its sender appears exactly once,
+     * and ordering, filters and paging are identical to the body-only path.
+     */
+    @Query(
+        """
+        SELECT m.* FROM messages m
+        WHERE (m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH :match)
+               OR m.sender IN (:senders))
+          AND m.deletedAt IS NULL
+          AND (:category IS NULL OR m.category = :category)
+          AND (:cutoffMs IS NULL OR m.timestamp >= :cutoffMs)
+        ORDER BY m.timestamp DESC
+        """,
+    )
+    fun pagingSearchWithSenders(
+        match: String,
+        senders: List<String>,
+        category: Category?,
+        cutoffMs: Long?,
+    ): PagingSource<Int, MessageEntity>
+
+    /** Every distinct sender address in the live corpus (search-by-name join). */
+    @Query("SELECT DISTINCT sender FROM messages WHERE deletedAt IS NULL")
+    suspend fun distinctSenders(): List<String>
+
     /** Non-paged FTS search (repository contract / tests); newest first. */
     @Query(
         """

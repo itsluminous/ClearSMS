@@ -123,6 +123,22 @@ interface MessageRepository {
         cutoffMs: Long?,
     ): PagingSource<Int, MessageEntity>
 
+    /**
+     * [pagedSearch] that additionally returns messages whose sender address
+     * is in [senderAddresses] (resolved from contact / sender names before
+     * the query). Merged in SQL: each message appears once even when both
+     * its body and sender match. Default ignores the addresses.
+     */
+    fun pagedSearch(
+        query: String,
+        category: Category?,
+        cutoffMs: Long?,
+        senderAddresses: List<String>,
+    ): PagingSource<Int, MessageEntity> = pagedSearch(query, category, cutoffMs)
+
+    /** Every distinct sender address in the live corpus (search-by-name join). */
+    suspend fun distinctSenders(): List<String> = emptyList()
+
     /** Latest message per archived thread, newest first. */
     fun observeArchived(): Flow<List<MessageEntity>>
 
