@@ -1,0 +1,15 @@
+Four requested features, a rule fix, and a swipe problem solved twice over. Thanks to everyone filing issues.
+
+Added
+- Strip accents before sending. One accented letter drops an SMS from 160 characters to 70, so a medium message can quietly become four or five billable ones. A small bold accent button now appears beside Send only when removing accents would actually send fewer messages, tells you the saving, and offers Undo afterwards. There is also a setting for anyone who always wants it. It is careful rather than blunt: letters that cost nothing extra are left alone, and text it cannot convert faithfully is never touched.
+- Search now finds people, not just words. Searching a saved contact's name, a bank's name or a sender ID returns their messages, alongside the usual message-text results, and results that matched on the sender say so.
+- A configurable dead zone in the middle of each message row, where swipes are ignored - for phones where simply scrolling kept triggering swipe actions. You can set its position, width and height and see it as a translucent band over a preview of your inbox while you adjust it.
+- Clearer dual-SIM. The compose bar shows the slot number that will actually send, long-pressing it says which SIM that is by name, and it now uses the SIM colour from your system settings whenever that colour stays readable against the app's background.
+
+Fixed
+- Swipe actions no longer fire while you are scrolling: a swipe is only recognised once sideways movement clearly wins over up-and-down movement. Separately, a swipe that did trigger sometimes froze halfway and never carried out its action - that is fixed too.
+- NPS contribution messages from NSDL/Protean were not counted at all. Their sender IDs were unrecognised, one message shape was rejected outright, and updates were not refreshing the bundled rules - all three are fixed, and the contributions now appear as credits on your NPS account.
+- Tapping a search result for a very old message opened the conversation but did not highlight the message, because it had not been loaded yet. The conversation now opens directly at that message, without loading everything in between.
+
+Under the hood
+- Kotlin, KSP, Room, Hilt, the coroutines and serialization libraries and the Gradle build were all brought up to date, with no change to what the app requires from your device.

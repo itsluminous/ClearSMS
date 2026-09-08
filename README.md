@@ -79,13 +79,15 @@ Everything shipped, and what's on the roadmap:
 - [x] SMS send & receive (default-SMS-app role, catch-up import when the role is regained)
 - [x] MMS receive (auto-download, image bubbles, full-screen viewer, retry on failure)
 - [x] MMS send (photo picker / camera / any file, on-device compression, SIM-aware)
-- [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages)
+- [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages); the compose bar shows the slot that will send, long-press names it, and it takes the system's own SIM colour where that stays legible
 - [x] Message scheduling (long-press Send; survives reboots)
 - [x] Per-thread drafts with inbox preview
 - [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry
 - [x] Share & forward selected messages; share text or images from other apps into a new message
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
+- [x] Strip accents before sending, so one diacritic does not turn a single SMS into several (shown only when it actually saves a message; opt-in setting too)
+- [x] Configurable swipe dead zone with a live translucent preview, for phones where scrolling triggered swipe actions
 - [x] Swipe-away in-app notification bars ("Message sent", schedule confirmations); swiping an UNDO bar keeps the deletion
 - [x] Recycle bin (on by default, 30-day retention, restore & delete-forever; tap a binned message to read it in full first)
 - [x] Call button in a conversation, and tap-the-name to view or create the contact (service senders explain themselves instead of doing nothing)
@@ -105,7 +107,8 @@ Everything shipped, and what's on the roadmap:
 - [x] Automatic full re-sort after an app update ships new rules, with a progress banner in the inbox
 - [x] A rule added from a message applies to that sender's existing messages at once (body-only rules point you at the full re-sort instead)
 - [x] Category filter pills (reorderable) with tags hidden under single-category filters
-- [x] Full-text search with category & time filters
+- [x] Full-text search with category & time filters, matching contact and sender names as well as message text
+- [x] Tapping a search result opens the conversation at that message and highlights it, however old it is
 - [x] Scam-awareness flagging
 - [x] Rule manager: search, enable/disable, tap-to-edit your rules, duplicate bundled ones
 - [x] Contact suggestions while typing a recipient (compose) or a sender to block
