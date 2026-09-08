@@ -8,6 +8,7 @@ import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import kotlinx.coroutines.flow.Flow
@@ -90,6 +91,11 @@ interface SettingsRepository {
     val swipeActionEnd: Flow<SwipeAction>
 
     suspend fun setSwipeActionEnd(value: SwipeAction)
+
+    /** Per-row band where a swipe never starts; off by default. */
+    val swipeDeadZone: Flow<SwipeDeadZone>
+
+    suspend fun setSwipeDeadZone(value: SwipeDeadZone)
 
     /** Bottom destination the app opens on. */
     val defaultDestination: Flow<StartDestination>

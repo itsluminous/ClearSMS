@@ -347,6 +347,7 @@ fun InboxScreen(
                             // Swipes are disabled entirely while selecting.
                             startAction = if (selection.active) SwipeAction.NONE else state.swipeStart,
                             endAction = if (selection.active) SwipeAction.NONE else state.swipeEnd,
+                            deadZone = state.swipeDeadZone,
                             onAction = { action ->
                                 when (action) {
                                     SwipeAction.ARCHIVE -> viewModel.archive(item.message.id)

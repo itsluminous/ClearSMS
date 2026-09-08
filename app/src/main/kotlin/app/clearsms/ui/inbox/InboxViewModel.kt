@@ -19,6 +19,7 @@ import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -114,6 +115,8 @@ data class InboxUiState(
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
     val swipeStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeEnd: SwipeAction = SwipeAction.DELETE,
+    /** Per-row band where a swipe never starts; off by default. */
+    val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
     /** Automatic post-update re-sort in flight; null hides the banner. */
     val sortingBanner: SortingBanner? = null,
 )
@@ -231,6 +234,8 @@ class InboxViewModel
             val swipeStart: SwipeAction,
             val swipeEnd: SwipeAction,
             val pillOrder: List<Category>,
+            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
         )
 
         private val chrome =
@@ -241,6 +246,7 @@ class InboxViewModel
                 settings.swipeActionEnd,
                 settings.inboxPillOrder,
             ) { rich, otpSize, start, end, order -> Chrome(rich, otpSize, start, end, order) }
+                .combine(settings.swipeDeadZone) { chrome, zone -> chrome.copy(swipeDeadZone = zone) }
 
         val uiState: StateFlow<InboxUiState> =
             combine(
@@ -259,6 +265,7 @@ class InboxViewModel
                     otpDisplaySize = chromeState.otpDisplaySize,
                     swipeStart = chromeState.swipeStart,
                     swipeEnd = chromeState.swipeEnd,
+                    swipeDeadZone = chromeState.swipeDeadZone,
                     pillOrder = chromeState.pillOrder,
                     sortingBanner = sorting,
                 )

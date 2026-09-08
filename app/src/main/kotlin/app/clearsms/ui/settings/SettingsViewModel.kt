@@ -22,6 +22,7 @@ import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.common.BackupFrequency
@@ -64,6 +65,8 @@ data class SettingsUiState(
     val logoBackground: LogoBackground = LogoBackground.NONE,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
+    /** Per-row band where a swipe never starts; off by default. */
+    val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
     val defaultDestination: StartDestination = StartDestination.INBOX,
     val defaultInboxFilter: Category? = Category.IMPORTANT,
     val defaultFinanceFilter: FinanceTab = FinanceTab.ACCOUNTS,
@@ -242,6 +245,8 @@ class SettingsViewModel
             val destination: StartDestination,
             val inboxFilter: Category?,
             val financeFilter: FinanceTab,
+            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
         )
 
         private val appearance =
@@ -272,7 +277,9 @@ class SettingsViewModel
                 settings.defaultInboxFilter,
                 settings.defaultFinanceFilter,
                 ::GestureStartupState,
-            )
+            ).combine(settings.swipeDeadZone) { gestures, zone ->
+                gestures.copy(swipeDeadZone = zone)
+            }
         private val otp =
             combine(settings.otpAutoCopy, settings.otpAutoDeletePolicy, settings.otpDisplaySize, ::Triple)
 
@@ -325,6 +332,7 @@ class SettingsViewModel
                     transactionNotifications = notificationState.transactionNotifications,
                     swipeActionStart = gestures.swipeStart,
                     swipeActionEnd = gestures.swipeEnd,
+                    swipeDeadZone = gestures.swipeDeadZone,
                     defaultDestination = gestures.destination,
                     defaultInboxFilter = gestures.inboxFilter,
                     defaultFinanceFilter = gestures.financeFilter,
@@ -384,6 +392,8 @@ class SettingsViewModel
         fun setSwipeActionStart(value: SwipeAction) = launchIo { settings.setSwipeActionStart(value) }
 
         fun setSwipeActionEnd(value: SwipeAction) = launchIo { settings.setSwipeActionEnd(value) }
+
+        fun setSwipeDeadZone(value: SwipeDeadZone) = launchIo { settings.setSwipeDeadZone(value) }
 
         fun setDefaultDestination(value: StartDestination) = launchIo { settings.setDefaultDestination(value) }
 

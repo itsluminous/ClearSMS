@@ -13,6 +13,7 @@ import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,33 @@ class SettingsRepositoryImplTest {
             repo.setSwipeActionEnd(SwipeAction.NONE)
             assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.TOGGLE_READ)
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.NONE)
+        }
+
+    @Test
+    fun `swipe dead zone round trips, defaults off, and clamps out-of-range values`() =
+        runBlocking {
+            val repo = repository()
+            assertThat(repo.swipeDeadZone.first()).isEqualTo(SwipeDeadZone.DEFAULT)
+            val zone = SwipeDeadZone(enabled = true, centerXPercent = 30, widthPercent = 60, heightPercent = 50)
+            repo.setSwipeDeadZone(zone)
+            assertThat(repo.swipeDeadZone.first()).isEqualTo(zone)
+            // Out-of-range values are sanitized on write, so no reader can
+            // ever observe a zone that would cover the whole row.
+            repo.setSwipeDeadZone(SwipeDeadZone(enabled = true, centerXPercent = 500, widthPercent = 100, heightPercent = 0))
+            val clamped = repo.swipeDeadZone.first()
+            assertThat(clamped.widthPercent).isEqualTo(SwipeDeadZone.MAX_WIDTH)
+            assertThat(clamped.centerXPercent).isEqualTo(SwipeDeadZone.MAX_CENTER)
+            assertThat(clamped.heightPercent).isEqualTo(SwipeDeadZone.MIN_HEIGHT)
+        }
+
+    @Test
+    fun `corrupt swipe dead zone value falls back to the default without throwing`() =
+        runBlocking {
+            val repo = repository()
+            dataStore.edit { prefs ->
+                prefs[stringPreferencesKey("swipe_dead_zone")] = "not a zone at all"
+            }
+            assertThat(repo.swipeDeadZone.first()).isEqualTo(SwipeDeadZone.DEFAULT)
         }
 
     @Test

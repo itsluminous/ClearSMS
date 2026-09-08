@@ -79,6 +79,7 @@ import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
+import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
@@ -105,6 +106,7 @@ private enum class SettingsDialog {
     NOTIFICATION_ACTIONS,
     SWIPE_START,
     SWIPE_END,
+    SWIPE_DEAD_ZONE,
     DEFAULT_SCREEN,
     DEFAULT_FILTER,
     DEFAULT_FINANCE_FILTER,
@@ -535,6 +537,12 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.SWIPE_DEAD_ZONE ->
+            SwipeDeadZoneDialog(
+                value = state.swipeDeadZone,
+                onChange = viewModel::setSwipeDeadZone,
+                onDismiss = { dialog = null },
+            )
         SettingsDialog.DEFAULT_SCREEN ->
             RadioDialog(
                 title = stringResource(R.string.settings_default_screen),
@@ -866,6 +874,10 @@ private fun settingsRowEntries(
                 SettingsItem.SWIPE_LEFT ->
                     row(section, title, swipeActionLabel(state.swipeActionEnd)) {
                         openDialog(SettingsDialog.SWIPE_END)
+                    }
+                SettingsItem.SWIPE_DEAD_ZONE ->
+                    row(section, title, swipeDeadZoneSummary(state.swipeDeadZone)) {
+                        openDialog(SettingsDialog.SWIPE_DEAD_ZONE)
                     }
                 SettingsItem.SORT_AGAIN -> {
                     val sortSummary = stringResource(R.string.settings_sort_again_summary)
@@ -1567,6 +1579,14 @@ private fun notificationActionsSummary(actions: Set<NotificationAction>): String
             .filter { it in actions }
             .map { notificationActionLabel(it) }
             .joinToString(separator = ", ")
+    }
+
+@Composable
+private fun swipeDeadZoneSummary(zone: SwipeDeadZone): String =
+    if (zone.enabled) {
+        stringResource(R.string.settings_swipe_dead_zone_summary_on, zone.widthPercent)
+    } else {
+        stringResource(R.string.settings_swipe_dead_zone_summary_off)
     }
 
 @Composable
