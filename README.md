@@ -82,6 +82,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages); the compose bar shows the slot that will send, long-press names it, and it takes the system's own SIM colour where that stays legible
 - [x] Message scheduling (long-press Send; survives reboots)
 - [x] Per-thread drafts with inbox preview
+- [x] Expand the compose box to fill the screen for long messages (both the standalone composer and a conversation)
 - [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry
 - [x] Share & forward selected messages; share text or images from other apps into a new message
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
