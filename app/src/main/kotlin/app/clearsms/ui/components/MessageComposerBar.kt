@@ -10,23 +10,28 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CloseFullscreen
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
@@ -176,7 +181,13 @@ fun MessageComposerBar(
                     .statusBarsPadding()
                     .padding(bottom = expandedBottomPad)
             } else {
-                modifier.fillMaxWidth().imePadding()
+                // union (not chained padding) = max(ime, navigation bar):
+                // keyboard open, the IME inset governs; closed, the bar must
+                // still clear the system navigation bar (3-button mode drew
+                // the field's bottom underneath it).
+                modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
             },
     ) {
         if (barState.recipientHeaderVisible) {
@@ -502,4 +513,38 @@ private val SimOutlineGlyph: ImageVector by lazy {
                 close()
             }
         }.build()
+}
+
+/**
+ * Replaces [MessageComposerBar] for one-way senders (alphanumeric ids, short
+ * codes). Lives here because it is a bottom bar: like the composer it must
+ * pad for the system navigation bar itself (the Scaffold bottomBar slot adds
+ * no inset), and this file is the single sanctioned home for inset reads
+ * (see SystemBarInsetOwnershipConventionTest).
+ */
+@Composable
+fun NotRepliableBar() {
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.conversation_not_repliable),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }

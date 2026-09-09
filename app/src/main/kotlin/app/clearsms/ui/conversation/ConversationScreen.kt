@@ -34,7 +34,6 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
@@ -93,6 +92,7 @@ import app.clearsms.ui.components.BodyLink
 import app.clearsms.ui.components.DialableNumber
 import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
+import app.clearsms.ui.components.NotRepliableBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
@@ -396,7 +396,7 @@ fun ConversationScreen(
                         onRemoveAttachment = viewModel::removeAttachment,
                         attachmentError = attachmentError,
                     )
-                else -> NotRepliableRow()
+                else -> NotRepliableBar()
             }
         },
     ) { padding ->
@@ -773,30 +773,6 @@ private fun ConversationSelectionBar(
             }
         },
     )
-}
-
-/** Replaces the composer for one-way senders (alphanumeric ids, short codes). */
-@Composable
-private fun NotRepliableRow() {
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                Icons.Outlined.Info,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.conversation_not_repliable),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }
 
 @Composable
