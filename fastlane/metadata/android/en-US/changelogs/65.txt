@@ -1,0 +1,10 @@
+Compose-screen changes, all from feedback on 0.18.0.
+
+Added
+- The compose box can now fill the screen. A small icon in its top right corner expands it to use all the space above the keyboard, which makes long messages far easier to write, and the same icon shrinks it back. While expanded, the attachment and send buttons step out of the way but you can still see who you are writing to. It works the same whether you started a new message or are replying in a conversation.
+
+Fixed
+- Tapping the SIM icon switched SIM correctly but the confirmation named the wrong one - switching to SIM 2 would say "SIM 1". It now always names the SIM that is actually selected.
+
+Changed
+- The accent button next to Send has been removed; it took up too much room for something needed only occasionally. Accents are still removed automatically for everyone who turns that on in Settings, quietly and only when it actually saves a message.
