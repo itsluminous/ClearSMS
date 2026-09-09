@@ -95,9 +95,10 @@ object SmsSegments {
  * StripAccents (which only strips multi-segment messages and keeps
  * GSM-native Ü/ü/Ö/ö as fold TARGETS - the Hungarian double-acute
  * mappings below are borrowed from its table). QKSMS's silent toggle drew
- * the complaint that "the user can't tell when it activated" (qksms#1333),
- * which is why ClearSMS surfaces folding as a visible compose-bar
- * affordance gated on [plan] proving an actual segment saving.
+ * the complaint that "the user can't tell when it activated" (qksms#1333);
+ * ClearSMS keeps folding opt-in behind the *Strip accents when sending*
+ * setting and gated on [plan] proving an actual segment saving, so an
+ * enabled fold never changes text for no gain.
  */
 object AccentFold {
     /**
@@ -123,7 +124,7 @@ object AccentFold {
     /**
      * A folding that would actually cut the bill: [folded] sends as
      * [segmentsAfter] (< [segmentsBefore]) messages. Null-plan means the
-     * affordance must not appear - either nothing folds, or folding would
+     * fold must not apply - either nothing folds, or folding would
      * change the text for no gain (e.g. an emoji keeps the message UCS-2
      * anyway, or it already fits one segment).
      */

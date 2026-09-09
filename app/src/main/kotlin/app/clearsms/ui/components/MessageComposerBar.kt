@@ -25,7 +25,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,14 +36,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.clearsms.R
 import app.clearsms.mms.StagedAttachment
-import app.clearsms.sms.AccentFold
 import app.clearsms.ui.common.AttachmentError
 
 /**
@@ -113,7 +109,6 @@ fun MessageComposerBar(
     onAttachClick: (() -> Unit)? = null,
     onRemoveAttachment: (StagedAttachment) -> Unit = {},
     attachmentError: AttachmentError? = null,
-    onAccentsStripped: ((AccentFold.Plan) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     Column(modifier = modifier.fillMaxWidth().imePadding()) {
@@ -144,61 +139,6 @@ fun MessageComposerBar(
                 shape = RoundedCornerShape(28.dp),
                 maxLines = 4,
             )
-            // Accent-strip affordance (GitHub #17): appears ONLY when folding
-            // accents would actually reduce the billable segment count - one
-            // č silently flips the whole SMS from GSM-7 (160 chars) to UCS-2
-            // (70/67), so a medium text bills as 3-5 messages. Tap folds the
-            // draft (č->c); the screen confirms the saving with an undoable
-            // snackbar. Long-press explains, like the bar's other affordances.
-            // Hidden with attachments staged: those send as MMS, where SMS
-            // encoding does not exist. Textra/android-smsmms fold silently
-            // when it saves; QKSMS's silent toggle drew "the user can't tell
-            // when it activated" (qksms#1333) - hence a visible button.
-            val foldPlan = remember(draft, attachments.size) { accentFoldPlan(draft, attachments.size) }
-            if (foldPlan != null && onAccentsStripped != null) {
-                val stripLabel = stringResource(R.string.compose_strip_accents)
-                val stripHint =
-                    stringResource(
-                        R.string.compose_strip_accents_hint,
-                        foldPlan.segmentsBefore,
-                        foldPlan.segmentsAfter,
-                    )
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier =
-                        Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .combinedClickable(
-                                onClick = {
-                                    onDraftChange(foldPlan.folded)
-                                    onAccentsStripped(foldPlan)
-                                },
-                                onClickLabel = stripLabel,
-                                onLongClick = { Toast.makeText(context, stripHint, Toast.LENGTH_LONG).show() },
-                                onLongClickLabel = stripHint,
-                            ).padding(6.dp)
-                            .semantics { contentDescription = stripHint },
-                ) {
-                    // A single bold accented letter at EXACTLY the SIM
-                    // indicator's footprint (shared ComposeBarIndicatorMetrics,
-                    // so the two cannot drift) - the old wide arrow chip
-                    // ("e-grave becomes e") was visually heavier than its
-                    // neighbours. That explanation now lives in the
-                    // long-press hint text.
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(ComposeBarIndicatorMetrics.IconSize),
-                    ) {
-                        Text(
-                            text = "è",
-                            fontSize = ComposeBarIndicatorMetrics.GlyphFontSize,
-                            lineHeight = ComposeBarIndicatorMetrics.GlyphFontSize,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary,
-                        )
-                    }
-                }
-            }
             // Compact SIM indicator, dual-SIM devices only: a plain SIM-card
             // outline whose ONLY content is the slot number - the stock icon's
             // contact dots made the digit illegible (GitHub #7). Tapping
@@ -327,30 +267,15 @@ internal fun scheduleHintVisible(
 ): Boolean = draft.isNotBlank() && attachmentCount == 0
 
 /**
- * Visibility + payload rule for the accent-strip button, pure so it is
- * unit-testable without a Compose harness (the repo's affordance pattern).
- * Non-null exactly when folding the draft would send FEWER billable
- * segments AND no attachments are staged - with attachments the message
- * goes as MMS, where GSM-7 vs UCS-2 does not exist, so offering to rewrite
- * the user's accents would be a pure loss.
- */
-internal fun accentFoldPlan(
-    draft: String,
-    attachmentCount: Int,
-): AccentFold.Plan? = if (attachmentCount > 0) null else AccentFold.plan(draft)
-
-/**
  * The ONE set of size constants for the compose bar's small indicator
- * glyphs. The SIM slot indicator AND the accent-strip affordance both draw
- * from here - operator requirement: the accent affordance sits at exactly
- * the SIM indicator's footprint, and sharing the constants (instead of two
- * eyeballed dp values) means the two cannot drift apart.
+ * glyphs. The SIM slot indicator draws from here so the outline and the
+ * slot digit stay sized together.
  */
 internal object ComposeBarIndicatorMetrics {
     /** Icon footprint - the SIM outline's intrinsic size. */
     val IconSize = 24.dp
 
-    /** Glyph drawn inside the footprint (the SIM slot digit; the accent è). */
+    /** Glyph drawn inside the footprint (the SIM slot digit). */
     val GlyphFontSize = 12.sp
 }
 

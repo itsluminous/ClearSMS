@@ -88,9 +88,6 @@
     <string name="compose_title">New message</string>
     <string name="compose_recipient">To</string>
     <string name="compose_message">Message</string>
-    <string name="compose_strip_accents">Remove accents</string>
-    <string name="compose_strip_accents_hint">Accented letters make this text send as %1$d SMS. Tap to swap them for plain letters (è→e) and send %2$d.</string>
-    <string name="compose_accents_removed">Accents removed: %1$d SMS → %2$d</string>
 
     <!-- Finance -->
     <string name="finance_title">Finance</string>

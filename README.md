@@ -86,7 +86,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Share & forward selected messages; share text or images from other apps into a new message
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
-- [x] Strip accents before sending, so one diacritic does not turn a single SMS into several (shown only when it actually saves a message; opt-in setting too)
+- [x] Strip accents before sending, so one diacritic does not turn a single SMS into several (opt-in setting; applies silently, and only when it actually saves a message)
 - [x] Configurable swipe dead zone with a live translucent preview, for phones where scrolling triggered swipe actions
 - [x] Swipe-away in-app notification bars ("Message sent", schedule confirmations); swiping an UNDO bar keeps the deletion
 - [x] Recycle bin (on by default, 30-day retention, restore & delete-forever; tap a binned message to read it in full first)
