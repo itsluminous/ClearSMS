@@ -1,0 +1,4 @@
+Layout fixes around the system bars.
+
+- Every screen wasted a strip of empty space between the status bar and the title row, and another above the bottom Inbox/Finance/Alerts bar. Both are gone, so a little more of your inbox fits on screen. The gaps came from the app reserving room for the system bars twice over, which is also why the lower one was obvious on some phones and invisible on others.
+- On phones that use three navigation buttons rather than gestures, the message box at the bottom of a conversation - and the "doesn't accept replies" notice - were partly drawn underneath the navigation bar. They now sit clear of it. This was an older problem that the extra spacing had been hiding.
