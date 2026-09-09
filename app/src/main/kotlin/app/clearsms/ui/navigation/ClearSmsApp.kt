@@ -3,6 +3,8 @@ package app.clearsms.ui.navigation
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -179,6 +181,14 @@ private fun MainScaffold(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
+        // Single-owner rule for system-bar insets: the BARS own them. Each
+        // screen's TopAppBar pads for the status bar and this scaffold's
+        // NavigationBar pads for the system navigation bar. The default
+        // contentWindowInsets would pad the NavHost by the same system bars
+        // AGAIN (an empty strip under the status bar on every screen, and -
+        // with 3-button navigation - a second strip above the bottom bar),
+        // so the shell contributes none of its own.
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (currentRoute in Routes.topLevel) {
                 NavigationBar {
@@ -213,7 +223,16 @@ private fun MainScaffold(
                     StartDestination.FINANCE -> Routes.FINANCE
                     StartDestination.ALERTS -> Routes.ALERTS
                 },
-            modifier = Modifier.padding(padding),
+            // padding is the bottom bar's height (which already includes the
+            // navigation-bar inset). consumeWindowInsets is the half that
+            // Modifier.padding lacks: without it every screen's own Scaffold
+            // still sees the full navigationBars inset and pads its content
+            // by it a second time - the device-dependent dead strip above
+            // the bottom bar. On routes without the bottom bar padding is
+            // zero, so nothing is consumed and those screens keep handling
+            // their own insets end to end (the conversation composer's
+            // ime/navigation-bar reads are untouched).
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             composable(Routes.INBOX) {
                 InboxScreen(
