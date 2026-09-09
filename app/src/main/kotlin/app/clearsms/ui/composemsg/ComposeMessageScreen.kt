@@ -127,6 +127,11 @@ fun ComposeMessageScreen(
                 sim = simState,
                 onCycleSim = viewModel::cycleSim,
                 onScheduleSend = { showSchedulePicker = true },
+                // Shown while the box is EXPANDED: the picked contact's name,
+                // the typed number, or the screen title while neither exists.
+                recipientLabel =
+                    state.picked?.name
+                        ?: state.recipient.ifBlank { stringResource(R.string.compose_title) },
                 attachments = attachments,
                 onAttachClick = { showAttachmentSheet = true },
                 onRemoveAttachment = viewModel::removeAttachment,

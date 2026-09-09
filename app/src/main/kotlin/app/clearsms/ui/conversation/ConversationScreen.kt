@@ -387,6 +387,10 @@ fun ConversationScreen(
                             scheduleEditTarget = null
                             showSchedulePicker = true
                         },
+                        // Shown while the box is EXPANDED (full screen covers
+                        // the top bar): the conversation's contact name or
+                        // number stays visible.
+                        recipientLabel = state.title,
                         attachments = stagedAttachments,
                         onAttachClick = { showAttachmentSheet = true },
                         onRemoveAttachment = viewModel::removeAttachment,

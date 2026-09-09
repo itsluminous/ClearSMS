@@ -54,6 +54,8 @@
 
     <!-- MMS send: compose-bar attachments -->
     <string name="compose_attach">Add attachment</string>
+    <string name="compose_expand">Expand compose box</string>
+    <string name="compose_collapse">Shrink compose box</string>
     <string name="compose_attach_photo">Photo</string>
     <string name="compose_attach_camera">Camera</string>
     <string name="compose_attach_file">Any file</string>
