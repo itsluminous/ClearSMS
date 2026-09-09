@@ -72,7 +72,12 @@ class ComposerBarContractTest {
         val simBlock = bar.substringAfter("if (sim.visible)").substringBefore("// Send:")
         assertThat(simBlock).contains("combinedClickable")
         assertThat(simBlock).contains("onCycleSim()")
-        assertThat(simBlock).contains("sim.tapLabel")
+        // The tap toast names the POST-switch state cycleSim returns; the
+        // composition-captured `sim` is pre-cycle and lags one step behind.
+        val tap = simBlock.substringAfter("onClick =").substringBefore("onClickLabel")
+        assertThat(tap).contains("onCycleSim()?.let")
+        assertThat(tap).contains("switched.tapLabel")
+        assertThat(tap).doesNotContain("sim.tapLabel")
         // The long-press toast is the identity hint - and it must NOT cycle.
         val longPress = simBlock.substringAfter("onLongClick =").substringBefore("onLongClickLabel")
         assertThat(longPress).contains("sim.hintLabel")

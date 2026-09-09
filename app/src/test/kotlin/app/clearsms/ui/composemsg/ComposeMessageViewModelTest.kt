@@ -219,6 +219,30 @@ class ComposeMessageViewModelTest {
         }
 
     @Test
+    fun `cycleSim returns the post-switch state the indicator shows - both directions`() =
+        runBlocking<Unit> {
+            // The tap toast is built from this return value: it must name the
+            // NEWLY selected subscription and agree with the long-press hint.
+            subscriptions.sims =
+                listOf(
+                    SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Airtel"),
+                    SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Jio"),
+                )
+            subscriptions.defaultSub = 10
+            val vm = viewModel()
+            awaitUntil { vm.simState.value.slot == 1 }
+
+            val toSlot2 = requireNotNull(vm.cycleSim())
+            assertThat(toSlot2.tapLabel).isEqualTo("SIM 2 - Jio")
+            assertThat(toSlot2).isEqualTo(vm.simState.value)
+            assertThat(vm.simState.value.hintLabel).isEqualTo("Sends with ${toSlot2.tapLabel}")
+
+            val wrapped = requireNotNull(vm.cycleSim())
+            assertThat(wrapped.tapLabel).isEqualTo("SIM 1 - Airtel")
+            assertThat(wrapped).isEqualTo(vm.simState.value)
+        }
+
+    @Test
     fun `sim default follows the per-recipient memory once a recipient is chosen`() =
         runBlocking<Unit> {
             subscriptions.sims =

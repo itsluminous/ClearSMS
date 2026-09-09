@@ -193,20 +193,26 @@ class ComposeMessageViewModel
             simRefreshJob = viewModelScope.launch(ioDispatcher) { refreshSimForRecipient(generation) }
         }
 
-        /** Cycles to the next SIM and remembers the choice for this recipient. */
-        fun cycleSim() {
+        /**
+         * Cycles to the next SIM and remembers the choice for this recipient.
+         * Returns the POST-switch UI state (what [simState] now shows), so the
+         * tap toast can name the SIM that will actually send - the caller's
+         * composition-captured state is one step behind. Null = no switch.
+         */
+        fun cycleSim(): SimUiState? {
             // The user's explicit tap outranks any in-flight recipient lookup:
             // cancelling asks it to stop, and taking a new generation stops the
             // tail of one that already got past its last suspension point.
             simRefreshJob?.cancel()
             simGeneration.incrementAndGet()
-            val next = SimSelector.next(activeSims, chosenSim.value) ?: return
+            val next = SimSelector.next(activeSims, chosenSim.value) ?: return null
             chosenSim.value = next
             refreshSimUi()
             val address = state.value.recipient.trim()
             if (address.isNotBlank()) {
                 viewModelScope.launch(ioDispatcher) { simChoiceStore.remember(address, next) }
             }
+            return simUi.value
         }
 
         private suspend fun refreshSimForRecipient(generation: Int) {

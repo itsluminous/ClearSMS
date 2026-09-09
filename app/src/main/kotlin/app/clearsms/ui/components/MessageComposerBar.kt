@@ -102,7 +102,7 @@ fun MessageComposerBar(
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     sim: SimUiState,
-    onCycleSim: () -> Unit,
+    onCycleSim: () -> SimUiState?,
     onScheduleSend: () -> Unit,
     modifier: Modifier = Modifier,
     attachments: List<StagedAttachment> = emptyList(),
@@ -161,8 +161,15 @@ fun MessageComposerBar(
                             .clip(RoundedCornerShape(14.dp))
                             .combinedClickable(
                                 onClick = {
-                                    onCycleSim()
-                                    Toast.makeText(context, sim.tapLabel, Toast.LENGTH_SHORT).show()
+                                    // Toast the POST-switch state the cycle returns - never
+                                    // the `sim` parameter: that is the state captured when
+                                    // this composition was built, so inside the click lambda
+                                    // it is one step BEHIND the switch it just made
+                                    // (switching to SIM 2 used to toast "SIM 1"). No switch
+                                    // (no active SIMs) means no toast.
+                                    onCycleSim()?.let { switched ->
+                                        Toast.makeText(context, switched.tapLabel, Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 onClickLabel = stringResource(R.string.conversation_sim_switch),
                                 onLongClick = {

@@ -255,15 +255,21 @@ class ConversationViewModel
             }
         }
 
-        /** Cycles to the next SIM and remembers the choice for this recipient. */
-        fun cycleSim() {
-            val next = SimSelector.next(activeSims, chosenSim.value) ?: return
+        /**
+         * Cycles to the next SIM and remembers the choice for this recipient.
+         * Returns the POST-switch UI state (what [simState] now shows), so the
+         * tap toast can name the SIM that will actually send - the caller's
+         * composition-captured state is one step behind. Null = no switch.
+         */
+        fun cycleSim(): SimUiState? {
+            val next = SimSelector.next(activeSims, chosenSim.value) ?: return null
             chosenSim.value = next
             refreshSimUi()
             val address = recipientAddress
             if (address.isNotBlank()) {
                 viewModelScope.launch(ioDispatcher) { simChoiceStore.remember(address, next) }
             }
+            return simUi.value
         }
 
         private fun refreshSimUi() {
