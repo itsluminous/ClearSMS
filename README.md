@@ -26,7 +26,10 @@ handles OTPs intelligently - all completely offline, on your device.
 
 - **GitHub**: a signed `ClearSMS.apk` is attached to every
   [release](https://github.com/itsluminous/ClearSMS/releases/latest). It runs on
-  any device (the app has no native code, so one APK covers every CPU).
+  any device: Clear SMS itself contains no native code, and the one APK
+  carries every ABI variant of the two small native helpers AndroidX brings
+  in (DataStore's shared counter and Compose's path parser, ~60 KB in
+  total), so a single universal APK covers every CPU.
 - **F-Droid**: available at
   [f-droid.org/packages/app.clearsms](https://f-droid.org/packages/app.clearsms/).
   The F-Droid build is [reproducible](docs/publishing-fdroid.md) and carries the
@@ -172,8 +175,10 @@ Run checks the same way CI does:
 ```
 
 `./gradlew assembleRelease` produces a single universal APK under
-`app/build/outputs/apk/release/` (the app has no native code, so per-ABI
-splits would gain nothing). Without signing environment variables (see
+`app/build/outputs/apk/release/` (Clear SMS has no native code of its own -
+the only `.so` files come from AndroidX's DataStore and graphics-path
+helpers - so per-ABI splits would save about 45 KB and cost an extra
+artifact to verify). Without signing environment variables (see
 below) it is unsigned. Release APKs are shrunk with R8 and resource
 shrinking but **not obfuscated** (`-dontobfuscate` in
 `app/proguard-rules.pro`), keeping the shipped APK auditable and the build
