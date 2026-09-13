@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.ReminderEntity
+import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.receiver.ReminderAlarmReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
@@ -28,20 +29,48 @@ class ReminderAlarmScheduler
     constructor(
         @ApplicationContext private val context: Context,
         private val reminderDao: ReminderDao,
+        private val settingsRepository: SettingsRepository,
     ) {
+        /**
+         * Alerts-section gate, consulted before ANY alarm registration: the
+         * requirement is that a disabled Alerts section stops the WAKE-UPS,
+         * not merely the notification at fire time. Both public entry points
+         * ([scheduleForMessage], [rescheduleAll]) check it, so neither a new
+         * bill message nor a reboot re-registers alarms while Alerts is off.
+         * [app.clearsms.ui.settings.SettingsViewModel] pairs the toggle with
+         * [cancelUpcoming] / [rescheduleAll]; the notifier's own gate covers
+         * any alarm that still slips through the race.
+         */
+        private suspend fun alertsEnabled(): Boolean = settingsRepository.enabledSections.first().alerts
+
         /** Schedules the alarm for the reminder extracted from [messageId], if any. */
         suspend fun scheduleForMessage(messageId: Long) {
+            if (!alertsEnabled()) return
             reminderDao.findByRawSmsId(messageId)?.let { schedule(it) }
         }
 
         /** Re-registers alarms for every upcoming reminder (after boot). */
         suspend fun rescheduleAll() {
+            if (!alertsEnabled()) return
             val now = System.currentTimeMillis()
             reminderDao.observeUpcoming(now).first().forEach { schedule(it) }
         }
 
+        /**
+         * Cancels every upcoming reminder's alarm - the disable-time half of
+         * the Alerts gate (alarms registered while the section was on would
+         * otherwise still wake the device).
+         */
+        suspend fun cancelUpcoming() {
+            val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+            val now = System.currentTimeMillis()
+            reminderDao.observeUpcoming(now).first().forEach { reminder ->
+                alarmManager.cancel(alarmPendingIntent(reminder))
+            }
+        }
+
         /** Schedules a single alarm one day before [reminder]'s due date. */
-        fun schedule(reminder: ReminderEntity) {
+        private fun schedule(reminder: ReminderEntity) {
             val dueDate = reminder.dueDate ?: return
             val triggerAt = triggerTimeFor(dueDate, System.currentTimeMillis()) ?: return
             val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return

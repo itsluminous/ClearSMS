@@ -7,6 +7,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.model.StartDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,6 +38,7 @@ class CatchUpNotifier
     constructor(
         @ApplicationContext private val context: Context,
         private val router: IncomingMessageRouter,
+        private val sectionGate: NotificationSectionGate,
     ) {
         /** Routes [freshMessages] individually, or posts one summary of [freshCount]. */
         suspend fun notifyFresh(
@@ -46,7 +48,10 @@ class CatchUpNotifier
             when {
                 freshCount == 0 -> Unit
                 freshCount <= MAX_INDIVIDUAL -> freshMessages.forEach { router.route(it) }
-                else -> postSummary(freshCount)
+                // The summary is literally "N new messages" - an Inbox
+                // surface - so it follows the Inbox flag. Individual routes
+                // are gated per type inside the router's notifiers.
+                else -> if (sectionGate.allows(StartDestination.INBOX)) postSummary(freshCount)
             }
         }
 

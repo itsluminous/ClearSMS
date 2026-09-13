@@ -17,6 +17,7 @@ import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.notification.MessageNotifier
+import app.clearsms.notification.NotificationSectionGate
 import app.clearsms.notification.NotificationSender
 import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.OtpNotifier
@@ -113,9 +114,16 @@ class MmsInboundTest {
             IncomingMessageRouter(
                 context = context,
                 settingsRepository = FakeSettingsRepository(),
-                otpNotifier = OtpNotifier(context, rawResolver, iconFactory),
-                messageNotifier = MessageNotifier(context, rawResolver, iconFactory),
-                transactionNotifier = TransactionNotifier(context, json, rawResolver, iconFactory),
+                otpNotifier = OtpNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+                messageNotifier = MessageNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+                transactionNotifier =
+                    TransactionNotifier(
+                        context,
+                        json,
+                        rawResolver,
+                        iconFactory,
+                        NotificationSectionGate(FakeSettingsRepository()),
+                    ),
                 applicationScope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob()),
             )
         inbound = MmsInbound(repository, downloader, attachmentStore, router)

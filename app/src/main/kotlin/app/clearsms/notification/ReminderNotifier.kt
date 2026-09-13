@@ -7,6 +7,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import app.clearsms.R
+import app.clearsms.domain.model.StartDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,13 +18,21 @@ class ReminderNotifier
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val sectionGate: NotificationSectionGate,
     ) {
-        fun notifyBillDue(
+        /**
+         * The bill-due reminder is the Alerts section's voice, so it follows
+         * the Alerts flag. Alarms are not even scheduled while Alerts is off
+         * (see [app.clearsms.work.ReminderAlarmScheduler]); this check
+         * covers an alarm registered BEFORE the section was disabled.
+         */
+        suspend fun notifyBillDue(
             reminderId: Long,
             bankName: String?,
             accountLast4: String?,
             totalDue: Double?,
         ) {
+            if (!sectionGate.allows(StartDestination.ALERTS)) return
             Channels.ensureCreated(context)
             val title = context.getString(R.string.bill_due_title)
             val source =

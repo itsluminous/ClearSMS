@@ -3,8 +3,11 @@ package app.clearsms.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import app.clearsms.di.ApplicationScope
 import app.clearsms.notification.ReminderNotifier
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -17,18 +20,32 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
     @Inject
     lateinit var reminderNotifier: ReminderNotifier
 
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
+
     override fun onReceive(
         context: Context,
         intent: Intent,
     ) {
         if (intent.action != ACTION_BILL_DUE) return
         val totalDue = intent.getDoubleExtra(EXTRA_TOTAL_DUE, Double.NaN)
-        reminderNotifier.notifyBillDue(
-            reminderId = intent.getLongExtra(EXTRA_REMINDER_ID, 0L),
-            bankName = intent.getStringExtra(EXTRA_BANK_NAME),
-            accountLast4 = intent.getStringExtra(EXTRA_ACCOUNT_LAST4),
-            totalDue = totalDue.takeUnless { it.isNaN() },
-        )
+        // The notifier is suspend (it consults the Alerts section gate, so a
+        // stale alarm registered before the section was disabled stays
+        // silent); bridge the broadcast like SmsReceiver does.
+        val pendingResult = goAsync()
+        applicationScope.launch {
+            try {
+                reminderNotifier.notifyBillDue(
+                    reminderId = intent.getLongExtra(EXTRA_REMINDER_ID, 0L),
+                    bankName = intent.getStringExtra(EXTRA_BANK_NAME),
+                    accountLast4 = intent.getStringExtra(EXTRA_ACCOUNT_LAST4),
+                    totalDue = totalDue.takeUnless { it.isNaN() },
+                )
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 
     companion object {

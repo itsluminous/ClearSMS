@@ -7,8 +7,10 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.ui.components.BrandCategory
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,7 +61,14 @@ class NotifierLargeIconTest {
 
     @Test
     fun `message notification person carries the resolved icon`() {
-        MessageNotifier(context, brandResolver, iconFactory).notify(message)
+        runBlocking {
+            MessageNotifier(
+                context,
+                brandResolver,
+                iconFactory,
+                NotificationSectionGate(FakeSettingsRepository()),
+            ).notify(message)
+        }
         val posted = postedNotifications().single()
         val style = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(posted)
         assertThat(style).isNotNull()
@@ -74,7 +83,14 @@ class NotifierLargeIconTest {
 
     @Test
     fun `scam warning attaches the sender's large icon`() {
-        MessageNotifier(context, brandResolver, iconFactory).notifyScam(message.copy(id = 11L))
+        runBlocking {
+            MessageNotifier(
+                context,
+                brandResolver,
+                iconFactory,
+                NotificationSectionGate(FakeSettingsRepository()),
+            ).notifyScam(message.copy(id = 11L))
+        }
         val posted = postedNotifications().single()
         assertThat(posted.getLargeIcon()).isNotNull()
     }
@@ -82,7 +98,7 @@ class NotifierLargeIconTest {
     @Test
     fun `transaction notification attaches the bank's large icon`() {
         val notification =
-            TransactionNotifier(context, Json, brandResolver, iconFactory)
+            TransactionNotifier(context, Json, brandResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
                 .buildNotification(
                     message.copy(extractedDataJson = """{"amount":"500.0","type":"debit","bank":"HDFC Bank"}"""),
                     MessageNotifier.DEFAULT_SELECTED,
@@ -94,7 +110,7 @@ class NotifierLargeIconTest {
     @Test
     fun `otp notification attaches the large icon on the private and public versions`() {
         val notification =
-            OtpNotifier(context, brandResolver, iconFactory)
+            OtpNotifier(context, brandResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
                 .build(
                     message.copy(category = Category.OTP, extractedOtp = "123456"),
                     "123456",

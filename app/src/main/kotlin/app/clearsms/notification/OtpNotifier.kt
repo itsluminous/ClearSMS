@@ -15,6 +15,7 @@ import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.domain.model.StartDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,13 +41,18 @@ class OtpNotifier
         @ApplicationContext private val context: Context,
         private val senderResolver: NotificationSenderResolver,
         private val iconFactory: SenderIconFactory,
+        private val sectionGate: NotificationSectionGate,
     ) {
-        fun notify(
+        suspend fun notify(
             message: MessageEntity,
             otp: String,
             displaySize: OtpDisplaySize,
             selected: Set<NotificationAction> = MessageNotifier.DEFAULT_SELECTED,
         ) {
+            // An OTP is a MESSAGE (OTP is an inbox category), so its
+            // notification follows the Inbox flag - the operator's "any
+            // incoming message notification" includes OTPs.
+            if (!sectionGate.allows(StartDestination.INBOX)) return
             Channels.ensureCreated(context)
             try {
                 NotificationManagerCompat

@@ -18,6 +18,7 @@ import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.domain.model.StartDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -71,6 +72,7 @@ class TransactionNotifier
         private val json: Json,
         private val senderResolver: NotificationSenderResolver,
         private val iconFactory: SenderIconFactory,
+        private val sectionGate: NotificationSectionGate,
     ) {
         /**
          * Posts a parsed-transaction notification for [message].
@@ -79,10 +81,16 @@ class TransactionNotifier
          *   enough to render (no amount+type and no balance) - the caller
          *   falls back to the plain message notification.
          */
-        fun notify(
+        suspend fun notify(
             message: MessageEntity,
             selected: Set<NotificationAction>,
         ): Boolean {
+            // The parsed-finance notification is the Finance section's
+            // voice. With Finance off it returns false - exactly like the
+            // transaction-notification toggle being off - so the router
+            // falls through to the plain message notification, itself gated
+            // by the Inbox flag.
+            if (!sectionGate.allows(StartDestination.FINANCE)) return false
             val notification = buildNotification(message, selected) ?: return false
             try {
                 val manager = NotificationManagerCompat.from(context)

@@ -452,25 +452,24 @@ private fun StartDestination.toRoute(): String =
  * Navigates a notification deep link. A route targeting a bottom-bar tab is
  * selected exactly like a bottom-bar tap - the same options the
  * NavigationBarItem onClick uses - so it can never be swept into another
- * tab's saved back stack (see [LaterIntentAction.Navigate.selectTab]). A tab
- * whose section is DISABLED is redirected to the resolved start tab: the
- * target no longer exists for this user, and a plain selection would
- * resurrect the hidden screen. Everything else (a conversation, with its
- * optional `?messageId=` highlight) keeps the plain push it always had.
+ * tab's saved back stack (see [LaterIntentAction.Navigate.selectTab]). The
+ * enabled-sections decision itself lives in [LaterIntentTriage.resolve]
+ * (pure, unit-tested): a tab whose section is DISABLED redirects to the
+ * resolved start tab; everything else (a conversation, with its optional
+ * `?messageId=` highlight) keeps the plain push it always had.
  */
 private fun NavHostController.navigateDeepLink(
     action: LaterIntentAction.Navigate,
     sections: EnabledSections,
 ) {
-    if (action.selectTab) {
-        val tab = StartDestination.entries.firstOrNull { it.toRoute() == action.route }
-        val route = if (tab != null && !sections.isEnabled(tab)) sections.resolveStart(tab).toRoute() else action.route
-        navigate(route) {
+    val resolved = LaterIntentTriage.resolve(action, sections)
+    if (resolved.selectTab) {
+        navigate(resolved.route) {
             popUpTo(graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true
             restoreState = true
         }
     } else {
-        navigate(action.route)
+        navigate(resolved.route)
     }
 }

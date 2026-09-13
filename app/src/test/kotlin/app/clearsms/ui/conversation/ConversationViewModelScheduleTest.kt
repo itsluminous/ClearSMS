@@ -21,6 +21,7 @@ import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.notification.MessageNotifier
+import app.clearsms.notification.NotificationSectionGate
 import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.OtpNotifier
 import app.clearsms.notification.SenderIconFactory
@@ -158,9 +159,9 @@ class ConversationViewModelScheduleTest {
             IncomingMessageRouter(
                 context,
                 FakeSettingsRepository(),
-                OtpNotifier(context, resolver, iconFactory),
-                MessageNotifier(context, resolver, iconFactory),
-                TransactionNotifier(context, json, resolver, iconFactory),
+                OtpNotifier(context, resolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+                MessageNotifier(context, resolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+                TransactionNotifier(context, json, resolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
                 CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             )
         val mmsInbound =

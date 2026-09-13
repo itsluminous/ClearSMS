@@ -2,6 +2,8 @@ package app.clearsms.ui.navigation
 
 import android.content.Intent
 import app.clearsms.IntentTriage
+import app.clearsms.domain.model.EnabledSections
+import app.clearsms.domain.model.StartDestination
 
 /**
  * What an intent that arrived AFTER the activity was created should do to a
@@ -71,6 +73,46 @@ internal object LaterIntentTriage {
         }
         return LaterIntentAction.None
     }
+
+    /**
+     * Applies the enabled-sections gate to a classified deep link: a link
+     * targeting a bottom-bar TAB whose section is disabled is redirected to
+     * the resolved start tab (still as a tab SELECTION - `selectTab` stays
+     * true, so the v0.17.2 invariant holds: tab-targeted navigation always
+     * uses the bottom bar's own options, never a plain push that would
+     * corrupt the start destination's saved state).
+     *
+     * Redirect - not ignore - because a tapped notification or external
+     * link must land the user SOMEWHERE: doing nothing on a warm tap looks
+     * broken, and the resolved start is exactly where a cold start would
+     * open, so both temperatures agree. This also covers a notification
+     * posted BEFORE its section was disabled and tapped after.
+     *
+     * Non-tab links pass through untouched. In particular a conversation
+     * link (with its optional `?messageId=` highlight) stays valid even
+     * with Inbox off: the conversation screen is section-independent -
+     * Search, Finance and Alerts all open it - so an EXTERNAL intent or a
+     * stale pre-disable message notification still shows the exact thread
+     * the user asked for instead of being second-guessed.
+     */
+    fun resolve(
+        action: LaterIntentAction.Navigate,
+        sections: EnabledSections,
+    ): LaterIntentAction.Navigate {
+        if (!action.selectTab) return action
+        val tab = tabForRoute[action.route] ?: return action
+        if (sections.isEnabled(tab)) return action
+        return LaterIntentAction.Navigate(route = routeForTab.getValue(sections.resolveStart(tab)), selectTab = true)
+    }
+
+    private val routeForTab =
+        mapOf(
+            StartDestination.INBOX to Routes.INBOX,
+            StartDestination.FINANCE to Routes.FINANCE,
+            StartDestination.ALERTS to Routes.ALERTS,
+        )
+
+    private val tabForRoute = routeForTab.entries.associate { (tab, route) -> route to tab }
 
     /**
      * The graph route for a valid `clearsms://` VIEW intent, or null. Mirrors

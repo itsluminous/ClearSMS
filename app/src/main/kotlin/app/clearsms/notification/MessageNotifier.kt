@@ -10,6 +10,7 @@ import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.domain.model.StartDestination
 import app.clearsms.mms.MmsSnippet
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -32,6 +33,7 @@ class MessageNotifier
         @ApplicationContext private val context: Context,
         private val senderResolver: NotificationSenderResolver,
         private val iconFactory: SenderIconFactory,
+        private val sectionGate: NotificationSectionGate,
     ) {
         /**
          * Posts / updates the notification for [message]'s thread.
@@ -49,11 +51,14 @@ class MessageNotifier
          * is offered only for repliable
          * addresses - see [NotificationActionPlanner.isRepliableAddress].
          */
-        fun notify(
+        suspend fun notify(
             message: MessageEntity,
             selected: Set<NotificationAction> = DEFAULT_SELECTED,
             channelId: String = Channels.MESSAGES,
         ) {
+            // A message notification is the Inbox section's voice: silent
+            // while the user has switched that whole section off.
+            if (!sectionGate.allows(StartDestination.INBOX)) return
             Channels.ensureCreated(context)
             post(threadNotificationId(message.threadId), build(message, selected, channelId))
         }
@@ -108,8 +113,14 @@ class MessageNotifier
             return builder.build()
         }
 
-        /** High-priority warning for a message flagged as a likely scam. */
-        fun notifyScam(message: MessageEntity) {
+        /**
+         * High-priority warning for a message flagged as a likely scam. A
+         * scam warning is still a notification ABOUT an incoming message -
+         * an inbox surface - so it follows the Inbox flag like the plain
+         * notification (the message itself stays flagged in-app either way).
+         */
+        suspend fun notifyScam(message: MessageEntity) {
+            if (!sectionGate.allows(StartDestination.INBOX)) return
             Channels.ensureCreated(context)
             post(NotificationIds.scam(message.id), buildScam(message))
         }
@@ -143,7 +154,12 @@ class MessageNotifier
                 .build()
         }
 
-        /** Shown when an outgoing message could not be sent. */
+        /**
+         * Shown when an outgoing message could not be sent. Deliberately NOT
+         * section-gated: this is feedback about the user's OWN action, not
+         * incoming-message noise - suppressing it while Inbox is off would
+         * silently lose a failed send.
+         */
         fun notifySendFailure(
             destination: String,
             threadId: Long? = null,

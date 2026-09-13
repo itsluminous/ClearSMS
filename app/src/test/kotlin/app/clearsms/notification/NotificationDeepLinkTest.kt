@@ -8,6 +8,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SubCategory
+import app.clearsms.testing.FakeSettingsRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -45,10 +46,11 @@ class NotificationDeepLinkTest {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }
 
-    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory)
-    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory)
+    private val sectionGate = NotificationSectionGate(FakeSettingsRepository())
+    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, sectionGate)
+    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, sectionGate)
     private val transactionNotifier =
-        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory)
+        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, sectionGate)
 
     private val message =
         MessageEntity(
@@ -114,7 +116,7 @@ class NotificationDeepLinkTest {
                         kotlinx.coroutines.Dispatchers.Unconfined + kotlinx.coroutines.SupervisorJob(),
                     ),
             )
-        val notifier = CatchUpNotifier(context, router)
+        val notifier = CatchUpNotifier(context, router, sectionGate)
         kotlinx.coroutines.runBlocking { notifier.notifyFresh(emptyList(), CatchUpNotifier.MAX_INDIVIDUAL + 1) }
         val posted =
             shadowOf(context.getSystemService(NotificationManager::class.java))

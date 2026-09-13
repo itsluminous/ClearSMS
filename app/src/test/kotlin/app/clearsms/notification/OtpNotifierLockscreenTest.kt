@@ -8,6 +8,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.testing.FakeSettingsRepository
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,7 +46,12 @@ class OtpNotifierLockscreenTest {
         }
 
     private fun build(selected: Set<NotificationAction> = MessageNotifier.DEFAULT_SELECTED): Notification =
-        OtpNotifier(context, rawResolver, SenderIconFactory(context)).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
+        OtpNotifier(
+            context,
+            rawResolver,
+            SenderIconFactory(context),
+            NotificationSectionGate(FakeSettingsRepository()),
+        ).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
 
     @Test
     fun `notification is private with a public version`() {

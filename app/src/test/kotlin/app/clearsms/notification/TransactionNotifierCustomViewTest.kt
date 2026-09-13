@@ -7,6 +7,7 @@ import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.notification.TransactionNotifier.Content
+import app.clearsms.testing.FakeSettingsRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -36,6 +37,7 @@ class TransactionNotifierCustomViewTest {
                 override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
             },
             SenderIconFactory(context),
+            NotificationSectionGate(FakeSettingsRepository()),
         )
 
     private fun message(extracted: String) =

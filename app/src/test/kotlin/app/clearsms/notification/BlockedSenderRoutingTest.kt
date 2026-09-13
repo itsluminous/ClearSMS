@@ -44,9 +44,16 @@ class BlockedSenderRoutingTest {
         IncomingMessageRouter(
             context = context,
             settingsRepository = FakeSettingsRepository(),
-            otpNotifier = OtpNotifier(context, rawResolver, iconFactory),
-            messageNotifier = MessageNotifier(context, rawResolver, iconFactory),
-            transactionNotifier = TransactionNotifier(context, json, rawResolver, iconFactory),
+            otpNotifier = OtpNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+            messageNotifier = MessageNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+            transactionNotifier =
+                TransactionNotifier(
+                    context,
+                    json,
+                    rawResolver,
+                    iconFactory,
+                    NotificationSectionGate(FakeSettingsRepository()),
+                ),
             applicationScope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob()),
         )
 

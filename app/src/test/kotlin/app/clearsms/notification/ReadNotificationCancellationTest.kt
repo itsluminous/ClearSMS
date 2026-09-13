@@ -18,6 +18,7 @@ import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.OtpDisplaySize
+import app.clearsms.testing.FakeSettingsRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -62,9 +63,10 @@ class ReadNotificationCancellationTest {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }
 
-    private val transactionNotifier = TransactionNotifier(context, json, rawResolver, iconFactory)
-    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory)
-    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory)
+    private val transactionNotifier =
+        TransactionNotifier(context, json, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
+    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
+    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
 
     private val txMessage1 =
         MessageEntity(
@@ -126,11 +128,13 @@ class ReadNotificationCancellationTest {
             db.messageDao().insert(txMessage3)
         }
         // Post everything the receiver would have posted for these messages.
-        assertThat(transactionNotifier.notify(txMessage1, MessageNotifier.DEFAULT_SELECTED)).isTrue()
-        assertThat(transactionNotifier.notify(txMessage3, MessageNotifier.DEFAULT_SELECTED)).isTrue()
-        otpNotifier.notify(otpMessage2, "123456", OtpDisplaySize.DEFAULT, MessageNotifier.DEFAULT_SELECTED)
-        messageNotifier.notify(txMessage1)
-        messageNotifier.notify(txMessage3)
+        runBlocking {
+            assertThat(transactionNotifier.notify(txMessage1, MessageNotifier.DEFAULT_SELECTED)).isTrue()
+            assertThat(transactionNotifier.notify(txMessage3, MessageNotifier.DEFAULT_SELECTED)).isTrue()
+            otpNotifier.notify(otpMessage2, "123456", OtpDisplaySize.DEFAULT, MessageNotifier.DEFAULT_SELECTED)
+            messageNotifier.notify(txMessage1)
+            messageNotifier.notify(txMessage3)
+        }
     }
 
     @After

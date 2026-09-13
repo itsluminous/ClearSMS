@@ -34,6 +34,7 @@ import app.clearsms.ui.composemsg.contactSuggestionFeed
 import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.work.BackupWorker
 import app.clearsms.work.RecategorizeWorker
+import app.clearsms.work.ReminderAlarmScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -174,6 +175,7 @@ class SettingsViewModel
         private val settingsBackupManager: SettingsBackupManager,
         private val workManager: WorkManager,
         private val balanceVisibility: BalanceVisibility,
+        private val reminderAlarmScheduler: ReminderAlarmScheduler,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val busy = MutableStateFlow(false)
@@ -437,7 +439,14 @@ class SettingsViewModel
             when (tab) {
                 StartDestination.INBOX -> settings.setInboxSectionEnabled(value)
                 StartDestination.FINANCE -> settings.setFinanceSectionEnabled(value)
-                StartDestination.ALERTS -> settings.setAlertsSectionEnabled(value)
+                StartDestination.ALERTS -> {
+                    settings.setAlertsSectionEnabled(value)
+                    // Alerts off must stop the WAKE-UPS, not just the
+                    // notification: cancel every registered bill-due alarm.
+                    // Re-enabling re-registers them from the reminders that
+                    // kept being parsed while the section was hidden.
+                    if (value) reminderAlarmScheduler.rescheduleAll() else reminderAlarmScheduler.cancelUpcoming()
+                }
             }
         }
 
