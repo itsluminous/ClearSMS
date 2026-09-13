@@ -1,0 +1,4 @@
+Two layout fixes, both reported by users.
+
+- The keyboard covered the field you were typing in on the create-rule screen, so you had to close the keyboard to see what you had written. Every screen that takes text now moves up out of the keyboard's way, and a field further down a long form scrolls itself into view when you tap it. Thanks to @RudzLong for reporting this.
+- In landscape on phones that use three navigation buttons, the navigation bar sits along one side and was covering the "New message" and "New rule" buttons, making them hard to tap. Screen content and those buttons now keep clear of it, whichever side it is on.
