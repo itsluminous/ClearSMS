@@ -2,6 +2,7 @@ package app.clearsms.testing
 
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -91,6 +92,20 @@ open class FakeSettingsRepository : SettingsRepository {
     override val defaultDestination = MutableStateFlow(StartDestination.INBOX)
 
     override suspend fun setDefaultDestination(value: StartDestination) = Unit
+
+    override val enabledSections = MutableStateFlow(EnabledSections())
+
+    override suspend fun setInboxSectionEnabled(value: Boolean) {
+        enabledSections.value = enabledSections.value.copy(inbox = value)
+    }
+
+    override suspend fun setFinanceSectionEnabled(value: Boolean) {
+        enabledSections.value = enabledSections.value.copy(finance = value)
+    }
+
+    override suspend fun setAlertsSectionEnabled(value: Boolean) {
+        enabledSections.value = enabledSections.value.copy(alerts = value)
+    }
 
     override val defaultInboxFilter = MutableStateFlow<Category?>(null)
 

@@ -15,6 +15,7 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -70,6 +71,8 @@ data class SettingsUiState(
     /** Per-row band where a swipe never starts; off by default. */
     val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
     val defaultDestination: StartDestination = StartDestination.INBOX,
+    /** Which top-level sections (tabs) are enabled; a view choice only. */
+    val sections: EnabledSections = EnabledSections(),
     val defaultInboxFilter: Category? = null,
     val defaultFinanceFilter: FinanceTab = FinanceTab.ACCOUNTS,
     val otpAutoCopy: Boolean = true,
@@ -138,6 +141,12 @@ sealed interface SettingsEvent {
 
     /** Manual OTP cleanup found nothing matching the chosen range. */
     data object OtpClearEmpty : SettingsEvent
+
+    /**
+     * A section toggle was refused because it targeted the LAST enabled
+     * section - the user is told why instead of watching a dead switch.
+     */
+    data object LastSectionKept : SettingsEvent
 }
 
 /**
@@ -251,6 +260,8 @@ class SettingsViewModel
             val financeFilter: FinanceTab,
             /** Filled by the second combine stage (combine() maxes out at 5 flows). */
             val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
+            /** Filled by the third combine stage. */
+            val sections: EnabledSections = EnabledSections(),
         )
 
         private val appearance =
@@ -285,6 +296,8 @@ class SettingsViewModel
                 ::GestureStartupState,
             ).combine(settings.swipeDeadZone) { gestures, zone ->
                 gestures.copy(swipeDeadZone = zone)
+            }.combine(settings.enabledSections) { gestures, sections ->
+                gestures.copy(sections = sections)
             }
         private val otp =
             combine(settings.otpAutoCopy, settings.otpAutoDeletePolicy, settings.otpDisplaySize, ::Triple)
@@ -341,6 +354,7 @@ class SettingsViewModel
                     swipeActionEnd = gestures.swipeEnd,
                     swipeDeadZone = gestures.swipeDeadZone,
                     defaultDestination = gestures.destination,
+                    sections = gestures.sections,
                     defaultInboxFilter = gestures.inboxFilter,
                     defaultFinanceFilter = gestures.financeFilter,
                     otpAutoCopy = autoCopy,
@@ -403,6 +417,29 @@ class SettingsViewModel
         fun setSwipeDeadZone(value: SwipeDeadZone) = launchIo { settings.setSwipeDeadZone(value) }
 
         fun setDefaultDestination(value: StartDestination) = launchIo { settings.setDefaultDestination(value) }
+
+        /**
+         * Enables/disables a whole section (tab). The last-enabled guard is
+         * enforced HERE, against the freshly read state: disabling the only
+         * remaining section is refused and explained via
+         * [SettingsEvent.LastSectionKept] rather than left as a switch that
+         * silently snaps back. Disabling is a view choice - ingestion and
+         * extraction keep running for the hidden section.
+         */
+        fun setSectionEnabled(
+            tab: StartDestination,
+            value: Boolean,
+        ) = launchIo {
+            if (!value && !settings.enabledSections.first().canDisable(tab)) {
+                events.emit(SettingsEvent.LastSectionKept)
+                return@launchIo
+            }
+            when (tab) {
+                StartDestination.INBOX -> settings.setInboxSectionEnabled(value)
+                StartDestination.FINANCE -> settings.setFinanceSectionEnabled(value)
+                StartDestination.ALERTS -> settings.setAlertsSectionEnabled(value)
+            }
+        }
 
         fun setDefaultInboxFilter(value: Category?) = launchIo { settings.setDefaultInboxFilter(value) }
 

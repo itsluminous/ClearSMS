@@ -7,6 +7,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MerchantCategory
@@ -233,6 +234,14 @@ private class FakeFinanceRepository : FinanceRepository {
 
 private class FakeSettingsRepository : SettingsRepository {
     val defaultFinanceFilterFlow = MutableStateFlow(FinanceTab.ACCOUNTS)
+
+    override val enabledSections = MutableStateFlow(EnabledSections())
+
+    override suspend fun setInboxSectionEnabled(value: Boolean) = Unit
+
+    override suspend fun setFinanceSectionEnabled(value: Boolean) = Unit
+
+    override suspend fun setAlertsSectionEnabled(value: Boolean) = Unit
 
     override val blockedKeywords = MutableStateFlow(emptySet<String>())
 

@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -142,6 +143,27 @@ class SettingsRepositoryImpl(
 
     override suspend fun setDefaultDestination(value: StartDestination) {
         dataStore.edit { it[KEY_DEFAULT_DESTINATION] = value.name }
+    }
+
+    override val enabledSections: Flow<EnabledSections> =
+        dataStore.data.map {
+            EnabledSections.from(
+                inbox = it[KEY_INBOX_SECTION_ENABLED] ?: true,
+                finance = it[KEY_FINANCE_SECTION_ENABLED] ?: true,
+                alerts = it[KEY_ALERTS_SECTION_ENABLED] ?: true,
+            )
+        }
+
+    override suspend fun setInboxSectionEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_INBOX_SECTION_ENABLED] = value }
+    }
+
+    override suspend fun setFinanceSectionEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_FINANCE_SECTION_ENABLED] = value }
+    }
+
+    override suspend fun setAlertsSectionEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_ALERTS_SECTION_ENABLED] = value }
     }
 
     override val defaultInboxFilter: Flow<Category?> =
@@ -284,6 +306,9 @@ class SettingsRepositoryImpl(
         val KEY_SWIPE_ACTION_END = stringPreferencesKey("swipe_action_end")
         val KEY_SWIPE_DEAD_ZONE = stringPreferencesKey("swipe_dead_zone")
         val KEY_DEFAULT_DESTINATION = stringPreferencesKey("default_destination")
+        val KEY_INBOX_SECTION_ENABLED = booleanPreferencesKey("inbox_section_enabled")
+        val KEY_FINANCE_SECTION_ENABLED = booleanPreferencesKey("finance_section_enabled")
+        val KEY_ALERTS_SECTION_ENABLED = booleanPreferencesKey("alerts_section_enabled")
         val KEY_DEFAULT_INBOX_FILTER = stringPreferencesKey("default_inbox_filter")
         val KEY_DEFAULT_FINANCE_FILTER = stringPreferencesKey("default_finance_filter")
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")

@@ -2,6 +2,7 @@ package app.clearsms.ui.settings
 
 import androidx.annotation.StringRes
 import app.clearsms.R
+import app.clearsms.domain.model.EnabledSections
 
 /**
  * Settings sections in display order - enum declaration order IS the screen
@@ -51,15 +52,18 @@ enum class SettingsItem(
     OTP_AUTO_DELETE(SettingsSection.OTP, R.string.settings_otp_auto_delete),
     OTP_SIZE(SettingsSection.OTP, R.string.settings_otp_size),
     CLEAR_OTP(SettingsSection.OTP, R.string.settings_clear_otp),
+    SHOW_INBOX_TAB(SettingsSection.INBOX, R.string.settings_show_inbox_tab),
     INBOX_PILL_ORDER(SettingsSection.INBOX, R.string.settings_pill_order),
     DEFAULT_INBOX_FILTER(SettingsSection.INBOX, R.string.settings_default_inbox_filter),
     SWIPE_RIGHT(SettingsSection.INBOX, R.string.settings_swipe_right),
     SWIPE_LEFT(SettingsSection.INBOX, R.string.settings_swipe_left),
     SWIPE_DEAD_ZONE(SettingsSection.INBOX, R.string.settings_swipe_dead_zone),
     SORT_AGAIN(SettingsSection.INBOX, R.string.settings_sort_again),
+    SHOW_FINANCE_TAB(SettingsSection.FINANCE, R.string.settings_show_finance_tab),
     FINANCE_PILL_ORDER(SettingsSection.FINANCE, R.string.settings_pill_order),
     SHOW_BALANCE(SettingsSection.FINANCE, R.string.settings_show_balance),
     DEFAULT_FINANCE_FILTER(SettingsSection.FINANCE, R.string.settings_default_finance_filter),
+    SHOW_ALERTS_TAB(SettingsSection.ALERTS, R.string.settings_show_alerts_tab),
     ALERTS_PILL_ORDER(SettingsSection.ALERTS, R.string.settings_pill_order),
     DEFAULT_SCREEN(SettingsSection.STARTUP, R.string.settings_default_screen),
     BACKUP_NOW(SettingsSection.BACKUP, R.string.settings_backup_now),
@@ -78,3 +82,20 @@ enum class SettingsItem(
     PRIVACY_POLICY(null, R.string.settings_privacy_policy),
     LICENSES(null, R.string.settings_licenses),
 }
+
+/**
+ * The rows the settings screen renders given which sections are enabled.
+ * A disabled Inbox/Finance/Alerts section keeps ONLY its "Show … tab"
+ * toggle - the remaining rows configure a screen that no longer exists, so
+ * showing them would be noise (and the toggle staying visible is what lets
+ * the user re-enable the section). Every other section is untouched.
+ */
+fun visibleSettingsItems(sections: EnabledSections): List<SettingsItem> =
+    SettingsItem.entries.filter { item ->
+        when (item.section) {
+            SettingsSection.INBOX -> sections.inbox || item == SettingsItem.SHOW_INBOX_TAB
+            SettingsSection.FINANCE -> sections.finance || item == SettingsItem.SHOW_FINANCE_TAB
+            SettingsSection.ALERTS -> sections.alerts || item == SettingsItem.SHOW_ALERTS_TAB
+            else -> true
+        }
+    }

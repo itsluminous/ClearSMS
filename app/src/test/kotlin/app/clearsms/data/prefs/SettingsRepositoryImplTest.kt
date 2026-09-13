@@ -3,10 +3,12 @@ package app.clearsms.data.prefs
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -148,6 +150,37 @@ class SettingsRepositoryImplTest {
             val repo = repository()
             repo.setDefaultDestination(StartDestination.FINANCE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.FINANCE)
+        }
+
+    @Test
+    fun `enabledSections defaults to all on and round trips per section`() =
+        runBlocking {
+            val repo = repository()
+            assertThat(repo.enabledSections.first()).isEqualTo(EnabledSections())
+            repo.setFinanceSectionEnabled(false)
+            assertThat(repo.enabledSections.first())
+                .isEqualTo(EnabledSections(inbox = true, finance = false, alerts = true))
+            repo.setInboxSectionEnabled(false)
+            assertThat(repo.enabledSections.first())
+                .isEqualTo(EnabledSections(inbox = false, finance = false, alerts = true))
+            repo.setFinanceSectionEnabled(true)
+            assertThat(repo.enabledSections.first())
+                .isEqualTo(EnabledSections(inbox = false, finance = true, alerts = true))
+        }
+
+    @Test
+    fun `an all-off combination on disk is healed to all-on at read time`() =
+        runBlocking {
+            // The settings UI cannot produce this (last-section guard), but a
+            // hand-edited settings backup restores raw keys - the read must
+            // never surface a state with zero screens.
+            val repo = repository()
+            dataStore.edit { prefs ->
+                prefs[booleanPreferencesKey("inbox_section_enabled")] = false
+                prefs[booleanPreferencesKey("finance_section_enabled")] = false
+                prefs[booleanPreferencesKey("alerts_section_enabled")] = false
+            }
+            assertThat(repo.enabledSections.first()).isEqualTo(EnabledSections())
         }
 
     @Test

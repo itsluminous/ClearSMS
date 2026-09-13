@@ -278,6 +278,8 @@ fun SettingsScreen(
                         resources.getString(R.string.settings_clear_otp_done, event.count)
                     SettingsEvent.OtpClearEmpty ->
                         resources.getString(R.string.settings_clear_otp_empty)
+                    SettingsEvent.LastSectionKept ->
+                        resources.getString(R.string.settings_last_section_kept)
                 },
             )
         }
@@ -546,8 +548,12 @@ fun SettingsScreen(
         SettingsDialog.DEFAULT_SCREEN ->
             RadioDialog(
                 title = stringResource(R.string.settings_default_screen),
-                options = StartDestination.entries.map { it to destinationLabel(it) },
-                selected = state.defaultDestination,
+                // Only enabled sections are offered - a hidden tab cannot be
+                // the start screen. The stored preference survives untouched;
+                // what is selected here is the EFFECTIVE start (the same
+                // resolution navigation applies at cold start).
+                options = state.sections.visibleTabs.map { it to destinationLabel(it) },
+                selected = state.sections.resolveStart(state.defaultDestination),
                 onSelect = {
                     viewModel.setDefaultDestination(it)
                     dialog = null
@@ -718,7 +724,9 @@ private fun settingsRowEntries(
         ToggleRow(title = title, subtitle = summary, checked = checked, onToggle = onToggle)
     }
 
-    return SettingsItem.entries.map { item ->
+    // A disabled section contributes only its "Show … tab" toggle: the
+    // other rows configure a screen that is currently hidden.
+    return visibleSettingsItems(state.sections).map { item ->
         val section = item.section?.let { stringResource(it.titleRes) }
         val title = stringResource(item.titleRes)
         // Every row is tagged with the catalog entry it renders, so a highlight
@@ -867,6 +875,21 @@ private fun settingsRowEntries(
                         )
                     }
                 }
+                SettingsItem.SHOW_INBOX_TAB ->
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary =
+                            stringResource(
+                                if (state.sections.inbox) {
+                                    R.string.settings_show_tab_on
+                                } else {
+                                    R.string.settings_show_inbox_tab_off
+                                },
+                            ),
+                        checked = state.sections.inbox,
+                        onToggle = { viewModel.setSectionEnabled(StartDestination.INBOX, it) },
+                    )
                 SettingsItem.INBOX_PILL_ORDER ->
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.INBOX_PILL_ORDER)
@@ -933,6 +956,21 @@ private fun settingsRowEntries(
                         }
                     }
                 }
+                SettingsItem.SHOW_FINANCE_TAB ->
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary =
+                            stringResource(
+                                if (state.sections.finance) {
+                                    R.string.settings_show_tab_on
+                                } else {
+                                    R.string.settings_show_finance_tab_off
+                                },
+                            ),
+                        checked = state.sections.finance,
+                        onToggle = { viewModel.setSectionEnabled(StartDestination.FINANCE, it) },
+                    )
                 SettingsItem.FINANCE_PILL_ORDER ->
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.FINANCE_PILL_ORDER)
@@ -960,12 +998,30 @@ private fun settingsRowEntries(
                     row(section, title, state.defaultFinanceFilter.displayName()) {
                         openDialog(SettingsDialog.DEFAULT_FINANCE_FILTER)
                     }
+                SettingsItem.SHOW_ALERTS_TAB ->
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary =
+                            stringResource(
+                                if (state.sections.alerts) {
+                                    R.string.settings_show_tab_on
+                                } else {
+                                    R.string.settings_show_alerts_tab_off
+                                },
+                            ),
+                        checked = state.sections.alerts,
+                        onToggle = { viewModel.setSectionEnabled(StartDestination.ALERTS, it) },
+                    )
                 SettingsItem.ALERTS_PILL_ORDER ->
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.ALERTS_PILL_ORDER)
                     }
                 SettingsItem.DEFAULT_SCREEN ->
-                    row(section, title, destinationLabel(state.defaultDestination)) {
+                    // The summary shows the EFFECTIVE start screen: a stored
+                    // preference for a disabled section resolves to the first
+                    // enabled tab, exactly as navigation does at cold start.
+                    row(section, title, destinationLabel(state.sections.resolveStart(state.defaultDestination))) {
                         openDialog(SettingsDialog.DEFAULT_SCREEN)
                     }
                 SettingsItem.BACKUP_NOW ->

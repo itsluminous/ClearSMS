@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.prefs.SettingsRepositoryImpl
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -67,6 +68,11 @@ class SettingsBackupManagerTest {
         repo.setSwipeActionEnd(SwipeAction.NONE)
         repo.setSwipeDeadZone(SwipeDeadZone(enabled = true, centerXPercent = 30, widthPercent = 60, heightPercent = 50))
         repo.setDefaultDestination(StartDestination.FINANCE)
+        // Two off, one explicitly on: all three keys land on disk while the
+        // combination stays valid (all-off would be healed at read time).
+        repo.setInboxSectionEnabled(false)
+        repo.setFinanceSectionEnabled(false)
+        repo.setAlertsSectionEnabled(true)
         repo.setDefaultInboxFilter(null)
         repo.setDefaultFinanceFilter(FinanceTab.CREDIT_CARDS)
         repo.setTransactionNotifications(false)
@@ -94,6 +100,8 @@ class SettingsBackupManagerTest {
         assertThat(repo.swipeDeadZone.first())
             .isEqualTo(SwipeDeadZone(enabled = true, centerXPercent = 30, widthPercent = 60, heightPercent = 50))
         assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.FINANCE)
+        assertThat(repo.enabledSections.first())
+            .isEqualTo(EnabledSections(inbox = false, finance = false, alerts = true))
         assertThat(repo.defaultInboxFilter.first()).isNull()
         assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.CREDIT_CARDS)
         assertThat(repo.transactionNotifications.first()).isFalse()

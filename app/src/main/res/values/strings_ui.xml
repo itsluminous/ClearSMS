@@ -269,6 +269,14 @@
     <string name="settings_section_inbox">Inbox</string>
     <string name="settings_section_finance">Finance</string>
     <string name="settings_section_alerts">Alerts</string>
+    <string name="settings_show_inbox_tab">Show Inbox tab</string>
+    <string name="settings_show_finance_tab">Show Finance tab</string>
+    <string name="settings_show_alerts_tab">Show Alerts tab</string>
+    <string name="settings_show_tab_on">Shown in the bottom navigation</string>
+    <string name="settings_show_inbox_tab_off">Hidden - messages are still received and sorted</string>
+    <string name="settings_show_finance_tab_off">Hidden - transactions are still extracted</string>
+    <string name="settings_show_alerts_tab_off">Hidden - bills and reminders are still tracked</string>
+    <string name="settings_last_section_kept">At least one tab must stay on - enable another tab first</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_logo_background">Logo background</string>
     <string name="logo_background_white">White</string>

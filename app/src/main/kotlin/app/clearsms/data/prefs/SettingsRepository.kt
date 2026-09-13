@@ -1,6 +1,7 @@
 package app.clearsms.data.prefs
 
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -101,6 +102,23 @@ interface SettingsRepository {
     val defaultDestination: Flow<StartDestination>
 
     suspend fun setDefaultDestination(value: StartDestination)
+
+    /**
+     * Which top-level sections (bottom-navigation tabs) are shown. Read as
+     * one normalized value - an all-off combination restored from a
+     * hand-edited backup heals to all-on at read time (see
+     * [app.clearsms.domain.model.EnabledSections.from]). A disabled section
+     * is a view choice only: ingestion and extraction keep running. The
+     * last-enabled guard lives with the callers ([EnabledSections.canDisable]);
+     * these setters are raw key writes like their neighbours.
+     */
+    val enabledSections: Flow<EnabledSections>
+
+    suspend fun setInboxSectionEnabled(value: Boolean)
+
+    suspend fun setFinanceSectionEnabled(value: Boolean)
+
+    suspend fun setAlertsSectionEnabled(value: Boolean)
 
     /** Inbox category filter applied at startup; null means All. */
     val defaultInboxFilter: Flow<Category?>

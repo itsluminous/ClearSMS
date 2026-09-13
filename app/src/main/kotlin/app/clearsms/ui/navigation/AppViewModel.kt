@@ -3,6 +3,7 @@ package app.clearsms.ui.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.prefs.SettingsRepository
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.ThemeMode
@@ -21,6 +22,8 @@ data class AppUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val defaultDestination: StartDestination = StartDestination.INBOX,
+    /** Which top-level sections (tabs) exist for this user; never all-off. */
+    val sections: EnabledSections = EnabledSections(),
     val logoBackground: LogoBackground = LogoBackground.WHITE,
 )
 
@@ -46,5 +49,10 @@ class AppViewModel
                     defaultDestination = destination,
                     logoBackground = logoBackground,
                 )
+            }.combine(settings.enabledSections) { state, sections ->
+                // Same DataStore read as the rest, so the first emission that
+                // clears the onboarding gate already carries the real flags -
+                // cold start can never flash a disabled tab.
+                state.copy(sections = sections)
             }.stateIn(viewModelScope, SharingStarted.Eagerly, AppUiState())
     }

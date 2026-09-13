@@ -39,6 +39,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.clearsms.R
+import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.ui.alerts.AlertsScreen
 import app.clearsms.ui.components.LocalLogoBackground
@@ -63,6 +64,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
 private data class BottomDestination(
+    val tab: StartDestination,
     val route: String,
     val icon: ImageVector,
     val labelRes: Int,
@@ -106,7 +108,11 @@ fun ClearSmsApp(
                         initialImageUri = initialImageUri,
                         laterIntents = laterIntents,
                         initialIntent = initialIntent,
-                        startDestination = state.defaultDestination,
+                        // The START destination must be an ENABLED section
+                        // (cold start included): the stored preference wins
+                        // while its section is on, else the first enabled tab.
+                        startDestination = state.sections.resolveStart(state.defaultDestination),
+                        sections = state.sections,
                     )
                 }
             }
@@ -121,15 +127,17 @@ private fun MainScaffold(
     initialImageUri: String?,
     laterIntents: Flow<Intent>,
     initialIntent: Intent?,
+    /** Already resolved against [sections]: always an enabled tab. */
     startDestination: StartDestination,
+    sections: EnabledSections,
     navController: NavHostController = rememberNavController(),
 ) {
     val destinations =
         listOf(
-            BottomDestination(Routes.INBOX, Icons.Outlined.ChatBubbleOutline, R.string.nav_inbox),
-            BottomDestination(Routes.FINANCE, Icons.Outlined.AccountBalanceWallet, R.string.nav_finance),
-            BottomDestination(Routes.ALERTS, Icons.Outlined.Notifications, R.string.nav_alerts),
-        )
+            BottomDestination(StartDestination.INBOX, Routes.INBOX, Icons.Outlined.ChatBubbleOutline, R.string.nav_inbox),
+            BottomDestination(StartDestination.FINANCE, Routes.FINANCE, Icons.Outlined.AccountBalanceWallet, R.string.nav_finance),
+            BottomDestination(StartDestination.ALERTS, Routes.ALERTS, Icons.Outlined.Notifications, R.string.nav_alerts),
+        ).filter { sections.isEnabled(it.tab) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
@@ -153,7 +161,7 @@ private fun MainScaffold(
         if (!initialIntentConsumed) {
             initialIntentConsumed = true
             val action = initialIntent?.let(LaterIntentTriage::classify)
-            if (action is LaterIntentAction.Navigate) navController.navigateDeepLink(action)
+            if (action is LaterIntentAction.Navigate) navController.navigateDeepLink(action, sections)
         }
     }
 
@@ -165,7 +173,7 @@ private fun MainScaffold(
     LaunchedEffect(navController) {
         laterIntents.collect { intent ->
             when (val action = LaterIntentTriage.classify(intent)) {
-                is LaterIntentAction.Navigate -> navController.navigateDeepLink(action)
+                is LaterIntentAction.Navigate -> navController.navigateDeepLink(action, sections)
                 is LaterIntentAction.OpenCompose -> {
                     if (action.rejectedAttachment) {
                         // Same courtesy as the onCreate path: never fail a
@@ -175,6 +183,38 @@ private fun MainScaffold(
                     action.route?.let { navController.navigate(it) }
                 }
                 LaterIntentAction.None -> Unit
+            }
+        }
+    }
+
+    // v0.17.2 lesson: tab switches keep per-tab back-stack state alive via
+    // popUpTo(start){saveState} + restoreState, so a section that gets
+    // DISABLED must be scrubbed from both places or its stale state can
+    // resurface later:
+    //  - clearBackStack drops the SAVED (popped) state, so no restoreState
+    //    navigation can ever resurrect the hidden tab's stack;
+    //  - if the tab is still on the ACTIVE stack (it is the screen beneath
+    //    the Settings screen the toggle was flipped on), the stack is
+    //    rebuilt onto the resolved start tab without saving the disabled
+    //    tab's state - and Settings is re-pushed so the user stays exactly
+    //    where they toggled.
+    // Runs on the first composition too, where it is a no-op (nothing
+    // disabled is in the stack of a fresh NavController).
+    LaunchedEffect(sections) {
+        StartDestination.entries.filterNot(sections::isEnabled).forEach { tab ->
+            val route = tab.toRoute()
+            navController.clearBackStack(route)
+            val onActiveStack = runCatching { navController.getBackStackEntry(route) }.isSuccess
+            if (onActiveStack) {
+                val settingsWasOnTop = navController.currentDestination?.route == Routes.SETTINGS
+                navController.navigate(startDestination.toRoute()) {
+                    popUpTo(route) {
+                        inclusive = true
+                        saveState = false
+                    }
+                    launchSingleTop = true
+                }
+                if (settingsWasOnTop) navController.navigate(Routes.settings())
             }
         }
     }
@@ -190,7 +230,11 @@ private fun MainScaffold(
         // so the shell contributes none of its own.
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            if (currentRoute in Routes.topLevel) {
+            // With fewer than two enabled sections there is nothing to switch
+            // between: a single-item bar is dead chrome, so the whole bar
+            // disappears (the remaining screen keeps Search and Settings in
+            // its own top bar, which is also the way back to re-enabling).
+            if (currentRoute in Routes.topLevel && sections.showBottomBar) {
                 NavigationBar {
                     destinations.forEach { destination ->
                         NavigationBarItem(
@@ -217,12 +261,7 @@ private fun MainScaffold(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination =
-                when (startDestination) {
-                    StartDestination.INBOX -> Routes.INBOX
-                    StartDestination.FINANCE -> Routes.FINANCE
-                    StartDestination.ALERTS -> Routes.ALERTS
-                },
+            startDestination = startDestination.toRoute(),
             // padding is the bottom bar's height (which already includes the
             // navigation-bar inset). consumeWindowInsets is the half that
             // Modifier.padding lacks: without it every screen's own Scaffold
@@ -401,17 +440,32 @@ private fun MainScaffold(
     }
 }
 
+/** The nav route rendering a top-level tab. */
+private fun StartDestination.toRoute(): String =
+    when (this) {
+        StartDestination.INBOX -> Routes.INBOX
+        StartDestination.FINANCE -> Routes.FINANCE
+        StartDestination.ALERTS -> Routes.ALERTS
+    }
+
 /**
  * Navigates a notification deep link. A route targeting a bottom-bar tab is
  * selected exactly like a bottom-bar tap - the same options the
  * NavigationBarItem onClick uses - so it can never be swept into another
- * tab's saved back stack (see [LaterIntentAction.Navigate.selectTab]).
- * Everything else (a conversation, with its optional `?messageId=`
- * highlight) keeps the plain push it always had.
+ * tab's saved back stack (see [LaterIntentAction.Navigate.selectTab]). A tab
+ * whose section is DISABLED is redirected to the resolved start tab: the
+ * target no longer exists for this user, and a plain selection would
+ * resurrect the hidden screen. Everything else (a conversation, with its
+ * optional `?messageId=` highlight) keeps the plain push it always had.
  */
-private fun NavHostController.navigateDeepLink(action: LaterIntentAction.Navigate) {
+private fun NavHostController.navigateDeepLink(
+    action: LaterIntentAction.Navigate,
+    sections: EnabledSections,
+) {
     if (action.selectTab) {
-        navigate(action.route) {
+        val tab = StartDestination.entries.firstOrNull { it.toRoute() == action.route }
+        val route = if (tab != null && !sections.isEnabled(tab)) sections.resolveStart(tab).toRoute() else action.route
+        navigate(route) {
             popUpTo(graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true
             restoreState = true

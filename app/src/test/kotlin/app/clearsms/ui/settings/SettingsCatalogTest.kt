@@ -2,6 +2,7 @@ package app.clearsms.ui.settings
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import app.clearsms.domain.model.EnabledSections
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -83,6 +84,9 @@ class SettingsCatalogTest {
             .inOrder()
         assertThat(bySection["Inbox"])
             .containsExactly(
+                // The section master switch leads: everything below it is
+                // meaningless while the tab is hidden.
+                "Show Inbox tab",
                 "Pill order",
                 "Default inbox filter",
                 "Swipe right action",
@@ -93,9 +97,9 @@ class SettingsCatalogTest {
                 "Sort inbox again",
             ).inOrder()
         assertThat(bySection["Finance"])
-            .containsExactly("Pill order", "Show balance", "Default Finance filter")
+            .containsExactly("Show Finance tab", "Pill order", "Show balance", "Default Finance filter")
             .inOrder()
-        assertThat(bySection["Alerts"]).containsExactly("Pill order")
+        assertThat(bySection["Alerts"]).containsExactly("Show Alerts tab", "Pill order").inOrder()
         assertThat(bySection["Startup"]).containsExactly("Default screen")
         assertThat(bySection["Backup & restore"])
             .containsExactly(
@@ -171,10 +175,15 @@ class SettingsCatalogTest {
                 "Strip accents when sending",
                 // Inbox: the per-row swipe dead zone editor (issue #16).
                 "Swipe dead zone",
+                // First row of each tab's section: the master switch that
+                // hides the tab and the rest of its settings.
+                "Show Inbox tab",
+                "Show Finance tab",
+                "Show Alerts tab",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 10 additions = 42 rows.
+        // No row lost, none dropped: 32 survivors + 13 additions = 45 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)
@@ -236,5 +245,38 @@ class SettingsCatalogTest {
         SettingsItem.entries.forEach { item ->
             assertThat(search(title(item))).contains(item)
         }
+    }
+
+    @Test
+    fun `all sections enabled shows every row`() {
+        assertThat(visibleSettingsItems(EnabledSections())).isEqualTo(SettingsItem.entries.toList())
+    }
+
+    @Test
+    fun `a disabled section keeps only its master switch, other sections untouched`() {
+        val visible = visibleSettingsItems(EnabledSections(inbox = true, finance = false, alerts = true))
+        // Finance collapses to the one row that can bring it back...
+        assertThat(visible.filter { it.section == SettingsSection.FINANCE })
+            .containsExactly(SettingsItem.SHOW_FINANCE_TAB)
+        // ...and nothing outside Finance is affected.
+        assertThat(visible.filter { it.section != SettingsSection.FINANCE })
+            .isEqualTo(SettingsItem.entries.filter { it.section != SettingsSection.FINANCE })
+    }
+
+    @Test
+    fun `each disabled section hides its own child rows and only those`() {
+        val onlyAlerts = visibleSettingsItems(EnabledSections(inbox = false, finance = false, alerts = true))
+        assertThat(onlyAlerts.filter { it.section == SettingsSection.INBOX })
+            .containsExactly(SettingsItem.SHOW_INBOX_TAB)
+        assertThat(onlyAlerts.filter { it.section == SettingsSection.FINANCE })
+            .containsExactly(SettingsItem.SHOW_FINANCE_TAB)
+        assertThat(onlyAlerts.filter { it.section == SettingsSection.ALERTS })
+            .isEqualTo(SettingsItem.entries.filter { it.section == SettingsSection.ALERTS })
+        // The master switches always survive - they are the way back.
+        assertThat(onlyAlerts).containsAtLeast(
+            SettingsItem.SHOW_INBOX_TAB,
+            SettingsItem.SHOW_FINANCE_TAB,
+            SettingsItem.SHOW_ALERTS_TAB,
+        )
     }
 }
