@@ -4,10 +4,14 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -294,10 +298,27 @@ private fun MainScaffold(
             // grows the scaffold bottomBar, lifting the list with it), and
             // padding them here too would hoist the composer a full keyboard
             // height above the IME. Pinned by ImeInsetOwnershipConventionTest.
+            // HORIZONTAL system-bar/cutout inset: in LANDSCAPE with 3-button
+            // navigation the navigation bar sits on the SIDE (and a display
+            // cutout can too). The bars own only the VERTICAL insets - a top
+            // app bar pads for the status bar, the bottom NavigationBar for
+            // the bottom - and material3's Scaffold places the FAB at
+            // layoutWidth - spacing - fabWidth with no inset term, so with
+            // no horizontal owner the FABs (and snackbars, list content)
+            // ended up under the side bar. This is the ONE owner: it pads
+            // every routed screen by the horizontal safeDrawing inset
+            // (side navigation bar plus cutout) AND consumes it, so nested
+            // scaffolds, top bars and the composer bar's
+            // ime.union(navigationBars) padding all see zero horizontally -
+            // no doubled inset, and the vertical ownership above is
+            // untouched. The bottom NavigationBar lives outside this padding
+            // and keeps padding itself horizontally via its own defaults.
+            // Pinned by SystemBarInsetOwnershipConventionTest.
             modifier =
                 Modifier
                     .padding(padding)
                     .consumeWindowInsets(padding)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                     .then(if (currentRoute in Routes.imeSelfManaged) Modifier else Modifier.imePadding()),
         ) {
             composable(Routes.INBOX) {
