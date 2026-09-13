@@ -17,10 +17,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Trigger contract of the automatic post-update re-sort: a version mismatch
@@ -39,7 +41,41 @@ class AutoResortSchedulerTest {
         appContext: Context,
         params: WorkerParameters,
     ) : CoroutineWorker(appContext, params) {
-        override suspend fun doWork(): Result = awaitCancellation()
+        override suspend fun doWork(): Result {
+            active.incrementAndGet()
+            try {
+                awaitCancellation()
+            } finally {
+                active.decrementAndGet()
+            }
+        }
+
+        companion object {
+            /** Workers currently parked in [doWork]; drained by tearDown. */
+            val active = AtomicInteger(0)
+        }
+    }
+
+    @After
+    fun tearDown() {
+        // Cancel the parked NeverFinishingWorkers and wait for them to
+        // actually unpark. An abandoned RUNNING CoroutineWorker is a delayed
+        // suite-wide bomb: its result future never completes, so minutes
+        // later the GC finalizer (CallbackToFutureAdapter.Completer
+        // .finalize) completes it exceptionally, WorkerWrapper's failure
+        // path then touches THIS test's long-closed in-memory Work database
+        // ("The database ':memory:' is not open"), and the uncaught
+        // exception fails whichever runTest happens to come next
+        // (UncaughtExceptionsBeforeTest - CI run 34743528778, where
+        // ReminderSchedulingGateTest was the victim). Cancelling completes
+        // every worker future while this WorkManager is still alive, so
+        // nothing is left for the finalizer.
+        workManager.cancelAllWork().result.get()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (NeverFinishingWorker.active.get() != 0) {
+            check(System.currentTimeMillis() < deadline) { "parked workers did not unpark after cancelAllWork" }
+            Thread.sleep(10)
+        }
     }
 
     @Before

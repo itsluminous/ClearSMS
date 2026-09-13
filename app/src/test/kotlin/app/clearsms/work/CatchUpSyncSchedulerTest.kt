@@ -56,6 +56,11 @@ class CatchUpSyncSchedulerTest {
 
     @After
     fun tearDown() {
+        // No worker may be left RUNNING when the test ends - an abandoned
+        // worker future is finalized exceptionally by the GC long after this
+        // WorkManager's database is closed and fails an unrelated later
+        // runTest - see AutoResortSchedulerTest.tearDown.
+        workManager.cancelAllWork().result.get()
         db.close()
     }
 

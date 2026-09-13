@@ -22,6 +22,7 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -204,6 +205,17 @@ class RecategorizeWorkerTest {
                 ).build()
         WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
         workManager = WorkManager.getInstance(context)
+    }
+
+    @After
+    fun tearDown() {
+        // Never leave a gate-parked worker RUNNING (an assertion failing
+        // before the gate completes would abandon it): an abandoned worker
+        // future is finalized exceptionally by the GC long after this
+        // WorkManager's database is closed and fails an unrelated later
+        // runTest - see AutoResortSchedulerTest.tearDown.
+        gate.complete(Unit)
+        workManager.cancelAllWork().result.get()
     }
 
     private fun awaitInfo(predicate: (WorkInfo) -> Boolean): WorkInfo {
