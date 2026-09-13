@@ -154,13 +154,19 @@ private fun MainScaffold(
     // navigated through the SAME triage as a warm tap so a tab-targeted
     // link selects its tab (a share/compose intent is handled above; the
     // graph declares no navDeepLinks - see ClearSmsApp's initialIntent doc).
-    // Consumed exactly once: rememberSaveable keeps a rotation, process
-    // death or recents relaunch from replaying the navigation.
-    var initialIntentConsumed by rememberSaveable { mutableStateOf(false) }
+    // Consumed once PER LINK, keyed on the deep-link uri: a plain boolean
+    // guard survives process death in the saved state and then swallowed a
+    // FRESH notification tap that recreated the killed activity (the tap
+    // landed on the start tab instead of its conversation). Keying on the
+    // uri keeps what the boolean was for - a rotation or recents relaunch
+    // replays the SAME intent, so its uri matches and is skipped - while a
+    // new tap carries a new uri and navigates.
+    var consumedInitialUri by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        if (!initialIntentConsumed) {
-            initialIntentConsumed = true
-            val action = initialIntent?.let(LaterIntentTriage::classify)
+        val uri = initialIntent?.dataString
+        if (uri != null && uri != consumedInitialUri) {
+            consumedInitialUri = uri
+            val action = initialIntent.let(LaterIntentTriage::classify)
             if (action is LaterIntentAction.Navigate) navController.navigateDeepLink(action, sections)
         }
     }
