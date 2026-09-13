@@ -58,7 +58,8 @@ class SettingsRepositoryImplTest {
             assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.ARCHIVE)
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.DELETE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.INBOX)
-            assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.IMPORTANT)
+            // No filter by default: a fresh install must show all messages.
+            assertThat(repo.defaultInboxFilter.first()).isNull()
             assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.ACCOUNTS)
             assertThat(repo.transactionNotifications.first()).isTrue()
         }
@@ -160,6 +161,24 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
+    fun `inherited old Important default reads as All while an explicit Important choice survives`() =
+        runBlocking {
+            val repo = repository()
+            // Existing install that never touched the setting: the old
+            // "Important" default was synthesized at read time, never stored,
+            // so the key is absent and the user now sees all messages.
+            assertThat(repo.defaultInboxFilter.first()).isNull()
+            // A user who deliberately chose Important in Settings has the
+            // value on disk and must keep it across the default change.
+            dataStore.edit { it[stringPreferencesKey("default_inbox_filter")] = "IMPORTANT" }
+            assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.IMPORTANT)
+            // And an explicit "All" choice stays the stored sentinel, not an
+            // absent key, so it remains an explicit choice.
+            repo.setDefaultInboxFilter(null)
+            assertThat(dataStore.data.first()[stringPreferencesKey("default_inbox_filter")]).isEqualTo("ALL")
+        }
+
+    @Test
     fun `defaultFinanceFilter round trips`() =
         runBlocking {
             val repo = repository()
@@ -189,7 +208,8 @@ class SettingsRepositoryImplTest {
             assertThat(repo.swipeActionStart.first()).isEqualTo(SwipeAction.ARCHIVE)
             assertThat(repo.swipeActionEnd.first()).isEqualTo(SwipeAction.DELETE)
             assertThat(repo.defaultDestination.first()).isEqualTo(StartDestination.INBOX)
-            assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.IMPORTANT)
+            // Unknown filter value: intent is unrecoverable, fall back to All.
+            assertThat(repo.defaultInboxFilter.first()).isNull()
             assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.ACCOUNTS)
         }
 

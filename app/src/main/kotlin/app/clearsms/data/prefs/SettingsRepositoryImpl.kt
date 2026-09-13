@@ -147,9 +147,19 @@ class SettingsRepositoryImpl(
     override val defaultInboxFilter: Flow<Category?> =
         dataStore.data.map { prefs ->
             when (val stored = prefs[KEY_DEFAULT_INBOX_FILTER]) {
-                null -> Category.IMPORTANT
+                // Absent key = the user never chose a default. The old
+                // "Important" default was synthesized right here at read time
+                // and never written to disk, so an absent key is reliably
+                // distinguishable from an explicit Settings choice: existing
+                // installs that merely inherited "Important" are fixed by
+                // this line alone, with no stored-data migration, while a
+                // stored "IMPORTANT" (only ever written by a deliberate
+                // Settings tap or a backup restore of one) is preserved.
+                null -> null
                 FILTER_ALL -> null
-                else -> stored.toEnum(Category.IMPORTANT)
+                // Unknown value: intent is unrecoverable, fall back to the
+                // default (All), matching the lenient-decode convention.
+                else -> Category.entries.firstOrNull { it.name == stored }
             }
         }
 

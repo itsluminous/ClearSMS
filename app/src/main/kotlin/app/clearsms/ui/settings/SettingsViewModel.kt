@@ -70,7 +70,7 @@ data class SettingsUiState(
     /** Per-row band where a swipe never starts; off by default. */
     val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
     val defaultDestination: StartDestination = StartDestination.INBOX,
-    val defaultInboxFilter: Category? = Category.IMPORTANT,
+    val defaultInboxFilter: Category? = null,
     val defaultFinanceFilter: FinanceTab = FinanceTab.ACCOUNTS,
     val otpAutoCopy: Boolean = true,
     val otpAutoDeletePolicy: OtpAutoDeletePolicy = OtpAutoDeletePolicy.NEVER,
