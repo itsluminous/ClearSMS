@@ -1,0 +1,11 @@
+The inbox no longer opens pre-filtered, and you can hide sections you do not use.
+
+Changed
+- The inbox used to open with the Important filter already applied, which left people hunting for messages that were simply filtered out of view. It now opens showing everything. If you had deliberately chosen a default filter in Settings, your choice is kept exactly as it was.
+
+Added
+- You can switch off whole sections you do not want. Settings now has a toggle at the top of each of the Inbox, Finance and Alerts sections: turning one off hides its other settings and removes its tab from the bottom of the screen. All three start switched on, and one always has to stay on. Your choices are included in settings backups.
+- Switching a section off also silences its notifications: with Alerts off you get no bill reminders (and the app stops setting the alarms that would wake your phone for them), with Finance off no transaction notifications, and with Inbox off no new-message notifications. Nothing is deleted - messages are still read and transactions still extracted, so turning a section back on shows the full history rather than a gap.
+
+Fixed
+- Tapping a message notification after the app had been closed by the system opened the message list instead of the conversation. It now opens the right conversation.

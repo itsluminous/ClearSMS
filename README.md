@@ -111,6 +111,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Automatic full re-sort after an app update ships new rules, with a progress banner in the inbox
 - [x] A rule added from a message applies to that sender's existing messages at once (body-only rules point you at the full re-sort instead)
 - [x] Category filter pills (reorderable) with tags hidden under single-category filters
+- [x] Hide whole sections you do not use (Inbox, Finance or Alerts) from Settings - the tab disappears and its notifications stop; at least one stays on
 - [x] Full-text search with category & time filters, matching contact and sender names as well as message text
 - [x] Tapping a search result opens the conversation at that message and highlights it, however old it is
 - [x] Scam-awareness flagging
