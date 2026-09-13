@@ -64,4 +64,15 @@ object Routes {
 
     /** Routes on which the bottom navigation bar is visible. */
     val topLevel = setOf(INBOX, FINANCE, ALERTS)
+
+    /**
+     * Routes whose shared [app.clearsms.ui.components.MessageComposerBar]
+     * owns the keyboard inset itself (it pads by the live IME/nav-bar union
+     * and, sitting in the screen scaffold's bottomBar, pushes the message
+     * list up with it). The shell must NOT also apply [androidx.compose.foundation.layout.imePadding]
+     * on these routes or the composer gets lifted twice - a keyboard-high
+     * band above the compose box, the exact regression the single-inset-owner
+     * work just removed. Every other route gets the shell's IME padding.
+     */
+    val imeSelfManaged = setOf(CONVERSATION, COMPOSE)
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -277,7 +278,27 @@ private fun MainScaffold(
             // zero, so nothing is consumed and those screens keep handling
             // their own insets end to end (the conversation composer's
             // ime/navigation-bar reads are untouched).
-            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+            //
+            // KEYBOARD inset (issue #28): enableEdgeToEdge makes the
+            // manifest's adjustResize inert, so the window no longer shrinks
+            // for the IME - Compose must consume WindowInsets.ime itself.
+            // This shell is the ONE place that does it, for every route, so
+            // a future screen with a text field cannot forget: the padding
+            // shrinks each screen's viewport to end at the keyboard top,
+            // which is also what lets a scrollable form bring its focused
+            // field into view. It comes AFTER consumeWindowInsets(padding)
+            // so on bottom-bar routes it only adds the part of the keyboard
+            // the bar's height does not already cover. The two composer
+            // routes are exempt: their shared MessageComposerBar is the
+            // sanctioned self-owner of the IME inset (its windowInsetsPadding
+            // grows the scaffold bottomBar, lifting the list with it), and
+            // padding them here too would hoist the composer a full keyboard
+            // height above the IME. Pinned by ImeInsetOwnershipConventionTest.
+            modifier =
+                Modifier
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .then(if (currentRoute in Routes.imeSelfManaged) Modifier else Modifier.imePadding()),
         ) {
             composable(Routes.INBOX) {
                 InboxScreen(
