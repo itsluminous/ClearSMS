@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -198,6 +200,83 @@ androidComponents {
     }
 }
 
+// --- Offline guard: no HTTP client may ever ship in the release APK --------
+// The app's core promise is "fully offline, no INTERNET permission". OkHttp
+// used to ride in transitively via Coil 2 and put 100+ dead network classes
+// in the dex - contradicting that promise to anyone who unzips the APK and
+// plausibly tripping heuristic AV engines. This task scans every classes*.dex
+// in the packaged release APK for the type descriptors of known HTTP clients
+// and fails the build if any appears. Dex type descriptors are stored as
+// plain MUTF-8 strings, so a byte search is exact: a hit means the dex
+// references (or defines) a class in that package. It gates assembleRelease
+// itself (not just CI), so local builds, GitHub CI and the F-Droid builder
+// all enforce it.
+abstract class CheckApkNoHttpClientTask : DefaultTask() {
+    @get:InputDirectory
+    abstract val apkDir: DirectoryProperty
+
+    @get:Input
+    abstract val forbiddenDescriptors: ListProperty<String>
+
+    @TaskAction
+    fun check() {
+        val apks = apkDir.get().asFile.listFiles { f -> f.extension == "apk" }.orEmpty()
+        check(apks.isNotEmpty()) { "No APK found in ${apkDir.get()} - nothing to verify" }
+        val offenders = mutableListOf<String>()
+        var dexSeen = 0
+        for (apk in apks) {
+            ZipFile(apk).use { zip ->
+                for (entry in zip.entries().asSequence()) {
+                    if (!entry.name.matches(Regex("""classes\d*\.dex"""))) continue
+                    dexSeen++
+                    val dex = zip.getInputStream(entry).readBytes().toString(Charsets.ISO_8859_1)
+                    for (descriptor in forbiddenDescriptors.get()) {
+                        if (descriptor in dex) offenders += "${apk.name}!${entry.name} contains $descriptor"
+                    }
+                }
+            }
+        }
+        check(dexSeen > 0) { "APK contained no classes*.dex - verification impossible" }
+        if (offenders.isNotEmpty()) {
+            throw GradleException(
+                "HTTP-client classes found in the release APK - this app is offline by design " +
+                    "(no INTERNET permission), so no HTTP client may ship:\n  " +
+                    offenders.joinToString("\n  ") +
+                    "\nIf a dependency dragged one in, exclude it or use a network-free variant " +
+                    "(Coil 3 core, not coil-network-okhttp).",
+            )
+        }
+        logger.lifecycle("OK: no HTTP-client classes in ${apks.joinToString { it.name }} ($dexSeen dex file(s) scanned)")
+    }
+}
+
+androidComponents {
+    onVariants(androidComponents.selector().withBuildType("release")) { variant ->
+        tasks.register<CheckApkNoHttpClientTask>("checkReleaseApkNoHttpClient") {
+            group = "verification"
+            description = "Fails if the release APK dex references any known HTTP client"
+            apkDir.set(variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK))
+            forbiddenDescriptors.set(
+                listOf(
+                    "Lokhttp3/", // OkHttp
+                    "Lio/netty/", // Netty
+                    "Lorg/apache/http/", // Apache HttpClient 4.x (bundled copies)
+                    "Lorg/apache/hc/", // Apache HttpClient 5.x
+                    "Lcz/msebera/android/httpclient/", // repackaged Apache HttpClient
+                    "Lcom/android/volley/", // Volley
+                    "Lretrofit2/", // Retrofit
+                    "Lio/ktor/client/", // Ktor client
+                ),
+            )
+        }
+    }
+}
+
+// The guard gates assembleRelease itself: packageRelease -> guard -> assembleRelease.
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    dependsOn("checkReleaseApkNoHttpClient")
+}
+
 // Exported Room schemas (schemas/<db>/<version>.json) are committed so future
 // schema changes can ship validated migrations against the released baseline.
 ksp {
@@ -263,11 +342,12 @@ dependencies {
     // unlock - purely local, no new permissions.
     implementation(libs.androidx.biometric)
 
-    // Images + permissions. Coil renders contact photos from content:// URIs
-    // (ui/components/SenderAvatar.kt) - it never performs network I/O in this
-    // app: no http(s) URLs are ever loaded, so the transitively-included
-    // OkHttp engine is dormant. Revisit with a ContentResolver+BitmapFactory
-    // loader if the dependency footprint becomes a concern.
+    // Images + permissions. Coil 3 renders contact photos (content:// URIs,
+    // ui/components/SenderAvatar.kt) and MMS attachment files. Coil 3's core
+    // has NO network dependency - HTTP support lives in the separate
+    // coil-network-okhttp artifact, which this app deliberately does not
+    // include, so no HTTP client ships in the APK (the app has no INTERNET
+    // permission). checkReleaseApkNoHttpClient guards this.
     implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
 

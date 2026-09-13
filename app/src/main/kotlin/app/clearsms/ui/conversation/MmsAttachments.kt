@@ -42,7 +42,7 @@ import app.clearsms.R
 import app.clearsms.ShareIntents
 import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.mms.mmsAttachmentFile
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import java.io.File
 import java.util.Locale
 

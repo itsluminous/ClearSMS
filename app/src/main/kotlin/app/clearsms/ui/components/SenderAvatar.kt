@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.ui.theme.ClearSmsTheme
-import coil.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import kotlin.math.abs
 
 private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 330f)

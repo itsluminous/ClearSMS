@@ -44,7 +44,7 @@ import app.clearsms.mms.MmsSizeLimits
 import app.clearsms.mms.StagedAttachment
 import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.conversation.humanSize
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.clickable as composeClickable
 
 /**
