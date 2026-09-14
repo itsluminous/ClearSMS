@@ -1,5 +1,6 @@
 package app.clearsms.ui.components
 
+import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
@@ -43,6 +44,44 @@ class ComposerBarContractTest {
                 .map { it.relativeTo(srcRoot).path }
                 .toList()
         assertThat(definitions).containsExactly("ui/components/MessageComposerBar.kt")
+    }
+
+    @Test
+    fun `composer row spacing comes from the one shared source and stays tight`() {
+        // The width-reclaim change: the collapsed row's own chrome is 4dp
+        // edges and 4dp gaps (the controls carry their remaining visual
+        // slack internally), the expanded editor keeps its classic 16dp.
+        // Pinned so a future edit cannot silently re-inflate the padding.
+        assertThat(ComposerBarSpacing.RowEdgePadding).isEqualTo(4.dp)
+        assertThat(ComposerBarSpacing.InterElementSpacing).isEqualTo(4.dp)
+        assertThat(ComposerBarSpacing.RowVerticalPadding).isEqualTo(8.dp)
+        assertThat(ComposerBarSpacing.ExpandedRowEdgePadding).isEqualTo(16.dp)
+        // And the bar must actually draw from the shared object - no
+        // duplicated magic numbers in the row itself.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        assertThat(bar).contains("Arrangement.spacedBy(ComposerBarSpacing.InterElementSpacing)")
+        assertThat(bar).contains("ComposerBarSpacing.RowEdgePadding")
+        assertThat(bar).contains("ComposerBarSpacing.ExpandedRowEdgePadding")
+        assertThat(bar).contains("vertical = ComposerBarSpacing.RowVerticalPadding")
+    }
+
+    @Test
+    fun `width reclaim never shrinks an interactive touch target`() {
+        val bar = source("ui/components/MessageComposerBar.kt")
+        // The attach affordance stays the stock TooltipIconButton, whose
+        // Material IconButton enforces the 48dp minimum interactive layout.
+        assertThat(bar).contains("TooltipIconButton(")
+        // Nobody may switch off Material's minimum-interactive-size
+        // enforcement to squeeze out a few more dp.
+        assertThat(bar).doesNotContain("LocalMinimumInteractiveComponentSize")
+        assertThat(bar).doesNotContain("LocalMinimumInteractiveComponentEnforcement")
+        // The SIM indicator keeps its ripple padding (6dp around the 24dp
+        // glyph) - its 48dp hit area comes from the framework's touch-bounds
+        // expansion around that box, which the padding must not undercut.
+        val simBlock = bar.substringAfter("if (sim.visible)").substringBefore("// Send:")
+        assertThat(simBlock).contains(".padding(6.dp)")
+        // Send keeps its 10dp icon inset (a 44dp surface, touch-expanded).
+        assertThat(bar).contains("modifier = Modifier.padding(10.dp)")
     }
 
     @Test

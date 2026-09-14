@@ -222,9 +222,17 @@ fun MessageComposerBar(
                 Modifier
                     .fillMaxWidth()
                     .then(if (barState.fieldFillsHeight) Modifier.weight(1f) else Modifier)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(
+                        horizontal =
+                            if (barState.fieldFillsHeight) {
+                                ComposerBarSpacing.ExpandedRowEdgePadding
+                            } else {
+                                ComposerBarSpacing.RowEdgePadding
+                            },
+                        vertical = ComposerBarSpacing.RowVerticalPadding,
+                    ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ComposerBarSpacing.InterElementSpacing),
         ) {
             if (barState.attachVisible && onAttachClick != null) {
                 TooltipIconButton(
@@ -439,6 +447,40 @@ internal fun scheduleHintVisible(
     draft: String,
     attachmentCount: Int = 0,
 ): Boolean = draft.isNotBlank() && attachmentCount == 0
+
+/**
+ * The ONE source of the compose bar row's spacing values, so the text field's
+ * reclaimed width cannot silently erode (ComposerBarContractTest pins these).
+ *
+ * Why so tight: the attach button is a stock 48dp-minimum [TooltipIconButton]
+ * whose 24dp glyph already carries 12dp of built-in visual slack per side,
+ * and the SIM indicator's ripple box carries 6dp - so the row needs almost
+ * no OWN padding for the controls to read as comfortably spaced. Every dp
+ * shaved here goes straight to the text field. Touch targets are untouched:
+ * nothing here shrinks an interactive size, only the row's chrome.
+ */
+internal object ComposerBarSpacing {
+    /**
+     * Horizontal inset of the collapsed compose row. 4dp, not 16dp: the
+     * edge-most controls' touch boxes may hug the screen edge (easier to
+     * hit one-handed), while their glyphs stay ~16dp in via the built-in
+     * slack described above.
+     */
+    val RowEdgePadding = 4.dp
+
+    /** Vertical inset of the compose row (unchanged by the width reclaim). */
+    val RowVerticalPadding = 8.dp
+
+    /** Gap between attach / field / SIM / Send elements. */
+    val InterElementSpacing = 4.dp
+
+    /**
+     * The EXPANDED full-screen editor keeps the roomier classic margin -
+     * a full-screen text page wants breathing room, and the reclaim brief
+     * explicitly leaves the expanded composer undisturbed.
+     */
+    val ExpandedRowEdgePadding = 16.dp
+}
 
 /**
  * The ONE set of size constants for the compose bar's small indicator
