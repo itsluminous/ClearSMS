@@ -57,6 +57,17 @@ internal sealed interface LaterIntentAction {
  * attachments are rejected identically to the `onCreate` path.
  */
 internal object LaterIntentTriage {
+    /**
+     * Existing-thread-vs-new-composer: an sms-family URI ALWAYS opens the
+     * composer prefilled, never jumps into a matching thread directly.
+     * Deliberate: the URI is untrusted third-party input, so resolving it
+     * against stored threads here would let a crafted recipient string land
+     * a prefilled body inside an unrelated conversation; multi-recipient
+     * URIs have no single thread anyway; and nothing is lost - sending from
+     * the composer resolves the address to the existing thread (the screen
+     * then REPLACES itself with that conversation), so the user ends up in
+     * the right thread after the one explicit Send tap, and only then.
+     */
     fun classify(intent: Intent): LaterIntentAction {
         deepLinkRoute(intent)?.let {
             return LaterIntentAction.Navigate(it, selectTab = it in Routes.topLevel)
@@ -65,6 +76,10 @@ internal object LaterIntentTriage {
         val route =
             if (!send.recipient.isNullOrBlank() || !send.body.isNullOrBlank() || !send.imageUri.isNullOrBlank()) {
                 Routes.compose(send.recipient, send.body, send.imageUri)
+            } else if (send.explicitCompose) {
+                // A bare `sms:` (issue #32): the link explicitly asked for
+                // the composer, so it opens EMPTY rather than doing nothing.
+                Routes.compose()
             } else {
                 null
             }

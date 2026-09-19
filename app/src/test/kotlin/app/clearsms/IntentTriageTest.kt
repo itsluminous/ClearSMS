@@ -41,6 +41,114 @@ class IntentTriageTest {
         assertThat(IntentTriage.extractSendIntent(intent).recipient).isEqualTo("12345")
     }
 
+    // --- standard sms-link URI shapes (issue #32) -------------------------
+
+    @Test
+    fun `all four schemes mark the intent as explicit compose`() {
+        for (scheme in listOf("sms", "smsto", "mms", "mmsto")) {
+            val send = IntentTriage.extractSendIntent(view("$scheme:+15551234"))
+            assertThat(send.recipient).isEqualTo("+15551234")
+            assertThat(send.explicitCompose).isTrue()
+        }
+    }
+
+    @Test
+    fun `body query parameter is decoded - spaces newlines and non-ascii`() {
+        val send =
+            IntentTriage.extractSendIntent(
+                view("sms:+15551234?body=Hello%20world%0Anext%20line%20%E0%A4%A8%E0%A4%AE%E0%A4%B8%E0%A5%8D%E0%A4%A4%E0%A5%87"),
+            )
+        assertThat(send.recipient).isEqualTo("+15551234")
+        assertThat(send.body).isEqualTo("Hello world\nnext line नमस्ते")
+    }
+
+    @Test
+    fun `encoded ampersand inside the body survives - the classic parsing trap`() {
+        // Decoding before splitting the query would turn %26 into a bare &
+        // and truncate the body at "you".
+        val send = IntentTriage.extractSendIntent(view("sms:12345?body=you%20%26%20me"))
+        assertThat(send.body).isEqualTo("you & me")
+    }
+
+    @Test
+    fun `literal plus in the body stays a plus - the sms scheme is not form-encoded`() {
+        // RFC 5724 mandates %20 for spaces; a "+" is a real character.
+        val send = IntentTriage.extractSendIntent(view("sms:12345?body=1%2B1=2+ok"))
+        assertThat(send.body).isEqualTo("1+1=2+ok")
+    }
+
+    @Test
+    fun `multiple recipients - comma and semicolon separated both normalize to commas`() {
+        for (uri in listOf("smsto:12345,67890", "smsto:12345;67890", "sms:12345,%2B15551234;67890")) {
+            val send = IntentTriage.extractSendIntent(view(uri))
+            assertThat(send.recipient).contains("12345")
+            assertThat(send.recipient).doesNotContain(";")
+        }
+        val mixed = IntentTriage.extractSendIntent(view("sms:12345,%2B15551234;67890"))
+        assertThat(mixed.recipient).isEqualTo("12345,+15551234,67890")
+    }
+
+    @Test
+    fun `percent-encoded plus in the recipient decodes`() {
+        val send = IntentTriage.extractSendIntent(view("smsto:%2B15551234?body=hi"))
+        assertThat(send.recipient).isEqualTo("+15551234")
+        assertThat(send.body).isEqualTo("hi")
+    }
+
+    @Test
+    fun `scheme with no recipient still asks for the composer - empty not failing`() {
+        for (uri in listOf("sms:", "smsto:", "mms:", "mmsto:")) {
+            val send = IntentTriage.extractSendIntent(view(uri))
+            assertThat(send.recipient).isNull()
+            assertThat(send.body).isNull()
+            assertThat(send.explicitCompose).isTrue()
+        }
+    }
+
+    @Test
+    fun `body without recipient prefills only the body`() {
+        val send = IntentTriage.extractSendIntent(view("sms:?body=just%20text"))
+        assertThat(send.recipient).isNull()
+        assertThat(send.body).isEqualTo("just text")
+    }
+
+    @Test
+    fun `sms_body extra outranks the uri body`() {
+        val send = IntentTriage.extractSendIntent(view("smsto:12345?body=from-uri").putExtra("sms_body", "from-extra"))
+        assertThat(send.body).isEqualTo("from-extra")
+    }
+
+    @Test
+    fun `malformed sms uris never throw and never invent content`() {
+        for (uri in listOf(
+            "sms:%GG?body=%ZZ", // broken percent escapes
+            "sms://12345?body=hi", // non-standard hierarchical form
+            "sms:?????", // separator soup
+            "sms:,,;;", // only separators - no usable recipient
+            "sms:?body=", // empty body value
+            "sms:?notbody=x&", // irrelevant params, trailing separator
+            "sms:12345?body", // body with no '='
+        )) {
+            val send = IntentTriage.extractSendIntent(view(uri)) // must not throw
+            // Whatever survives is inert prefill text: no crash, no send.
+            assertThat(send.rejectedAttachment).isFalse()
+        }
+        // The hierarchical form still finds its recipient and body.
+        val hier = IntentTriage.extractSendIntent(view("sms://12345?body=hi"))
+        assertThat(hier.recipient).isEqualTo("12345")
+        assertThat(hier.body).isEqualTo("hi")
+        // Separator-only recipients collapse to none.
+        assertThat(IntentTriage.extractSendIntent(view("sms:,,;;")).recipient).isNull()
+        // An empty body value stays null.
+        assertThat(IntentTriage.extractSendIntent(view("sms:?body=")).body).isNull()
+    }
+
+    @Test
+    fun `plain text share is not explicit compose`() {
+        val intent = Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "shared")
+        assertThat(IntentTriage.extractSendIntent(intent).explicitCompose).isFalse()
+    }
+
     @Test
     fun `send action with shared text yields body without recipient`() {
         val intent = Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "shared")

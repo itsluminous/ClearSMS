@@ -58,6 +58,24 @@
                 <data android:scheme="mms" />
                 <data android:scheme="mmsto" />
             </intent-filter>
+            <!-- Standard sms-link handoff (issue #32). Browsers and many
+                 apps fire ACTION_VIEW - not SENDTO - for a tapped
+                 sms:/smsto:/mms:/mmsto: hyperlink, and the role-required
+                 SEND/SENDTO filter above never matches a VIEW. This filter
+                 is deliberately SEPARATE so the default-SMS-app role check
+                 (which looks for SENDTO on these schemes) keeps its filter
+                 untouched. BROWSABLE lets web content reach it. The intent
+                 lands in the same IntentTriage as SENDTO: composer opens
+                 prefilled, nothing is ever auto-sent. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
             <!-- Internal deep links used by notification tap actions. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

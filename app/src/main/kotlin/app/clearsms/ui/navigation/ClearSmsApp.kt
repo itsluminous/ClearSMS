@@ -83,6 +83,12 @@ fun ClearSmsApp(
     initialImageUri: String?,
     onOnboarded: () -> Unit,
     /**
+     * True when the creation intent carried an sms-family URI (`sms:` et
+     * al.) - the composer opens even with nothing to prefill, because a
+     * bare `sms:` link must show an EMPTY composer, not do nothing (#32).
+     */
+    initialOpenCompose: Boolean = false,
+    /**
      * Intents delivered after this composition started - a notification tap
      * while the app is already running. The graph only resolves deep links
      * from the intent the NavController was built with, so these are handed to
@@ -111,6 +117,7 @@ fun ClearSmsApp(
                         initialRecipient = initialRecipient,
                         initialBody = initialBody,
                         initialImageUri = initialImageUri,
+                        initialOpenCompose = initialOpenCompose,
                         laterIntents = laterIntents,
                         initialIntent = initialIntent,
                         // The START destination must be an ENABLED section
@@ -130,6 +137,7 @@ private fun MainScaffold(
     initialRecipient: String?,
     initialBody: String?,
     initialImageUri: String?,
+    initialOpenCompose: Boolean,
     laterIntents: Flow<Intent>,
     initialIntent: Intent?,
     /** Already resolved against [sections]: always an enabled tab. */
@@ -154,8 +162,14 @@ private fun MainScaffold(
     // A share/compose intent deep-links straight into the compose screen.
     // A shared image rides along as a nav argument; the compose ViewModel
     // stages it immediately (the share grant dies with the activity).
+    // initialOpenCompose covers a bare `sms:` URI with nothing to prefill:
+    // the link asked for the composer, so it opens empty (#32).
     LaunchedEffect(initialRecipient, initialBody, initialImageUri) {
-        if (!initialRecipient.isNullOrBlank() || !initialBody.isNullOrBlank() || !initialImageUri.isNullOrBlank()) {
+        if (initialOpenCompose ||
+            !initialRecipient.isNullOrBlank() ||
+            !initialBody.isNullOrBlank() ||
+            !initialImageUri.isNullOrBlank()
+        ) {
             navController.navigate(Routes.compose(initialRecipient, initialBody, initialImageUri))
         }
     }

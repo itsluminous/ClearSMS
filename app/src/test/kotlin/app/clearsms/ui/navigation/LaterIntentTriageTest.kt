@@ -108,6 +108,57 @@ class LaterIntentTriageTest {
         )
     }
 
+    // --- sms-link VIEW intents into a running app (issue #32) -------------
+
+    @Test
+    fun `view sms uri with body opens compose prefilled for every scheme`() {
+        for (scheme in listOf("sms", "smsto", "mms", "mmsto")) {
+            val action = LaterIntentTriage.classify(view("$scheme:%2B15551234?body=hi%20there"))
+            assertThat(action).isEqualTo(
+                LaterIntentAction.OpenCompose(
+                    Routes.compose(recipient = "+15551234", body = "hi there"),
+                    rejectedAttachment = false,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `view sms uri with multiple recipients carries all of them`() {
+        val action = LaterIntentTriage.classify(view("sms:12345;67890?body=team"))
+        assertThat(action).isEqualTo(
+            LaterIntentAction.OpenCompose(
+                Routes.compose(recipient = "12345,67890", body = "team"),
+                rejectedAttachment = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `bare sms uri opens an EMPTY composer instead of doing nothing`() {
+        val action = LaterIntentTriage.classify(view("sms:"))
+        assertThat(action).isEqualTo(LaterIntentAction.OpenCompose(Routes.compose(), rejectedAttachment = false))
+    }
+
+    @Test
+    fun `malformed sms uri never throws and never navigates a deep link`() {
+        for (uri in listOf("sms:%GG?body=%ZZ", "sms:,,;;", "sms:?????")) {
+            val action = LaterIntentTriage.classify(view(uri)) // must not throw
+            // Worst case it opens a composer with inert prefill - it must
+            // never become a Navigate into an existing thread.
+            assertThat(action).isNotInstanceOf(LaterIntentAction.Navigate::class.java)
+        }
+    }
+
+    @Test
+    fun `sms uri never resolves into an existing conversation - composer only`() {
+        // Existing-thread-vs-composer decision: untrusted URIs prefill the
+        // composer; the SEND tap (and only it) lands in the matching thread.
+        val action = LaterIntentTriage.classify(view("smsto:12345?body=pay%20me"))
+        assertThat(action).isInstanceOf(LaterIntentAction.OpenCompose::class.java)
+        assertThat((action as LaterIntentAction.OpenCompose).route).startsWith("compose?")
+    }
+
     @Test
     fun `image share opens compose with the image uri`() {
         val intent =
