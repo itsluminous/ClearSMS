@@ -332,6 +332,26 @@ interface MessageDao {
     )
 
     /**
+     * Batched form of [setSubscriptionId] for the one-time SIM backfill: one
+     * statement (one transaction) per group of identity-verified rows,
+     * instead of one per row. Callers keep [ids] under SQLite's 999-variable
+     * bind limit.
+     */
+    @Query("UPDATE messages SET subscriptionId = :subscriptionId WHERE id IN (:ids)")
+    suspend fun setSubscriptionIdForIds(
+        ids: List<Long>,
+        subscriptionId: Int,
+    )
+
+    /**
+     * Rows the SIM backfill could still fill: imported from the provider
+     * (a `systemSmsId` to match on) but with no SIM recorded. Zero means a
+     * provider walk cannot fill anything and the pass can be skipped.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE systemSmsId IS NOT NULL AND subscriptionId IS NULL")
+    suspend fun countNeedingSimBackfill(): Int
+
+    /**
      * The SIM of the newest message in the thread that recorded one - the
      * default sending SIM for a thread with no remembered per-recipient
      * choice (reply on the SIM the conversation already lives on).

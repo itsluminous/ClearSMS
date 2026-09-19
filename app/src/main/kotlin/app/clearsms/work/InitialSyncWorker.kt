@@ -51,6 +51,7 @@ class InitialSyncWorker
         private val systemSmsImporter: SystemSmsImporter,
         private val catchUpNotifier: CatchUpNotifier,
         private val settings: SettingsRepository,
+        private val simBackfill: SimBackfill,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             Channels.ensureCreated(applicationContext)
@@ -81,6 +82,11 @@ class InitialSyncWorker
                 // previous version's categorization).
                 if (result.initialRun) {
                     settings.setLastSortedVersionCode(BuildConfig.VERSION_CODE)
+                    // The whole history was just imported with sub_id
+                    // reading: no row predates the SIM fix, so the one-time
+                    // backfill has nothing to fill. Mark it done so it never
+                    // re-walks the provider this import just paged through.
+                    simBackfill.markDone()
                 }
                 Result.success()
             } catch (e: Exception) {

@@ -7,10 +7,12 @@ import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
@@ -19,6 +21,14 @@ import java.util.concurrent.TimeUnit
  * completed for the current [SimBackfill.VERSION] the worker is an instant
  * no-op, so the repeat enqueue costs nothing. Interruptions retry with
  * backoff and resume from the backfill's durable page checkpoint.
+ *
+ * The backfill must never compete with a foreground import: both walk the
+ * same provider and write the same database on the same IO dispatcher, and
+ * that contention is what made the initial import visibly slower. While an
+ * [InitialSyncWorker] run is enqueued or running, this worker defers itself
+ * with [Result.retry] instead of doing any work - after the import finishes
+ * the retried pass either finds nothing to fill (fresh installs mark the
+ * version done) or runs alone.
  */
 @HiltWorker
 class SimBackfillWorker
@@ -28,14 +38,29 @@ class SimBackfillWorker
         @Assisted params: WorkerParameters,
         private val simBackfill: SimBackfill,
     ) : CoroutineWorker(appContext, params) {
-        override suspend fun doWork(): Result =
-            try {
+        override suspend fun doWork(): Result {
+            if (importActive()) return Result.retry()
+            return try {
                 val filled = simBackfill.runIfNeeded()
                 if (filled > 0) Log.i(TAG, "SIM backfill filled $filled imported rows")
                 Result.success()
             } catch (e: Exception) {
                 Log.w(TAG, "SIM backfill attempt $runAttemptCount failed; will resume", e)
                 if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
+            }
+        }
+
+        /** True while an initial/catch-up import is enqueued or running. */
+        private suspend fun importActive(): Boolean =
+            try {
+                WorkManager
+                    .getInstance(applicationContext)
+                    .getWorkInfosForUniqueWorkFlow(InitialSyncWorker.WORK_NAME)
+                    .first()
+                    .any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
+            } catch (e: Exception) {
+                Log.w(TAG, "Cannot read import work state; running backfill anyway", e)
+                false
             }
 
         companion object {

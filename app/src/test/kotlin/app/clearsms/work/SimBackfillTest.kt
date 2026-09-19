@@ -192,6 +192,131 @@ class SimBackfillTest {
         }
 
     @Test
+    fun `a fresh install never touches the provider - empty database marks the version done`() =
+        runBlocking {
+            val env = Env("fresh")
+            // Provider has history, but nothing was imported yet: the
+            // importer will record SIMs itself. The backfill must decide
+            // from the DB alone - zero provider pages read - and mark the
+            // version done so it never runs again.
+            env.source.rows += provider(1, "hello", 1_000L, subId = 1)
+
+            assertThat(env.backfill.runIfNeeded()).isEqualTo(0)
+            assertThat(env.source.pagesServed).isEqualTo(0)
+            val prefs = env.dataStore.data.first()
+            assertThat(prefs[SimBackfill.KEY_DONE_VERSION]).isEqualTo(SimBackfill.VERSION)
+        }
+
+    @Test
+    fun `does not re-walk rows the importer already filled`() =
+        runBlocking {
+            val env = Env("importerFilled")
+            // Every imported row already carries its SIM (new importer):
+            // there is nothing a provider walk could fill, so none happens.
+            env.insert(systemSmsId = 1L, body = "hello", timestamp = 1_000L, subscriptionId = 1)
+            env.insert(systemSmsId = 2L, body = "world", timestamp = 2_000L, subscriptionId = 2)
+            env.source.rows += provider(1, "hello", 1_000L, subId = 1)
+            env.source.rows += provider(2, "world", 2_000L, subId = 2)
+
+            assertThat(env.backfill.runIfNeeded()).isEqualTo(0)
+            assertThat(env.source.pagesServed).isEqualTo(0)
+            assertThat(
+                env.dataStore.data
+                    .first()[SimBackfill.KEY_DONE_VERSION],
+            ).isEqualTo(SimBackfill.VERSION)
+        }
+
+    @Test
+    fun `an interrupted run still finishes its pass even if remaining rows look filled`() =
+        runBlocking {
+            val env = Env("resumeNotSkipped")
+            // A checkpoint means an earlier run proved work existed: the
+            // nothing-to-do shortcut must not strand the pass short of its
+            // completion marker.
+            env.insert(systemSmsId = 2L, body = "after checkpoint", timestamp = 2_000L)
+            env.source.rows += provider(2, "after checkpoint", 2_000L, subId = 2)
+            env.dataStore.edit { it[SimBackfill.KEY_LAST_PROVIDER_ID] = 1L }
+
+            assertThat(env.backfill.runIfNeeded()).isEqualTo(1)
+            assertThat(env.source.pagesServed).isAtLeast(1)
+            val prefs = env.dataStore.data.first()
+            assertThat(prefs[SimBackfill.KEY_DONE_VERSION]).isEqualTo(SimBackfill.VERSION)
+            assertThat(prefs[SimBackfill.KEY_LAST_PROVIDER_ID]).isNull()
+        }
+
+    @Test
+    fun `writes are batched - one grouped DAO update per SIM per page, not one per row`() =
+        runBlocking {
+            val env = Env("batch")
+            // 40 rows lacking a SIM, spread over two subscriptions, all in
+            // one provider page: the write cost must be 2 grouped updates
+            // (one per distinct SIM), never 40 single-row transactions.
+            for (i in 1L..40L) {
+                env.insert(systemSmsId = i, body = "msg $i", timestamp = i * 1_000L)
+                env.source.rows += provider(i, "msg $i", i * 1_000L, subId = if (i % 2 == 0L) 2 else 1)
+            }
+            val counting = CountingDao(env.db.messageDao())
+            val backfill = SimBackfill(env.dataStore, counting, env.source, Dispatchers.IO)
+
+            assertThat(backfill.runIfNeeded()).isEqualTo(40)
+
+            assertThat(counting.groupedSubscriptionWrites).isEqualTo(2)
+            assertThat(counting.perRowSubscriptionWrites).isEqualTo(0)
+            assertThat(
+                env.db
+                    .messageDao()
+                    .getAll()
+                    .all { it.subscriptionId != null },
+            ).isTrue()
+        }
+
+    @Test
+    fun `grouped writes still refuse reused provider ids - the guard gates the batch`() =
+        runBlocking {
+            // The batching optimization must not weaken identity: a reused
+            // id in the middle of an otherwise-verified page stays null
+            // while its verified neighbours are filled.
+            val env = Env("batchGuard")
+            env.insert(systemSmsId = 1L, body = "genuine one", timestamp = 1_000L)
+            val stale = env.insert(systemSmsId = 2L, body = "old deleted message", timestamp = 2_000L)
+            env.insert(systemSmsId = 3L, body = "genuine three", timestamp = 3_000L)
+            env.source.rows += provider(1, "genuine one", 1_000L, subId = 1)
+            env.source.rows += provider(2, "brand new message", 9_000L, subId = 1)
+            env.source.rows += provider(3, "genuine three", 3_000L, subId = 1)
+
+            assertThat(env.backfill.runIfNeeded()).isEqualTo(2)
+
+            val all = env.db.messageDao().getAll()
+            assertThat(all.single { it.id == stale }.subscriptionId).isNull()
+            assertThat(all.single { it.systemSmsId == 1L }.subscriptionId).isEqualTo(1)
+            assertThat(all.single { it.systemSmsId == 3L }.subscriptionId).isEqualTo(1)
+        }
+
+    /** Counts subscription writes; everything else delegates to the real DAO. */
+    private class CountingDao(
+        private val delegate: app.clearsms.data.db.MessageDao,
+    ) : app.clearsms.data.db.MessageDao by delegate {
+        var perRowSubscriptionWrites = 0
+        var groupedSubscriptionWrites = 0
+
+        override suspend fun setSubscriptionId(
+            id: Long,
+            subscriptionId: Int,
+        ) {
+            perRowSubscriptionWrites++
+            delegate.setSubscriptionId(id, subscriptionId)
+        }
+
+        override suspend fun setSubscriptionIdForIds(
+            ids: List<Long>,
+            subscriptionId: Int,
+        ) {
+            groupedSubscriptionWrites++
+            delegate.setSubscriptionIdForIds(ids, subscriptionId)
+        }
+    }
+
+    @Test
     fun `resumes from the durable page checkpoint after an interruption`() =
         runBlocking {
             val env = Env("resume")
