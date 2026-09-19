@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -76,6 +77,20 @@ class SettingsRepositoryImpl(
 
     override suspend fun setShowBalance(value: Boolean) {
         dataStore.edit { it[KEY_SHOW_BALANCE] = value }
+    }
+
+    override val delayedSendEnabled: Flow<Boolean> =
+        dataStore.data.map { it[KEY_DELAYED_SEND_ENABLED] ?: false }
+
+    override suspend fun setDelayedSendEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_DELAYED_SEND_ENABLED] = value }
+    }
+
+    override val delayedSendDelay: Flow<DelayedSendDelay> =
+        dataStore.data.map { it[KEY_DELAYED_SEND_DELAY].toEnum(DelayedSendDelay.DEFAULT) }
+
+    override suspend fun setDelayedSendDelay(value: DelayedSendDelay) {
+        dataStore.edit { it[KEY_DELAYED_SEND_DELAY] = value.name }
     }
 
     override val signature: Flow<String> =
@@ -297,6 +312,8 @@ class SettingsRepositoryImpl(
         val KEY_OTP_DISPLAY_SIZE = stringPreferencesKey("otp_display_size")
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
         val KEY_RECYCLE_BIN_ENABLED = booleanPreferencesKey("recycle_bin_enabled")
+        val KEY_DELAYED_SEND_ENABLED = booleanPreferencesKey("delayed_send_enabled")
+        val KEY_DELAYED_SEND_DELAY = stringPreferencesKey("delayed_send_delay")
         val KEY_SHOW_BALANCE = booleanPreferencesKey("show_balance")
         val KEY_SIGNATURE = stringPreferencesKey("signature")
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")

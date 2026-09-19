@@ -105,6 +105,7 @@ import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.settings.ExternalLinks
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Conversation thread: chat bubbles, date separators, parsed-detail cards and reply. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -196,6 +197,10 @@ fun ConversationScreen(
     val sentMessage = stringResource(R.string.message_sent)
     val notSentMessage = stringResource(R.string.message_not_sent)
     val retryLabel = stringResource(R.string.action_retry)
+    val cancelSendLabel = stringResource(R.string.delayed_send_cancel)
+    // Like the undo block below: Resources for a runtime-formatted string
+    // (stringResource cannot be called inside collect).
+    val sendResources = LocalContext.current.resources
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -208,6 +213,33 @@ fun ConversationScreen(
                             duration = SnackbarDuration.Long,
                         )
                     if (result == SnackbarResult.ActionPerformed) viewModel.retry(event.messageId)
+                }
+                is SendEvent.Delayed -> {
+                    // The pending bar lives exactly as long as the delay:
+                    // Indefinite duration, torn down by the timeout when the
+                    // message fires. No live countdown - the host rebuilds
+                    // its snackbar content itself and re-showing every
+                    // second would reset its swipe state, so the bar states
+                    // the delay once instead of fighting the host. A swipe
+                    // is a plain dismissal (the send proceeds), matching
+                    // "swiping an UNDO bar keeps the deletion"; only the
+                    // Cancel ACTION cancels, and the ViewModel resolves the
+                    // cancel/fire race exactly-once either way.
+                    val result =
+                        withTimeoutOrNull(event.delaySeconds * 1000L) {
+                            snackbarHostState.showSnackbar(
+                                message =
+                                    sendResources.getString(
+                                        R.string.delayed_send_pending,
+                                        event.delaySeconds,
+                                    ),
+                                actionLabel = cancelSendLabel,
+                                duration = SnackbarDuration.Indefinite,
+                            )
+                        }
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.cancelDelayedSend(event.messageId)
+                    }
                 }
             }
         }

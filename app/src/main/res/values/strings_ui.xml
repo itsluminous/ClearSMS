@@ -314,6 +314,12 @@
     <string name="settings_show_transaction_details_summary">Show the parsed card (amount, merchant, account) when you tap a bank or OTP message in a conversation</string>
     <string name="settings_strip_accents">Strip accents when sending</string>
     <string name="settings_strip_accents_summary">Swap accented letters for plain ones (č→c) automatically, only when that makes a text send as fewer SMS</string>
+    <string name="settings_delayed_send">Delay before sending</string>
+    <string name="settings_delayed_send_summary">Hold each message for a few seconds after you press Send, so you can cancel and fix a typo</string>
+    <string name="settings_delayed_send_delay">Sending delay</string>
+    <string name="settings_delayed_send_seconds">%1$d seconds</string>
+    <string name="delayed_send_pending">Sending in %1$d seconds</string>
+    <string name="delayed_send_cancel">Cancel</string>
 
     <!-- Privacy: Show balance gate -->
     <string name="settings_show_balance">Show balance</string>

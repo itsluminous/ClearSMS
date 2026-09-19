@@ -15,6 +15,7 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -64,6 +65,9 @@ data class SettingsUiState(
     val deliveryReports: Boolean = false,
     /** Auto-fold accented letters on send when it makes the SMS cheaper; default OFF. */
     val stripAccents: Boolean = false,
+    /** Hold each Send for a cancellable delay (GitHub #40); default OFF per the maintainer. */
+    val delayedSendEnabled: Boolean = false,
+    val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
     val logoBackground: LogoBackground = LogoBackground.NONE,
@@ -252,6 +256,9 @@ class SettingsViewModel
             val transactionNotifications: Boolean,
             /** Filled by the second combine stage (combine() maxes out at 5 flows). */
             val stripAccents: Boolean = false,
+            /** Filled by the third combine stage. */
+            val delayedSendEnabled: Boolean = false,
+            val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
         )
 
         private data class GestureStartupState(
@@ -287,6 +294,10 @@ class SettingsViewModel
                 ::NotificationState,
             ).combine(uiPrefs.stripAccents) { notifications, strip ->
                 notifications.copy(stripAccents = strip)
+            }.combine(
+                combine(settings.delayedSendEnabled, settings.delayedSendDelay, ::Pair),
+            ) { notifications, (enabled, delay) ->
+                notifications.copy(delayedSendEnabled = enabled, delayedSendDelay = delay)
             }
         private val gestureStartup =
             combine(
@@ -350,6 +361,8 @@ class SettingsViewModel
                     showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
                     stripAccents = notificationState.stripAccents,
+                    delayedSendEnabled = notificationState.delayedSendEnabled,
+                    delayedSendDelay = notificationState.delayedSendDelay,
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
                     swipeActionStart = gestures.swipeStart,
@@ -457,6 +470,10 @@ class SettingsViewModel
         fun setDeliveryReports(value: Boolean) = launchIo { uiPrefs.setDeliveryReports(value) }
 
         fun setStripAccents(value: Boolean) = launchIo { uiPrefs.setStripAccents(value) }
+
+        fun setDelayedSendEnabled(value: Boolean) = launchIo { settings.setDelayedSendEnabled(value) }
+
+        fun setDelayedSendDelay(value: DelayedSendDelay) = launchIo { settings.setDelayedSendDelay(value) }
 
         /** Current pill order per screen, for the reorder dialogs. */
         val inboxPillOrder: StateFlow<List<Category>> =

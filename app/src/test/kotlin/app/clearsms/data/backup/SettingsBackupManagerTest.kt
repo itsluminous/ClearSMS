@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.prefs.SettingsRepositoryImpl
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -61,6 +62,8 @@ class SettingsBackupManagerTest {
         repo.setOtpDisplaySize(OtpDisplaySize.OPTION_5)
         repo.setShowTransactionDetails(false)
         repo.setRecycleBinEnabled(true)
+        repo.setDelayedSendEnabled(true)
+        repo.setDelayedSendDelay(DelayedSendDelay.SECONDS_30)
         repo.setSignature("Sent from ClearSMS")
         repo.setShowRichAvatars(false)
         repo.setNotificationActions(setOf(NotificationAction.SHARE, NotificationAction.COPY_OTP))
@@ -91,6 +94,8 @@ class SettingsBackupManagerTest {
         assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_5)
         assertThat(repo.showTransactionDetails.first()).isFalse()
         assertThat(repo.recycleBinEnabled.first()).isTrue()
+        assertThat(repo.delayedSendEnabled.first()).isTrue()
+        assertThat(repo.delayedSendDelay.first()).isEqualTo(DelayedSendDelay.SECONDS_30)
         assertThat(repo.signature.first()).isEqualTo("Sent from ClearSMS")
         assertThat(repo.showRichAvatars.first()).isFalse()
         assertThat(repo.notificationActions.first())

@@ -1,6 +1,7 @@
 package app.clearsms.data.prefs
 
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -59,6 +60,21 @@ interface SettingsRepository {
     val showBalance: Flow<Boolean>
 
     suspend fun setShowBalance(value: Boolean)
+
+    /**
+     * Delayed sending (GitHub #40): when ON, a plain Send waits
+     * [delayedSendDelay] before dispatching, with a Cancel affordance that
+     * puts the text back in the composer. Default OFF - the maintainer's
+     * decision on the issue: sending stays immediate unless the user opts in.
+     */
+    val delayedSendEnabled: Flow<Boolean>
+
+    suspend fun setDelayedSendEnabled(value: Boolean)
+
+    /** How long a delayed send waits; only consulted when [delayedSendEnabled]. */
+    val delayedSendDelay: Flow<DelayedSendDelay>
+
+    suspend fun setDelayedSendDelay(value: DelayedSendDelay)
 
     val signature: Flow<String>
 

@@ -71,6 +71,8 @@ class SettingsCatalogTest {
                 "Recycle bin",
                 "Block & allow list",
                 "Strip accents when sending",
+                "Delay before sending",
+                "Sending delay",
                 "Show extracted message details",
             ).inOrder()
         assertThat(bySection["Appearance"])
@@ -173,6 +175,10 @@ class SettingsCatalogTest {
                 // Messages section (GitHub #17): opt-in auto accent folding
                 // when it makes a text send as fewer SMS.
                 "Strip accents when sending",
+                // Messages section (GitHub #40): opt-in delayed sending -
+                // the toggle plus the delay it gates.
+                "Delay before sending",
+                "Sending delay",
                 // Inbox: the per-row swipe dead zone editor (issue #16).
                 "Swipe dead zone",
                 // First row of each tab's section: the master switch that
@@ -183,7 +189,7 @@ class SettingsCatalogTest {
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 13 additions = 45 rows.
+        // No row lost, none dropped: 32 survivors + 15 additions = 47 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)

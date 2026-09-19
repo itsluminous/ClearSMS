@@ -40,6 +40,11 @@ enum class SettingsItem(
     RECYCLE_BIN(SettingsSection.MESSAGES, R.string.settings_recycle_bin),
     BLOCK_LIST(SettingsSection.MESSAGES, R.string.settings_block_list),
     STRIP_ACCENTS(SettingsSection.MESSAGES, R.string.settings_strip_accents),
+
+    // Delayed sending (GitHub #40): the toggle, then the delay it gates -
+    // both beside STRIP_ACCENTS with the other send-behaviour rows.
+    DELAYED_SEND(SettingsSection.MESSAGES, R.string.settings_delayed_send),
+    DELAYED_SEND_DELAY(SettingsSection.MESSAGES, R.string.settings_delayed_send_delay),
     SHOW_EXTRACTED_DETAILS(SettingsSection.MESSAGES, R.string.settings_show_transaction_details),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),

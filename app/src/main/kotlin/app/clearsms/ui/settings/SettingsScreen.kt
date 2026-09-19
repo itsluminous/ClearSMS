@@ -72,6 +72,7 @@ import app.clearsms.R
 import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.data.prefs.BlockedKeywords
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
@@ -111,6 +112,7 @@ private enum class SettingsDialog {
     DEFAULT_FILTER,
     DEFAULT_FINANCE_FILTER,
     OTP_DELETE,
+    DELAYED_SEND_DELAY,
     OTP_SIZE,
     CLEAR_OTP,
     SIGNATURE,
@@ -594,6 +596,17 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.DELAYED_SEND_DELAY ->
+            RadioDialog(
+                title = stringResource(R.string.settings_delayed_send_delay),
+                options = DelayedSendDelay.entries.map { it to delayedSendDelayLabel(it) },
+                selected = state.delayedSendDelay,
+                onSelect = {
+                    viewModel.setDelayedSendDelay(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
         SettingsDialog.OTP_SIZE ->
             OtpSizeDialog(
                 selected = state.otpDisplaySize,
@@ -787,6 +800,18 @@ private fun settingsRowEntries(
                         checked = state.stripAccents,
                         onToggle = viewModel::setStripAccents,
                     )
+                SettingsItem.DELAYED_SEND ->
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary = stringResource(R.string.settings_delayed_send_summary),
+                        checked = state.delayedSendEnabled,
+                        onToggle = viewModel::setDelayedSendEnabled,
+                    )
+                SettingsItem.DELAYED_SEND_DELAY ->
+                    row(section, title, delayedSendDelayLabel(state.delayedSendDelay)) {
+                        openDialog(SettingsDialog.DELAYED_SEND_DELAY)
+                    }
                 SettingsItem.SHOW_EXTRACTED_DETAILS ->
                     toggle(
                         section = section,
@@ -1699,6 +1724,9 @@ private fun backupFrequencyLabel(frequency: BackupFrequency): String =
         BackupFrequency.DAILY -> stringResource(R.string.frequency_daily)
         BackupFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
     }
+
+@Composable
+private fun delayedSendDelayLabel(delay: DelayedSendDelay): String = stringResource(R.string.settings_delayed_send_seconds, delay.seconds)
 
 @Composable
 private fun otpDeleteLabel(policy: OtpAutoDeletePolicy): String =

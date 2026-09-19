@@ -95,16 +95,44 @@ class MessageScheduler
          * Cancels a pending schedule: alarm cleared, row deleted outright -
          * nothing was ever sent, so there is no history worth a recycle-bin
          * trip (matching the user's mental model of "cancel").
+         *
+         * The delete is [MessageDao.deleteIfScheduled] - a compare-and-set
+         * on SCHEDULED, NOT a read-then-delete: a cancel racing the alarm's
+         * fire must have exactly one winner. If the fire's
+         * `markDispatchedFromSchedule` claims first, this delete matches
+         * nothing and the sent row (now SENDING) is left alone; if this
+         * delete wins, the fire's claim matches nothing and it rolls back
+         * its provider row without touching the radio.
          */
         suspend fun cancel(messageId: Long) {
             withContext(ioDispatcher) {
                 alarms.cancel(messageId)
-                val message = messageDao.getById(messageId) ?: return@withContext
-                if (message.deliveryStatus == DeliveryStatus.SCHEDULED) {
-                    messageDao.deleteById(messageId)
-                }
+                messageDao.deleteIfScheduled(messageId)
             }
         }
+
+        /**
+         * Cancels a DELAYED send (GitHub #40) - same exactly-once contest
+         * as [cancel], but the caller needs the message body back so it can
+         * be restored into the composer for editing.
+         *
+         * @return the persisted body when THIS cancel won (the message will
+         *   never be sent), or null when it lost - the row is gone or the
+         *   fire already claimed it, so the message is (being) sent and
+         *   restoring its text would duplicate it. The body is read before
+         *   the compare-and-set delete, which is safe because a message
+         *   body is immutable once persisted.
+         */
+        suspend fun cancelDelayed(messageId: Long): String? =
+            withContext(ioDispatcher) {
+                alarms.cancel(messageId)
+                val body =
+                    messageDao
+                        .getById(messageId)
+                        ?.takeIf { it.deliveryStatus == DeliveryStatus.SCHEDULED }
+                        ?.body ?: return@withContext null
+                if (messageDao.deleteIfScheduled(messageId) > 0) body else null
+            }
 
         /** Fires a pending schedule right now (the bubble's "Send now"). */
         suspend fun sendNow(messageId: Long) {

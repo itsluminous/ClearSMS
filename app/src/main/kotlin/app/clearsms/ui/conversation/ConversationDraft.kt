@@ -53,4 +53,17 @@ class ConversationDraft(
     fun consume() {
         draftText.value = ""
     }
+
+    /**
+     * A delayed send was cancelled: put [body] back so the user can edit
+     * and re-send - a cancel that discarded the text would be data loss.
+     * Text typed DURING the delay is kept too: the restored body is
+     * prepended (it is the older of the two), never clobbered over it.
+     */
+    fun restore(body: String) {
+        draftText.value =
+            draftText.value.let { current ->
+                if (current.isBlank()) body else "$body\n$current"
+            }
+    }
 }

@@ -7,6 +7,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -276,6 +277,14 @@ private class FakeSettingsRepository : SettingsRepository {
     override suspend fun setShowTransactionDetails(value: Boolean) = Unit
 
     override val recycleBinEnabled = MutableStateFlow(false)
+
+    override val delayedSendEnabled = MutableStateFlow(false)
+
+    override suspend fun setDelayedSendEnabled(value: Boolean) = Unit
+
+    override val delayedSendDelay = MutableStateFlow(DelayedSendDelay.DEFAULT)
+
+    override suspend fun setDelayedSendDelay(value: DelayedSendDelay) = Unit
 
     override suspend fun setRecycleBinEnabled(value: Boolean) = Unit
 

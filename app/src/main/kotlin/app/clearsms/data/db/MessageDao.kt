@@ -520,6 +520,20 @@ interface MessageDao {
         scheduled: DeliveryStatus = DeliveryStatus.SCHEDULED,
     ): Int
 
+    /**
+     * Cancels a pending schedule atomically: the row is deleted only while
+     * it is still SCHEDULED - the same single-winner contest as
+     * [markDispatchedFromSchedule], because SQLite serializes the DELETE
+     * against the fire's UPDATE. The returned row count is the "cancel won"
+     * signal; 0 means the fire (or another cancel) got there first and the
+     * message must be treated as sent.
+     */
+    @Query("DELETE FROM messages WHERE id = :id AND deliveryStatus = :scheduled")
+    suspend fun deleteIfScheduled(
+        id: Long,
+        scheduled: DeliveryStatus = DeliveryStatus.SCHEDULED,
+    ): Int
+
     // endregion
 
     @Query("SELECT MAX(threadId) FROM messages")
