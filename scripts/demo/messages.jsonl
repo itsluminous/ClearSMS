@@ -77,3 +77,4 @@
 {"sender": "HDFCBK", "body": "Amt Deducted! Rs.41,000.00 from your HDFC Bank A/c XX4321 for NEFT transaction via HDFC Bank Online Banking", "days_ago": 12.31, "read": 1, "direction": "in"}
 {"sender": "HDFCBK", "body": "HDFC Bank:Rs. 8,000.00 debited from a/c *4321 on 28/08/26 to a/c **5644 (UPI Ref No. 728800112233)", "days_ago": 9.12, "read": 1, "direction": "in"}
 {"sender": "HDFCBK", "body": "Credit Alert! Rs.15,400.00 credited to HDFC Bank A/c XX4321 on 31-08-26 from VPA kiranblr@okaxis", "days_ago": 6.44, "read": 1, "direction": "in"}
+{"sender": "BOBTXN", "body": "Rs.4500.00 withdrawn from A/c ...2871 at ATM TID 9QYyyyk47 Ref.3186 Avlbal Amt:Rs.6120.55(12-09-2026 14:05:09).In case your a/c is debited but cash is not dispensed from the ATM, the transaction will be automatically reversed within 48 hours. TC apply. If not used by you, call 18005701-BOB", "days_ago": 7.05, "read": 1, "direction": "in"}

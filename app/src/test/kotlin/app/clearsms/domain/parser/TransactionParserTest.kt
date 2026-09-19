@@ -120,6 +120,41 @@ class TransactionParserTest {
     }
 
     @Test
+    fun `atm withdrawal with ellipsis masked tail and Avlbal Amt balance`() {
+        // BOB ATM shape: the tail is masked with dots ("...2871", not
+        // "XX2871") and the balance is written "Avlbal Amt:Rs.X". The
+        // trailing dispensing-failure advisory ("will be automatically
+        // reversed") must neither veto the debit nor flip it to a credit.
+        val result =
+            parser.parse(
+                "BOBTXN",
+                "Rs.4500.00 withdrawn from A/c ...2871 at ATM TID 9QYyyyk47 Ref.3186 " +
+                    "Avlbal Amt:Rs.6120.55(12-09-2026 14:05:09).In case your a/c is debited but cash is " +
+                    "not dispensed from the ATM, the transaction will be automatically reversed within " +
+                    "48 hours. TC apply. If not used by you, call 18005701-BOB",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.amount).isEqualTo(4500.0)
+        assertThat(result.type).isEqualTo(TransactionType.DEBIT)
+        assertThat(result.accountLast4).isEqualTo("2871")
+        assertThat(result.balance).isEqualTo(6120.55)
+        assertThat(result.accountType).isEqualTo(AccountType.SAVINGS)
+        assertThat(result.bankName).isEqualTo("Bank of Baroda")
+    }
+
+    @Test
+    fun `single period before digits is never an ellipsis mask`() {
+        // Only 2-3 dots read as an ellipsis mask. A single dot stays
+        // punctuation, so a sentence period can never start a tail.
+        val result =
+            parser.parse(
+                "BOBTXN",
+                "Rs.900.00 debited from a/c .9021 today. Avl Bal Rs.100.00",
+            )
+        assertThat(result?.accountLast4).isNull()
+    }
+
+    @Test
     fun `salary credit with indian comma grouping`() {
         val result =
             parser.parse(

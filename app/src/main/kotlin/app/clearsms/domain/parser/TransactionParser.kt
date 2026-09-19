@@ -708,7 +708,11 @@ class TransactionParser {
 
         val ACCOUNT_REGEX =
             Regex(
-                "(?i)(?:a/c|a\\\\c|acct|account|card)\\s*(?:no\\.?|number)?\\s*(?:ending\\s*)?(?:in\\s+|with\\s+)?[Xx*]*(\\d{3,4})(?!\\d)",
+                "(?i)(?:a/c|a\\\\c|acct|account|card)\\s*(?:no\\.?|number)?\\s*(?:ending\\s*)?(?:in\\s+|with\\s+)?" +
+                    // Masked tail: "XX1234", "**1234", and the ellipsis mask
+                    // "...1234" (BOB ATM withdrawals). The ellipsis needs 2-3
+                    // dots so a sentence period can never start a tail.
+                    "(?:\\.{2,3})?[Xx*]*(\\d{3,4})(?!\\d)",
             )
 
         /**
@@ -727,6 +731,9 @@ class TransactionParser {
         val BALANCE_REGEX =
             Regex(
                 "(?i)(?:avl|avbl|avail(?:able)?)\\.?\\s*bal(?:ance)?\\.?" +
+                    // BOB ATM withdrawals write the balance as "Avlbal
+                    // Amt:Rs.X" - an "Amt" token between "bal" and the figure.
+                    "(?:\\s*amt\\.?)?" +
                     "(?:\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s*(?:no\\.?)?\\s*[Xx*]*\\d+)?" +
                     "\\s*(?:is|:|=)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
             )
