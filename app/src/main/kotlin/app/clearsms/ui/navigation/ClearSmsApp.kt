@@ -145,6 +145,11 @@ private fun MainScaffold(
         ).filter { sections.isEnabled(it.tab) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    // The NavHost's transition state: every entry it is still composing,
+    // INCLUDING the outgoing screen until its exit transition completes.
+    // currentRoute alone flips at pop time and so LEADS the screen; the
+    // bottom bar keys on both (see BottomBarVisibility, issue #39).
+    val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
 
     // A share/compose intent deep-links straight into the compose screen.
     // A shared image rides along as a nav argument; the compose ViewModel
@@ -245,7 +250,10 @@ private fun MainScaffold(
             // between: a single-item bar is dead chrome, so the whole bar
             // disappears (the remaining screen keeps Search and Settings in
             // its own top bar, which is also the way back to re-enabling).
-            if (currentRoute in Routes.topLevel && sections.showBottomBar) {
+            // Mid-transition the decision also consults the NavHost's
+            // visible entries, so the bar never composes over an outgoing
+            // non-tab screen (the back-navigation flash, issue #39).
+            if (BottomBarVisibility.isVisible(currentRoute, visibleEntries.map { it.destination.route }, sections)) {
                 NavigationBar {
                     destinations.forEach { destination ->
                         NavigationBarItem(
