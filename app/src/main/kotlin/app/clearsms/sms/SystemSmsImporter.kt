@@ -57,6 +57,8 @@ class SystemSmsImporter
             val incoming: Boolean,
             /** Provider `status` == STATUS_COMPLETE (delivery report received). */
             val delivered: Boolean,
+            /** Provider `sub_id`; null when the column is missing or the value invalid. */
+            val subscriptionId: Int?,
         )
 
         /**
@@ -139,6 +141,7 @@ class SystemSmsImporter
                                                     null
                                                 },
                                             delivered = raw.delivered,
+                                            subscriptionId = raw.subscriptionId,
                                         )
                                     }
                                 }.awaitAll()
@@ -197,6 +200,7 @@ class SystemSmsImporter
                 val typeIdx = it.getColumnIndex(Telephony.Sms.TYPE)
                 val readIdx = it.getColumnIndex(Telephony.Sms.READ)
                 val statusIdx = it.getColumnIndex(Telephony.Sms.STATUS)
+                val subIdx = it.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
                 buildList {
                     while (it.moveToNext()) {
                         add(
@@ -213,6 +217,15 @@ class SystemSmsImporter
                                     statusIdx >= 0 &&
                                         !it.isNull(statusIdx) &&
                                         it.getInt(statusIdx) == Telephony.Sms.STATUS_COMPLETE,
+                                // Same guard: a missing column, NULL cell or
+                                // invalid value (INVALID_SUBSCRIPTION_ID / -1)
+                                // is UNKNOWN - never guess a SIM.
+                                subscriptionId =
+                                    if (subIdx >= 0 && !it.isNull(subIdx)) {
+                                        it.getInt(subIdx).takeIf { sub -> sub >= 0 }
+                                    } else {
+                                        null
+                                    },
                             ),
                         )
                     }
@@ -263,6 +276,8 @@ class SystemSmsImporter
                     Telephony.Sms.TYPE,
                     Telephony.Sms.READ,
                     Telephony.Sms.STATUS,
+                    // API 22+ (minSdk 23): which SIM the message travelled over.
+                    Telephony.Sms.SUBSCRIPTION_ID,
                 )
         }
     }

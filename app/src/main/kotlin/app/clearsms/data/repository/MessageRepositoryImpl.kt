@@ -1065,6 +1065,7 @@ class MessageRepositoryImpl(
                                 systemSmsId = row.systemSmsId,
                                 deletedAt = if (born) row.timestampMs else null,
                                 providerDeletePending = born,
+                                subscriptionId = row.subscriptionId,
                             )
                         } else {
                             // Outgoing (sent) message: stored as a read personal
@@ -1084,6 +1085,7 @@ class MessageRepositoryImpl(
                                 providerDeletePending = senderBlocked,
                                 deliveryStatus =
                                     if (row.delivered) DeliveryStatus.DELIVERED else DeliveryStatus.SENT,
+                                subscriptionId = row.subscriptionId,
                             )
                         }
                     }
@@ -2100,6 +2102,12 @@ internal data class ImportedSmsRow(
     val isRead: Boolean,
     val enriched: MessageRepositoryImpl.Enriched?,
     val delivered: Boolean = false,
+    /**
+     * Which SIM the message travelled over, straight from the provider's
+     * `sub_id` column. Null = unknown (column missing or value invalid) -
+     * never guessed, never defaulted.
+     */
+    val subscriptionId: Int? = null,
 )
 
 /** Page source that is always empty - the unsearchable-query fallback. */

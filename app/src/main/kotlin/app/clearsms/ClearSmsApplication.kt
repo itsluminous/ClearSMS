@@ -6,6 +6,7 @@ import androidx.work.Configuration
 import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.work.AutoResortScheduler
+import app.clearsms.work.SimBackfillWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -44,6 +45,10 @@ class ClearSmsApplication :
         // Folds legacy block records (the old ui-prefs mirror and per-row
         // flags) into the authoritative settings blocklist - idempotent.
         senderBlocker.onAppStart()
+        // One-time SIM backfill: fills subscriptionId on rows imported before
+        // the importer read the provider's sub_id column. Instant no-op once
+        // the versioned pass has completed.
+        SimBackfillWorker.enqueue(this)
     }
 
     override val workManagerConfiguration: Configuration

@@ -37,6 +37,8 @@ import app.clearsms.mms.AttachmentStore
 import app.clearsms.notification.NotificationDismisser
 import app.clearsms.receiver.DefaultSendReportSideEffects
 import app.clearsms.receiver.SendReportSideEffects
+import app.clearsms.sms.ProviderSimSource
+import app.clearsms.sms.SystemProviderSimSource
 import app.clearsms.sms.SystemSentSmsSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.work.BackupDocumentStore
@@ -106,6 +108,10 @@ internal interface DataBindings {
     /** Provider mirroring + failure notification for outgoing send reports. */
     @Binds
     fun sendReportSideEffects(impl: DefaultSendReportSideEffects): SendReportSideEffects
+
+    /** `content://sms` rows for the one-time SIM backfill. */
+    @Binds
+    fun providerSimSource(impl: SystemProviderSimSource): ProviderSimSource
 }
 
 /** Hilt wiring for the data and domain layers. */

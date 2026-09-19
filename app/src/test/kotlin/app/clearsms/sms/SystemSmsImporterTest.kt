@@ -82,6 +82,7 @@ class SystemSmsImporterTest {
     @Before
     fun setUp() {
         FakeSmsProvider.rows.clear()
+        FakeSmsProvider.includeSubscriptionColumn = true
         Robolectric.setupContentProvider(FakeSmsProvider::class.java, "sms")
     }
 
@@ -365,6 +366,93 @@ class SystemSmsImporterTest {
             )
         }
 
+    // region SIM subscription import
+
+    @Test
+    fun `import records the SIM from the provider's subscription column`() =
+        runBlocking {
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(1, "9876543210", "on SIM one", 1_700_000_001_000, type = 1, read = 0, subId = 1)
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(2, "9876543210", "sent on SIM two", 1_700_000_002_000, type = 2, read = 1, subId = 2)
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(3, "9876543210", "no sub recorded", 1_700_000_003_000, type = 1, read = 0, subId = null)
+
+            val env = Env("sim-recorded")
+            env.importer.importAll()
+
+            val messages = env.db.messageDao().getAll()
+            assertThat(messages.single { it.systemSmsId == 1L }.subscriptionId).isEqualTo(1)
+            assertThat(messages.single { it.systemSmsId == 2L }.subscriptionId).isEqualTo(2)
+            assertThat(messages.single { it.systemSmsId == 3L }.subscriptionId).isNull()
+        }
+
+    @Test
+    fun `a provider without the subscription column imports null SIMs without crashing`() =
+        runBlocking {
+            // Some providers ignore the projection entirely (the same reality
+            // the STATUS guard already handles): getColumnIndex returns -1.
+            FakeSmsProvider.includeSubscriptionColumn = false
+            addMixedRows(1L..8L)
+
+            val env = Env("sim-missing-column")
+            val inserted = env.importer.importAll().inserted
+
+            assertThat(inserted).isEqualTo(8)
+            assertThat(
+                env.db
+                    .messageDao()
+                    .getAll()
+                    .all { it.subscriptionId == null },
+            ).isTrue()
+        }
+
+    @Test
+    fun `an invalid subscription value imports as unknown, never a guessed SIM`() =
+        runBlocking {
+            // INVALID_SUBSCRIPTION_ID (-1): unknown must stay null - a wrong
+            // SIM tag is worse than none.
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(1, "9876543210", "invalid sub", 1_700_000_001_000, type = 1, read = 0, subId = -1)
+
+            val env = Env("sim-invalid")
+            env.importer.importAll()
+
+            assertThat(
+                env.db
+                    .messageDao()
+                    .getAll()
+                    .single()
+                    .subscriptionId,
+            ).isNull()
+        }
+
+    @Test
+    fun `a subscription no longer active on the device is still recorded`() =
+        runBlocking {
+            // Decision: a VALID provider value is recorded even when that
+            // subscription is not among the device's active SIMs - identical
+            // to the live SmsReceiver path, which never validates against
+            // active SIMs. Provenance survives a SIM swap, and the display
+            // path (SimSelector.slotLabelFor) already renders NO tag for an
+            // inactive subscription, so a wrong SIM can never be shown.
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(1, "9876543210", "from a removed SIM", 1_700_000_001_000, type = 1, read = 0, subId = 99)
+
+            val env = Env("sim-inactive")
+            env.importer.importAll()
+
+            assertThat(
+                env.db
+                    .messageDao()
+                    .getAll()
+                    .single()
+                    .subscriptionId,
+            ).isEqualTo(99)
+        }
+
+    // endregion
+
     /**
      * Minimal `content://sms` stand-in honoring the importer's exact query
      * shape: `_id > ?` + type filter, `_id ASC LIMIT n` ordering.
@@ -377,6 +465,8 @@ class SystemSmsImporterTest {
             val date: Long,
             val type: Int,
             val read: Int,
+            /** Provider `sub_id`; null renders as a NULL cursor cell. */
+            val subId: Int? = null,
         )
 
         override fun onCreate(): Boolean = true
@@ -394,23 +484,29 @@ class SystemSmsImporterTest {
                     ?.substringAfterLast("LIMIT ", missingDelimiterValue = "")
                     ?.trim()
                     ?.toIntOrNull() ?: Int.MAX_VALUE
-            val cursor =
-                MatrixCursor(
-                    arrayOf(
-                        Telephony.Sms._ID,
-                        Telephony.Sms.ADDRESS,
-                        Telephony.Sms.BODY,
-                        Telephony.Sms.DATE,
-                        Telephony.Sms.TYPE,
-                        Telephony.Sms.READ,
-                    ),
-                )
+            val columns =
+                buildList {
+                    add(Telephony.Sms._ID)
+                    add(Telephony.Sms.ADDRESS)
+                    add(Telephony.Sms.BODY)
+                    add(Telephony.Sms.DATE)
+                    add(Telephony.Sms.TYPE)
+                    add(Telephony.Sms.READ)
+                    // Some real providers ignore the projection and omit
+                    // columns; the flag reproduces exactly that.
+                    if (includeSubscriptionColumn) add(Telephony.Sms.SUBSCRIPTION_ID)
+                }
+            val cursor = MatrixCursor(columns.toTypedArray())
             rows
                 .asSequence()
                 .filter { it.id > afterId && (it.type == 1 || it.type == 2) }
                 .sortedBy { it.id }
                 .take(limit)
-                .forEach { cursor.addRow(arrayOf<Any?>(it.id, it.address, it.body, it.date, it.type, it.read)) }
+                .forEach {
+                    val values = mutableListOf<Any?>(it.id, it.address, it.body, it.date, it.type, it.read)
+                    if (includeSubscriptionColumn) values += it.subId
+                    cursor.addRow(values.toTypedArray())
+                }
             return cursor
         }
 
@@ -436,6 +532,9 @@ class SystemSmsImporterTest {
 
         companion object {
             val rows = mutableListOf<Row>()
+
+            /** When false the cursor omits the sub_id column entirely. */
+            var includeSubscriptionColumn = true
         }
     }
 }
