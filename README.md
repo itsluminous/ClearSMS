@@ -3,6 +3,7 @@
 [![Android CI](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml/badge.svg)](https://github.com/itsluminous/ClearSMS/actions/workflows/android.yml)
 [![Latest release](https://img.shields.io/github/v/release/itsluminous/ClearSMS?sort=semver)](https://github.com/itsluminous/ClearSMS/releases/latest)
 [![F-Droid](https://img.shields.io/f-droid/v/app.clearsms?logo=f-droid&color=1976d2)](https://f-droid.org/packages/app.clearsms/)
+[![Downloads](https://img.shields.io/github/downloads/itsluminous/ClearSMS/total?logo=github&label=downloads&color=success)](https://github.com/itsluminous/ClearSMS/releases)
 [![License](https://img.shields.io/github/license/itsluminous/ClearSMS)](LICENSE)
 [![Rules](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fitsluminous%2FClearSMS%2Fmain%2Fapp%2Fsrc%2Fmain%2Fassets%2Fdefault_rules.json&query=%24.rules.length&label=rules&color=teal)](rules/)
 [![Stars](https://img.shields.io/github/stars/itsluminous/ClearSMS?style=flat&color=gold)](https://github.com/itsluminous/ClearSMS/stargazers)
