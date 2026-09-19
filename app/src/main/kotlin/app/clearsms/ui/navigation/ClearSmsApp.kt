@@ -2,6 +2,12 @@ package app.clearsms.ui.navigation
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -153,11 +159,6 @@ private fun MainScaffold(
         ).filter { sections.isEnabled(it.tab) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    // The NavHost's transition state: every entry it is still composing,
-    // INCLUDING the outgoing screen until its exit transition completes.
-    // currentRoute alone flips at pop time and so LEADS the screen; the
-    // bottom bar keys on both (see BottomBarVisibility, issue #39).
-    val visibleEntries by navController.visibleEntries.collectAsStateWithLifecycle()
 
     // A share/compose intent deep-links straight into the compose screen.
     // A shared image rides along as a nav argument; the compose ViewModel
@@ -264,10 +265,24 @@ private fun MainScaffold(
             // between: a single-item bar is dead chrome, so the whole bar
             // disappears (the remaining screen keeps Search and Settings in
             // its own top bar, which is also the way back to re-enabling).
-            // Mid-transition the decision also consults the NavHost's
-            // visible entries, so the bar never composes over an outgoing
-            // non-tab screen (the back-navigation flash, issue #39).
-            if (BottomBarVisibility.isVisible(currentRoute, visibleEntries.map { it.destination.route }, sections)) {
+            // The bar belongs to the transition's TARGET destination and
+            // ARRIVES WITH it: enter runs on the same spec as the NavHost's
+            // route crossfade below, so on BACK from a conversation the bar
+            // fades/expands in step with the incoming tab instead of either
+            // flashing over the conversation (issue #39) or waiting out the
+            // whole exit animation (the follow-up "too late" report). The
+            // slot EXPANDS, growing the scaffold padding with it, so every
+            // frame lays the outgoing screen out ABOVE the bar - overlap is
+            // impossible by construction. Exit snaps: hiding chrome early
+            // overlaps nothing (unchanged forward behaviour). See
+            // BottomBarVisibility for the full history.
+            AnimatedVisibility(
+                visible = BottomBarVisibility.isVisible(currentRoute, sections),
+                enter =
+                    fadeIn(BottomBarVisibility.contentTransitionSpec()) +
+                        expandVertically(BottomBarVisibility.contentTransitionSpec()),
+                exit = shrinkVertically(snap()) + fadeOut(snap()),
+            ) {
                 NavigationBar {
                     destinations.forEach { destination ->
                         NavigationBarItem(
@@ -295,6 +310,12 @@ private fun MainScaffold(
         NavHost(
             navController = navController,
             startDestination = startDestination.toRoute(),
+            // The route crossfade, explicitly on the SAME spec the bottom
+            // bar's enter animation uses (these are navigation-compose's own
+            // defaults, just named): the bar's arrival is synchronised with
+            // the content transition by sharing one clock, not by tuning.
+            enterTransition = { fadeIn(BottomBarVisibility.contentTransitionSpec()) },
+            exitTransition = { fadeOut(BottomBarVisibility.contentTransitionSpec()) },
             // padding is the bottom bar's height (which already includes the
             // navigation-bar inset). consumeWindowInsets is the half that
             // Modifier.padding lacks: without it every screen's own Scaffold
