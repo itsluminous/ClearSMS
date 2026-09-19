@@ -9,6 +9,7 @@ enum class MessageSelectionAction {
     SELECT_ALL,
     COPY_OTP,
     ADD_RULE,
+    MORE_DETAILS,
 }
 
 /**
@@ -36,8 +37,11 @@ object ConversationSelectionBarLayout {
 
     /**
      * Overflow menu entries in display order. The overflow always exists
-     * (share and select-all apply to any selection); copy-OTP and add-rule
-     * act on one message, so they appear only for a single selection.
+     * (share and select-all apply to any selection); copy-OTP, add-rule and
+     * more-details act on ONE message, so they appear only for a single
+     * selection - details of several messages at once has no sensible
+     * rendering, so the item is hidden (not disabled) for multi-select,
+     * matching how the other single-message entries already behave.
      */
     fun overflowActions(
         singleMessage: Boolean,
@@ -48,5 +52,6 @@ object ConversationSelectionBarLayout {
             add(MessageSelectionAction.SELECT_ALL)
             if (singleMessage && hasOtp) add(MessageSelectionAction.COPY_OTP)
             if (singleMessage) add(MessageSelectionAction.ADD_RULE)
+            if (singleMessage) add(MessageSelectionAction.MORE_DETAILS)
         }
 }

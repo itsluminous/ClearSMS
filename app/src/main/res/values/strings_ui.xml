@@ -61,6 +61,27 @@
     <string name="send_failure_http">Your carrier\'s MMS server refused the message.</string>
     <string name="send_failure_transient">A temporary network problem interrupted the send - retrying may work.</string>
     <string name="conversation_delivered">Delivered</string>
+
+    <!-- More details dialog (single selected message) -->
+    <string name="action_message_details">More details</string>
+    <string name="message_details_title">Message details</string>
+    <string name="message_details_type">Type</string>
+    <string name="message_details_type_sms">SMS</string>
+    <string name="message_details_type_mms">MMS</string>
+    <string name="message_details_from">From</string>
+    <string name="message_details_to">To</string>
+    <string name="message_details_received">Received</string>
+    <string name="message_details_sent">Sent</string>
+    <string name="message_details_scheduled">Scheduled for</string>
+    <string name="message_details_delivered">Delivered</string>
+    <string name="message_details_delivered_confirmed">Yes - your carrier sent back a delivery report. The report\'s arrival time isn\'t recorded, so no delivery time can be shown.</string>
+    <string name="message_details_delivered_unknown">Unknown - no delivery report has come back, so whether it reached the recipient\'s phone can\'t be confirmed.</string>
+    <string name="message_details_delivered_mms">Unknown - MMS delivery reports aren\'t supported, so delivery of a picture message can\'t be confirmed.</string>
+    <string name="message_details_error">Error</string>
+    <string name="message_details_error_unknown">The send failed, but the radio reported no further detail. Tap the message bubble to retry.</string>
+    <string name="message_details_sim">SIM</string>
+    <string name="message_details_status">Status</string>
+    <string name="message_details_bin">In the Recycle bin</string>
     <string name="conversation_sim_switch">Switch SIM</string>
     <string name="conversation_sim_identity">Show which SIM sends</string>
     <string name="conversation_scheduled">Scheduled</string>

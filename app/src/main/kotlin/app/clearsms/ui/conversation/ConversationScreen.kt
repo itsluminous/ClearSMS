@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
@@ -79,6 +80,7 @@ import app.clearsms.R
 import app.clearsms.ShareIntents
 import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
+import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.MmsStatus
 import app.clearsms.mms.SendFailureReason
 import app.clearsms.notification.OtpClipboard
@@ -131,6 +133,12 @@ fun ConversationScreen(
     // Incoming MMS whose download failed and whose Retry/Delete dialog is
     // open (from a bubble tap).
     var failedMmsId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // The single selected message whose "More details" dialog is open. A
+    // snapshot of the entity (not just an id): the row keeps rendering even
+    // if the message is binned underneath the open dialog.
+    var detailsMessage by remember { mutableStateOf<MessageEntity?>(null) }
+    var detailsSimLabel by remember { mutableStateOf<String?>(null) }
 
     // The thread's MMS attachments keyed by message id, and the image
     // currently opened in the full-screen viewer.
@@ -276,14 +284,15 @@ fun ConversationScreen(
         topBar = {
             if (selection.active) {
                 val shareTitle = stringResource(R.string.action_share_message)
+                val singleSelected =
+                    if (selection.count == 1) {
+                        items.itemSnapshotList.items.firstOrNull { it.id == selection.selected.first() }
+                    } else {
+                        null
+                    }
                 ConversationSelectionBar(
                     selection = selection,
-                    singleItem =
-                        if (selection.count == 1) {
-                            items.itemSnapshotList.items.firstOrNull { it.id == selection.selected.first() }
-                        } else {
-                            null
-                        },
+                    singleItem = singleSelected,
                     onClose = viewModel::exitSelection,
                     onDelete = { confirmDelete = true },
                     onCopy = {
@@ -297,6 +306,10 @@ fun ConversationScreen(
                     },
                     onSelectAll = viewModel::selectAll,
                     onCopyOtp = copyOtp,
+                    onShowDetails = {
+                        detailsMessage = singleSelected?.message
+                        detailsSimLabel = singleSelected?.simLabel
+                    },
                     onCreateRule = { body ->
                         viewModel.exitSelection()
                         onCreateRule(state.address, body)
@@ -465,6 +478,22 @@ fun ConversationScreen(
                 }
             }
         }
+    }
+
+    // "More details" for the single selected message. Rows come from the
+    // pure MessageDetails mapping; the name is the SAME contact →
+    // sender-directory → raw-address resolution the top bar already shows
+    // (state.title), so the dialog never invents a second identity.
+    detailsMessage?.let { message ->
+        MessageDetailsDialog(
+            message = message,
+            resolvedName = state.title,
+            simLabel = detailsSimLabel,
+            onDismiss = {
+                detailsMessage = null
+                detailsSimLabel = null
+            },
+        )
     }
 
     // Retry/Delete choice for a tapped failed bubble. Retry re-dispatches
@@ -673,6 +702,7 @@ private fun ConversationSelectionBar(
     onShare: () -> Unit,
     onSelectAll: () -> Unit,
     onCopyOtp: (String) -> Unit,
+    onShowDetails: () -> Unit,
     onCreateRule: (body: String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -765,6 +795,15 @@ private fun ConversationSelectionBar(
                                 onClick = {
                                     menuOpen = false
                                     singleItem?.let { onCreateRule(it.body) }
+                                },
+                            )
+                        MessageSelectionAction.MORE_DETAILS ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_message_details)) },
+                                leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onShowDetails()
                                 },
                             )
                         else -> Unit
