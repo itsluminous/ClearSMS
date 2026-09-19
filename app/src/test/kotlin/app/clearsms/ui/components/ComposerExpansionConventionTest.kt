@@ -1,5 +1,6 @@
 package app.clearsms.ui.components
 
+import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
@@ -106,5 +107,67 @@ class ComposerExpansionConventionTest {
         val strings = File("src/main/res/values/strings_platform.xml").readText()
         assertThat(strings).contains("\"compose_expand\"")
         assertThat(strings).contains("\"compose_collapse\"")
+    }
+
+    @Test
+    fun `the one toggle rides the field box in both states - never the top-of-screen header`() {
+        // Issue #30: the shrink toggle used to live in the recipient header,
+        // hard against the status bar, where the reporter's device (and the
+        // maintainer's) delivered no taps to it - every in-window cause was
+        // ruled out empirically, and the video shows 16/16 in-bounds taps
+        // with zero press feedback, so that top band is contested by system
+        // chrome. The toggle therefore anchors to the compose box's own
+        // top-right corner in BOTH states (the expand icon there provably
+        // works on the same device), which also means the finger that just
+        // expanded finds the shrink control in the very spot it tapped.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        // Exactly ONE call site (the definition adds the second occurrence).
+        assertThat(Regex("""ExpandToggle\(""").findAll(bar).count()).isEqualTo(2)
+        // The header block (recipient label) must stay toggle-free.
+        val header = bar.substringAfter("barState.recipientHeaderVisible)").substringBefore("barState.attachmentsRowVisible")
+        assertThat(header).doesNotContain("ExpandToggle(")
+        // The call site rides the field's Box corner, unconditionally - a
+        // state-gated `if (!expanded)` here is the regression shape.
+        val callSite = bar.substringAfter("OutlinedTextField(").substringBefore("barState.simIndicatorVisible")
+        assertThat(callSite).contains("ExpandToggle(")
+        assertThat(callSite).contains("modifier = Modifier.align(Alignment.TopEnd)")
+        assertThat(callSite).doesNotContain("if (!expanded)")
+        assertThat(callSite).doesNotContain("if (expanded)")
+        // Both directions route through the one pure, tested transition.
+        assertThat(callSite).contains("expanded = expanded")
+        assertThat(callSite).contains("onToggle = { expanded = ComposerExpansion.toggled(expanded) }")
+    }
+
+    @Test
+    fun `the toggle is a real 48dp touch target built from the shared metrics`() {
+        // The toggle overlaps the text field, and Compose's minimum-touch-
+        // target EXPANSION ring loses hit-testing to the field's direct
+        // hits - so the 48dp accessibility minimum must be the box itself,
+        // derived (glyph + 2x padding), never hand-tuned numbers.
+        assertThat(ComposerToggleMetrics.TouchTarget).isEqualTo(48.dp)
+        assertThat(ComposerToggleMetrics.GlyphSize).isEqualTo(20.dp)
+        assertThat(
+            ComposerToggleMetrics.GlyphSize + ComposerToggleMetrics.GlyphPadding * 2,
+        ).isEqualTo(ComposerToggleMetrics.TouchTarget)
+        val bar = source("ui/components/MessageComposerBar.kt")
+        val toggle = bar.substringAfter("private fun ExpandToggle").substringBefore("internal object ComposerToggleMetrics")
+        assertThat(toggle).contains(".padding(ComposerToggleMetrics.GlyphPadding)")
+        assertThat(toggle).contains("Modifier.size(ComposerToggleMetrics.GlyphSize)")
+    }
+
+    @Test
+    fun `the collapsed field takes its bounded-scrollable window from the pure affordances`() {
+        // Bug 1 (issue #30): the collapsed box's scrolling comes from being
+        // a maxLines-BOUNDED text field (Compose pans such a window
+        // internally - ScrollBy semantics). The bound must flow from the
+        // tested affordances, and nothing may pin the field's height or
+        // flatten it to a single line, which are the two shapes that would
+        // genuinely clip a long draft without scrolling.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        assertThat(bar).contains("maxLines = barState.fieldMaxLines")
+        assertThat(bar).doesNotContain("singleLine = true")
+        val fieldBox = bar.substringAfter("// ONE OutlinedTextField call").substringBefore("barState.simIndicatorVisible")
+        assertThat(fieldBox).doesNotContain(".height(")
+        assertThat(fieldBox).doesNotContain(".heightIn(")
     }
 }

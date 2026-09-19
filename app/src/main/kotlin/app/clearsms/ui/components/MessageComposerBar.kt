@@ -194,9 +194,15 @@ fun MessageComposerBar(
             // Expanded, the field covers the top app bar, so the recipient
             // identity (contact name or number / the conversation's sender)
             // moves into this header - the user always sees who they are
-            // writing to. The shrink toggle keeps its top-right home.
+            // writing to. The shrink toggle does NOT live up here: this row
+            // sits in the top screen band right under the status bar, where
+            // system chrome (the notification-shade pull-down slop, OEM
+            // top-edge gesture regions) competes for touches - issue #30's
+            // device swallowed every tap on a control in this band while the
+            // identical control on the field's corner worked. The toggle
+            // stays on the compose box itself, below this header.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -206,7 +212,6 @@ fun MessageComposerBar(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                ExpandToggle(expanded = true, onToggle = { expanded = false })
             }
         }
         if (barState.attachmentsRowVisible) {
@@ -265,15 +270,19 @@ fun MessageComposerBar(
                     shape = RoundedCornerShape(28.dp),
                     maxLines = barState.fieldMaxLines,
                 )
-                if (!expanded) {
-                    // The operator's "one small icon on top right": it rides
-                    // the compose box's own top-right corner.
-                    ExpandToggle(
-                        expanded = false,
-                        onToggle = { expanded = true },
-                        modifier = Modifier.align(Alignment.TopEnd),
-                    )
-                }
+                // The operator's "one small icon on top right": it rides the
+                // compose box's own top-right corner - in BOTH states. The
+                // shrink toggle used to sit in the recipient header at the
+                // very top of the screen, where issue #30's device delivered
+                // no taps to it (system chrome contests that band; see the
+                // header comment above); on the field's corner - the exact
+                // spot the working expand icon occupies - the finger that
+                // just expanded finds the shrink control in the same place.
+                ExpandToggle(
+                    expanded = expanded,
+                    onToggle = { expanded = ComposerExpansion.toggled(expanded) },
+                    modifier = Modifier.align(Alignment.TopEnd),
+                )
             }
             // Compact SIM indicator, dual-SIM devices only: a plain SIM-card
             // outline whose ONLY content is the slot number - the stock icon's
@@ -403,13 +412,18 @@ fun MessageComposerBar(
 }
 
 /**
- * The expand/shrink toggle riding the compose box's top-right corner: a
- * deliberately SMALL glyph (20dp) whose clickable padding still yields a
- * 40dp touch target. Distinct content descriptions and click labels per
- * state, so TalkBack announces "Expand compose box" vs "Shrink compose
- * box". A custom affordance rather than [TooltipIconButton]: the wrapper's
- * 48dp IconButton overlapping the text field's corner would swallow taps
- * meant to place the cursor near the end of the text.
+ * The expand/shrink toggle riding the compose box's top-right corner in both
+ * states: a deliberately SMALL glyph ([ComposerToggleMetrics.GlyphSize])
+ * whose clickable padding yields a REAL 48dp touch box
+ * ([ComposerToggleMetrics.TouchTarget]). The box must be genuinely 48dp, not
+ * framework-expanded to it: the toggle overlaps the text field, and
+ * Compose's minimum-touch-target expansion ring LOSES hit-testing to the
+ * field's direct hits - an expanded 40dp box guaranteed only 40dp here. A
+ * custom affordance rather than [TooltipIconButton] because the wrapper's
+ * opaque IconButton corner would swallow taps meant to place the cursor at
+ * the end of the text; this box keeps the glyph small so the overlap stays
+ * visually honest. Distinct content descriptions and click labels per
+ * state, so TalkBack announces "Expand compose box" vs "Shrink compose box".
  */
 @Composable
 private fun ExpandToggle(
@@ -424,15 +438,32 @@ private fun ExpandToggle(
             modifier
                 .clip(CircleShape)
                 .clickable(onClick = onToggle, onClickLabel = label)
-                .padding(10.dp),
+                .padding(ComposerToggleMetrics.GlyphPadding),
     ) {
         Icon(
             if (expanded) Icons.Outlined.CloseFullscreen else Icons.Outlined.OpenInFull,
             contentDescription = label,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(ComposerToggleMetrics.GlyphSize),
         )
     }
+}
+
+/**
+ * The ONE source of the expand/shrink toggle's sizes, so the 48dp
+ * accessibility minimum cannot silently erode (ComposerBarContractTest pins
+ * these). [GlyphPadding] is derived, never hand-tuned: glyph + 2x padding
+ * IS the touch target.
+ */
+internal object ComposerToggleMetrics {
+    /** The visible expand/shrink glyph - small on purpose (see ExpandToggle). */
+    val GlyphSize = 20.dp
+
+    /** The real clickable box - the 48dp minimum interactive size. */
+    val TouchTarget = 48.dp
+
+    /** Padding that makes the box: (48 - 20) / 2 = 14dp per side. */
+    val GlyphPadding = (TouchTarget - GlyphSize) / 2
 }
 
 /**

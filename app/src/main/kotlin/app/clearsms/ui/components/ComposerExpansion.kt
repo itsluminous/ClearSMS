@@ -73,6 +73,17 @@ object ComposerExpansion {
     fun backCollapsesFirst(expanded: Boolean): Boolean = expanded
 
     /**
+     * The toggle's state transition - one pure symmetry for BOTH directions,
+     * so expand-then-collapse via the icon is the same tested rule, not two
+     * ad-hoc writes. Trivial by design: the point is that the composable's
+     * single toggle affordance routes through here (pinned by
+     * ComposerExpansionConventionTest), which is what makes "the shrink icon
+     * does nothing" (issue #30) a testable regression rather than a silent
+     * one-liner drift.
+     */
+    fun toggled(expanded: Boolean): Boolean = !expanded
+
+    /**
      * The bottom inset the EXPANDED box pads itself by: the larger of the
      * live IME inset and the navigation-bar inset - never an assumed
      * keyboard height. Keyboard open, the IME inset (which subsumes the

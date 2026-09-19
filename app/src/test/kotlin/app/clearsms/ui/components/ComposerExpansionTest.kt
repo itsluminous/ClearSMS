@@ -48,6 +48,32 @@ class ComposerExpansionTest {
     }
 
     @Test
+    fun `the icon toggles BOTH directions - expand then collapse via the icon, not only via back`() {
+        // Issue #30: after maximising, the shrink icon must undo it - the
+        // same transition rule both ways, so collapse-by-icon can never be
+        // the odd one out again.
+        assertThat(ComposerExpansion.toggled(expanded = false)).isTrue()
+        assertThat(ComposerExpansion.toggled(expanded = true)).isFalse()
+        // A full icon round trip lands back where it started.
+        assertThat(ComposerExpansion.toggled(ComposerExpansion.toggled(expanded = false))).isFalse()
+    }
+
+    @Test
+    fun `collapsed field is a bounded window that scrolls - never single-line, never unbounded`() {
+        // Issue #30 bug 1 finding: a maxLines-bounded Compose text field IS
+        // internally scrollable (it exposes ScrollBy semantics and pans by
+        // drag/fling); the reporter's upward drags were captured by the
+        // cursor-handle/selection gesture, not by missing scrolling. What
+        // the app owns is the window shape: more than one line (so there is
+        // something to scroll within) and strictly bounded (so a long draft
+        // can never swallow the conversation).
+        val collapsed = ComposerExpansion.affordances(expanded = false).fieldMaxLines
+        assertThat(collapsed).isEqualTo(ComposerExpansion.COLLAPSED_MAX_LINES)
+        assertThat(collapsed).isGreaterThan(1)
+        assertThat(collapsed).isLessThan(Int.MAX_VALUE)
+    }
+
+    @Test
     fun `expanded height sits above the live keyboard - the IME inset wins while open`() {
         // Typical open keyboard: IME inset subsumes the nav bar.
         assertThat(ComposerExpansion.expandedBottomInsetPx(imeBottomPx = 900, navigationBarsBottomPx = 84))
