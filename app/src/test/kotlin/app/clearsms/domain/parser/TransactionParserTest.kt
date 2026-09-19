@@ -143,6 +143,24 @@ class TransactionParserTest {
     }
 
     @Test
+    fun `atm withdrawal with hyphen separated Avlbal Amt balance`() {
+        // Same BOB ATM shape but the balance separator is a hyphen
+        // ("Avlbal Amt-Rs.X"), another template in the wild. The balance
+        // must still be read, not silently dropped.
+        val result =
+            parser.parse(
+                "BOBSMS",
+                "Rs.4500.00 withdrawn from A/c ...2871 at ATM TID 9QYyyyk47 Ref.3186 " +
+                    "Avlbal Amt-Rs.9234.31",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.amount).isEqualTo(4500.0)
+        assertThat(result.type).isEqualTo(TransactionType.DEBIT)
+        assertThat(result.accountLast4).isEqualTo("2871")
+        assertThat(result.balance).isEqualTo(9234.31)
+    }
+
+    @Test
     fun `single period before digits is never an ellipsis mask`() {
         // Only 2-3 dots read as an ellipsis mask. A single dot stays
         // punctuation, so a sentence period can never start a tail.

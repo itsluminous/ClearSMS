@@ -735,7 +735,9 @@ class TransactionParser {
                     // Amt:Rs.X" - an "Amt" token between "bal" and the figure.
                     "(?:\\s*amt\\.?)?" +
                     "(?:\\s+(?:in|for)\\s+(?:your\\s+)?a/c\\s*(?:no\\.?)?\\s*[Xx*]*\\d+)?" +
-                    "\\s*(?:is|:|=)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+                    // Separator before the figure: "is"/":"/"=" - and "-", which
+                    // some BOB ATM templates use ("Avlbal Amt-Rs.X").
+                    "\\s*(?:is|:|=|-)?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
             )
 
         /**
