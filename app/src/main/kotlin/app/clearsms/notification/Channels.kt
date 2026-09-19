@@ -25,6 +25,14 @@ object Channels {
     const val PROMOTIONS = "promotions_v2"
 
     private const val LEGACY_PROMOTIONS = "promotions"
+
+    /**
+     * Messages the categorizer could not place (Category.UNKNOWN). Created
+     * ENABLED, unlike [PROMOTIONS]: an unknown sender is often a real person
+     * texting from a number that is not in contacts, and shipping this
+     * blocked would reproduce the silence this channel exists to fix.
+     */
+    const val UNKNOWN = "unknown_senders"
     const val TRANSACTIONS = "transactions"
     const val SECURITY = "security"
     const val SUMMARY = "summary"
@@ -71,6 +79,20 @@ object Channels {
                     context.getString(R.string.channel_promotions),
                     NotificationManager.IMPORTANCE_NONE,
                 ).apply { description = context.getString(R.string.channel_promotions_desc) },
+                // DEFAULT (audible), not LOW: what lands in UNKNOWN is
+                // whatever the rules could NOT identify - spam the rules do
+                // recognize already routes to Promotions (blocked) or
+                // Security - so an unknown message is disproportionately
+                // likely to be a real person outside the user's contacts.
+                // Missing a human's text costs more than an occasional spam
+                // ping, and because this is its own channel, one tap in
+                // system settings demotes it to silent (LOW) for users who
+                // disagree. Created UNBLOCKED on purpose - see [UNKNOWN].
+                NotificationChannel(
+                    UNKNOWN,
+                    context.getString(R.string.channel_unknown),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply { description = context.getString(R.string.channel_unknown_desc) },
                 // DEFAULT (not HIGH) on purpose: parsed transaction alerts
                 // are informative, not urgent, and must not heads-up.
                 NotificationChannel(

@@ -17,7 +17,8 @@ import javax.inject.Singleton
 /**
  * The single notification-routing decision for an incoming message: OTP,
  * scam warning, parsed transaction/balance/bill, plain message, promotion,
- * or silence - respecting every user-facing gate (blocked senders, the
+ * unknown-sender notification, or silence - respecting every user-facing
+ * gate (blocked senders, the
  * transaction-notification toggle, OTP auto-copy, selected actions).
  *
  * Extracted from [app.clearsms.receiver.SmsReceiver] so the catch-up import
@@ -75,7 +76,17 @@ class IncomingMessageRouter
                 // toggle would appear to do nothing.
                 entity.category == Category.PROMOTIONAL ->
                     messageNotifier.notify(entity, selectedActions, channelId = Channels.PROMOTIONS)
-                // Everything else (unknown, informational) stays silent by design.
+                // Unknown senders get the same per-thread message notification
+                // on their own ENABLED channel (Channels.UNKNOWN) - a real
+                // person texting from a non-contact number must not arrive
+                // silently. Reusing MessageNotifier keeps the thread id band,
+                // deep-link highlight and read-in-app cancellation identical
+                // to plain messages.
+                entity.category == Category.UNKNOWN ->
+                    messageNotifier.notify(entity, selectedActions, channelId = Channels.UNKNOWN)
+                // The only reachable remainder: an OTP-category message whose
+                // code could not be extracted. Deliberately silent - a bare
+                // "OTP" notification with nothing to copy would be noise.
                 else -> Unit
             }
         }
