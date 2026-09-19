@@ -3,6 +3,8 @@ package app.clearsms.ui.settings
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.BuildConfig
 import app.clearsms.R
@@ -104,5 +106,43 @@ class ExternalLinksTest {
         val intent = ExternalLinks.intent("https://porter.in/rd/abc")
 
         assertThat(intent.action).isEqualTo(Intent.ACTION_VIEW)
+    }
+
+    @Test
+    fun `notification settings on API 26+ target the app's channel list`() {
+        val intent = ExternalLinks.appNotificationSettingsIntent("app.clearsms", sdkInt = 26)
+
+        assertThat(intent.action).isEqualTo(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        assertThat(intent.getStringExtra(Settings.EXTRA_APP_PACKAGE)).isEqualTo("app.clearsms")
+        assertThat(intent.data).isNull()
+    }
+
+    @Test
+    fun `notification settings below API 26 fall back to the app details page`() {
+        // Channels do not exist before 26 (minSdk is 23): the details page
+        // carries the pre-channel notification toggle, so the row still
+        // lands somewhere useful instead of doing nothing.
+        val intent = ExternalLinks.appNotificationSettingsIntent("app.clearsms", sdkInt = 25)
+
+        assertThat(intent.action).isEqualTo(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        assertThat(intent.data).isEqualTo(Uri.parse("package:app.clearsms"))
+        assertThat(intent.hasExtra(Settings.EXTRA_APP_PACKAGE)).isFalse()
+    }
+
+    @Test
+    fun `openAppNotificationSettings launches the settings screen for this app`() {
+        assertThat(ExternalLinks.openAppNotificationSettings(context)).isTrue()
+        val started = shadowOf(context as Application).nextStartedActivity
+        // Robolectric runs at an SDK >= 26, so the channel-list path fires.
+        assertThat(started.action).isEqualTo(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        assertThat(started.getStringExtra(Settings.EXTRA_APP_PACKAGE)).isEqualTo(context.packageName)
+    }
+
+    @Test
+    fun `openAppNotificationSettings reports false when no settings screen resolves`() {
+        // Some stripped ROMs resolve neither screen: the caller shows a
+        // snackbar instead of the app crashing or silently doing nothing.
+        shadowOf(context as Application).checkActivities(true)
+        assertThat(ExternalLinks.openAppNotificationSettings(context)).isFalse()
     }
 }

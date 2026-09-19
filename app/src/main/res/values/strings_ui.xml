@@ -350,6 +350,9 @@
     <string name="settings_notification_actions_hint">Pick up to 3 - Android shows at most 3 buttons on a notification.</string>
     <string name="settings_transaction_notifications">Transaction notifications</string>
     <string name="settings_transaction_notifications_summary">Show the parsed amount instead of the raw message</string>
+    <string name="settings_system_notifications">Customise notifications</string>
+    <string name="settings_system_notifications_summary">Opens Android\'s settings for Clear SMS - sound, vibration and importance for each category live there</string>
+    <string name="settings_system_notifications_no_handler">This device has no screen for notification settings</string>
     <string name="settings_swipe_right">Swipe right action</string>
     <string name="settings_swipe_left">Swipe left action</string>
     <string name="settings_swipe_dead_zone">Swipe dead zone</string>

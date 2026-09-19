@@ -53,6 +53,11 @@ enum class SettingsItem(
     DELIVERY_REPORTS(SettingsSection.NOTIFICATIONS, R.string.settings_delivery_reports),
     NOTIFICATION_ACTIONS(SettingsSection.NOTIFICATIONS, R.string.settings_notification_actions),
     TRANSACTION_NOTIFICATIONS(SettingsSection.NOTIFICATIONS, R.string.settings_transaction_notifications),
+
+    // Escape hatch to Android's own notification settings for this app -
+    // the only place per-channel sound/vibration/importance can be tuned.
+    // An ACTION row, not a preference: nothing is stored or backed up.
+    SYSTEM_NOTIFICATION_SETTINGS(SettingsSection.NOTIFICATIONS, R.string.settings_system_notifications),
     OTP_AUTO_COPY(SettingsSection.OTP, R.string.settings_otp_auto_copy),
     OTP_AUTO_DELETE(SettingsSection.OTP, R.string.settings_otp_auto_delete),
     OTP_SIZE(SettingsSection.OTP, R.string.settings_otp_size),

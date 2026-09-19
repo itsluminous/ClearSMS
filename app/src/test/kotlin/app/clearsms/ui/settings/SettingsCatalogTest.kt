@@ -79,8 +79,13 @@ class SettingsCatalogTest {
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
             .inOrder()
         assertThat(bySection["Notifications"])
-            .containsExactly("SMS delivery reports", "Notification action buttons", "Transaction notifications")
-            .inOrder()
+            .containsExactly(
+                "SMS delivery reports",
+                "Notification action buttons",
+                "Transaction notifications",
+                // Trailing escape hatch to Android's per-channel settings.
+                "Customise notifications",
+            ).inOrder()
         assertThat(bySection["OTP"])
             .containsExactly("Auto copy", "Auto delete OTP", "OTP display size", "Clear older OTPs")
             .inOrder()
@@ -186,10 +191,13 @@ class SettingsCatalogTest {
                 "Show Inbox tab",
                 "Show Finance tab",
                 "Show Alerts tab",
+                // Notifications: action row that opens Android's own
+                // notification settings for the app (per-channel control).
+                "Customise notifications",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 15 additions = 47 rows.
+        // No row lost, none dropped: 32 survivors + 16 additions = 48 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)
@@ -209,6 +217,13 @@ class SettingsCatalogTest {
     }
 
     private fun search(query: String) = filterSettingsRows(SettingsItem.entries, query, ::title) { "" }
+
+    @Test
+    fun `customise notifications trails the Notifications section and is searchable`() {
+        val notificationRows = SettingsItem.entries.filter { it.section == SettingsSection.NOTIFICATIONS }
+        assertThat(notificationRows.last()).isEqualTo(SettingsItem.SYSTEM_NOTIFICATION_SETTINGS)
+        assertThat(search("customise notifications")).contains(SettingsItem.SYSTEM_NOTIFICATION_SETTINGS)
+    }
 
     @Test
     fun `search finds a row in the Messages section`() {

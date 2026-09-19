@@ -20,6 +20,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -177,6 +178,17 @@ fun SettingsScreen(
         }
     }
 
+    // Customise notifications: hands off to Android's own notification
+    // settings for this app (channel list on 26+, app details page before
+    // channels existed). A ROM with neither screen gets a snackbar - a row
+    // that silently does nothing is worse than no row.
+    val systemSettingsUnavailable = stringResource(R.string.settings_system_notifications_no_handler)
+    val openSystemNotificationSettings: () -> Unit = {
+        if (!ExternalLinks.openAppNotificationSettings(context)) {
+            scope.launch { snackbarHostState.showSnackbar(systemSettingsUnavailable) }
+        }
+    }
+
     val backupLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             if (uri != null) viewModel.backupTo(uri)
@@ -304,6 +316,7 @@ fun SettingsScreen(
             onPrivacyPolicy = onPrivacyPolicy,
             onLicenses = onLicenses,
             onOpenLink = openLink,
+            onSystemNotificationSettings = openSystemNotificationSettings,
         )
 
     val searchFocus = remember { FocusRequester() }
@@ -717,6 +730,7 @@ private fun settingsRowEntries(
     onPrivacyPolicy: () -> Unit,
     onLicenses: () -> Unit,
     onOpenLink: (String) -> Unit,
+    onSystemNotificationSettings: () -> Unit,
 ): List<SettingsRowEntry> {
     fun row(
         section: String?,
@@ -872,6 +886,20 @@ private fun settingsRowEntries(
                         checked = state.transactionNotifications,
                         onToggle = viewModel::setTransactionNotifications,
                     )
+                // ACTION row (leading icon per convention): leaves the app for
+                // Android's own notification settings, where per-category
+                // channels are tuned. Nothing is stored, nothing to back up.
+                SettingsItem.SYSTEM_NOTIFICATION_SETTINGS -> {
+                    val systemSummary = stringResource(R.string.settings_system_notifications_summary)
+                    SettingsRowEntry(section, title, systemSummary) {
+                        ActionRow(
+                            icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                            title = title,
+                            subtitle = systemSummary,
+                            onClick = onSystemNotificationSettings,
+                        )
+                    }
+                }
                 SettingsItem.OTP_AUTO_COPY ->
                     toggle(
                         section = section,
