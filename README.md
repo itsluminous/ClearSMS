@@ -85,10 +85,13 @@ Everything shipped, and what's on the roadmap:
 - [x] MMS send (photo picker / camera / any file, on-device compression, SIM-aware)
 - [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages); the compose bar shows the slot that will send, long-press names it, and it takes the system's own SIM colour where that stays legible
 - [x] Message scheduling (long-press Send; survives reboots)
+- [x] Optional delay before sending, with a Cancel that puts the text back for editing (off by default; survives the app being killed)
+- [x] Opens `sms:`, `smsto:`, `mms:` and `mmsto:` links from other apps, with recipient and body prefilled
 - [x] Per-thread drafts with inbox preview
 - [x] Expand the compose box to fill the screen for long messages (both the standalone composer and a conversation)
 - [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry
 - [x] Share & forward selected messages; share text or images from other apps into a new message
+- [x] Per-message details (type, to/from, sent & received time, delivery time when a real report exists, failure reason)
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
 - [x] Strip accents before sending, so one diacritic does not turn a single SMS into several (opt-in setting; applies silently, and only when it actually saves a message)
@@ -137,6 +140,8 @@ Everything shipped, and what's on the roadmap:
 - [x] Always-visible Copy OTP button on OTP messages in a conversation
 - [x] Notifications clear when messages are read in-app (recycle-bin-aware actions)
 - [x] Missed-message notifications after signal loss or default-app switches
+- [x] Messages from unrecognised senders get their own notification category, on by default
+- [x] A Settings shortcut into Android's own per-category notification settings
 - [ ] App-wide biometric/PIN lock (today the lock covers Finance balances)
 
 **Data & privacy**

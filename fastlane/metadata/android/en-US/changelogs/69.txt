@@ -1,0 +1,18 @@
+A big release: six reported issues fixed, delayed sending, message details, and a smaller, leaner APK. Thank you to everyone who filed an issue - @RudzLong, @paras03, @leoossa, @xmha97 and @Zokii0 all appear below.
+
+Added
+- Delayed sending. Turn it on in Settings and pressing Send holds the message for a few seconds - long enough to catch a typo - with a Cancel that puts your text straight back in the box for editing. It survives the app being closed, so a message you did not cancel still goes out. Off by default. (#40, thanks @leoossa)
+- Message details. Select a message, open the three-dot menu and choose More details to see whether it was SMS or MMS, who it was to or from, when it was sent or received, when it was delivered if a real delivery report came back, and the reason if sending failed. (#44, thanks @Zokii0)
+- Clear SMS now opens sms:, smsto:, mms: and mmsto: links from other apps, with the recipient and message text filled in for you. (#32, thanks @xmha97)
+- Messages from senders the app does not recognise now get their own notification category, switched on by default. Previously they arrived silently, so a text from someone not in your contacts could go unnoticed until you opened the app.
+- A "Customise notifications" shortcut in Settings that opens Android's own settings for Clear SMS, where you can tune the sound, vibration and importance of each category separately.
+
+Fixed
+- Cash withdrawals at an ATM were not recorded against your bank account, so the money left without showing up in Finance. (#43, thanks @paras03)
+- The bottom bar no longer flashes across a conversation as you press back to the inbox; it now arrives exactly as the inbox does. (#39, thanks @RudzLong)
+- After expanding the compose box to full screen, the shrink button did nothing on some phones and only the back gesture would close it. The button now sits on the compose box itself where it always responds. (#30, thanks @RudzLong)
+- Imported messages had no SIM information, so only messages that arrived after installing showed which SIM they came in on. Existing messages are filled in once, in the background.
+
+Changed
+- The app no longer bundles an HTTP client it never used, which makes the download smaller and the "no network access" promise easier to verify for yourself.
+- The typing box in a conversation is wider, reclaiming space that was empty padding around the attach and SIM buttons.
