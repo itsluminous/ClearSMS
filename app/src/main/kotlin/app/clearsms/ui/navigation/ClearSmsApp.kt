@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -37,8 +38,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -159,6 +163,14 @@ private fun MainScaffold(
         ).filter { sections.isEnabled(it.tab) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    // The bar's RESTING height, read off the NavigationBar itself (the
+    // AnimatedVisibility slot shrinks its own reported size, the bar inside
+    // is always measured in full). Tab screens lay out against this, not
+    // the animated slot - see BottomBarVisibility.tabContentInset (#47).
+    // Saved so an activity recreated on a conversation still knows it for
+    // the first back transition; refreshed every time the bar is composed.
+    var settledBarHeightPx by rememberSaveable { mutableStateOf(0) }
+    val settledBarHeight = with(LocalDensity.current) { settledBarHeightPx.toDp() }
 
     // A share/compose intent deep-links straight into the compose screen.
     // A shared image rides along as a nav argument; the compose ViewModel
@@ -283,7 +295,10 @@ private fun MainScaffold(
                         expandVertically(BottomBarVisibility.contentTransitionSpec()),
                 exit = shrinkVertically(snap()) + fadeOut(snap()),
             ) {
-                NavigationBar {
+                // Measured in full even while the slot around it is
+                // animating: this is the resting height the tab screens
+                // reserve (BottomBarVisibility.tabContentInset, #47).
+                NavigationBar(modifier = Modifier.onSizeChanged { settledBarHeightPx = it.height }) {
                     destinations.forEach { destination ->
                         NavigationBarItem(
                             selected = currentRoute == destination.route,
@@ -316,8 +331,16 @@ private fun MainScaffold(
             // the content transition by sharing one clock, not by tuning.
             enterTransition = { fadeIn(BottomBarVisibility.contentTransitionSpec()) },
             exitTransition = { fadeOut(BottomBarVisibility.contentTransitionSpec()) },
-            // padding is the bottom bar's height (which already includes the
-            // navigation-bar inset). consumeWindowInsets is the half that
+            // padding is the bottom bar's SLOT height (which already includes
+            // the navigation-bar inset) - an animated height while the bar
+            // enters, zero the frame a forward navigation starts. Non-tab
+            // routes lay out against it directly, which is what keeps the
+            // arriving bar from ever drawing over an outgoing conversation.
+            // The three TAB routes are wrapped in TabInset below, which tops
+            // this padding up to the bar's RESTING height so a tab's viewport
+            // never changes while the slot animates (issue #47: the inbox
+            // relaid out while leaving and again while returning, and its
+            // bottom-scrolled list ended up under the bar). consumeWindowInsets is the half that
             // Modifier.padding lacks: without it every screen's own Scaffold
             // still sees the full navigationBars inset and pads its content
             // by it a second time - the device-dependent dead strip above
@@ -365,16 +388,18 @@ private fun MainScaffold(
                     .then(if (currentRoute in Routes.imeSelfManaged) Modifier else Modifier.imePadding()),
         ) {
             composable(Routes.INBOX) {
-                InboxScreen(
-                    onOpenThread = { threadId -> navController.navigate(Routes.conversation(threadId)) },
-                    onOpenMessage = { threadId, messageId ->
-                        navController.navigate(Routes.conversation(threadId, messageId))
-                    },
-                    onCompose = { navController.navigate(Routes.compose()) },
-                    onSearch = { navController.navigate(Routes.SEARCH) },
-                    onSettings = { navController.navigate(Routes.SETTINGS) },
-                    onCreateRule = { sender, body -> navController.navigate(Routes.ruleWizard(sender, body)) },
-                )
+                TabInset(padding, sections, settledBarHeight) {
+                    InboxScreen(
+                        onOpenThread = { threadId -> navController.navigate(Routes.conversation(threadId)) },
+                        onOpenMessage = { threadId, messageId ->
+                            navController.navigate(Routes.conversation(threadId, messageId))
+                        },
+                        onCompose = { navController.navigate(Routes.compose()) },
+                        onSearch = { navController.navigate(Routes.SEARCH) },
+                        onSettings = { navController.navigate(Routes.SETTINGS) },
+                        onCreateRule = { sender, body -> navController.navigate(Routes.ruleWizard(sender, body)) },
+                    )
+                }
             }
             composable(Routes.ARCHIVED) {
                 ArchivedScreen(
@@ -386,23 +411,27 @@ private fun MainScaffold(
                 BinScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.FINANCE) {
-                FinanceScreen(
-                    onOpenAccount = { number, bank -> navController.navigate(Routes.accountDetail(number, bank)) },
-                    onOpenMessage = { threadId, messageId ->
-                        navController.navigate(Routes.conversation(threadId, messageId))
-                    },
-                    onSearch = { navController.navigate(Routes.SEARCH) },
-                    onSettings = { navController.navigate(Routes.SETTINGS) },
-                )
+                TabInset(padding, sections, settledBarHeight) {
+                    FinanceScreen(
+                        onOpenAccount = { number, bank -> navController.navigate(Routes.accountDetail(number, bank)) },
+                        onOpenMessage = { threadId, messageId ->
+                            navController.navigate(Routes.conversation(threadId, messageId))
+                        },
+                        onSearch = { navController.navigate(Routes.SEARCH) },
+                        onSettings = { navController.navigate(Routes.SETTINGS) },
+                    )
+                }
             }
             composable(Routes.ALERTS) {
-                AlertsScreen(
-                    onOpenMessage = { threadId, messageId ->
-                        navController.navigate(Routes.conversation(threadId, messageId))
-                    },
-                    onSearch = { navController.navigate(Routes.SEARCH) },
-                    onSettings = { navController.navigate(Routes.SETTINGS) },
-                )
+                TabInset(padding, sections, settledBarHeight) {
+                    AlertsScreen(
+                        onOpenMessage = { threadId, messageId ->
+                            navController.navigate(Routes.conversation(threadId, messageId))
+                        },
+                        onSearch = { navController.navigate(Routes.SEARCH) },
+                        onSettings = { navController.navigate(Routes.SETTINGS) },
+                    )
+                }
             }
             composable(Routes.SEARCH) {
                 SearchScreen(
@@ -538,6 +567,38 @@ private fun StartDestination.toRoute(): String =
         StartDestination.FINANCE -> Routes.FINANCE
         StartDestination.ALERTS -> Routes.ALERTS
     }
+
+/**
+ * Lays a top-level TAB screen out against the bottom bar's RESTING height,
+ * whatever the bar's animated slot measures this frame (issue #47).
+ *
+ * [slotPadding] is the shell scaffold's content padding - the slot's live
+ * height, already applied to the NavHost. This adds only the shortfall
+ * ([BottomBarVisibility.tabInsetTopUp]): the full bar height while the
+ * slot is snapped away under an outgoing tab, the remainder while it is
+ * still expanding under an incoming one, and exactly zero once the bar is
+ * at rest or gone - so a tab's viewport never changes across a transition
+ * and no permanent strip is ever added. What it pads it also CONSUMES, so
+ * the nested per-screen scaffold keeps seeing a zero navigation-bar inset
+ * exactly as it does under the slot padding alone.
+ */
+@Composable
+private fun TabInset(
+    slotPadding: PaddingValues,
+    sections: EnabledSections,
+    settledBarHeight: Dp,
+    content: @Composable () -> Unit,
+) {
+    val topUp = BottomBarVisibility.tabInsetTopUp(sections, settledBarHeight, slotPadding.calculateBottomPadding())
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(bottom = topUp)
+            .consumeWindowInsets(PaddingValues(bottom = topUp)),
+    ) {
+        content()
+    }
+}
 
 /**
  * Navigates a notification deep link. A route targeting a bottom-bar tab is

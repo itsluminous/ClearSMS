@@ -2,6 +2,8 @@ package app.clearsms.ui.navigation
 
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.clearsms.domain.model.EnabledSections
 
 /**
@@ -61,4 +63,48 @@ object BottomBarVisibility {
         currentRoute: String?,
         sections: EnabledSections,
     ): Boolean = sections.showBottomBar && currentRoute in Routes.topLevel
+
+    /**
+     * The bottom inset a TOP-LEVEL TAB screen lays out with - the bar's
+     * SETTLED height whenever the section toggles produce a bar at all,
+     * regardless of what the bar's slot is doing this frame (issue #47).
+     *
+     * The slot above is what makes the bar arrive with its tab and never
+     * overlap a conversation, but it is also an ANIMATED height, and the
+     * scaffold's content padding followed it - so a tab's viewport changed
+     * during both halves of a conversation round trip:
+     *  - forward, the slot snaps to zero while the inbox is still on the
+     *    glass for its 700 ms fade-out; the list grows by the bar's height,
+     *    a list scrolled to its END fills the new space by scrolling BACK,
+     *    and that shifted position is what NavHost saves for the entry;
+     *  - back, the slot expands from zero, so the restored list first
+     *    measures a full-height viewport and is then squeezed by the bar's
+     *    height over the crossfade - and a list never scrolls FORWARD to
+     *    keep its end in view, so the last row ends up beneath the bar.
+     * A tab's inset therefore must not depend on the slot: it is the bar's
+     * resting height (measured from the bar itself, so no Material constant
+     * is duplicated) for as long as the sections say there IS a bar, and
+     * exactly zero otherwise - a stale measurement can never leave a gap
+     * once the bar is gone for good.
+     *
+     * Non-tab routes keep the animated slot padding: the arriving bar still
+     * pushes an outgoing conversation up, so it cannot draw over it.
+     */
+    fun tabContentInset(
+        sections: EnabledSections,
+        settledBarHeight: Dp,
+    ): Dp = if (sections.showBottomBar) settledBarHeight else 0.dp
+
+    /**
+     * What a tab screen adds ON TOP of the scaffold's slot padding
+     * ([slotHeight], the bar's animated height this frame) so its total
+     * inset is exactly [tabContentInset]: the shortfall while the slot is
+     * snapped away (outgoing tab) or still expanding (incoming tab), and
+     * zero once the bar is at rest - never a permanent gap, never negative.
+     */
+    fun tabInsetTopUp(
+        sections: EnabledSections,
+        settledBarHeight: Dp,
+        slotHeight: Dp,
+    ): Dp = (tabContentInset(sections, settledBarHeight) - slotHeight).coerceAtLeast(0.dp)
 }
