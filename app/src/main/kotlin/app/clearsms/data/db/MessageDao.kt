@@ -527,13 +527,15 @@ interface MessageDao {
     /**
      * Worst-part failure: any part's failure report marks the whole message
      * FAILED, overwriting SENT/DELIVERED (a message with a lost part was not
-     * delivered). Returns the number of rows changed - 0 when the row was
-     * already FAILED, so callers can notify the user exactly once even when
-     * several parts of one message fail.
+     * delivered) and dropping any recorded acknowledgement time with it - a
+     * FAILED row must never carry a delivery instant. Returns the number of
+     * rows changed - 0 when the row was already FAILED, so callers can
+     * notify the user exactly once even when several parts of one message
+     * fail.
      */
     @Query(
         """
-        UPDATE messages SET deliveryStatus = :failed
+        UPDATE messages SET deliveryStatus = :failed, deliveredAt = NULL
         WHERE systemSmsId = :systemSmsId
           AND (deliveryStatus IS NULL OR deliveryStatus != :failed)
         """,
@@ -546,9 +548,16 @@ interface MessageDao {
     @Query("UPDATE messages SET deliveredParts = deliveredParts + 1 WHERE systemSmsId = :systemSmsId")
     suspend fun incrementDeliveredParts(systemSmsId: Long)
 
+    /**
+     * Promotes to DELIVERED once every part has reported, stamping
+     * [acknowledgedAtMs] - when THIS device processed the completing report
+     * - as the row's [MessageEntity.deliveredAt]. Same statement as the
+     * status flip, so the time can never exist without the status or the
+     * status (from this path) without the time.
+     */
     @Query(
         """
-        UPDATE messages SET deliveryStatus = :delivered
+        UPDATE messages SET deliveryStatus = :delivered, deliveredAt = :acknowledgedAtMs
         WHERE systemSmsId = :systemSmsId
           AND deliveredParts >= partCount
           AND deliveryStatus IN (:promotable)
@@ -556,6 +565,7 @@ interface MessageDao {
     )
     suspend fun promoteDeliveredIfComplete(
         systemSmsId: Long,
+        acknowledgedAtMs: Long,
         delivered: DeliveryStatus = DeliveryStatus.DELIVERED,
         promotable: List<DeliveryStatus> = listOf(DeliveryStatus.SENDING, DeliveryStatus.SENT),
     ): Int
@@ -563,14 +573,21 @@ interface MessageDao {
     /**
      * Records one part's carrier delivery report and applies the worst-part
      * rule: the message becomes DELIVERED only when EVERY part has reported
-     * delivery AND no part has failed (FAILED is never upgraded). Returns
+     * delivery AND no part has failed (FAILED is never upgraded). The
+     * completing report also records [acknowledgedAtMs] - the instant this
+     * device handled it - as the delivery time (see
+     * [MessageEntity.deliveredAt]); earlier parts' reports record nothing,
+     * because a partially delivered message has no delivery time. Returns
      * true when this report completed the delivery - the moment to mirror
      * `STATUS_COMPLETE` to the system provider row.
      */
     @Transaction
-    suspend fun recordPartDelivered(systemSmsId: Long): Boolean {
+    suspend fun recordPartDelivered(
+        systemSmsId: Long,
+        acknowledgedAtMs: Long,
+    ): Boolean {
         incrementDeliveredParts(systemSmsId)
-        return promoteDeliveredIfComplete(systemSmsId) > 0
+        return promoteDeliveredIfComplete(systemSmsId, acknowledgedAtMs) > 0
     }
 
     /** Records why the last send failed (a [app.clearsms.mms.SendFailureReason] name). */
@@ -580,11 +597,15 @@ interface MessageDao {
         reason: String?,
     )
 
-    /** Rewrites a failed row for re-dispatch: back to SENDING on a fresh provider row. */
+    /**
+     * Rewrites a failed row for re-dispatch: back to SENDING on a fresh
+     * provider row, with the part tally, failure reason and any stale
+     * acknowledgement time cleared - the new dispatch earns its own.
+     */
     @Query(
         """
         UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId, deliveredParts = 0,
-            sendFailureReason = NULL
+            sendFailureReason = NULL, deliveredAt = NULL
         WHERE id = :id
         """,
     )

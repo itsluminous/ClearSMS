@@ -16,12 +16,17 @@ import app.clearsms.mms.SendFailureReason
  * Honesty rules, matching the bubble status line ([deliveryStatusLabelRes]):
  * no time is EVER invented. An incoming message shows the sender's network
  * timestamp ([MessageEntity.dateSent]) only when one was recorded, beside
- * the received time, both with seconds; a delivered time is never shown. The app records only that a real
- * carrier delivery report arrived (not when), so [Row.Delivered] carries a
- * [DeliveryKnowledge] instead of a fabricated timestamp - CONFIRMED when a
- * report exists, UNKNOWN_NO_REPORT for a sent SMS without one, and
- * UNSUPPORTED_MMS for outgoing MMS (this app does not support MMS delivery
- * reports at all).
+ * the received time, both with seconds. For an outgoing SMS the app records
+ * WHEN it processed the carrier delivery report that completed delivery
+ * ([MessageEntity.deliveredAt]) - the acknowledgement time, a close proxy
+ * for the delivery time but not the carrier's own timestamp - so
+ * [Row.Delivered] carries a [DeliveryKnowledge] plus that instant when one
+ * was recorded: CONFIRMED with the acknowledgement time for a report this
+ * build handled, CONFIRMED without one for a report that predates the
+ * column or came in through the provider import (a report exists, its
+ * arrival was never recorded), UNKNOWN_NO_REPORT for a sent SMS without any
+ * report (never a fabricated time), and UNSUPPORTED_MMS for outgoing MMS
+ * (this app does not support MMS delivery reports at all).
  */
 object MessageDetails {
     /** What carried the message. */
@@ -82,9 +87,16 @@ object MessageDetails {
          */
         data object SentTimeUnknown : Row
 
-        /** Delivery knowledge for a message that left the phone (SENT/DELIVERED). */
+        /**
+         * Delivery knowledge for a message that left the phone (SENT/DELIVERED).
+         * [acknowledgedAtMs] is set only with [DeliveryKnowledge.CONFIRMED],
+         * and only when the app recorded when it processed the completing
+         * delivery report; the dialog shows it as the delivery time, labelled
+         * as the report's arrival on this phone. Null = no time is shown.
+         */
         data class Delivered(
             val knowledge: DeliveryKnowledge,
+            val acknowledgedAtMs: Long? = null,
         ) : Row
 
         /** The send FAILED; [reason] is the recorded cause, null when none was. */
@@ -144,7 +156,19 @@ object MessageDetails {
             }
             if (message.isOutgoing) {
                 when (message.deliveryStatus) {
-                    DeliveryStatus.DELIVERED -> add(Row.Delivered(DeliveryKnowledge.CONFIRMED))
+                    // The acknowledgement time rides along only on a real
+                    // DELIVERED SMS row. An MMS can never honestly be
+                    // delivered here (no MMS delivery reports), so even a
+                    // DELIVERED-marked MMS row reads as unsupported, with no
+                    // time - never a delivery claim it cannot back.
+                    DeliveryStatus.DELIVERED ->
+                        add(
+                            if (transport == Transport.MMS) {
+                                Row.Delivered(DeliveryKnowledge.UNSUPPORTED_MMS)
+                            } else {
+                                Row.Delivered(DeliveryKnowledge.CONFIRMED, acknowledgedAtMs = message.deliveredAt)
+                            },
+                        )
                     DeliveryStatus.SENT ->
                         add(
                             Row.Delivered(

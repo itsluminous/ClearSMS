@@ -142,6 +142,21 @@ data class MessageEntity(
      * falls back to [timestamp] wherever this is null.
      */
     val dateSent: Long? = null,
+    /**
+     * When THIS device processed the carrier delivery report that completed
+     * an outgoing SMS's delivery (the report for its last undelivered part)
+     * - stamped by [MessageDao.recordPartDelivered] at the moment the
+     * report broadcast was handled, so it survives process death with the
+     * status. A close proxy for the delivery time, NOT the carrier's own
+     * timestamp, and labelled as such wherever it is shown. Null when the
+     * row is not DELIVERED, when it was delivered before this column
+     * existed or was imported from the system provider (the report exists
+     * but its arrival was never recorded - shown as confirmed without a
+     * time, never with an invented one), and always on incoming and MMS
+     * rows (MMS delivery reports are not supported). Cleared on resend and
+     * when a later part failure demotes the row to FAILED.
+     */
+    val deliveredAt: Long? = null,
 )
 
 /**

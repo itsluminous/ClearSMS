@@ -24,7 +24,10 @@ import org.robolectric.RobolectricTestRunner
  * receiver runs on radio reports:
  *
  * SENDING → SENT (sent report) → DELIVERED (delivery report, per part) and
- * → FAILED (any part's failure, sticky), with multipart worst-part rules.
+ * → FAILED (any part's failure, sticky), with multipart worst-part rules -
+ * plus the acknowledgement time (GitHub #44): the instant the device
+ * processed the COMPLETING delivery report is persisted on the row as the
+ * delivery time, and only then.
  */
 @RunWith(RobolectricTestRunner::class)
 class OutgoingStatusLifecycleTest {
@@ -225,4 +228,96 @@ class OutgoingStatusLifecycleTest {
             recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 1, partCount = 2))
             assertThat(status(id)).isNotEqualTo(DeliveryStatus.DELIVERED)
         }
+
+    // region acknowledgement time (GitHub #44)
+
+    private suspend fun deliveredAt(id: Long) = dao.getById(id)?.deliveredAt
+
+    @Test
+    fun `delivery report - the time the device processed it is PERSISTED as the delivery time`() =
+        runBlocking {
+            val id = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.SENT), acknowledgedAtMs = 1_000L)
+            assertThat(deliveredAt(id)).isNull()
+
+            recorder.record(report(DeliveryStatus.DELIVERED), acknowledgedAtMs = 1_700_000_012_345L)
+
+            // Read back from the row, not from memory: this is what survives
+            // process death alongside the DELIVERED status.
+            val row = dao.getById(id)!!
+            assertThat(row.deliveryStatus).isEqualTo(DeliveryStatus.DELIVERED)
+            assertThat(row.deliveredAt).isEqualTo(1_700_000_012_345L)
+        }
+
+    @Test
+    fun `sent report only - no acknowledgement time is ever recorded`() =
+        runBlocking {
+            val id = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.SENT), acknowledgedAtMs = 1_700_000_012_345L)
+            assertThat(status(id)).isEqualTo(DeliveryStatus.SENT)
+            assertThat(deliveredAt(id)).isNull()
+        }
+
+    @Test
+    fun `multipart - only the COMPLETING part's report stamps the time, with ITS processing instant`() =
+        runBlocking {
+            val id = outgoing(partCount = 3)
+            recorder.record(report(DeliveryStatus.SENT, partIndex = 2, partCount = 3), acknowledgedAtMs = 10L)
+            recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 0, partCount = 3), acknowledgedAtMs = 20L)
+            recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 1, partCount = 3), acknowledgedAtMs = 30L)
+            // Two of three delivered: no delivery time for a partial delivery.
+            assertThat(deliveredAt(id)).isNull()
+
+            recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 2, partCount = 3), acknowledgedAtMs = 40L)
+            assertThat(status(id)).isEqualTo(DeliveryStatus.DELIVERED)
+            assertThat(deliveredAt(id)).isEqualTo(40L)
+        }
+
+    @Test
+    fun `a duplicate late delivery report does not move the recorded time`() =
+        runBlocking {
+            val id = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.DELIVERED), acknowledgedAtMs = 100L)
+            recorder.record(report(DeliveryStatus.DELIVERED), acknowledgedAtMs = 200L)
+            assertThat(deliveredAt(id)).isEqualTo(100L)
+        }
+
+    @Test
+    fun `a later part failure demotes to FAILED and drops the time - a failed row never carries one`() =
+        runBlocking {
+            val id = outgoing(partCount = 2)
+            recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 0, partCount = 2), acknowledgedAtMs = 100L)
+            recorder.record(report(DeliveryStatus.DELIVERED, partIndex = 1, partCount = 2), acknowledgedAtMs = 200L)
+            assertThat(deliveredAt(id)).isEqualTo(200L)
+
+            recorder.record(report(DeliveryStatus.FAILED, partIndex = 1, partCount = 2), acknowledgedAtMs = 300L)
+            assertThat(status(id)).isEqualTo(DeliveryStatus.FAILED)
+            assertThat(deliveredAt(id)).isNull()
+        }
+
+    @Test
+    fun `a FAILED row never gains a time from a straggling delivery report`() =
+        runBlocking {
+            val id = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.FAILED), acknowledgedAtMs = 100L)
+            recorder.record(report(DeliveryStatus.DELIVERED), acknowledgedAtMs = 200L)
+            assertThat(status(id)).isEqualTo(DeliveryStatus.FAILED)
+            assertThat(deliveredAt(id)).isNull()
+        }
+
+    @Test
+    fun `resend clears the old acknowledgement time - the new dispatch earns its own`() =
+        runBlocking {
+            val id = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.DELIVERED), acknowledgedAtMs = 100L)
+            assertThat(deliveredAt(id)).isEqualTo(100L)
+
+            dao.resetForResend(id, systemSmsId)
+            assertThat(deliveredAt(id)).isNull()
+
+            recorder.record(report(DeliveryStatus.DELIVERED), acknowledgedAtMs = 500L)
+            assertThat(deliveredAt(id)).isEqualTo(500L)
+        }
+
+    // endregion
 }

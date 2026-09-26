@@ -35,6 +35,8 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Password
@@ -68,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -1052,12 +1055,29 @@ private fun MessageBubble(
                             // Image/file-only MMS: the attachments ARE the message.
                             else -> Unit
                         }
-                        Text(
-                            text = item.timeLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = textColor.copy(alpha = 0.7f),
+                        // Time label with, for outgoing messages, the delivery
+                        // tick beside it (one tick = left the phone, two = a
+                        // real delivery report). Same row so the tick never
+                        // crowds the time; the SIM tag lives in the revealed
+                        // metadata line, so nothing else competes for the
+                        // corner. Failed / sending / scheduled rows get NO
+                        // tick - their explicit line beneath says what is
+                        // happening, and a failed message must never read as
+                        // a tick state.
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
-                        )
+                        ) {
+                            Text(
+                                text = item.timeLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = textColor.copy(alpha = 0.7f),
+                            )
+                            DeliveryTickIcon(
+                                tick = DeliveryTicks.tickFor(item),
+                                tint = textColor.copy(alpha = 0.7f),
+                            )
+                        }
                         // In-flight, failed and scheduled sends stay visible on
                         // the bubble itself; resolved statuses live in the
                         // metadata line.
@@ -1187,6 +1207,36 @@ internal fun deliveryStatusLabelRes(status: DeliveryStatus?): Int =
         DeliveryStatus.FAILED -> R.string.conversation_not_sent
         DeliveryStatus.SENT, null -> R.string.conversation_sent
     }
+
+/**
+ * The tick beside an outgoing bubble's time label (GitHub #44): a single
+ * check for SENT, a double check for DELIVERED, nothing otherwise - see
+ * [DeliveryTicks] for the full mapping. Sized from the time label's font
+ * size in sp, so it grows with the user's font scale instead of shrinking
+ * beside enlarged text; tinted with the same on-bubble colour as the time
+ * label, so it stays legible on both themes' bubble colours. The content
+ * description says "Sent" / "Delivered" - merged into the bubble's
+ * announcement, so a screen reader hears the state, not silence.
+ */
+@Composable
+internal fun DeliveryTickIcon(
+    tick: DeliveryTick,
+    tint: Color,
+) {
+    if (tick == DeliveryTick.NONE) return
+    val labelSize = MaterialTheme.typography.labelSmall.fontSize
+    val iconSize = with(LocalDensity.current) { (labelSize * 1.3f).toDp() }
+    Spacer(Modifier.width(4.dp))
+    Icon(
+        imageVector = if (tick == DeliveryTick.DOUBLE) Icons.Outlined.DoneAll else Icons.Outlined.Done,
+        contentDescription =
+            stringResource(
+                if (tick == DeliveryTick.DOUBLE) R.string.conversation_delivered else R.string.conversation_sent,
+            ),
+        tint = tint,
+        modifier = Modifier.size(iconSize),
+    )
+}
 
 /** "BANK_ALERT" → "Bank alert" (enum names are already user-meaningful). */
 private fun categoryLabel(name: String): String = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercaseChar() }

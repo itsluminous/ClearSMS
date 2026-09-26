@@ -76,7 +76,8 @@
     <string name="message_details_sent_unknown">Not reported - the network attached no sent time to this message, so only the received time is known.</string>
     <string name="message_details_scheduled">Scheduled for</string>
     <string name="message_details_delivered">Delivered</string>
-    <string name="message_details_delivered_confirmed">Yes - your carrier sent back a delivery report. The report\'s arrival time isn\'t recorded, so no delivery time can be shown.</string>
+    <string name="message_details_delivered_at_note">When your phone received the carrier\'s delivery report - a close proxy for the delivery time, not the carrier\'s own timestamp.</string>
+    <string name="message_details_delivered_confirmed">Yes - your carrier sent back a delivery report. When it arrived wasn\'t recorded for this message, so no delivery time can be shown.</string>
     <string name="message_details_delivered_unknown">Unknown - no delivery report has come back, so whether it reached the recipient\'s phone can\'t be confirmed.</string>
     <string name="message_details_delivered_mms">Unknown - MMS delivery reports aren\'t supported, so delivery of a picture message can\'t be confirmed.</string>
     <string name="message_details_error">Error</string>
