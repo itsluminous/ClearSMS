@@ -554,12 +554,31 @@
     <string name="rule_token_number">Number</string>
     <string name="rule_token_vendor">Vendor / merchant</string>
     <string name="rule_token_keyword">Keyword</string>
-    <string name="rule_error_empty_pattern">Nothing to match yet - analyze a sample message first.</string>
-    <string name="rule_error_invalid_pattern">The pattern does not compile. Fix it or reset to the suggested pattern.</string>
-    <string name="rule_error_catch_all">The pattern starts or ends with a catch-all like .* - remove it; matching already scans the whole message.</string>
-    <string name="rule_error_capture_mismatch">The pattern has fewer capture groups than the extraction mapping needs.</string>
-    <string name="rule_error_duplicate_field">Two values are mapped to the same field - set one of them to Ignore.</string>
-    <string name="rule_error_no_source_match">The rule no longer matches the source message. Loosen the conditions or reset the pattern.</string>
+    <!-- Rule wizard validation. Each message names what is wrong and how to fix it, and is shown inside the step it belongs to. -->
+    <string name="rule_error_not_saved_title">Not saved yet</string>
+    <string name="rule_error_cannot_save">Can\'t save yet: %1$s</string>
+    <string name="rule_error_needs_sample">Paste a sample message and tap Analyze first. The rule is built from that message.</string>
+    <string name="rule_error_no_conditions">This rule has no conditions, so it would apply to every message. Turn on \"Only from this sender\" (step 4), or add a text pattern under Advanced (step 5).</string>
+    <string name="rule_error_invalid_pattern">The text pattern under Advanced (step 5) is not a valid pattern: %1$s. Fix it there, or tap \"Reset to suggested pattern\".</string>
+    <string name="rule_error_invalid_sender_pattern">This rule\'s stored sender pattern is not a valid pattern: %1$s. Turn off \"Only from this sender\" (step 4), or fix the sender pattern in the rule\'s JSON and import it again.</string>
+    <string name="rule_error_catch_all">The text pattern under Advanced (step 5) starts or ends with a catch-all such as .* or [\\s\\S]*. Delete that part: the rule already matches anywhere in the message, and catch-alls can make matching extremely slow.</string>
+    <string name="rule_error_capture_mismatch">The rule extracts values up to $%1$s, but the text pattern under Advanced (step 5) has only %2$s capture group(s). Add parentheses around each value to capture, or set the extra values to Ignore in step 3.</string>
+    <string name="rule_error_duplicate_field">Two detected values are both mapped to \"%1$s\" in step 3. A field can hold one value: set one of them to Ignore.</string>
+    <string name="rule_error_sender_not_matching">\"Only from this sender\" is on, but the sender pattern does not match %1$s, the sender of the sample message. Turn it off in step 4, or fix the sender pattern.</string>
+    <string name="rule_error_body_not_matching">The text pattern under Advanced (step 5) does not match the sample message. Edit it so it does, or tap \"Reset to suggested pattern\".</string>
+    <string name="rule_error_must_contain_missing">The sample message does not contain \"%1$s\", which the rule requires. Deselect that keyword in step 4.</string>
+    <string name="rule_error_must_not_present">The sample message contains \"%1$s\", which the rule excludes. Remove that word from \"Must NOT contain\" in step 4.</string>
+    <string name="rule_error_no_source_match">The rule does not match the sample message. Loosen the conditions in step 4 or reset the pattern in step 5.</string>
+    <!-- One-step sender rule ("always sort this sender as ...") -->
+    <string name="sender_rule_title">Always sort as…</string>
+    <string name="sender_rule_body">Every message from %1$s - the ones you already have and the ones still to come - will be sorted as the category you pick. Nothing to type: the app builds the rule.</string>
+    <string name="sender_rule_hint">You can find, edit or delete this rule later under Settings → Rules.</string>
+    <string name="sender_rule_detailed">Detailed rule</string>
+    <string name="sender_rule_saved">%1$d messages from %2$s sorted as %3$s.</string>
+    <string name="sender_rule_saved_none">Rule saved: new messages from %1$s will be sorted as %2$s.</string>
+    <string name="rule_wizard_quick_title">Just want to sort this sender?</string>
+    <string name="rule_wizard_quick_body">Everything from %1$s, always the same category - no pattern needed.</string>
+    <string name="rule_wizard_quick_action">Pick category</string>
     <!-- Alerts: delivery reminders -->
     <string name="alerts_filter_delivery">Delivery</string>
     <string name="alerts_type_delivery">Delivery</string>

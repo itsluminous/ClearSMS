@@ -283,17 +283,12 @@ object RuleSuggester {
     /**
      * Sender pattern derived from the actual sender: TRAI operator route prefix
      * (`XY-`) and suffix (`-S`) stripped, regex metacharacters escaped, matched
-     * case-insensitively. E.g. `VM-HDFCBK-S` → `(?i)HDFCBK`.
+     * case-insensitively. E.g. `VM-HDFCBK-S` → `(?i)HDFCBK`; a phone number
+     * reduces to its last ten digits so `+91...` and bare variants both match.
+     * Shared with the one-tap sender rule ([SenderRule.pattern]) so both paths
+     * produce the same literal and the same immediate re-sort scope.
      */
-    fun senderPattern(sender: String): String {
-        val core =
-            sender
-                .trim()
-                .uppercase()
-                .replace(Regex("^[A-Z]{2}-"), "")
-                .replace(Regex("-[SPTGE]$"), "")
-        return "(?i)" + RuleComposer.escapeLiteral(core)
-    }
+    fun senderPattern(sender: String): String = SenderRule.pattern(sender)
 
     private fun token(
         kind: TokenKind,

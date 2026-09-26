@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Forward
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
@@ -102,6 +103,8 @@ import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
 import app.clearsms.ui.components.rememberAttachmentLaunchers
+import app.clearsms.ui.rules.SenderRuleDialog
+import app.clearsms.ui.rules.senderRuleSavedMessage
 import app.clearsms.ui.settings.ExternalLinks
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -201,6 +204,22 @@ fun ConversationScreen(
     // Like the undo block below: Resources for a runtime-formatted string
     // (stringResource cannot be called inside collect).
     val sendResources = LocalContext.current.resources
+
+    // One-step sender rule (issue #38): the conversation already knows the
+    // sender, so "Change category" here is a tap, a category, and Save.
+    var changeCategoryOpen by remember { mutableStateOf(false) }
+    if (changeCategoryOpen && state.address.isNotBlank()) {
+        SenderRuleDialog(
+            sender = state.address,
+            displayName = state.title.takeIf { state.isKnownSender },
+            onDismiss = { changeCategoryOpen = false },
+            onSaved = { saved ->
+                changeCategoryOpen = false
+                linkScope.launch { snackbarHostState.showSnackbar(senderRuleSavedMessage(sendResources, saved)) }
+            },
+        )
+    }
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -404,6 +423,13 @@ fun ConversationScreen(
                                 label = stringResource(R.string.conversation_call),
                                 onClick = { openLink("tel:$dialableSender") },
                                 icon = Icons.Outlined.Call,
+                            )
+                        }
+                        if (state.address.isNotBlank()) {
+                            TooltipIconButton(
+                                label = stringResource(R.string.action_change_category),
+                                onClick = { changeCategoryOpen = true },
+                                icon = Icons.AutoMirrored.Outlined.Label,
                             )
                         }
                     },

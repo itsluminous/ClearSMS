@@ -101,6 +101,8 @@ import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.navigation.orderedPills
+import app.clearsms.ui.rules.SenderRuleDialog
+import app.clearsms.ui.rules.senderRuleSavedMessage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -179,6 +181,24 @@ fun InboxScreen(
         onPauseOrDispose { }
     }
 
+    // "Change category" is the one-step sender rule (issue #38): pick a
+    // category, done. The full wizard stays one tap away inside the dialog.
+    var senderRuleTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    senderRuleTarget?.let { (sender, body) ->
+        SenderRuleDialog(
+            sender = sender,
+            onDismiss = { senderRuleTarget = null },
+            onSaved = { saved ->
+                senderRuleTarget = null
+                scope.launch { snackbarHostState.showSnackbar(senderRuleSavedMessage(resources, saved)) }
+            },
+            onDetailedRule = {
+                senderRuleTarget = null
+                onCreateRule(sender, body)
+            },
+        )
+    }
+
     // System back exits selection mode instead of leaving the screen.
     BackHandler(enabled = selection.active) { viewModel.exitSelection() }
 
@@ -214,7 +234,7 @@ fun InboxScreen(
                     },
                     onChangeCategory = { sender, body ->
                         viewModel.exitSelection()
-                        onCreateRule(sender, body)
+                        senderRuleTarget = sender to body
                     },
                 )
             } else {
