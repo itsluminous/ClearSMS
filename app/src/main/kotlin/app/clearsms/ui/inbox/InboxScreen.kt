@@ -84,6 +84,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.mms.MmsSnippet
 import app.clearsms.sms.DefaultSmsAppHelper
@@ -98,9 +99,8 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.TooltipIconButton
-import app.clearsms.ui.components.displayName
+import app.clearsms.ui.components.defaultLabel
 import app.clearsms.ui.navigation.SearchSettingsActions
-import app.clearsms.ui.navigation.orderedPills
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -329,21 +329,28 @@ fun InboxScreen(
                     }
                     // "Unread only" is a view mode, not a category: it lives on
                     // its own right-aligned line ABOVE the pills so it cannot be
-                    // read as one more (mutually exclusive) category chip.
-                    item(key = "unread_toggle") {
-                        UnreadToggleRow(
-                            unreadOnly = state.filter.unreadOnly,
-                            totalUnread = state.totalUnread,
-                            onToggleUnread = viewModel::toggleUnread,
-                        )
+                    // read as one more (mutually exclusive) category chip. The
+                    // user can hide it in Settings (issue #49); counts and
+                    // badges elsewhere are unaffected.
+                    if (state.showUnreadToggle) {
+                        item(key = "unread_toggle") {
+                            UnreadToggleRow(
+                                unreadOnly = state.filter.unreadOnly,
+                                totalUnread = state.totalUnread,
+                                onToggleUnread = viewModel::toggleUnread,
+                            )
+                        }
                     }
-                    item(key = "filters") {
-                        FilterChipRow(
-                            filter = state.filter,
-                            unreadCounts = state.unreadCounts,
-                            pillOrder = state.pillOrder,
-                            onSelectCategory = viewModel::selectCategory,
-                        )
+                    // Every pill hidden = no row at all (see InboxPillConfig).
+                    if (state.pills.showsRow) {
+                        item(key = "filters") {
+                            FilterChipRow(
+                                filter = state.filter,
+                                unreadCounts = state.unreadCounts,
+                                pills = state.pills,
+                                onSelectPill = viewModel::selectPill,
+                            )
+                        }
                     }
                     if (emptyLoaded) {
                         item(key = "empty_filter") {
@@ -681,23 +688,29 @@ private fun UnreadToggleRow(
     }
 }
 
+/**
+ * The pill row: the user's VISIBLE pills in their order, each under its
+ * display label. Selection and keys go by [InboxPill] identity, never by
+ * label, so a renamed pill filters exactly what it did before. The scam pill
+ * carries no badge: unread counts are per category, and it spans them.
+ */
 @Composable
 private fun FilterChipRow(
     filter: InboxFilterState,
     unreadCounts: Map<Category, Int>,
-    pillOrder: List<Category>,
-    onSelectCategory: (Category) -> Unit,
+    pills: InboxPillConfig,
+    onSelectPill: (InboxPill) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(orderedPills(pillOrder, Category.entries.toList()), key = { it.name }) { category ->
-            val count = unreadCounts[category] ?: 0
+        items(pills.visible, key = { it.name }) { pill ->
+            val count = pill.category?.let { unreadCounts[it] } ?: 0
             FilterChip(
-                selected = filter.category == category,
-                onClick = { onSelectCategory(category) },
-                label = { Text(category.displayName()) },
+                selected = filter.pill == pill,
+                onClick = { onSelectPill(pill) },
+                label = { Text(pills.label(pill, InboxPill::defaultLabel)) },
                 trailingIcon =
                     if (count > 0) {
                         { Badge { Text(count.toString()) } }

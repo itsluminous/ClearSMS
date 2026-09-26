@@ -17,6 +17,7 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
@@ -42,6 +43,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
@@ -55,23 +57,50 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 /**
- * Inbox filter: an optional single-select category chip plus an independent
- * "Unread" toggle that composes with any category (e.g. Important + Unread).
+ * Inbox filter: an optional single-select pill plus an independent "Unread"
+ * toggle that composes with any pill (e.g. Important + Unread).
+ *
+ * The pill is held by IDENTITY ([InboxPill]), never by its display label, so
+ * a renamed pill filters exactly what it did before the rename.
  */
 data class InboxFilterState(
-    val category: Category? = null,
+    val pill: InboxPill? = null,
     val unreadOnly: Boolean = false,
 ) {
-    /** Selects [value], or clears the category when it is already selected. */
-    fun selectCategory(value: Category): InboxFilterState = copy(category = if (category == value) null else value)
+    /** The category the query filters on; null for All and for the scam pill. */
+    val category: Category? get() = pill?.category
+
+    /** True under the scam pill: the query keeps only scam-FLAGGED messages. */
+    val scamOnly: Boolean get() = pill == InboxPill.SCAM
+
+    /** Selects [value], or clears the pill when it is already selected. */
+    fun selectPill(value: InboxPill): InboxFilterState = copy(pill = if (pill == value) null else value)
 
     fun toggleUnread(): InboxFilterState = copy(unreadOnly = !unreadOnly)
 
     /**
+     * The filter with every control the user has HIDDEN cleared: a hidden
+     * pill has no chip to unselect it, so it must never stay active (a
+     * default inbox filter pointing at a hidden category, or hiding the pill
+     * that is currently selected); likewise an unread-only view cannot
+     * persist once the Unread switch itself is hidden ([unreadControl]
+     * false). Nothing else changes.
+     */
+    fun constrainedTo(
+        visible: Collection<InboxPill>,
+        unreadControl: Boolean = true,
+    ): InboxFilterState =
+        copy(
+            pill = pill?.takeIf { it in visible },
+            unreadOnly = unreadOnly && unreadControl,
+        )
+
+    /**
      * Whether inbox rows should carry their category tag. Only views that mix
      * categories need it to disambiguate: no category pill selected (all
-     * messages), with or without the Unread toggle. Under a single-category
-     * pill every row would repeat the pill's own label, so the tag is hidden.
+     * messages, or the scam pill, which spans categories), with or without
+     * the Unread toggle. Under a single-category pill every row would repeat
+     * the pill's own label, so the tag is hidden.
      */
     val showsCategoryTags: Boolean get() = category == null
 }
@@ -109,8 +138,10 @@ data class LatestOtp(
 data class InboxUiState(
     val filter: InboxFilterState = InboxFilterState(),
     val unreadCounts: Map<Category, Int> = emptyMap(),
-    /** Pill order the user configured in Settings; empty means declaration order. */
-    val pillOrder: List<Category> = emptyList(),
+    /** Pill order, hidden set and labels the user configured in Settings. */
+    val pills: InboxPillConfig = InboxPillConfig(),
+    /** Whether the "Unread" switch above the pills is rendered at all. */
+    val showUnreadToggle: Boolean = true,
     val totalUnread: Int = 0,
     val latestOtp: LatestOtp? = null,
     val richAvatars: Boolean = true,
@@ -176,9 +207,29 @@ class InboxViewModel
             // session; a user selection made in the meantime is never clobbered.
             viewModelScope.launch(ioDispatcher) {
                 val startCategory = settings.defaultInboxFilter.first()
-                filter.compareAndSet(InboxFilterState(), InboxFilterState(category = startCategory))
+                filter.compareAndSet(InboxFilterState(), InboxFilterState(pill = startCategory?.let(InboxPill::of)))
             }
         }
+
+        /** The Settings-side pill customisation, resolved for rendering. */
+        private val pillConfig: Flow<InboxPillConfig> =
+            combine(
+                settings.inboxPillOrder,
+                settings.inboxHiddenPills,
+                settings.inboxPillLabels,
+            ) { order, hidden, labels -> InboxPillConfig(order, hidden, labels) }
+
+        /**
+         * The filter every query and the chip row actually use: the user's
+         * selection constrained to the VISIBLE pills, so a pill hidden in
+         * Settings (or a default filter pointing at one) can never leave the
+         * inbox filtered with no chip to clear it. The raw [filter] is kept
+         * as chosen, so un-hiding the pill restores the selection.
+         */
+        private val effectiveFilter: Flow<InboxFilterState> =
+            combine(filter, pillConfig, settings.inboxUnreadToggle) { current, config, unreadShown ->
+                current.constrainedTo(config.visible, unreadControl = unreadShown)
+            }.distinctUntilChanged()
 
         /**
          * Paged inbox rows: Room's PagingSource loads windows of
@@ -238,9 +289,10 @@ class InboxViewModel
             val otpDisplaySize: OtpDisplaySize,
             val swipeStart: SwipeAction,
             val swipeEnd: SwipeAction,
-            val pillOrder: List<Category>,
-            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            val pills: InboxPillConfig,
+            /** Filled by the later combine stages (combine() maxes out at 5 flows). */
             val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
+            val showUnreadToggle: Boolean = true,
         )
 
         private val chrome =
@@ -249,13 +301,14 @@ class InboxViewModel
                 settings.otpDisplaySize,
                 settings.swipeActionStart,
                 settings.swipeActionEnd,
-                settings.inboxPillOrder,
-            ) { rich, otpSize, start, end, order -> Chrome(rich, otpSize, start, end, order) }
+                pillConfig,
+            ) { rich, otpSize, start, end, pills -> Chrome(rich, otpSize, start, end, pills) }
                 .combine(settings.swipeDeadZone) { chrome, zone -> chrome.copy(swipeDeadZone = zone) }
+                .combine(settings.inboxUnreadToggle) { chrome, shown -> chrome.copy(showUnreadToggle = shown) }
 
         val uiState: StateFlow<InboxUiState> =
             combine(
-                filter,
+                effectiveFilter,
                 messageRepository.observeUnreadCounts(),
                 latestOtp,
                 chrome,
@@ -271,13 +324,14 @@ class InboxViewModel
                     swipeStart = chromeState.swipeStart,
                     swipeEnd = chromeState.swipeEnd,
                     swipeDeadZone = chromeState.swipeDeadZone,
-                    pillOrder = chromeState.pillOrder,
+                    pills = chromeState.pills,
+                    showUnreadToggle = chromeState.showUnreadToggle,
                     sortingBanner = sorting,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState())
 
-        fun selectCategory(category: Category) {
-            filter.update { it.selectCategory(category) }
+        fun selectPill(pill: InboxPill) {
+            filter.update { it.selectPill(pill) }
         }
 
         /**
@@ -374,8 +428,8 @@ class InboxViewModel
         /** Selects every thread in the current filtered view (queried, not just loaded pages). */
         fun selectAll() {
             viewModelScope.launch(ioDispatcher) {
-                val current = filter.value
-                val ids = messageRepository.inboxThreadIds(current.category, current.unreadOnly)
+                val current = effectiveFilter.first()
+                val ids = messageRepository.inboxThreadIds(current.category, current.unreadOnly, current.scamOnly)
                 selectionState.update { it.withAll(ids) }
             }
         }

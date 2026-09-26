@@ -195,7 +195,8 @@ class MessageRepositoryImpl(
     override suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
-    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly)
+        scamOnly: Boolean,
+    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly, scamOnly)
 
     override suspend fun messageIdsInThread(threadId: Long): List<Long> = messageDao.messageIdsInThread(threadId)
 
@@ -555,12 +556,12 @@ class MessageRepositoryImpl(
         body: String,
         timestampMs: Long,
         systemSmsId: Long?,
-    ): MessageRepository.IncomingIngest {
         dateSentMs: Long?,
+    ): MessageRepository.IncomingIngest {
         val normalized = SenderNormalizer.normalize(sender)
-        // Blocked keywords and blocked senders are checked FIRST: a matching
         // 0/negative from a PDU or provider means "not reported" - unknown.
         val dateSent = sentTimestampOrNull(dateSentMs)
+        // Blocked keywords and blocked senders are checked FIRST: a matching
         // message must never reach the inbox, notifications, or the finance
         // derivations below - it is born soft-deleted (bin on) or dropped
         // (bin off).
@@ -592,8 +593,8 @@ class MessageRepositoryImpl(
                     subCategory = enriched.result.subCategory,
                     extractedOtp = enriched.otpCode,
                     extractedDataJson = encodeExtracted(enriched.extracted),
-                )
                     dateSent = dateSent,
+                )
             // IGNORE (not REPLACE) on the unique systemSmsId index: a
             // concurrent catch-up import may have committed this provider row
             // first. Replacing would delete the import's row (new id, lost
@@ -772,8 +773,8 @@ class MessageRepositoryImpl(
         timestampMs: Long,
         systemSmsId: Long?,
         blockedSender: Boolean,
-    ): MessageRepository.IncomingIngest {
         dateSent: Long? = null,
+    ): MessageRepository.IncomingIngest {
         // Classification still runs (pure CPU) so a binned message shows an
         // honest category if the user opens the bin - but nothing is derived.
         val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
@@ -796,8 +797,8 @@ class MessageRepositoryImpl(
                 isBlockedSender = blockedSender,
                 deletedAt = timestampMs,
                 providerDeletePending = true,
-            )
                 dateSent = dateSent,
+            )
         if (!binned) {
             // Dropped outright - exactly what a committed delete with the
             // bin off does. The provider copy goes too.
@@ -1092,8 +1093,8 @@ class MessageRepositoryImpl(
                                 deletedAt = if (born) row.timestampMs else null,
                                 providerDeletePending = born,
                                 subscriptionId = row.subscriptionId,
-                            )
                                 dateSent = row.dateSentMs,
+                            )
                         } else {
                             // Outgoing (sent) message: stored as a read personal
                             // message, right-aligned via the persisted direction.
@@ -2135,13 +2136,13 @@ internal data class ImportedSmsRow(
      * never guessed, never defaulted.
      */
     val subscriptionId: Int? = null,
-)
     /**
      * The sender's network timestamp (provider `DATE_SENT`) for an INCOMING
      * row, already normalized: null when the provider stored 0/absent
      * (unknown) or the row is outgoing. Never guessed.
      */
     val dateSentMs: Long? = null,
+)
 
 /** Page source that is always empty - the unsearchable-query fallback. */
 private class EmptyPagingSource : PagingSource<Int, MessageEntity>() {

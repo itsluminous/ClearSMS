@@ -1,6 +1,7 @@
 package app.clearsms.ui.inbox
 
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.InboxPill
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
@@ -24,8 +25,8 @@ class UnreadToggleContractTest {
         // The old chip was the item keyed "unread" whose selection bound unreadOnly.
         assertThat(inbox).doesNotContain("item(key = \"unread\")")
         assertThat(inbox).doesNotContain("selected = filter.unreadOnly")
-        // The row's only content is the reorderable category pills.
-        assertThat(inbox).contains("items(orderedPills(pillOrder, Category.entries.toList())")
+        // The row's only content is the user's visible, reorderable pills.
+        assertThat(inbox).contains("items(pills.visible, key = { it.name })")
     }
 
     @Test
@@ -46,11 +47,11 @@ class UnreadToggleContractTest {
         val inbox = source("ui/inbox/InboxScreen.kt")
         assertThat(inbox).contains("onToggleUnread = viewModel::toggleUnread")
         // And that flag still composes with a selected category, both ways.
-        val state = InboxFilterState(category = Category.IMPORTANT).toggleUnread()
+        val state = InboxFilterState(pill = InboxPill.IMPORTANT).toggleUnread()
         assertThat(state.unreadOnly).isTrue()
         assertThat(state.category).isEqualTo(Category.IMPORTANT)
         assertThat(state.toggleUnread().unreadOnly).isFalse()
-        assertThat(state.selectCategory(Category.OTP).unreadOnly).isTrue()
+        assertThat(state.selectPill(InboxPill.OTP).unreadOnly).isTrue()
     }
 
     @Test
@@ -63,12 +64,12 @@ class UnreadToggleContractTest {
 
     @Test
     fun `pill order customization can never offer Unread`() {
-        // Unread is a filter flag, not a Category, so neither the Settings
-        // reorder sheet (built from Category.entries) nor a stored order can
+        // Unread is a filter flag, not an InboxPill, so neither the Settings
+        // reorder sheet (built from InboxPill.entries) nor a stored order can
         // ever produce an Unread pill.
-        assertThat(Category.entries.map { it.name }).doesNotContain("UNREAD")
+        assertThat(InboxPill.entries.map { it.name }).doesNotContain("UNREAD")
         val settings = source("ui/settings/SettingsScreen.kt")
-        assertThat(settings).contains("order = orderedPills(order, Category.entries.toList())")
+        assertThat(settings).contains("order = pills.ordered,")
     }
 
     @Test

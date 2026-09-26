@@ -11,6 +11,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.ui.theme.ClearSmsTheme
 
 /** Human-readable label for a primary category. */
@@ -22,6 +23,15 @@ fun Category.displayName(): String =
         Category.UNKNOWN -> "Unknown"
         Category.OTP -> "OTP"
     }
+
+/**
+ * Built-in label of an Inbox pill - what it shows until the user renames it
+ * in Settings. Category pills reuse [displayName], so a category tag and its
+ * pill agree by construction; the scam-flag pill is labelled "Spam", the
+ * word the users who asked for it use, though what it filters is the set of
+ * scam-FLAGGED messages (see [InboxPill.SCAM]).
+ */
+fun InboxPill.defaultLabel(): String = category?.displayName() ?: "Spam"
 
 /** Subtle tonal badge showing a message's category under the sender name. */
 @Composable

@@ -12,10 +12,12 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
+import app.clearsms.domain.model.InboxPillLabels
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
-import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
@@ -66,8 +68,6 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_SHOW_TRANSACTION_DETAILS] = value }
     }
 
-    override val recycleBinEnabled: Flow<Boolean> =
-        dataStore.data.map { it[KEY_RECYCLE_BIN_ENABLED] ?: true }
     override val messageSortOrder: Flow<MessageSortOrder> =
         dataStore.data.map { it[KEY_MESSAGE_SORT_ORDER].toEnum(MessageSortOrder.RECEIVED) }
 
@@ -75,6 +75,8 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_MESSAGE_SORT_ORDER] = value.name }
     }
 
+    override val recycleBinEnabled: Flow<Boolean> =
+        dataStore.data.map { it[KEY_RECYCLE_BIN_ENABLED] ?: true }
 
     override suspend fun setRecycleBinEnabled(value: Boolean) {
         dataStore.edit { it[KEY_RECYCLE_BIN_ENABLED] = value }
@@ -247,11 +249,39 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_HANDLED_OTP_MESSAGE_ID] = value }
     }
 
-    override val inboxPillOrder: Flow<List<Category>> =
+    override val inboxPillOrder: Flow<List<InboxPill>> =
         dataStore.data.map { it[KEY_INBOX_PILL_ORDER].toEnumOrder() }
 
-    override suspend fun setInboxPillOrder(value: List<Category>) {
+    override suspend fun setInboxPillOrder(value: List<InboxPill>) {
         dataStore.edit { it[KEY_INBOX_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val inboxHiddenPills: Flow<Set<InboxPill>> =
+        dataStore.data.map { prefs ->
+            // Lenient like the pill order: a name no current pill carries
+            // (removed in a later version, or corrupt) is simply dropped.
+            prefs[KEY_INBOX_HIDDEN_PILLS]
+                .orEmpty()
+                .mapNotNull { name -> InboxPill.entries.firstOrNull { it.name == name } }
+                .toSet()
+        }
+
+    override suspend fun setInboxHiddenPills(value: Set<InboxPill>) {
+        dataStore.edit { it[KEY_INBOX_HIDDEN_PILLS] = value.map { pill -> pill.name }.toSet() }
+    }
+
+    override val inboxPillLabels: Flow<Map<InboxPill, String>> =
+        dataStore.data.map { InboxPillLabels.decode(it[KEY_INBOX_PILL_LABELS]) }
+
+    override suspend fun setInboxPillLabels(value: Map<InboxPill, String>) {
+        dataStore.edit { it[KEY_INBOX_PILL_LABELS] = InboxPillLabels.encode(value) }
+    }
+
+    override val inboxUnreadToggle: Flow<Boolean> =
+        dataStore.data.map { it[KEY_INBOX_UNREAD_TOGGLE] ?: true }
+
+    override suspend fun setInboxUnreadToggle(value: Boolean) {
+        dataStore.edit { it[KEY_INBOX_UNREAD_TOGGLE] = value }
     }
 
     override val financePillOrder: Flow<List<FinanceTab>> =
@@ -319,6 +349,7 @@ class SettingsRepositoryImpl(
         val KEY_OTP_AUTO_DELETE = stringPreferencesKey("otp_auto_delete_policy")
         val KEY_OTP_DISPLAY_SIZE = stringPreferencesKey("otp_display_size")
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
+        val KEY_MESSAGE_SORT_ORDER = stringPreferencesKey("message_sort_order")
         val KEY_RECYCLE_BIN_ENABLED = booleanPreferencesKey("recycle_bin_enabled")
         val KEY_DELAYED_SEND_ENABLED = booleanPreferencesKey("delayed_send_enabled")
         val KEY_DELAYED_SEND_DELAY = stringPreferencesKey("delayed_send_delay")
@@ -341,6 +372,9 @@ class SettingsRepositoryImpl(
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
         val KEY_SCHEDULE_SEND_TIP_SHOWN = booleanPreferencesKey("schedule_send_tip_shown")
         val KEY_INBOX_PILL_ORDER = stringPreferencesKey("inbox_pill_order")
+        val KEY_INBOX_HIDDEN_PILLS = stringSetPreferencesKey("inbox_hidden_pills")
+        val KEY_INBOX_PILL_LABELS = stringPreferencesKey("inbox_pill_labels")
+        val KEY_INBOX_UNREAD_TOGGLE = booleanPreferencesKey("inbox_unread_toggle")
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
         val KEY_BLOCKED_KEYWORDS = stringSetPreferencesKey("blocked_keywords")
@@ -349,7 +383,6 @@ class SettingsRepositoryImpl(
 
         /** Separator for the stored pill-order enum name lists. */
         const val ORDER_DELIMITER = ","
-        val KEY_MESSAGE_SORT_ORDER = stringPreferencesKey("message_sort_order")
 
         /** Sentinel stored when the default inbox filter is All (null). */
         const val FILTER_ALL = "ALL"

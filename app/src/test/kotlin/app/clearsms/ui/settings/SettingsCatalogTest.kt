@@ -96,6 +96,11 @@ class SettingsCatalogTest {
                 // meaningless while the tab is hidden.
                 "Show Inbox tab",
                 "Pill order",
+                // Pill customisation (issue #49), directly under the order
+                // it refines: visibility, names, and the Unread switch.
+                "Visible pills",
+                "Rename pills",
+                "Unread switch",
                 "Default inbox filter",
                 "Swipe right action",
                 "Swipe left action",
@@ -195,11 +200,6 @@ class SettingsCatalogTest {
                 // Notifications: action row that opens Android's own
                 // notification settings for the app (per-channel control).
                 "Customise notifications",
-            )
-        val allTitles = SettingsItem.entries.map(::title)
-
-        // No row lost, none dropped: 32 survivors + 20 additions = 52 rows.
-        assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
                 // Inbox (GitHub #49): which pills show, what they are
                 // called, and whether the Unread switch is rendered.
                 "Visible pills",
@@ -207,6 +207,11 @@ class SettingsCatalogTest {
                 "Unread switch",
                 // Messages (GitHub #45): sort by sent vs received time.
                 "Sort messages by",
+            )
+        val allTitles = SettingsItem.entries.map(::title)
+
+        // No row lost, none dropped: 32 survivors + 20 additions = 52 rows.
+        assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)
         // pair is unique.

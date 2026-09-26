@@ -52,7 +52,9 @@ interface MessageDao {
 
     /**
      * Paged variant of [observeInbox]: same latest-per-thread rows, loaded
-     * incrementally, each joined with its thread's draft and pin. Draft
+     * incrementally, each joined with its thread's draft and pin. [scamOnly]
+     * is the "Spam" pill: it keeps only threads whose latest message is
+     * scam-FLAGGED (`subCategory = SCAM`), whatever its primary category. Draft
      * presence never changes the ordering or the unread state - it only
      * decorates the preview. Pinned threads sort ABOVE everything else
      * (normal recency order within each group), and the category / unread
@@ -74,15 +76,13 @@ interface MessageDao {
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
+          AND (:scamOnly = 0 OR m.subCategory = 'SCAM')
         ORDER BY (p.pinnedAt IS NOT NULL) DESC, m.timestamp DESC
         """,
     )
     fun pagingInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, InboxThreadRow>
-
-    /** Distinct normalized senders of the given threads (pin toggling). */
         scamOnly: Boolean,
     ): PagingSource<Int, InboxThreadRow>
 
@@ -116,6 +116,9 @@ interface MessageDao {
         category: Category?,
         unreadOnly: Boolean,
         scamOnly: Boolean,
+    ): PagingSource<Int, InboxThreadRow>
+
+    /** Distinct normalized senders of the given threads (pin toggling). */
     @Query("SELECT DISTINCT normalizedSender FROM messages WHERE threadId IN (:threadIds)")
     suspend fun normalizedSendersForThreads(threadIds: List<Long>): List<String>
 
@@ -127,9 +130,6 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp DESC, id DESC")
     fun pagingThread(threadId: Long): PagingSource<Int, MessageEntity>
 
-    /** Oldest message of a thread - carries the sender for the header. */
-    @Query(
-        "SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC, id ASC LIMIT 1",
     /**
      * [pagingThread] under the SENT-time ordering (Settings → Messages →
      * Sort by): the sender's network timestamp where one is known, the
@@ -147,6 +147,9 @@ interface MessageDao {
     )
     fun pagingThreadBySent(threadId: Long): PagingSource<Int, MessageEntity>
 
+    /** Oldest message of a thread - carries the sender for the header. */
+    @Query(
+        "SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC, id ASC LIMIT 1",
     )
     suspend fun firstInThread(threadId: Long): MessageEntity?
 
@@ -160,12 +163,14 @@ interface MessageDao {
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
+          AND (:scamOnly = 0 OR m.subCategory = 'SCAM')
         ORDER BY m.timestamp DESC
         """,
     )
     suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
     ): List<Long>
 
     @Query("SELECT id FROM messages WHERE threadId = :threadId AND deletedAt IS NULL")
@@ -195,11 +200,6 @@ interface MessageDao {
         messageId: Long,
     ): Int
 
-    /** Bodies of the given messages in chronological order (bulk copy). */
-    @Query("SELECT body FROM messages WHERE id IN (:ids) ORDER BY timestamp ASC, id ASC")
-    suspend fun bodiesFor(ids: List<Long>): List<String>
-
-    /** System-provider row ids behind the given messages (for provider deletion). */
     /**
      * [newerCountInThread] for [pagingThreadBySent]: the same COUNT over
      * the sent-order key `COALESCE(dateSent, timestamp)` with the identical
@@ -221,6 +221,11 @@ interface MessageDao {
         messageId: Long,
     ): Int
 
+    /** Bodies of the given messages in chronological order (bulk copy). */
+    @Query("SELECT body FROM messages WHERE id IN (:ids) ORDER BY timestamp ASC, id ASC")
+    suspend fun bodiesFor(ids: List<Long>): List<String>
+
+    /** System-provider row ids behind the given messages (for provider deletion). */
     @Query("SELECT systemSmsId FROM messages WHERE id IN (:ids) AND systemSmsId IS NOT NULL")
     suspend fun systemSmsIdsFor(ids: List<Long>): List<Long>
 
@@ -442,11 +447,6 @@ interface MessageDao {
 
     // endregion
 
-    // region outgoing message status
-
-    @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
-    suspend fun setDeliveryStatus(
-        id: Long,
     // region sent-time (DATE_SENT) bookkeeping
 
     /**
@@ -471,6 +471,11 @@ interface MessageDao {
 
     // endregion
 
+    // region outgoing message status
+
+    @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
+    suspend fun setDeliveryStatus(
+        id: Long,
         status: DeliveryStatus,
     )
 

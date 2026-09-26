@@ -166,7 +166,7 @@ class BulkMessageOpsTest {
 
             repository.archiveThreads(listOf(1L))
 
-            assertThat(repository.inboxThreadIds(category = null, unreadOnly = false))
+            assertThat(repository.inboxThreadIds(category = null, unreadOnly = false, scamOnly = false))
                 .containsExactly(2L)
         }
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -48,6 +49,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,6 +66,8 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -75,14 +79,16 @@ import app.clearsms.data.prefs.BlockedKeywords
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
+import app.clearsms.domain.model.InboxPillLabels
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
-import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
@@ -92,10 +98,12 @@ import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
+import app.clearsms.ui.components.defaultLabel
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.otpPreviewFontSp
 import app.clearsms.ui.composemsg.ContactSuggestion
 import app.clearsms.ui.finance.displayName
+import app.clearsms.ui.inbox.InboxPillConfig
 import app.clearsms.ui.navigation.orderedPills
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -103,6 +111,8 @@ import kotlinx.coroutines.launch
 private enum class SettingsDialog {
     THEME,
     INBOX_PILL_ORDER,
+    INBOX_VISIBLE_PILLS,
+    INBOX_PILL_LABELS,
     FINANCE_PILL_ORDER,
     ALERTS_PILL_ORDER,
     LOGO_BACKGROUND,
@@ -115,6 +125,7 @@ private enum class SettingsDialog {
     DEFAULT_FINANCE_FILTER,
     OTP_DELETE,
     DELAYED_SEND_DELAY,
+    MESSAGE_SORT_ORDER,
     OTP_SIZE,
     CLEAR_OTP,
     SIGNATURE,
@@ -125,7 +136,6 @@ private enum class SettingsDialog {
 
 /**
  * One settings row in the declarative list the screen renders and the
-    MESSAGE_SORT_ORDER,
  * search filters. [title] and [summary] carry the resolved user-visible
  * strings so the search matches exactly what is on screen; [content] renders
  * the row itself (a plain row, a toggle, an action, or the inline sort
@@ -464,17 +474,45 @@ fun SettingsScreen(
                 onDismiss = { dialog = null },
             )
         SettingsDialog.INBOX_PILL_ORDER -> {
-            val order by viewModel.inboxPillOrder.collectAsStateWithLifecycle()
+            // Hidden pills are reordered too, under their display names: the
+            // order is one preference, visibility another (InboxPillConfig).
+            val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
             PillOrderDialog(
                 title = stringResource(R.string.settings_pill_order),
-                order = orderedPills(order, Category.entries.toList()),
-                label = { it.displayName() },
+                order = pills.ordered,
+                label = { pills.label(it, InboxPill::defaultLabel) },
                 onConfirm = {
                     viewModel.setInboxPillOrder(it)
                     dialog = null
                 },
                 onReset = {
                     viewModel.resetInboxPillOrder()
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.INBOX_VISIBLE_PILLS -> {
+            val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
+            InboxVisiblePillsDialog(
+                pills = pills,
+                onConfirm = {
+                    viewModel.setInboxHiddenPills(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.INBOX_PILL_LABELS -> {
+            val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
+            InboxPillLabelsDialog(
+                pills = pills,
+                onConfirm = {
+                    viewModel.setInboxPillLabels(it)
+                    dialog = null
+                },
+                onReset = {
+                    viewModel.resetInboxPillLabels()
                     dialog = null
                 },
                 onDismiss = { dialog = null },
@@ -622,6 +660,17 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.MESSAGE_SORT_ORDER ->
+            RadioDialog(
+                title = stringResource(R.string.settings_message_sort_order),
+                options = MessageSortOrder.entries.map { it to messageSortOrderLabel(it) },
+                selected = state.messageSortOrder,
+                onSelect = {
+                    viewModel.setMessageSortOrder(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
         SettingsDialog.OTP_SIZE ->
             OtpSizeDialog(
                 selected = state.otpDisplaySize,
@@ -660,17 +709,6 @@ fun SettingsScreen(
                 onAddKeyword = viewModel::addBlockedKeyword,
                 onRemoveKeyword = viewModel::removeBlockedKeyword,
                 onDismiss = {
-        SettingsDialog.MESSAGE_SORT_ORDER ->
-            RadioDialog(
-                title = stringResource(R.string.settings_message_sort_order),
-                options = MessageSortOrder.entries.map { it to messageSortOrderLabel(it) },
-                selected = state.messageSortOrder,
-                onSelect = {
-                    viewModel.setMessageSortOrder(it)
-                    dialog = null
-                },
-                onDismiss = { dialog = null },
-            )
                     viewModel.clearSenderSuggestions()
                     dialog = null
                 },
@@ -847,6 +885,10 @@ private fun settingsRowEntries(
                         checked = state.showTransactionDetails,
                         onToggle = viewModel::setShowTransactionDetails,
                     )
+                SettingsItem.MESSAGE_SORT_ORDER ->
+                    row(section, title, messageSortOrderLabel(state.messageSortOrder)) {
+                        openDialog(SettingsDialog.MESSAGE_SORT_ORDER)
+                    }
                 SettingsItem.THEME ->
                     row(section, title, themeLabel(state.theme)) { openDialog(SettingsDialog.THEME) }
                 SettingsItem.DYNAMIC_COLOR ->
@@ -885,10 +927,6 @@ private fun settingsRowEntries(
                         title = title,
                         summary = stringResource(R.string.settings_delivery_reports_summary),
                         checked = state.deliveryReports,
-                SettingsItem.MESSAGE_SORT_ORDER ->
-                    row(section, title, messageSortOrderLabel(state.messageSortOrder)) {
-                        openDialog(SettingsDialog.MESSAGE_SORT_ORDER)
-                    }
                         onToggle = viewModel::setDeliveryReports,
                     )
                 SettingsItem.NOTIFICATION_ACTIONS ->
@@ -964,6 +1002,39 @@ private fun settingsRowEntries(
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.INBOX_PILL_ORDER)
                     }
+                SettingsItem.INBOX_VISIBLE_PILLS -> {
+                    val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
+                    row(section, title, visiblePillsSummary(pills)) {
+                        openDialog(SettingsDialog.INBOX_VISIBLE_PILLS)
+                    }
+                }
+                SettingsItem.INBOX_PILL_LABELS -> {
+                    val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
+                    val summary =
+                        if (pills.labels.isEmpty()) {
+                            stringResource(R.string.settings_inbox_pill_labels_summary_default)
+                        } else {
+                            stringResource(R.string.settings_inbox_pill_labels_summary_custom, pills.labels.size)
+                        }
+                    row(section, title, summary) { openDialog(SettingsDialog.INBOX_PILL_LABELS) }
+                }
+                SettingsItem.INBOX_UNREAD_TOGGLE -> {
+                    val shown by viewModel.inboxUnreadToggle.collectAsStateWithLifecycle()
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary =
+                            stringResource(
+                                if (shown) {
+                                    R.string.settings_inbox_unread_toggle_on
+                                } else {
+                                    R.string.settings_inbox_unread_toggle_off
+                                },
+                            ),
+                        checked = shown,
+                        onToggle = viewModel::setInboxUnreadToggle,
+                    )
+                }
                 SettingsItem.DEFAULT_INBOX_FILTER ->
                     row(section, title, inboxFilterLabel(state.defaultInboxFilter)) {
                         openDialog(SettingsDialog.DEFAULT_FILTER)
@@ -1715,6 +1786,17 @@ private fun notificationActionsSummary(actions: Set<NotificationAction>): String
             .joinToString(separator = ", ")
     }
 
+/** "All 6 shown" / "4 of 6 shown" / "None - the pill row is hidden". */
+@Composable
+private fun visiblePillsSummary(pills: InboxPillConfig): String {
+    val total = pills.ordered.size
+    return when (val shown = pills.visible.size) {
+        total -> stringResource(R.string.settings_inbox_visible_pills_summary_all, total)
+        0 -> stringResource(R.string.settings_inbox_visible_pills_summary_none)
+        else -> stringResource(R.string.settings_inbox_visible_pills_summary_some, shown, total)
+    }
+}
+
 @Composable
 private fun swipeDeadZoneSummary(zone: SwipeDeadZone): String =
     if (zone.enabled) {
@@ -1730,6 +1812,13 @@ private fun swipeActionLabel(action: SwipeAction): String =
         SwipeAction.TOGGLE_READ -> stringResource(R.string.swipe_action_toggle_read)
         SwipeAction.DELETE -> stringResource(R.string.ui_action_delete)
         SwipeAction.ARCHIVE -> stringResource(R.string.action_archive)
+    }
+
+@Composable
+private fun messageSortOrderLabel(order: MessageSortOrder): String =
+    when (order) {
+        MessageSortOrder.RECEIVED -> stringResource(R.string.settings_message_sort_received)
+        MessageSortOrder.SENT -> stringResource(R.string.settings_message_sort_sent)
     }
 
 @Composable
@@ -1814,13 +1903,6 @@ private fun HighlightedRow(
     active: Boolean,
     onPositioned: (Int) -> Unit,
     content: @Composable () -> Unit,
-@Composable
-private fun messageSortOrderLabel(order: MessageSortOrder): String =
-    when (order) {
-        MessageSortOrder.RECEIVED -> stringResource(R.string.settings_message_sort_received)
-        MessageSortOrder.SENT -> stringResource(R.string.settings_message_sort_sent)
-    }
-
 ) {
     val wash by animateColorAsState(
         targetValue =
@@ -1849,4 +1931,63 @@ private fun messageSortOrderLabel(order: MessageSortOrder): String =
     ) {
         content()
     }
+}
+
+/**
+ * Rename the Inbox pills (issue #49). One text field per pill, pre-filled
+ * with the current override (empty = built-in name, shown as the
+ * placeholder). Only the DISPLAY label changes: the field is keyed by
+ * [InboxPill] identity, so a renamed pill filters exactly what it did.
+ * Clearing a field restores the built-in name; Reset clears them all.
+ * Lives here (not in InboxPillDialogs.kt) because it declares a text field:
+ * ImeInsetOwnershipConventionTest requires text-input files to be screens
+ * the shell hosts inside its ime-padded NavHost.
+ */
+@Composable
+private fun InboxPillLabelsDialog(
+    pills: InboxPillConfig,
+    onConfirm: (labels: Map<InboxPill, String>) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val working = remember(pills) { mutableStateMapOf<InboxPill, String>().apply { putAll(pills.labels) } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_inbox_pill_labels)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(R.string.settings_inbox_pill_labels_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                pills.ordered.forEach { pill ->
+                    val builtIn = pill.defaultLabel()
+                    OutlinedTextField(
+                        value = working[pill].orEmpty(),
+                        onValueChange = { raw ->
+                            // Enforce the cap while typing; sanitize() trims
+                            // and collapses whitespace again on save.
+                            working[pill] = raw.replace("\n", " ").take(InboxPillLabels.MAX_LENGTH)
+                        },
+                        label = { Text(stringResource(R.string.settings_inbox_pill_label_field, builtIn)) },
+                        placeholder = { Text(builtIn) },
+                        singleLine = true,
+                        keyboardOptions =
+                            KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Next,
+                            ),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(working.toMap()) }) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onReset) { Text(stringResource(R.string.pill_order_reset)) }
+        },
+    )
 }

@@ -4,9 +4,10 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
-import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
@@ -40,7 +41,6 @@ interface SettingsRepository {
     suspend fun setShowTransactionDetails(value: Boolean)
 
     /**
-    /**
      * Whether conversations and their messages are ordered by when they
      * were RECEIVED (default - today's behaviour, so no inbox reshuffles
      * on update) or by the sender's SENT time where known (GitHub #45).
@@ -49,6 +49,7 @@ interface SettingsRepository {
 
     suspend fun setMessageSortOrder(value: MessageSortOrder)
 
+    /**
      * Recycle bin for deleted messages. Default OFF - deletes stay
      * permanent exactly as before. When ON, a committed delete keeps the
      * message in an in-app bin for 30 days (the system-provider copy is
@@ -183,15 +184,50 @@ interface SettingsRepository {
     suspend fun setHandledOtpMessageId(value: Long)
 
     /**
-     * User-chosen order of the Inbox category pills. Always emits every
-     * [Category] exactly once: unknown stored names are dropped and entries
-     * missing from the stored list are appended in declaration order, so a
-     * pill added in a future version can never disappear. Default is the
-     * enum's declaration order.
+     * User-chosen order of the Inbox pills. Always emits every [InboxPill]
+     * exactly once: unknown stored names are dropped and entries missing
+     * from the stored list are appended in declaration order, so a pill
+     * added in a future version (the scam pill was one) can never
+     * disappear. Default is the enum's declaration order. Stored values
+     * written before the scam pill existed hold [Category] names, which are
+     * the same names, so they decode unchanged.
      */
-    val inboxPillOrder: Flow<List<Category>>
+    val inboxPillOrder: Flow<List<InboxPill>>
 
-    suspend fun setInboxPillOrder(value: List<Category>)
+    suspend fun setInboxPillOrder(value: List<InboxPill>)
+
+    /**
+     * Inbox pills the user has HIDDEN (issue #49). Independent of
+     * [inboxPillOrder], so hiding never disturbs the order and a re-shown
+     * pill returns to its place. Unknown stored names are dropped. Empty
+     * (the default) shows every pill; hiding all of them is allowed and
+     * removes the pill row - see [app.clearsms.ui.inbox.InboxPillConfig].
+     */
+    val inboxHiddenPills: Flow<Set<InboxPill>>
+
+    suspend fun setInboxHiddenPills(value: Set<InboxPill>)
+
+    /**
+     * Display-label overrides for the Inbox pills, keyed by pill identity;
+     * a pill absent from the map shows its built-in label. Encoded through
+     * [app.clearsms.domain.model.InboxPillLabels], whose decode drops unknown pill names and blank
+     * labels. Presentation only: no other preference or message field
+     * refers to a pill by its label.
+     */
+    val inboxPillLabels: Flow<Map<InboxPill, String>>
+
+    suspend fun setInboxPillLabels(value: Map<InboxPill, String>)
+
+    /**
+     * Whether the "Unread" switch above the Inbox pills is shown (issue
+     * #49). Default true. Purely an affordance toggle: unread counts, the
+     * per-pill badges and notification behaviour are untouched, and the
+     * filter itself is reset to "all" while the switch is hidden so no
+     * invisible unread-only view can persist.
+     */
+    val inboxUnreadToggle: Flow<Boolean>
+
+    suspend fun setInboxUnreadToggle(value: Boolean)
 
     /** User-chosen order of the Finance pills; same guarantees as [inboxPillOrder]. */
     val financePillOrder: Flow<List<FinanceTab>>

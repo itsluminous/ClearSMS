@@ -273,6 +273,7 @@ class UndoManagerTest {
         override suspend fun inboxThreadIds(
             category: Category?,
             unreadOnly: Boolean,
+            scamOnly: Boolean,
         ): List<Long> = emptyList()
 
         override suspend fun messageIdsInThread(threadId: Long): List<Long> = emptyList()
@@ -280,8 +281,8 @@ class UndoManagerTest {
         override suspend fun positionInThread(
             threadId: Long,
             messageId: Long,
-        ): Int = 0
             sortOrder: MessageSortOrder,
+        ): Int = 0
 
         override suspend fun bodiesInOrder(ids: List<Long>): List<String> = emptyList()
 

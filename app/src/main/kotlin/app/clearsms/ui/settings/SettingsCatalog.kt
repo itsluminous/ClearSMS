@@ -68,6 +68,12 @@ enum class SettingsItem(
     CLEAR_OTP(SettingsSection.OTP, R.string.settings_clear_otp),
     SHOW_INBOX_TAB(SettingsSection.INBOX, R.string.settings_show_inbox_tab),
     INBOX_PILL_ORDER(SettingsSection.INBOX, R.string.settings_pill_order),
+
+    // Pill customisation (issue #49), grouped right under the order they
+    // refine: which pills show, what they are called, and the Unread switch.
+    INBOX_VISIBLE_PILLS(SettingsSection.INBOX, R.string.settings_inbox_visible_pills),
+    INBOX_PILL_LABELS(SettingsSection.INBOX, R.string.settings_inbox_pill_labels),
+    INBOX_UNREAD_TOGGLE(SettingsSection.INBOX, R.string.settings_inbox_unread_toggle),
     DEFAULT_INBOX_FILTER(SettingsSection.INBOX, R.string.settings_default_inbox_filter),
     SWIPE_RIGHT(SettingsSection.INBOX, R.string.settings_swipe_right),
     SWIPE_LEFT(SettingsSection.INBOX, R.string.settings_swipe_left),

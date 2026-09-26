@@ -5,10 +5,10 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.prefs.SettingsRepositoryImpl
-import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
@@ -82,7 +82,10 @@ class SettingsBackupManagerTest {
         repo.setDefaultFinanceFilter(FinanceTab.CREDIT_CARDS)
         repo.setTransactionNotifications(false)
         repo.setLogoBackground(LogoBackground.WHITE)
-        repo.setInboxPillOrder(Category.entries.reversed())
+        repo.setInboxPillOrder(InboxPill.entries.reversed())
+        repo.setInboxHiddenPills(setOf(InboxPill.UNKNOWN, InboxPill.SCAM))
+        repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.OTP to "Codes"))
+        repo.setInboxUnreadToggle(false)
         repo.setFinancePillOrder(FinanceTab.entries.reversed())
         repo.setAlertsPillOrder(AlertFilter.entries.reversed())
         repo.setBlockedKeywords(setOf("loan offer", "casino"))
@@ -95,10 +98,10 @@ class SettingsBackupManagerTest {
         assertThat(repo.otpAutoDeletePolicy.first()).isEqualTo(OtpAutoDeletePolicy.DAYS_3)
         assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_5)
         assertThat(repo.showTransactionDetails.first()).isFalse()
+        assertThat(repo.messageSortOrder.first()).isEqualTo(MessageSortOrder.SENT)
         assertThat(repo.recycleBinEnabled.first()).isTrue()
         assertThat(repo.delayedSendEnabled.first()).isTrue()
         assertThat(repo.delayedSendDelay.first()).isEqualTo(DelayedSendDelay.SECONDS_30)
-        assertThat(repo.messageSortOrder.first()).isEqualTo(MessageSortOrder.SENT)
         assertThat(repo.signature.first()).isEqualTo("Sent from ClearSMS")
         assertThat(repo.showRichAvatars.first()).isFalse()
         assertThat(repo.notificationActions.first())
@@ -114,7 +117,10 @@ class SettingsBackupManagerTest {
         assertThat(repo.defaultFinanceFilter.first()).isEqualTo(FinanceTab.CREDIT_CARDS)
         assertThat(repo.transactionNotifications.first()).isFalse()
         assertThat(repo.logoBackground.first()).isEqualTo(LogoBackground.WHITE)
-        assertThat(repo.inboxPillOrder.first()).isEqualTo(Category.entries.reversed())
+        assertThat(repo.inboxPillOrder.first()).isEqualTo(InboxPill.entries.reversed())
+        assertThat(repo.inboxHiddenPills.first()).isEqualTo(setOf(InboxPill.UNKNOWN, InboxPill.SCAM))
+        assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.OTP to "Codes"))
+        assertThat(repo.inboxUnreadToggle.first()).isFalse()
         assertThat(repo.financePillOrder.first()).isEqualTo(FinanceTab.entries.reversed())
         assertThat(repo.alertsPillOrder.first()).isEqualTo(AlertFilter.entries.reversed())
         assertThat(repo.blockedKeywords.first()).isEqualTo(setOf("loan offer", "casino"))
@@ -369,7 +375,7 @@ class SettingsBackupManagerTest {
             assertThat(prefs["inbox_pill_order"]).isEqualTo("OTP,PERSONAL")
             // The lenient pill-order reader completes the stale list.
             val order = SettingsRepositoryImpl(dataStore).inboxPillOrder.first()
-            assertThat(order.take(2)).isEqualTo(listOf(Category.OTP, Category.PERSONAL))
-            assertThat(order).containsExactlyElementsIn(Category.entries)
+            assertThat(order.take(2)).isEqualTo(listOf(InboxPill.OTP, InboxPill.PERSONAL))
+            assertThat(order).containsExactlyElementsIn(InboxPill.entries)
         }
 }

@@ -289,6 +289,20 @@
     <string name="pill_order_move_up">Move %1$s up</string>
     <string name="pill_order_move_down">Move %1$s down</string>
     <string name="pill_order_reset">Reset</string>
+    <!-- Inbox pill customisation (issue #49): visibility, labels, spam pill, unread switch -->
+    <string name="settings_inbox_visible_pills">Visible pills</string>
+    <string name="settings_inbox_visible_pills_summary_all">All %1$d shown</string>
+    <string name="settings_inbox_visible_pills_summary_some">%1$d of %2$d shown</string>
+    <string name="settings_inbox_visible_pills_summary_none">None - the pill row is hidden</string>
+    <string name="settings_inbox_visible_pills_hint">Untick a pill to remove it from the inbox. Hiding all of them removes the row; the Unread switch still works. \"Spam\" shows messages the app flagged as likely scams, whatever their category.</string>
+    <string name="settings_inbox_pill_labels">Rename pills</string>
+    <string name="settings_inbox_pill_labels_summary_default">Built-in names</string>
+    <string name="settings_inbox_pill_labels_summary_custom">%1$d renamed</string>
+    <string name="settings_inbox_pill_labels_hint">A name is only what the pill shows - it still filters the same messages. Clear a field to go back to the built-in name.</string>
+    <string name="settings_inbox_pill_label_field">Name for %1$s</string>
+    <string name="settings_inbox_unread_toggle">Unread switch</string>
+    <string name="settings_inbox_unread_toggle_on">Shown above the pills</string>
+    <string name="settings_inbox_unread_toggle_off">Hidden - unread counts and badges are unaffected</string>
     <string name="settings_section_inbox">Inbox</string>
     <string name="settings_section_finance">Finance</string>
     <string name="settings_section_alerts">Alerts</string>
@@ -313,6 +327,9 @@
     <string name="settings_show_rich_avatars_on">Contact photos and sender brand marks</string>
     <string name="settings_show_rich_avatars_off">Plain icon and monogram avatars</string>
     <string name="settings_show_transaction_details">Show extracted message details</string>
+    <string name="settings_message_sort_order">Sort messages by</string>
+    <string name="settings_message_sort_received">Time received</string>
+    <string name="settings_message_sort_sent">Time sent (falls back to received when the network reported none)</string>
     <string name="settings_show_transaction_details_summary">Show the parsed card (amount, merchant, account) when you tap a bank or OTP message in a conversation</string>
     <string name="settings_strip_accents">Strip accents when sending</string>
     <string name="settings_strip_accents_summary">Swap accented letters for plain ones (č→c) automatically, only when that makes a text send as fewer SMS</string>
@@ -327,9 +344,6 @@
     <string name="settings_show_balance">Show balance</string>
     <string name="settings_show_balance_on">Balances are visible in the Finance tab</string>
     <string name="settings_show_balance_off">Balances stay hidden until you unlock with your device screen lock</string>
-    <string name="settings_message_sort_order">Sort messages by</string>
-    <string name="settings_message_sort_received">Time received</string>
-    <string name="settings_message_sort_sent">Time sent (falls back to received when the network reported none)</string>
     <string name="balance_hidden">Balance hidden</string>
     <string name="balance_reveal">Show balance</string>
     <string name="balance_conceal">Hide balance</string>

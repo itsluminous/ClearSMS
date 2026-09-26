@@ -36,16 +36,19 @@ interface MessageRepository {
 
     fun observeThread(threadId: Long): Flow<List<MessageEntity>>
 
-    /** Paged variant of [observeInbox] for incremental list loading. */
+    /**
+     * Paged variant of [observeInbox] for incremental list loading.
+     * [scamOnly] restricts to scam-flagged latest messages (the Spam pill).
+     */
     fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, InboxThreadRow>
-
-    // region drafts
         scamOnly: Boolean,
         /** Received (default) or sender's sent time - see [MessageSortOrder]. */
         sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
+    ): PagingSource<Int, InboxThreadRow>
+
+    // region drafts
 
     /** The thread's saved draft text, or null when it has none. */
     suspend fun draftFor(threadId: Long): String?
@@ -94,6 +97,7 @@ interface MessageRepository {
     suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
     ): List<Long>
 
     suspend fun messageIdsInThread(threadId: Long): List<Long>
@@ -105,11 +109,11 @@ interface MessageRepository {
     suspend fun positionInThread(
         threadId: Long,
         messageId: Long,
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     ): Int
 
     /** Bodies of the given messages in chronological order (bulk copy). */
     suspend fun bodiesInOrder(ids: List<Long>): List<String>
-        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
 
     /**
      * The SIM of the newest message in the thread that recorded one (the
@@ -305,16 +309,16 @@ interface MessageRepository {
         body: String,
         timestampMs: Long,
         systemSmsId: Long? = null,
-    ): IncomingIngest = IncomingIngest(insertIncoming(sender, body, timestampMs, systemSmsId), duplicate = false)
-
-    // region MMS
-
         /**
          * The sender's network (SMSC) timestamp from the PDU, when the
          * network reported one - stored as [MessageEntity.dateSent] beside
          * the received [timestampMs]. Null = unknown; never invented.
          */
         dateSentMs: Long? = null,
+    ): IncomingIngest = IncomingIngest(insertIncoming(sender, body, timestampMs, systemSmsId), duplicate = false)
+
+    // region MMS
+
     /**
      * Stores the pending row for a just-announced MMS (m-notification-ind):
      * an empty-bodied message in [app.clearsms.data.db.MmsStatus.PENDING]
