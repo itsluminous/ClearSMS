@@ -31,7 +31,6 @@ import app.clearsms.R
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.ui.theme.ClearSmsTheme
 import coil3.compose.SubcomposeAsyncImage
-import kotlin.math.abs
 
 private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 330f)
 
@@ -173,7 +172,7 @@ private fun PlainAvatar(
     modifier: Modifier = Modifier,
     size: Dp = AvatarDefaults.size,
 ) {
-    val hue = AVATAR_HUES[abs(name.hashCode()) % AVATAR_HUES.size]
+    val hue = AVATAR_HUES[avatarHueIndex(name)]
     val tone = Color.hsl(hue, 0.45f, 0.62f)
     val background = tone.copy(alpha = 0.35f).compositeOver(MaterialTheme.colorScheme.surfaceVariant)
     val initial = name.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#"
@@ -193,6 +192,14 @@ private fun PlainAvatar(
         )
     }
 }
+
+/**
+ * Index into [AVATAR_HUES] for a name. `floorMod`, not `abs(...) %`: for a
+ * name whose hashCode is Int.MIN_VALUE, `abs` returns Int.MIN_VALUE (there
+ * is no positive counterpart) and the modulo comes out negative, which is
+ * an out-of-bounds read on the hue table.
+ */
+internal fun avatarHueIndex(name: String): Int = Math.floorMod(name.hashCode(), AVATAR_HUES.size)
 
 @Preview
 @Composable
