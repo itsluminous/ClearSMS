@@ -5,6 +5,7 @@ import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -244,6 +245,8 @@ class UndoManagerTest {
         override fun pagedInbox(
             category: Category?,
             unreadOnly: Boolean,
+            scamOnly: Boolean,
+            sortOrder: MessageSortOrder,
         ): PagingSource<Int, InboxThreadRow> = error("unused")
 
         override suspend fun draftFor(threadId: Long): String? = null
@@ -260,7 +263,10 @@ class UndoManagerTest {
             text: String,
         ) = Unit
 
-        override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = error("unused")
+        override fun pagedThread(
+            threadId: Long,
+            sortOrder: MessageSortOrder,
+        ): PagingSource<Int, MessageEntity> = error("unused")
 
         override suspend fun firstInThread(threadId: Long): MessageEntity? = null
 
@@ -275,6 +281,7 @@ class UndoManagerTest {
             threadId: Long,
             messageId: Long,
         ): Int = 0
+            sortOrder: MessageSortOrder,
 
         override suspend fun bodiesInOrder(ids: List<Long>): List<String> = emptyList()
 

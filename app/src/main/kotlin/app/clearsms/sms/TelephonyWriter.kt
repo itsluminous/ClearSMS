@@ -29,11 +29,19 @@ class TelephonyWriter
     ) : SystemSmsDeleter,
         SystemSmsReadWriter,
         SystemSmsReinserter {
-        /** Inserts a received message into the inbox. Returns the row uri, or null. */
+        /**
+         * Inserts a received message into the inbox. Returns the row uri, or
+         * null. [timestampMs] is when this device received it (`DATE`);
+         * [dateSentMs] is the sender's network timestamp (`DATE_SENT`) -
+         * the same split AOSP's telephony stack writes, so other SMS apps
+         * that read the row see both. Written only when known; the provider
+         * keeps its 0 default otherwise.
+         */
         fun writeInbox(
             sender: String,
             body: String,
             timestampMs: Long,
+            dateSentMs: Long? = null,
         ): Uri? =
             insert(
                 Telephony.Sms.Inbox.CONTENT_URI,
@@ -41,6 +49,7 @@ class TelephonyWriter
                     put(Telephony.Sms.ADDRESS, sender)
                     put(Telephony.Sms.BODY, body)
                     put(Telephony.Sms.DATE, timestampMs)
+                    if (dateSentMs != null) put(Telephony.Sms.DATE_SENT, dateSentMs)
                     put(Telephony.Sms.READ, 0)
                     put(Telephony.Sms.SEEN, 0)
                 },

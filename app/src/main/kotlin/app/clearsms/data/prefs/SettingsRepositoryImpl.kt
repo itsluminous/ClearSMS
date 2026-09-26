@@ -15,6 +15,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
@@ -67,6 +68,13 @@ class SettingsRepositoryImpl(
 
     override val recycleBinEnabled: Flow<Boolean> =
         dataStore.data.map { it[KEY_RECYCLE_BIN_ENABLED] ?: true }
+    override val messageSortOrder: Flow<MessageSortOrder> =
+        dataStore.data.map { it[KEY_MESSAGE_SORT_ORDER].toEnum(MessageSortOrder.RECEIVED) }
+
+    override suspend fun setMessageSortOrder(value: MessageSortOrder) {
+        dataStore.edit { it[KEY_MESSAGE_SORT_ORDER] = value.name }
+    }
+
 
     override suspend fun setRecycleBinEnabled(value: Boolean) {
         dataStore.edit { it[KEY_RECYCLE_BIN_ENABLED] = value }
@@ -341,6 +349,7 @@ class SettingsRepositoryImpl(
 
         /** Separator for the stored pill-order enum name lists. */
         const val ORDER_DELIMITER = ","
+        val KEY_MESSAGE_SORT_ORDER = stringPreferencesKey("message_sort_order")
 
         /** Sentinel stored when the default inbox filter is All (null). */
         const val FILTER_ALL = "ALL"

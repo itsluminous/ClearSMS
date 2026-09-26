@@ -21,6 +21,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
@@ -60,6 +61,8 @@ data class SettingsUiState(
     /** Recycle bin for deleted messages (30-day retention); default ON. */
     val recycleBinEnabled: Boolean = true,
     val showRichAvatars: Boolean = true,
+    /** Conversations/messages ordered by received (default) or sent time. */
+    val messageSortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     /** Privacy gate: false masks Finance balances behind the device lock. */
     val showBalance: Boolean = true,
     val deliveryReports: Boolean = false,
@@ -251,6 +254,8 @@ class SettingsViewModel
         )
 
         private data class NotificationState(
+            /** Filled by the fourth combine stage. */
+            val messageSortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
             val deliveryReports: Boolean,
             val notificationActions: Set<NotificationAction>,
             val transactionNotifications: Boolean,
@@ -288,6 +293,8 @@ class SettingsViewModel
             }
         private val notifications =
             combine(
+            }.combine(settings.messageSortOrder) { appearance, sortOrder ->
+                appearance.copy(messageSortOrder = sortOrder)
                 uiPrefs.deliveryReports,
                 settings.notificationActions,
                 settings.transactionNotifications,
@@ -358,6 +365,7 @@ class SettingsViewModel
                     recycleBinEnabled = appearanceState.recycleBinEnabled,
                     showRichAvatars = appearanceState.showRichAvatars,
                     logoBackground = appearanceState.logoBackground,
+                    messageSortOrder = appearanceState.messageSortOrder,
                     showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
                     stripAccents = notificationState.stripAccents,
@@ -395,6 +403,8 @@ class SettingsViewModel
         fun setRecycleBinEnabled(value: Boolean) = launchIo { settings.setRecycleBinEnabled(value) }
 
         fun setShowRichAvatars(value: Boolean) = launchIo { settings.setShowRichAvatars(value) }
+        fun setMessageSortOrder(value: MessageSortOrder) = launchIo { settings.setMessageSortOrder(value) }
+
 
         /**
          * Any write to the balance gate drops the session reveal first, so a

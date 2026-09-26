@@ -107,6 +107,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("otp_auto_delete_policy"),
             SettingsBackupEntry.StringEntry("otp_display_size"),
             SettingsBackupEntry.BooleanEntry("show_transaction_details"),
+            SettingsBackupEntry.StringEntry("message_sort_order"),
             SettingsBackupEntry.BooleanEntry("recycle_bin_enabled"),
             SettingsBackupEntry.BooleanEntry("delayed_send_enabled"),
             SettingsBackupEntry.StringEntry("delayed_send_delay"),

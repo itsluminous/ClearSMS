@@ -82,6 +82,7 @@ import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
@@ -124,6 +125,7 @@ private enum class SettingsDialog {
 
 /**
  * One settings row in the declarative list the screen renders and the
+    MESSAGE_SORT_ORDER,
  * search filters. [title] and [summary] carry the resolved user-visible
  * strings so the search matches exactly what is on screen; [content] renders
  * the row itself (a plain row, a toggle, an action, or the inline sort
@@ -658,6 +660,17 @@ fun SettingsScreen(
                 onAddKeyword = viewModel::addBlockedKeyword,
                 onRemoveKeyword = viewModel::removeBlockedKeyword,
                 onDismiss = {
+        SettingsDialog.MESSAGE_SORT_ORDER ->
+            RadioDialog(
+                title = stringResource(R.string.settings_message_sort_order),
+                options = MessageSortOrder.entries.map { it to messageSortOrderLabel(it) },
+                selected = state.messageSortOrder,
+                onSelect = {
+                    viewModel.setMessageSortOrder(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
                     viewModel.clearSenderSuggestions()
                     dialog = null
                 },
@@ -872,6 +885,10 @@ private fun settingsRowEntries(
                         title = title,
                         summary = stringResource(R.string.settings_delivery_reports_summary),
                         checked = state.deliveryReports,
+                SettingsItem.MESSAGE_SORT_ORDER ->
+                    row(section, title, messageSortOrderLabel(state.messageSortOrder)) {
+                        openDialog(SettingsDialog.MESSAGE_SORT_ORDER)
+                    }
                         onToggle = viewModel::setDeliveryReports,
                     )
                 SettingsItem.NOTIFICATION_ACTIONS ->
@@ -1797,6 +1814,13 @@ private fun HighlightedRow(
     active: Boolean,
     onPositioned: (Int) -> Unit,
     content: @Composable () -> Unit,
+@Composable
+private fun messageSortOrderLabel(order: MessageSortOrder): String =
+    when (order) {
+        MessageSortOrder.RECEIVED -> stringResource(R.string.settings_message_sort_received)
+        MessageSortOrder.SENT -> stringResource(R.string.settings_message_sort_sent)
+    }
+
 ) {
     val wash by animateColorAsState(
         targetValue =

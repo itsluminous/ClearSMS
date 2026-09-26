@@ -6,6 +6,7 @@ import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
@@ -39,6 +40,15 @@ interface SettingsRepository {
     suspend fun setShowTransactionDetails(value: Boolean)
 
     /**
+    /**
+     * Whether conversations and their messages are ordered by when they
+     * were RECEIVED (default - today's behaviour, so no inbox reshuffles
+     * on update) or by the sender's SENT time where known (GitHub #45).
+     */
+    val messageSortOrder: Flow<MessageSortOrder>
+
+    suspend fun setMessageSortOrder(value: MessageSortOrder)
+
      * Recycle bin for deleted messages. Default OFF - deletes stay
      * permanent exactly as before. When ON, a committed delete keeps the
      * message in an in-app bin for 30 days (the system-provider copy is

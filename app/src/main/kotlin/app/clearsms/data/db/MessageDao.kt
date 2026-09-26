@@ -83,6 +83,39 @@ interface MessageDao {
     ): PagingSource<Int, InboxThreadRow>
 
     /** Distinct normalized senders of the given threads (pin toggling). */
+        scamOnly: Boolean,
+    ): PagingSource<Int, InboxThreadRow>
+
+    /**
+     * [pagingInbox] under the SENT-time ordering: each thread is still
+     * represented by its latest-inserted message, but threads are ranked by
+     * that message's `COALESCE(dateSent, timestamp)` - a conversation whose
+     * newest message was sent earlier than another's sorts below it even
+     * if it arrived later. Same pin precedence, filters and `id` tie-break
+     * as the received variant, so paging is stable under both.
+     */
+    @Query(
+        """
+        SELECT m.*, d.text AS draftText, p.pinnedAt AS pinnedAt FROM messages m
+        INNER JOIN (
+            SELECT threadId, MAX(id) AS maxId
+            FROM messages
+            WHERE deletedAt IS NULL
+            GROUP BY threadId
+        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        LEFT JOIN drafts d ON d.threadId = m.threadId
+        LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
+        WHERE m.isArchived = 0
+          AND (:category IS NULL OR m.category = :category)
+          AND (:unreadOnly = 0 OR m.isRead = 0)
+          AND (:scamOnly = 0 OR m.subCategory = 'SCAM')
+        ORDER BY (p.pinnedAt IS NOT NULL) DESC, COALESCE(m.dateSent, m.timestamp) DESC, m.id DESC
+        """,
+    )
+    fun pagingInboxBySent(
+        category: Category?,
+        unreadOnly: Boolean,
+        scamOnly: Boolean,
     @Query("SELECT DISTINCT normalizedSender FROM messages WHERE threadId IN (:threadIds)")
     suspend fun normalizedSendersForThreads(threadIds: List<Long>): List<String>
 
@@ -97,6 +130,23 @@ interface MessageDao {
     /** Oldest message of a thread - carries the sender for the header. */
     @Query(
         "SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp ASC, id ASC LIMIT 1",
+    /**
+     * [pagingThread] under the SENT-time ordering (Settings → Messages →
+     * Sort by): the sender's network timestamp where one is known, the
+     * received time otherwise, so two messages that arrived together after
+     * a signal gap land in the order they were sent. The `id DESC`
+     * tie-break is the same as the received pager's and
+     * [newerCountInThreadBySent] mirrors this exact key, so the highlight
+     * jump stays correct under either setting.
+     */
+    @Query(
+        """
+        SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL
+        ORDER BY COALESCE(dateSent, timestamp) DESC, id DESC
+        """,
+    )
+    fun pagingThreadBySent(threadId: Long): PagingSource<Int, MessageEntity>
+
     )
     suspend fun firstInThread(threadId: Long): MessageEntity?
 
@@ -150,6 +200,27 @@ interface MessageDao {
     suspend fun bodiesFor(ids: List<Long>): List<String>
 
     /** System-provider row ids behind the given messages (for provider deletion). */
+    /**
+     * [newerCountInThread] for [pagingThreadBySent]: the same COUNT over
+     * the sent-order key `COALESCE(dateSent, timestamp)` with the identical
+     * `id` tie-break, so the computed initial page matches the pager's
+     * index under the sent-time setting too.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM messages m,
+            (SELECT COALESCE(dateSent, timestamp) AS ts FROM messages WHERE id = :messageId) target
+        WHERE m.threadId = :threadId
+          AND m.deletedAt IS NULL
+          AND (COALESCE(m.dateSent, m.timestamp) > target.ts
+               OR (COALESCE(m.dateSent, m.timestamp) = target.ts AND m.id > :messageId))
+        """,
+    )
+    suspend fun newerCountInThreadBySent(
+        threadId: Long,
+        messageId: Long,
+    ): Int
+
     @Query("SELECT systemSmsId FROM messages WHERE id IN (:ids) AND systemSmsId IS NOT NULL")
     suspend fun systemSmsIdsFor(ids: List<Long>): List<Long>
 
@@ -376,6 +447,30 @@ interface MessageDao {
     @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
     suspend fun setDeliveryStatus(
         id: Long,
+    // region sent-time (DATE_SENT) bookkeeping
+
+    /**
+     * Rows the one-time sent-time backfill could still fill: INCOMING,
+     * imported from the provider (a `systemSmsId` to match on) and with no
+     * sender timestamp recorded. Zero means a provider walk cannot fill
+     * anything and the pass can be skipped without a single provider read.
+     */
+    @Query(
+        "SELECT COUNT(*) FROM messages WHERE systemSmsId IS NOT NULL AND isOutgoing = 0 AND dateSent IS NULL",
+    )
+    suspend fun countNeedingSentTimeBackfill(): Int
+
+    /**
+     * Batched write for the sent-time backfill: every [updates] row lands
+     * in ONE transaction (Room's partial-entity update), never one
+     * transaction per row. Only [DateSentUpdate.dateSent] is written - the
+     * rest of the row is untouched.
+     */
+    @Update(entity = MessageEntity::class)
+    suspend fun setDateSentBatch(updates: List<DateSentUpdate>)
+
+    // endregion
+
         status: DeliveryStatus,
     )
 

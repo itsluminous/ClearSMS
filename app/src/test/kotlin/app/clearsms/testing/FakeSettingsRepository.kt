@@ -7,6 +7,7 @@ import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
@@ -43,6 +44,12 @@ open class FakeSettingsRepository : SettingsRepository {
     }
 
     override val recycleBinEnabled = MutableStateFlow(true)
+    override val messageSortOrder = MutableStateFlow(MessageSortOrder.RECEIVED)
+
+    override suspend fun setMessageSortOrder(value: MessageSortOrder) {
+        messageSortOrder.value = value
+    }
+
 
     override suspend fun setRecycleBinEnabled(value: Boolean) {
         recycleBinEnabled.value = value

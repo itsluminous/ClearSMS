@@ -3,6 +3,7 @@ package app.clearsms.ui.conversation
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -51,5 +52,19 @@ class ConversationItemMappingTest {
         val item = entity(outgoing = false, status = DeliveryStatus.SENT).toConversationItem(json)
 
         assertThat(item.deliveryStatus).isNull()
+    }
+
+    @Test
+    fun `the bubble's instant follows the sort order - received by default, sent when known under SENT`() {
+        // The date separators and time labels read ConversationItem.timestamp,
+        // so under the sent sort they show the SAME instant the row is
+        // ordered by; a row without a sent time keeps its received time.
+        val withSent = entity(outgoing = false).copy(timestamp = 5_000L, dateSent = 1_000L)
+        val withoutSent = entity(outgoing = false).copy(timestamp = 5_000L, dateSent = null)
+
+        assertThat(withSent.toConversationItem(json).timestamp).isEqualTo(5_000L)
+        assertThat(withSent.toConversationItem(json, sortOrder = MessageSortOrder.RECEIVED).timestamp).isEqualTo(5_000L)
+        assertThat(withSent.toConversationItem(json, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(1_000L)
+        assertThat(withoutSent.toConversationItem(json, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(5_000L)
     }
 }

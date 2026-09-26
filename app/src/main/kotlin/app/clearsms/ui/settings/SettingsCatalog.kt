@@ -46,6 +46,10 @@ enum class SettingsItem(
     DELAYED_SEND(SettingsSection.MESSAGES, R.string.settings_delayed_send),
     DELAYED_SEND_DELAY(SettingsSection.MESSAGES, R.string.settings_delayed_send_delay),
     SHOW_EXTRACTED_DETAILS(SettingsSection.MESSAGES, R.string.settings_show_transaction_details),
+
+    // Sort by sent vs received time (GitHub #45): a radio row like the
+    // other ordering choices; defaults to received so nothing reshuffles.
+    MESSAGE_SORT_ORDER(SettingsSection.MESSAGES, R.string.settings_message_sort_order),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),
     SHOW_RICH_AVATARS(SettingsSection.APPEARANCE, R.string.settings_show_rich_avatars),

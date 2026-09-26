@@ -17,9 +17,11 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
+import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -185,19 +187,22 @@ class InboxViewModel
          * on the IO dispatcher - never during composition.
          */
         val pagedItems: Flow<PagingData<InboxItem>> =
-            combine(filter, contactsTick) { current, _ -> current }
-                .flatMapLatest { current ->
-                    Pager(
-                        config =
-                            PagingConfig(
-                                pageSize = PAGE_SIZE,
-                                initialLoadSize = PAGE_SIZE * 2,
-                                enablePlaceholders = false,
-                            ),
-                        pagingSourceFactory = { messageRepository.pagedInbox(current.category, current.unreadOnly) },
-                    ).flow
-                }.map { data -> data.map { it.toInboxItem() } }
-                .flowOn(ioDispatcher)
+            combine(effectiveFilter, contactsTick, settings.messageSortOrder) { current, _, sortOrder ->
+                current to sortOrder
+            }.flatMapLatest { (current, sortOrder) ->
+                Pager(
+                    config =
+                        PagingConfig(
+                            pageSize = PAGE_SIZE,
+                            initialLoadSize = PAGE_SIZE * 2,
+                            enablePlaceholders = false,
+                        ),
+                    pagingSourceFactory = {
+                        messageRepository.pagedInbox(current.category, current.unreadOnly, current.scamOnly, sortOrder)
+                    },
+                ).flow
+                    .map { data -> data.map { it.toInboxItem(sortOrder) } }
+            }.flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 
         private val latestOtp =
@@ -416,13 +421,14 @@ class InboxViewModel
 
         // endregion
 
-        private fun InboxThreadRow.toInboxItem(): InboxItem {
+        /** The row's time label shows the instant the list is sorted by. */
+        private fun InboxThreadRow.toInboxItem(sortOrder: MessageSortOrder): InboxItem {
             val display = resolveDisplay(message.sender)
             return InboxItem(
                 message = message,
                 display = display,
                 glyph = brandGlyphFor(message.subCategory, display.name),
-                timeLabel = RelativeTime.format(message.timestamp),
+                timeLabel = RelativeTime.format(sortOrder.sortTimestamp(message.timestamp, message.dateSent)),
                 draftText = draftText?.takeIf { it.isNotBlank() },
                 pinned = pinned,
             )

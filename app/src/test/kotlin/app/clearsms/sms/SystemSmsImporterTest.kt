@@ -83,6 +83,7 @@ class SystemSmsImporterTest {
     fun setUp() {
         FakeSmsProvider.rows.clear()
         FakeSmsProvider.includeSubscriptionColumn = true
+        FakeSmsProvider.includeDateSentColumn = true
         Robolectric.setupContentProvider(FakeSmsProvider::class.java, "sms")
     }
 
@@ -453,6 +454,57 @@ class SystemSmsImporterTest {
 
     // endregion
 
+    // region sent time (DATE_SENT, GitHub #45)
+
+    @Test
+    fun `import records the sender's sent time for incoming rows and treats 0 as unknown`() =
+        runBlocking {
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(
+                    1,
+                    "9876543210",
+                    "delayed by a signal gap",
+                    date = 1_700_000_010_000,
+                    type = 1,
+                    read = 0,
+                    dateSent = 1_700_000_001_000,
+                )
+            // The provider's 0 = the network attached no sent time.
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(2, "9876543210", "no sent time", date = 1_700_000_020_000, type = 1, read = 0, dateSent = 0L)
+            // Outgoing: the send time IS the row's date; date_sent is not kept.
+            FakeSmsProvider.rows +=
+                FakeSmsProvider.Row(3, "9876543210", "my reply", date = 1_700_000_030_000, type = 2, read = 1, dateSent = 1_700_000_029_000)
+
+            val env = Env("sent-time")
+            env.importer.importAll()
+
+            val messages = env.db.messageDao().getAll()
+            val delayed = messages.single { it.systemSmsId == 1L }
+            assertThat(delayed.dateSent).isEqualTo(1_700_000_001_000)
+            assertThat(delayed.timestamp).isEqualTo(1_700_000_010_000)
+            assertThat(messages.single { it.systemSmsId == 2L }.dateSent).isNull()
+            assertThat(messages.single { it.systemSmsId == 3L }.dateSent).isNull()
+        }
+
+    @Test
+    fun `a provider without the date_sent column imports unknown sent times without crashing`() =
+        runBlocking {
+            FakeSmsProvider.includeDateSentColumn = false
+            addMixedRows(1L..6L)
+
+            val env = Env("sent-time-missing-column")
+            assertThat(env.importer.importAll().inserted).isEqualTo(6)
+            assertThat(
+                env.db
+                    .messageDao()
+                    .getAll()
+                    .all { it.dateSent == null },
+            ).isTrue()
+        }
+
+    // endregion
+
     /**
      * Minimal `content://sms` stand-in honoring the importer's exact query
      * shape: `_id > ?` + type filter, `_id ASC LIMIT n` ordering.
@@ -467,6 +519,8 @@ class SystemSmsImporterTest {
             val read: Int,
             /** Provider `sub_id`; null renders as a NULL cursor cell. */
             val subId: Int? = null,
+            /** Provider `date_sent`; the real provider stores 0 when the network reported none. */
+            val dateSent: Long = 0L,
         )
 
         override fun onCreate(): Boolean = true
@@ -495,6 +549,7 @@ class SystemSmsImporterTest {
                     // Some real providers ignore the projection and omit
                     // columns; the flag reproduces exactly that.
                     if (includeSubscriptionColumn) add(Telephony.Sms.SUBSCRIPTION_ID)
+                    if (includeDateSentColumn) add(Telephony.Sms.DATE_SENT)
                 }
             val cursor = MatrixCursor(columns.toTypedArray())
             rows
@@ -505,6 +560,7 @@ class SystemSmsImporterTest {
                 .forEach {
                     val values = mutableListOf<Any?>(it.id, it.address, it.body, it.date, it.type, it.read)
                     if (includeSubscriptionColumn) values += it.subId
+                    if (includeDateSentColumn) values += it.dateSent
                     cursor.addRow(values.toTypedArray())
                 }
             return cursor
@@ -535,6 +591,9 @@ class SystemSmsImporterTest {
 
             /** When false the cursor omits the sub_id column entirely. */
             var includeSubscriptionColumn = true
+
+            /** When false the cursor omits the date_sent column entirely. */
+            var includeDateSentColumn = true
         }
     }
 }

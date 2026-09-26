@@ -10,6 +10,7 @@ import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -61,6 +62,7 @@ class SettingsBackupManagerTest {
         repo.setOtpAutoDeletePolicy(OtpAutoDeletePolicy.DAYS_3)
         repo.setOtpDisplaySize(OtpDisplaySize.OPTION_5)
         repo.setShowTransactionDetails(false)
+        repo.setMessageSortOrder(MessageSortOrder.SENT)
         repo.setRecycleBinEnabled(true)
         repo.setDelayedSendEnabled(true)
         repo.setDelayedSendDelay(DelayedSendDelay.SECONDS_30)
@@ -96,6 +98,7 @@ class SettingsBackupManagerTest {
         assertThat(repo.recycleBinEnabled.first()).isTrue()
         assertThat(repo.delayedSendEnabled.first()).isTrue()
         assertThat(repo.delayedSendDelay.first()).isEqualTo(DelayedSendDelay.SECONDS_30)
+        assertThat(repo.messageSortOrder.first()).isEqualTo(MessageSortOrder.SENT)
         assertThat(repo.signature.first()).isEqualTo("Sent from ClearSMS")
         assertThat(repo.showRichAvatars.first()).isFalse()
         assertThat(repo.notificationActions.first())

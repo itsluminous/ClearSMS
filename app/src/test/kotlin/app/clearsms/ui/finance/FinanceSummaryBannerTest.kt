@@ -13,6 +13,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.NotificationAction
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.StartDestination
@@ -277,6 +278,10 @@ private class FakeSettingsRepository : SettingsRepository {
     override suspend fun setShowTransactionDetails(value: Boolean) = Unit
 
     override val recycleBinEnabled = MutableStateFlow(false)
+    override val messageSortOrder = MutableStateFlow(MessageSortOrder.RECEIVED)
+
+    override suspend fun setMessageSortOrder(value: MessageSortOrder) = Unit
+
 
     override val delayedSendEnabled = MutableStateFlow(false)
 

@@ -16,19 +16,21 @@ import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
- * Runs [SimBackfill] once in the background. Enqueued on every cold start
- * (from the Application, next to the auto re-sort check); after the pass has
- * completed for the current [SimBackfill.VERSION] the worker is an instant
- * no-op, so the repeat enqueue costs nothing. Interruptions retry with
- * backoff and resume from the backfill's durable page checkpoint.
+ * Runs the one-time provider backfills - [SimBackfill], then
+ * [SentTimeBackfill] - once in the background, SEQUENTIALLY (never two
+ * provider walks at once). Enqueued on every cold start (from the
+ * Application, next to the auto re-sort check); after both passes have
+ * completed for their current VERSION the worker is an instant no-op, so
+ * the repeat enqueue costs nothing. Interruptions retry with backoff and
+ * resume from each backfill's durable page checkpoint.
  *
- * The backfill must never compete with a foreground import: both walk the
+ * The backfills must never compete with a foreground import: both walk the
  * same provider and write the same database on the same IO dispatcher, and
  * that contention is what made the initial import visibly slower. While an
  * [InitialSyncWorker] run is enqueued or running, this worker defers itself
  * with [Result.retry] instead of doing any work - after the import finishes
- * the retried pass either finds nothing to fill (fresh installs mark the
- * version done) or runs alone.
+ * the retried passes either find nothing to fill (fresh installs mark the
+ * versions done) or run alone.
  */
 @HiltWorker
 class SimBackfillWorker
@@ -37,15 +39,19 @@ class SimBackfillWorker
         @Assisted appContext: Context,
         @Assisted params: WorkerParameters,
         private val simBackfill: SimBackfill,
+        private val sentTimeBackfill: SentTimeBackfill,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             if (importActive()) return Result.retry()
             return try {
                 val filled = simBackfill.runIfNeeded()
                 if (filled > 0) Log.i(TAG, "SIM backfill filled $filled imported rows")
+                // Strictly after the SIM pass: one provider walk at a time.
+                val sentFilled = sentTimeBackfill.runIfNeeded()
+                if (sentFilled > 0) Log.i(TAG, "Sent-time backfill filled $sentFilled imported rows")
                 Result.success()
             } catch (e: Exception) {
-                Log.w(TAG, "SIM backfill attempt $runAttemptCount failed; will resume", e)
+                Log.w(TAG, "Provider backfill attempt $runAttemptCount failed; will resume", e)
                 if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
             }
         }

@@ -5,6 +5,7 @@ import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import kotlinx.coroutines.flow.Flow
 
 /** Metadata of one stored MMS attachment file, pending its Room row. */
@@ -42,6 +43,9 @@ interface MessageRepository {
     ): PagingSource<Int, InboxThreadRow>
 
     // region drafts
+        scamOnly: Boolean,
+        /** Received (default) or sender's sent time - see [MessageSortOrder]. */
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
 
     /** The thread's saved draft text, or null when it has none. */
     suspend fun draftFor(threadId: Long): String?
@@ -74,8 +78,14 @@ interface MessageRepository {
 
     // endregion
 
-    /** Paged thread messages, newest first (rendered reversed). */
-    fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity>
+    /**
+     * Paged thread messages, newest first (rendered reversed) under
+     * [sortOrder]; [positionInThread] must be asked with the SAME order.
+     */
+    fun pagedThread(
+        threadId: Long,
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
+    ): PagingSource<Int, MessageEntity>
 
     /** Oldest message of the thread (stable carrier of the sender address). */
     suspend fun firstInThread(threadId: Long): MessageEntity?
@@ -88,7 +98,10 @@ interface MessageRepository {
 
     suspend fun messageIdsInThread(threadId: Long): List<Long>
 
-    /** Index of [messageId] in the newest-first thread ordering (0 when unknown). */
+    /**
+     * Index of [messageId] in the newest-first thread ordering under
+     * [sortOrder] (0 when unknown) - the pager's initial key for a jump.
+     */
     suspend fun positionInThread(
         threadId: Long,
         messageId: Long,
@@ -96,6 +109,7 @@ interface MessageRepository {
 
     /** Bodies of the given messages in chronological order (bulk copy). */
     suspend fun bodiesInOrder(ids: List<Long>): List<String>
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
 
     /**
      * The SIM of the newest message in the thread that recorded one (the
@@ -295,6 +309,12 @@ interface MessageRepository {
 
     // region MMS
 
+        /**
+         * The sender's network (SMSC) timestamp from the PDU, when the
+         * network reported one - stored as [MessageEntity.dateSent] beside
+         * the received [timestampMs]. Null = unknown; never invented.
+         */
+        dateSentMs: Long? = null,
     /**
      * Stores the pending row for a just-announced MMS (m-notification-ind):
      * an empty-bodied message in [app.clearsms.data.db.MmsStatus.PENDING]

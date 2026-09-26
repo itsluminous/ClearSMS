@@ -72,6 +72,8 @@
     <string name="message_details_to">To</string>
     <string name="message_details_received">Received</string>
     <string name="message_details_sent">Sent</string>
+    <string name="message_details_sent_by_network">Sent (sender\'s network time)</string>
+    <string name="message_details_sent_unknown">Not reported - the network attached no sent time to this message, so only the received time is known.</string>
     <string name="message_details_scheduled">Scheduled for</string>
     <string name="message_details_delivered">Delivered</string>
     <string name="message_details_delivered_confirmed">Yes - your carrier sent back a delivery report. The report\'s arrival time isn\'t recorded, so no delivery time can be shown.</string>
@@ -325,6 +327,9 @@
     <string name="settings_show_balance">Show balance</string>
     <string name="settings_show_balance_on">Balances are visible in the Finance tab</string>
     <string name="settings_show_balance_off">Balances stay hidden until you unlock with your device screen lock</string>
+    <string name="settings_message_sort_order">Sort messages by</string>
+    <string name="settings_message_sort_received">Time received</string>
+    <string name="settings_message_sort_sent">Time sent (falls back to received when the network reported none)</string>
     <string name="balance_hidden">Balance hidden</string>
     <string name="balance_reveal">Show balance</string>
     <string name="balance_conceal">Hide balance</string>

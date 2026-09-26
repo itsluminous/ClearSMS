@@ -74,6 +74,7 @@ class SettingsCatalogTest {
                 "Delay before sending",
                 "Sending delay",
                 "Show extracted message details",
+                "Sort messages by",
             ).inOrder()
         assertThat(bySection["Appearance"])
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
@@ -197,8 +198,15 @@ class SettingsCatalogTest {
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 16 additions = 48 rows.
+        // No row lost, none dropped: 32 survivors + 20 additions = 52 rows.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
+                // Inbox (GitHub #49): which pills show, what they are
+                // called, and whether the Unread switch is rendered.
+                "Visible pills",
+                "Rename pills",
+                "Unread switch",
+                // Messages (GitHub #45): sort by sent vs received time.
+                "Sort messages by",
         // No duplicates: "Pill order" legitimately appears once per pills
         // screen (Inbox / Finance / Alerts); every other (section, title)
         // pair is unique.

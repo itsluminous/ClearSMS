@@ -29,10 +29,12 @@ import app.clearsms.mms.SendFailureReason
  *   copyable - a details view you cannot copy from is half useful.
  * - The column scrolls, so large font scales never clip rows; colors are
  *   all theme roles, so both themes stay readable.
- * - No delivered TIME is ever shown: the app records only that a real
- *   carrier report arrived, never when, and MMS delivery reports are not
- *   supported - the Delivered row says so honestly instead of inventing
- *   a value.
+ * - Times are shown WITH seconds (GitHub #45): an incoming message shows
+ *   the sender's network time and the received time as two labelled rows.
+ * - No time is ever invented: a missing network sent time reads as
+ *   "not reported", and no delivered TIME is shown - the app records only
+ *   that a real carrier report arrived, never when, and MMS delivery
+ *   reports are not supported - the Delivered row says so honestly.
  */
 @Composable
 internal fun MessageDetailsDialog(
@@ -78,9 +80,11 @@ private fun DetailRow(
                 is MessageDetails.Row.Timestamp ->
                     when (row.kind) {
                         MessageDetails.TimeKind.RECEIVED -> R.string.message_details_received
+                        MessageDetails.TimeKind.SENT_BY_NETWORK -> R.string.message_details_sent_by_network
                         MessageDetails.TimeKind.SENT -> R.string.message_details_sent
                         MessageDetails.TimeKind.SCHEDULED -> R.string.message_details_scheduled
                     }
+                MessageDetails.Row.SentTimeUnknown -> R.string.message_details_sent_by_network
                 is MessageDetails.Row.Delivered -> R.string.message_details_delivered
                 is MessageDetails.Row.Error -> R.string.message_details_error
                 is MessageDetails.Row.Sim -> R.string.message_details_sim
@@ -99,8 +103,11 @@ private fun DetailRow(
             // Contact / sender-directory name first, raw address beneath it.
             is MessageDetails.Row.Counterparty ->
                 row.resolvedName?.let { "$it\n${row.address}" } ?: row.address
+            // With seconds: sent vs received of one message can differ by
+            // seconds, and that difference is what the row is for.
             is MessageDetails.Row.Timestamp ->
-                MessageMetadata.timestampLabel(row.timestampMs, is24Hour)
+                MessageMetadata.preciseTimestampLabel(row.timestampMs, is24Hour)
+            MessageDetails.Row.SentTimeUnknown -> stringResource(R.string.message_details_sent_unknown)
             is MessageDetails.Row.Delivered ->
                 stringResource(
                     when (row.knowledge) {

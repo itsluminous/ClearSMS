@@ -27,6 +27,7 @@ class MessageDetailsTest {
         attachmentKinds: String? = null,
         sendFailureReason: String? = null,
         deletedAt: Long? = null,
+        dateSent: Long? = null,
     ) = MessageEntity(
         id = 7,
         threadId = 1,
@@ -41,6 +42,7 @@ class MessageDetailsTest {
         attachmentKinds = attachmentKinds,
         sendFailureReason = sendFailureReason,
         deletedAt = deletedAt,
+        dateSent = dateSent,
     )
 
     private fun rows(
@@ -57,9 +59,43 @@ class MessageDetailsTest {
         assertThat(rows[1]).isEqualTo(
             Row.Counterparty(outgoing = false, address = "5550100", resolvedName = "Test Sender"),
         )
-        assertThat(rows[2]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        assertThat(rows).contains(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
         assertThat(rows.filterIsInstance<Row.Delivered>()).isEmpty()
         assertThat(rows.filterIsInstance<Row.Error>()).isEmpty()
+    }
+
+    @Test
+    fun `incoming SMS with a network sent time - sent row (network-labelled) then received row, distinct instants`() {
+        // Sent 4.5 s before it was received: both rows carry their own
+        // instant (rendered with seconds), labelled so neither is mistaken
+        // for the other.
+        val rows = rows(entity(outgoing = false, dateSent = 1_699_999_995_500))
+
+        assertThat(rows[2]).isEqualTo(Row.Timestamp(TimeKind.SENT_BY_NETWORK, 1_699_999_995_500))
+        assertThat(rows[3]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        assertThat(rows.filterIsInstance<Row.SentTimeUnknown>()).isEmpty()
+        // The outgoing "Sent" kind is never used for an incoming message.
+        assertThat(rows.filterIsInstance<Row.Timestamp>().map { it.kind }).doesNotContain(TimeKind.SENT)
+    }
+
+    @Test
+    fun `incoming SMS without a network sent time - says so instead of inventing or duplicating one`() {
+        val rows = rows(entity(outgoing = false, dateSent = null))
+
+        assertThat(rows[2]).isEqualTo(Row.SentTimeUnknown)
+        assertThat(rows[3]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        // Exactly ONE timestamp row: the received time is never shown twice
+        // under a "Sent" label.
+        assertThat(rows.filterIsInstance<Row.Timestamp>()).hasSize(1)
+    }
+
+    @Test
+    fun `outgoing SMS - exactly one time row, Sent, and no received time the phone never learns`() {
+        val rows = rows(entity(outgoing = true, status = DeliveryStatus.SENT))
+
+        assertThat(rows.filterIsInstance<Row.Timestamp>())
+            .containsExactly(Row.Timestamp(TimeKind.SENT, 1_700_000_000_000))
+        assertThat(rows.filterIsInstance<Row.SentTimeUnknown>()).isEmpty()
     }
 
     @Test

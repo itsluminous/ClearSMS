@@ -130,7 +130,28 @@ data class MessageEntity(
      * failed-message dialog so 'Not sent' is never the whole story.
      */
     val sendFailureReason: String? = null,
+    /**
+     * When the SENDER's network says an incoming message was sent - the
+     * SMSC timestamp carried in the PDU (`Telephony.Sms.DATE_SENT`), as
+     * opposed to [timestamp], which is when THIS device received it. Null
+     * = unknown: the network reported nothing (the provider stores 0 for
+     * that, and 0 is never a real send time), the row is an MMS, or it is
+     * outgoing (an outgoing row's send time IS its [timestamp]). Never
+     * invented, never corrected for SMSC clock skew - shown as reported
+     * and labelled as the network's time. The optional sent-time sort
+     * falls back to [timestamp] wherever this is null.
+     */
+    val dateSent: Long? = null,
 )
+
+/**
+ * The instant a message sorts and shows at under the sent-time ordering:
+ * the sender's timestamp when known, otherwise the received time - so the
+ * order stays total and a message with no network timestamp is never
+ * pushed to the epoch. Mirrors the SQL `COALESCE(dateSent, timestamp)`
+ * the sent-order DAO queries sort by.
+ */
+fun MessageEntity.sentOrReceivedTimestamp(): Long = dateSent ?: timestamp
 
 /**
  * Identity check for a row found by provider id. Provider row ids are
