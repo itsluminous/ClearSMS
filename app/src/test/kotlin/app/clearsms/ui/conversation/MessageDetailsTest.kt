@@ -14,10 +14,11 @@ import org.junit.Test
 
 /**
  * The "More details" rows come straight from persisted state, and delivery
- * is reported HONESTLY: only a real carrier report reads as delivered
- * (never with a fabricated time - none is recorded), a sent-without-report
- * SMS is Unknown, and outgoing MMS is always Unknown because this app does
- * not support MMS delivery reports. All fixtures are synthetic.
+ * is reported HONESTLY: only a real carrier report reads as delivered, with
+ * a time only when the app recorded when it processed that report (the
+ * acknowledgement time - never a fabricated one), a sent-without-report SMS
+ * is Unknown, and outgoing MMS is always Unknown because this app does not
+ * support MMS delivery reports. All fixtures are synthetic.
  */
 class MessageDetailsTest {
     private fun entity(
@@ -27,6 +28,7 @@ class MessageDetailsTest {
         attachmentKinds: String? = null,
         sendFailureReason: String? = null,
         deletedAt: Long? = null,
+        dateSent: Long? = null,
     ) = MessageEntity(
         id = 7,
         threadId = 1,
@@ -41,6 +43,7 @@ class MessageDetailsTest {
         attachmentKinds = attachmentKinds,
         sendFailureReason = sendFailureReason,
         deletedAt = deletedAt,
+        dateSent = dateSent,
     )
 
     private fun rows(
@@ -57,9 +60,43 @@ class MessageDetailsTest {
         assertThat(rows[1]).isEqualTo(
             Row.Counterparty(outgoing = false, address = "5550100", resolvedName = "Test Sender"),
         )
-        assertThat(rows[2]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        assertThat(rows).contains(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
         assertThat(rows.filterIsInstance<Row.Delivered>()).isEmpty()
         assertThat(rows.filterIsInstance<Row.Error>()).isEmpty()
+    }
+
+    @Test
+    fun `incoming SMS with a network sent time - sent row (network-labelled) then received row, distinct instants`() {
+        // Sent 4.5 s before it was received: both rows carry their own
+        // instant (rendered with seconds), labelled so neither is mistaken
+        // for the other.
+        val rows = rows(entity(outgoing = false, dateSent = 1_699_999_995_500))
+
+        assertThat(rows[2]).isEqualTo(Row.Timestamp(TimeKind.SENT_BY_NETWORK, 1_699_999_995_500))
+        assertThat(rows[3]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        assertThat(rows.filterIsInstance<Row.SentTimeUnknown>()).isEmpty()
+        // The outgoing "Sent" kind is never used for an incoming message.
+        assertThat(rows.filterIsInstance<Row.Timestamp>().map { it.kind }).doesNotContain(TimeKind.SENT)
+    }
+
+    @Test
+    fun `incoming SMS without a network sent time - says so instead of inventing or duplicating one`() {
+        val rows = rows(entity(outgoing = false, dateSent = null))
+
+        assertThat(rows[2]).isEqualTo(Row.SentTimeUnknown)
+        assertThat(rows[3]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        // Exactly ONE timestamp row: the received time is never shown twice
+        // under a "Sent" label.
+        assertThat(rows.filterIsInstance<Row.Timestamp>()).hasSize(1)
+    }
+
+    @Test
+    fun `outgoing SMS - exactly one time row, Sent, and no received time the phone never learns`() {
+        val rows = rows(entity(outgoing = true, status = DeliveryStatus.SENT))
+
+        assertThat(rows.filterIsInstance<Row.Timestamp>())
+            .containsExactly(Row.Timestamp(TimeKind.SENT, 1_700_000_000_000))
+        assertThat(rows.filterIsInstance<Row.SentTimeUnknown>()).isEmpty()
     }
 
     @Test
@@ -71,6 +108,75 @@ class MessageDetailsTest {
         assertThat(rows[1]).isEqualTo(
             Row.Counterparty(outgoing = true, address = "5550100", resolvedName = null),
         )
+    }
+
+    @Test
+    fun `delivered SMS with a recorded acknowledgement - the report's processing time is the delivery time`() {
+        // GitHub #44: the phone handled the carrier's delivery report at
+        // this instant, so that IS shown - as the acknowledgement time.
+        val rows =
+            rows(
+                entity(outgoing = true, status = DeliveryStatus.DELIVERED)
+                    .copy(deliveredAt = 1_700_000_012_345),
+            )
+
+        val delivered = rows.filterIsInstance<Row.Delivered>().single()
+        assertThat(delivered).isEqualTo(Row.Delivered(DeliveryKnowledge.CONFIRMED, acknowledgedAtMs = 1_700_000_012_345))
+        assertThat(delivered.acknowledgedAtMs).isEqualTo(1_700_000_012_345)
+        // Still exactly one plain time row (Sent): the acknowledgement rides
+        // on the Delivered row, it is not a second "Received"-style row.
+        assertThat(rows.filterIsInstance<Row.Timestamp>())
+            .containsExactly(Row.Timestamp(TimeKind.SENT, 1_700_000_000_000))
+    }
+
+    @Test
+    fun `delivered SMS whose report arrival was never recorded - confirmed WITHOUT a time, none invented`() {
+        // Pre-column rows and provider-imported delivered rows: a report
+        // exists, but when it arrived is unknown - so no time.
+        val delivered =
+            rows(entity(outgoing = true, status = DeliveryStatus.DELIVERED))
+                .filterIsInstance<Row.Delivered>()
+                .single()
+
+        assertThat(delivered.knowledge).isEqualTo(DeliveryKnowledge.CONFIRMED)
+        assertThat(delivered.acknowledgedAtMs).isNull()
+    }
+
+    @Test
+    fun `sent with NO report - unknown and no time, even if a stale acknowledgement is on the row`() {
+        val delivered =
+            rows(
+                entity(outgoing = true, status = DeliveryStatus.SENT)
+                    .copy(deliveredAt = 1_700_000_012_345),
+            ).filterIsInstance<Row.Delivered>().single()
+
+        assertThat(delivered).isEqualTo(Row.Delivered(DeliveryKnowledge.UNKNOWN_NO_REPORT))
+        assertThat(delivered.acknowledgedAtMs).isNull()
+    }
+
+    @Test
+    fun `failed with a stale acknowledgement - error row only, no delivery row at all`() {
+        val rows =
+            rows(
+                entity(outgoing = true, status = DeliveryStatus.FAILED)
+                    .copy(deliveredAt = 1_700_000_012_345),
+            )
+
+        assertThat(rows).contains(Row.Error(null))
+        assertThat(rows.filterIsInstance<Row.Delivered>()).isEmpty()
+    }
+
+    @Test
+    fun `outgoing MMS marked delivered - still honestly unsupported, no acknowledgement time`() {
+        // MMS delivery reports are not supported, so even a DELIVERED-marked
+        // MMS row (which the send path never produces) claims nothing.
+        val delivered =
+            rows(
+                entity(outgoing = true, status = DeliveryStatus.DELIVERED, attachmentKinds = "IMAGE")
+                    .copy(deliveredAt = 1_700_000_012_345),
+            ).filterIsInstance<Row.Delivered>().single()
+
+        assertThat(delivered).isEqualTo(Row.Delivered(DeliveryKnowledge.UNSUPPORTED_MMS))
     }
 
     @Test

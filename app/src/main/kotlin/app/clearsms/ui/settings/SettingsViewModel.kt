@@ -18,7 +18,10 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
+import app.clearsms.domain.model.InboxPillLabels
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -33,6 +36,7 @@ import app.clearsms.ui.composemsg.ContactSuggestion
 import app.clearsms.ui.composemsg.ContactSuggestions
 import app.clearsms.ui.composemsg.contactSuggestionFeed
 import app.clearsms.ui.finance.BalanceVisibility
+import app.clearsms.ui.inbox.InboxPillConfig
 import app.clearsms.work.BackupWorker
 import app.clearsms.work.RecategorizeWorker
 import app.clearsms.work.ReminderAlarmScheduler
@@ -57,6 +61,8 @@ data class SettingsUiState(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val showTransactionDetails: Boolean = true,
+    /** Conversations/messages ordered by received (default) or sent time. */
+    val messageSortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     /** Recycle bin for deleted messages (30-day retention); default ON. */
     val recycleBinEnabled: Boolean = true,
     val showRichAvatars: Boolean = true,
@@ -248,6 +254,8 @@ class SettingsViewModel
             val logoBackground: LogoBackground = LogoBackground.NONE,
             /** Filled by the third combine stage. */
             val recycleBinEnabled: Boolean = true,
+            /** Filled by the fourth combine stage. */
+            val messageSortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
         )
 
         private data class NotificationState(
@@ -285,6 +293,8 @@ class SettingsViewModel
                 appearance.copy(logoBackground = logoBackground)
             }.combine(settings.recycleBinEnabled) { appearance, binEnabled ->
                 appearance.copy(recycleBinEnabled = binEnabled)
+            }.combine(settings.messageSortOrder) { appearance, sortOrder ->
+                appearance.copy(messageSortOrder = sortOrder)
             }
         private val notifications =
             combine(
@@ -355,6 +365,7 @@ class SettingsViewModel
                     theme = appearanceState.theme,
                     dynamicColor = appearanceState.dynamicColor,
                     showTransactionDetails = appearanceState.showTransactionDetails,
+                    messageSortOrder = appearanceState.messageSortOrder,
                     recycleBinEnabled = appearanceState.recycleBinEnabled,
                     showRichAvatars = appearanceState.showRichAvatars,
                     logoBackground = appearanceState.logoBackground,
@@ -392,6 +403,8 @@ class SettingsViewModel
 
         fun setShowTransactionDetails(value: Boolean) = launchIo { settings.setShowTransactionDetails(value) }
 
+        fun setMessageSortOrder(value: MessageSortOrder) = launchIo { settings.setMessageSortOrder(value) }
+
         fun setRecycleBinEnabled(value: Boolean) = launchIo { settings.setRecycleBinEnabled(value) }
 
         fun setShowRichAvatars(value: Boolean) = launchIo { settings.setShowRichAvatars(value) }
@@ -413,13 +426,31 @@ class SettingsViewModel
 
         fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
 
-        fun setInboxPillOrder(value: List<Category>) = launchIo { settings.setInboxPillOrder(value) }
+        fun setInboxPillOrder(value: List<InboxPill>) = launchIo { settings.setInboxPillOrder(value) }
+
+        fun setInboxHiddenPills(value: Set<InboxPill>) = launchIo { settings.setInboxHiddenPills(value) }
+
+        /**
+         * Stores the pill labels after [InboxPillLabels.sanitize]: a blank
+         * or whitespace-only entry means "back to the built-in label" and
+         * is dropped, so Reset is just "clear the field".
+         */
+        fun setInboxPillLabels(value: Map<InboxPill, String>) =
+            launchIo {
+                settings.setInboxPillLabels(
+                    value.mapNotNull { (pill, raw) -> InboxPillLabels.sanitize(raw)?.let { pill to it } }.toMap(),
+                )
+            }
+
+        fun resetInboxPillLabels() = launchIo { settings.setInboxPillLabels(emptyMap()) }
+
+        fun setInboxUnreadToggle(value: Boolean) = launchIo { settings.setInboxUnreadToggle(value) }
 
         fun setFinancePillOrder(value: List<FinanceTab>) = launchIo { settings.setFinancePillOrder(value) }
 
         fun setAlertsPillOrder(value: List<AlertFilter>) = launchIo { settings.setAlertsPillOrder(value) }
 
-        fun resetInboxPillOrder() = setInboxPillOrder(Category.entries.toList())
+        fun resetInboxPillOrder() = setInboxPillOrder(InboxPill.entries.toList())
 
         fun resetFinancePillOrder() = setFinancePillOrder(FinanceTab.entries.toList())
 
@@ -476,9 +507,18 @@ class SettingsViewModel
         fun setDelayedSendDelay(value: DelayedSendDelay) = launchIo { settings.setDelayedSendDelay(value) }
 
         /** Current pill order per screen, for the reorder dialogs. */
-        val inboxPillOrder: StateFlow<List<Category>> =
+        val inboxPillOrder: StateFlow<List<InboxPill>> =
             settings.inboxPillOrder
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Category.entries.toList())
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxPill.entries.toList())
+
+        /** Order + hidden set + labels together, for the Inbox pill rows and dialogs. */
+        val inboxPills: StateFlow<InboxPillConfig> =
+            combine(settings.inboxPillOrder, settings.inboxHiddenPills, settings.inboxPillLabels, ::InboxPillConfig)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxPillConfig())
+
+        val inboxUnreadToggle: StateFlow<Boolean> =
+            settings.inboxUnreadToggle
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
         val financePillOrder: StateFlow<List<FinanceTab>> =
             settings.financePillOrder

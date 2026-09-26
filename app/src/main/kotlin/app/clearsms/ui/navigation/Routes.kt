@@ -1,6 +1,8 @@
 package app.clearsms.ui.navigation
 
 import android.net.Uri
+import app.clearsms.ui.settings.SettingsItem
+import app.clearsms.ui.settings.SettingsSection
 
 /** Route constants for the single-activity nav graph. */
 object Routes {
@@ -19,6 +21,33 @@ object Routes {
      * a [app.clearsms.ui.settings.SettingsItem] name.
      */
     fun settings(item: String? = null) = "settings?highlight=${Uri.encode(item.orEmpty())}"
+
+    /**
+     * One section's sub-screen (a [SettingsSection] name), optionally
+     * scrolled to one of its rows with the same highlight as [settings].
+     * Prefixed `settings/section/` so it can never be confused with the
+     * fixed `settings/privacy`-style routes below.
+     */
+    const val SETTINGS_SECTION = "settings/section/{section}?highlight={highlight}"
+
+    fun settingsSection(
+        section: SettingsSection,
+        item: String? = null,
+    ) = "settings/section/${section.name}?highlight=${Uri.encode(item.orEmpty())}"
+
+    /**
+     * The routes to push, in order, to land on [item] flashed - the ONE
+     * resolver every "take me to this setting" link goes through, so a row
+     * moving between the top-level screen and a sub-screen re-points every
+     * link at once. A nested row needs the top-level screen pushed first,
+     * so Back from the sub-screen lands on Settings and not on the caller.
+     */
+    fun settingsPath(item: SettingsItem): List<String> =
+        if (item.nested) {
+            listOf(settings(), settingsSection(item.section, item.name))
+        } else {
+            listOf(settings(item.name))
+        }
 
     const val PRIVACY_POLICY = "settings/privacy"
     const val LICENSES = "settings/licenses"

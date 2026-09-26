@@ -28,8 +28,14 @@ sealed interface RuleApplyScope {
 }
 
 object RuleScopeResolver {
-    /** A pattern that is nothing but the case-insensitive flag and a literal. */
-    private val literalSenderPattern = Regex("""^\(\?i\)[A-Za-z0-9 ]+$""")
+    /**
+     * A pattern that is nothing but the case-insensitive flag and a literal,
+     * where the literal is plain letters/digits/spaces and backslash-escaped
+     * metacharacters - the shape [RuleComposer.escapeLiteral] emits, so a
+     * sender id like `AB.CD` (`(?i)AB\.CD`) or `A+B` still counts as one
+     * sender rather than being kicked to the full re-sort.
+     */
+    private val literalSenderPattern = Regex("""^\(\?i\)(?:[A-Za-z0-9 _]|\\[^A-Za-z0-9])+$""")
 
     /**
      * Decides the scope of a rule saved from the wizard.
@@ -51,7 +57,26 @@ object RuleScopeResolver {
         if (!boundToSender || senderPatternEdited) return RuleApplyScope.Everything
         if (sourceSender.isBlank() || senderPattern.isBlank()) return RuleApplyScope.Everything
         if (!literalSenderPattern.matches(senderPattern)) return RuleApplyScope.Everything
-        val core = senderPattern.removePrefix("(?i)").trim()
+        // Unescape back to the literal, then normalise it exactly as the
+        // message table normalises senders (phone numbers → last ten digits),
+        // since that column is what the targeted re-sort searches.
+        val literal = unescape(senderPattern.removePrefix("(?i)")).trim()
+        val core = SenderRule.senderCore(literal)
         return if (core.isEmpty()) RuleApplyScope.Everything else RuleApplyScope.Sender(core)
     }
+
+    private fun unescape(pattern: String): String =
+        buildString {
+            var i = 0
+            while (i < pattern.length) {
+                val c = pattern[i]
+                if (c == '\\' && i + 1 < pattern.length) {
+                    append(pattern[i + 1])
+                    i += 2
+                } else {
+                    append(c)
+                    i++
+                }
+            }
+        }
 }

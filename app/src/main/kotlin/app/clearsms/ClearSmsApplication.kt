@@ -45,9 +45,9 @@ class ClearSmsApplication :
         // Folds legacy block records (the old ui-prefs mirror and per-row
         // flags) into the authoritative settings blocklist - idempotent.
         senderBlocker.onAppStart()
-        // One-time SIM backfill: fills subscriptionId on rows imported before
-        // the importer read the provider's sub_id column. Instant no-op once
-        // the versioned pass has completed.
+        // One-time provider backfills (SIM, then sent time): fill columns on
+        // rows imported before the importer read them. Instant no-op once
+        // the versioned passes have completed.
         SimBackfillWorker.enqueue(this)
     }
 

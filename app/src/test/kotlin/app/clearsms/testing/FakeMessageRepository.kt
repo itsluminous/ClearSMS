@@ -8,6 +8,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -30,6 +31,8 @@ open class FakeMessageRepository : MessageRepository {
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
+        sortOrder: MessageSortOrder,
     ): PagingSource<Int, InboxThreadRow> = InboxRowPagingSource(inbox.value.map { InboxThreadRow(it, draftText = drafts[it.threadId]) })
 
     /** In-memory drafts keyed by threadId. */
@@ -56,13 +59,17 @@ open class FakeMessageRepository : MessageRepository {
 
     override suspend fun pinnedCountInThreads(threadIds: List<Long>): Int = threadIds.count { it in pinnedThreads }
 
-    override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = ListPagingSource(emptyList())
+    override fun pagedThread(
+        threadId: Long,
+        sortOrder: MessageSortOrder,
+    ): PagingSource<Int, MessageEntity> = ListPagingSource(emptyList())
 
     override suspend fun firstInThread(threadId: Long): MessageEntity? = null
 
     override suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
     ): List<Long> = emptyList()
 
     override suspend fun messageIdsInThread(threadId: Long): List<Long> = emptyList()
@@ -70,6 +77,7 @@ open class FakeMessageRepository : MessageRepository {
     override suspend fun positionInThread(
         threadId: Long,
         messageId: Long,
+        sortOrder: MessageSortOrder,
     ): Int = 0
 
     override suspend fun bodiesInOrder(ids: List<Long>): List<String> = emptyList()

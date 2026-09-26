@@ -39,6 +39,27 @@ class SmsReceiverPartsTest {
     }
 
     @Test
+    fun `merged message keeps the earliest KNOWN sent time and stays unknown when no part has one`() {
+        // Received time (this device) and sent time (the network) travel
+        // separately: the merge takes the earliest of each, ignoring parts
+        // whose PDU carried no sent time (0 → null) rather than sinking the
+        // message to the epoch.
+        val merged =
+            SmsReceiver.mergeParts(
+                listOf(
+                    Part("SENDER", "part1", timestampMs = 500L, sentAtMs = null),
+                    Part("SENDER", "part2", timestampMs = 500L, sentAtMs = 310L),
+                    Part("SENDER", "part3", timestampMs = 500L, sentAtMs = 300L),
+                ),
+            )
+        assertThat(merged.single().sentAtMs).isEqualTo(300L)
+        assertThat(merged.single().timestampMs).isEqualTo(500L)
+
+        val unknown = SmsReceiver.mergeParts(listOf(Part("SENDER", "a", 500L), Part("SENDER", "b", 500L)))
+        assertThat(unknown.single().sentAtMs).isNull()
+    }
+
+    @Test
     fun `parts from different senders stay separate messages`() {
         val merged =
             SmsReceiver.mergeParts(

@@ -53,6 +53,29 @@ class RuleApplyScopeTest {
     }
 
     @Test
+    fun `an escaped literal - a sender id with regex specials - is still one sender`() {
+        // The app escapes "AB.CD" to "AB\\.CD"; that is a literal, not a regex
+        // reaching other senders, so it must take the immediate path with the
+        // UNESCAPED core the message table stores.
+        assertThat(resolve(senderPattern = "(?i)AB\\.CD", sourceSender = "AX-AB.CD"))
+            .isEqualTo(RuleApplyScope.Sender("AB.CD"))
+        assertThat(resolve(senderPattern = "(?i)A\\+B", sourceSender = "A+B"))
+            .isEqualTo(RuleApplyScope.Sender("A+B"))
+        // ...while an UNESCAPED metacharacter or a class escape stays broad.
+        assertThat(resolve(senderPattern = "(?i)AB.CD")).isEqualTo(RuleApplyScope.Everything)
+        assertThat(resolve(senderPattern = "(?i)AB\\dCD")).isEqualTo(RuleApplyScope.Everything)
+    }
+
+    @Test
+    fun `a phone-number sender scopes to the normalised digits the message table indexes`() {
+        assertThat(resolve(senderPattern = "(?i)9876543210", sourceSender = "+919876543210"))
+            .isEqualTo(RuleApplyScope.Sender("9876543210"))
+        // A legacy wizard pattern that kept the "+" resolves to the same core.
+        assertThat(resolve(senderPattern = "(?i)\\+919876543210", sourceSender = "+919876543210"))
+            .isEqualTo(RuleApplyScope.Sender("9876543210"))
+    }
+
+    @Test
     fun `editing an existing rule with no source message needs the full re-sort`() {
         assertThat(resolve(sourceSender = "")).isEqualTo(RuleApplyScope.Everything)
     }

@@ -83,7 +83,7 @@ class MessagePagingSourceTest {
                 ),
             )
 
-            val page = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+            val page = load(dao.pagingInbox(category = null, unreadOnly = false, scamOnly = false), loadSize = 10)
 
             assertThat(page.map { it.message.id }).isEqualTo(listOf(3L, 2L, 4L))
         }
@@ -98,7 +98,7 @@ class MessagePagingSourceTest {
                 ),
             )
 
-            val page = load(dao.pagingInbox(category = Category.IMPORTANT, unreadOnly = false), loadSize = 10)
+            val page = load(dao.pagingInbox(category = Category.IMPORTANT, unreadOnly = false, scamOnly = false), loadSize = 10)
 
             assertThat(page.map { it.message.id }).containsExactly(2L)
         }
@@ -114,7 +114,7 @@ class MessagePagingSourceTest {
             )
             db.draftDao().upsert(DraftEntity(threadId = 1, text = "half-typed reply", updatedAt = 1L))
 
-            val page = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+            val page = load(dao.pagingInbox(category = null, unreadOnly = false, scamOnly = false), loadSize = 10)
 
             assertThat(page.first { it.message.threadId == 1L }.draftText).isEqualTo("half-typed reply")
             assertThat(page.first { it.message.threadId == 2L }.draftText).isNull()
@@ -133,10 +133,10 @@ class MessagePagingSourceTest {
             )
             db.draftDao().upsert(DraftEntity(threadId = 1, text = "draft", updatedAt = 1L))
 
-            val all = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+            val all = load(dao.pagingInbox(category = null, unreadOnly = false, scamOnly = false), loadSize = 10)
             assertThat(all.map { it.message.threadId }).isEqualTo(listOf(2L, 1L))
 
-            val unread = load(dao.pagingInbox(category = null, unreadOnly = true), loadSize = 10)
+            val unread = load(dao.pagingInbox(category = null, unreadOnly = true, scamOnly = false), loadSize = 10)
             assertThat(unread.map { it.message.threadId }).containsExactly(2L)
         }
 
@@ -159,7 +159,7 @@ class MessagePagingSourceTest {
                 ),
             )
 
-            val page = load(dao.pagingInbox(category = null, unreadOnly = false), loadSize = 10)
+            val page = load(dao.pagingInbox(category = null, unreadOnly = false, scamOnly = false), loadSize = 10)
 
             assertThat(page.map { it.message.threadId }).isEqualTo(listOf(2L, 1L, 4L, 3L))
             assertThat(page.map { it.pinned }).isEqualTo(listOf(true, true, false, false))
@@ -179,11 +179,11 @@ class MessagePagingSourceTest {
             )
 
             // Under the Important pill the pinned promotional thread is absent.
-            val important = load(dao.pagingInbox(category = Category.IMPORTANT, unreadOnly = false), loadSize = 10)
+            val important = load(dao.pagingInbox(category = Category.IMPORTANT, unreadOnly = false, scamOnly = false), loadSize = 10)
             assertThat(important.map { it.message.threadId }).containsExactly(2L)
 
             // Under the Promotional pill it shows (and is pinned).
-            val promos = load(dao.pagingInbox(category = Category.PROMOTIONAL, unreadOnly = false), loadSize = 10)
+            val promos = load(dao.pagingInbox(category = Category.PROMOTIONAL, unreadOnly = false, scamOnly = false), loadSize = 10)
             assertThat(promos.single().pinned).isTrue()
         }
 

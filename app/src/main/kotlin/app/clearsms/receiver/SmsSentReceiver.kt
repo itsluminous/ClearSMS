@@ -42,10 +42,14 @@ class SmsSentReceiver : BroadcastReceiver() {
                 partIndex = intent.getIntExtra(EXTRA_PART_INDEX, 0),
                 partCount = intent.getIntExtra(EXTRA_PART_COUNT, 1),
             )
+        // Taken here, before the coroutine hop: the acknowledgement time is
+        // when THIS device handled the report broadcast, not when the DB
+        // write happened to run and never the carrier's own timestamp.
+        val acknowledgedAtMs = System.currentTimeMillis()
         val pending = goAsync()
         receiverScope.launch {
             try {
-                recorder.record(report)
+                recorder.record(report, acknowledgedAtMs)
             } finally {
                 pending.finish()
             }
@@ -126,6 +130,8 @@ class DefaultSendReportSideEffects
  *   for "sent" without per-part persistence.
  * - DELIVERED: counted per part; the message is promoted to DELIVERED only
  *   when EVERY part has a carrier delivery report and no part has failed.
+ *   The completing report's processing time is persisted as the
+ *   acknowledgement (delivery) time - see [MessageEntity.deliveredAt].
  *   `STATUS_COMPLETE` is mirrored to the provider only on that completing
  *   report. A partially delivered multipart message stays at SENT.
  */
@@ -136,7 +142,15 @@ class SendReportRecorder
         private val messageDao: MessageDao,
         private val sideEffects: SendReportSideEffects,
     ) {
-        suspend fun record(report: SendPartReport) {
+        /**
+         * Applies [report]; [acknowledgedAtMs] is when this device processed
+         * it (the receiver's `onReceive` instant) and is recorded as the
+         * delivery time only by a report that COMPLETES delivery.
+         */
+        suspend fun record(
+            report: SendPartReport,
+            acknowledgedAtMs: Long = System.currentTimeMillis(),
+        ) {
             val systemSmsId = report.providerUri?.lastPathSegment?.toLongOrNull()
             when (report.status) {
                 DeliveryStatus.FAILED -> {
@@ -158,7 +172,7 @@ class SendReportRecorder
                     }
                 }
                 DeliveryStatus.DELIVERED -> {
-                    if (systemSmsId != null && messageDao.recordPartDelivered(systemSmsId)) {
+                    if (systemSmsId != null && messageDao.recordPartDelivered(systemSmsId, acknowledgedAtMs)) {
                         report.providerUri?.let { sideEffects.mirrorDelivered(it) }
                     }
                 }

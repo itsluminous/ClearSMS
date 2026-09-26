@@ -20,6 +20,8 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.ApplicationScope
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.mms.MmsInbound
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
@@ -91,22 +93,33 @@ data class ConversationItem(
     val simLabel: String? = null,
 )
 
-/** Maps a stored message to its bubble; direction and status come from the row. */
+/**
+ * Maps a stored message to its bubble; direction and status come from the
+ * row. [ConversationItem.timestamp] (and so the bubble's time label and the
+ * date separators) is the instant the thread is SORTED by under
+ * [sortOrder]: the received time by default, the sender's time when the
+ * sent-time sort is on - so what the bubbles show is never out of order
+ * with where they sit. A message with no known sent time keeps its
+ * received time under either setting (see [MessageSortOrder.sortTimestamp]).
+ */
 internal fun MessageEntity.toConversationItem(
     json: Json,
     simTagFor: (Int?) -> String? = { null },
-): ConversationItem =
-    ConversationItem(
+    sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
+): ConversationItem {
+    val shownAt = sortOrder.sortTimestamp(timestamp, dateSent)
+    return ConversationItem(
         id = id,
         body = body,
-        timestamp = timestamp,
+        timestamp = shownAt,
         outgoing = isOutgoing,
         message = this,
         details = parseDetails(json, extractedDataJson),
-        timeLabel = RelativeTime.format(timestamp),
+        timeLabel = RelativeTime.format(shownAt),
         deliveryStatus = if (isOutgoing) deliveryStatus else null,
         simLabel = simTagFor(subscriptionId),
     )
+}
 
 private fun parseDetails(
     json: Json,
@@ -337,11 +350,15 @@ class ConversationViewModel
          * from its PERSISTED direction and status - it stays right-aligned
          * with its outcome after a restart, unlike the old session-state
          * bubbles. When navigation carries a highlight target, paging starts
-         * at its position so the message is in the first load.
+         * at its position so the message is in the first load - a position
+         * resolved under the SAME sort order the pager uses (GitHub #45), so
+         * the jump lands on the target under either setting; a sort change
+         * rebuilds the pager from a freshly resolved position.
          */
         val pagedItems: Flow<PagingData<ConversationItem>> =
-            flow { emit(initialPosition()) }
-                .flatMapLatest { position ->
+            settings.messageSortOrder
+                .flatMapLatest { sortOrder ->
+                    val position = initialPosition(sortOrder)
                     Pager(
                         config =
                             PagingConfig(
@@ -350,10 +367,10 @@ class ConversationViewModel
                                 enablePlaceholders = false,
                             ),
                         initialKey = position,
-                        pagingSourceFactory = { messageRepository.pagedThread(threadId) },
+                        pagingSourceFactory = { messageRepository.pagedThread(threadId, sortOrder) },
                     ).flow
-                }.map { data -> data.map { it.toConversationItem(json, ::simTagFor) } }
-                .flowOn(ioDispatcher)
+                        .map { data -> data.map { it.toConversationItem(json, ::simTagFor, sortOrder) } }
+                }.flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 
         /**
@@ -668,9 +685,9 @@ class ConversationViewModel
                 directoryLookup = { senderIdStore.lookup(it)?.name },
             )
 
-        private suspend fun initialPosition(): Int? =
+        private suspend fun initialPosition(sortOrder: MessageSortOrder): Int? =
             initialPagingKeyFor(
-                highlightTarget?.let { messageRepository.positionInThread(threadId, it) },
+                highlightTarget?.let { messageRepository.positionInThread(threadId, it, sortOrder) },
             )
 
         private companion object {

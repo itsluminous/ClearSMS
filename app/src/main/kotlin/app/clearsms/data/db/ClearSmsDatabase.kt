@@ -29,7 +29,7 @@ import java.time.ZoneId
         ThreadPinEntity::class,
         AttachmentEntity::class,
     ],
-    version = 19,
+    version = 21,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -113,6 +113,19 @@ import java.time.ZoneId
         // send failed, e.g. the carrier's MMS bearer never came up) so the
         // failed-message dialog can say more than 'Not sent'. Pure addition.
         AutoMigration(from = 18, to = 19),
+        // v19 -> v20: adds messages.dateSent (nullable) - the sender's
+        // network timestamp of an incoming SMS (provider DATE_SENT), kept
+        // apart from `timestamp` (when this device received it). Pure
+        // addition; existing rows read as unknown until the one-time
+        // [app.clearsms.work.SentTimeBackfill] fills them from the provider.
+        AutoMigration(from = 19, to = 20),
+        // v20 -> v21: adds messages.deliveredAt (nullable) - when this device
+        // processed the carrier delivery report that completed an outgoing
+        // SMS (the acknowledgement time, a proxy for the delivery time -
+        // not the carrier's own timestamp). Pure addition; existing
+        // DELIVERED rows read as confirmed-without-a-time, never backfilled
+        // with an invented instant.
+        AutoMigration(from = 20, to = 21),
     ],
 )
 @TypeConverters(Converters::class)

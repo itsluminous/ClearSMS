@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -32,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.rules.RuleSuggester
+import app.clearsms.domain.rules.SenderRule
 import app.clearsms.domain.rules.SuggestedToken
 import app.clearsms.domain.rules.TokenKind
 
@@ -97,6 +100,18 @@ fun RuleWizardScreen(
     val needsFullResort = state.applyOutcome is RuleApplyOutcome.NeedsFullResort
     LaunchedEffect(state.saved, needsFullResort) {
         if (state.saved && !needsFullResort) onBack()
+    }
+
+    // The one-step alternative, offered on top of the wizard whenever the
+    // sender is known: most people who open "Change category" only want
+    // "everything from this sender is promotional", not a pattern.
+    var quickSenderRule by remember { mutableStateOf(false) }
+    if (quickSenderRule) {
+        SenderRuleDialog(
+            sender = state.sourceSender,
+            onDismiss = { quickSenderRule = false },
+            onSaved = { onBack() },
+        )
     }
 
     if (state.saved && needsFullResort) {
@@ -154,6 +169,14 @@ fun RuleWizardScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (state.saveBlocked) {
+                state.validationError?.let { error ->
+                    SaveBlockedBanner(text = validationErrorText(error, state.validationDetail))
+                }
+            }
+            if (state.editingRuleId == null && state.sourceSender.isNotBlank()) {
+                QuickSenderRuleCard(sender = state.sourceSender, onClick = { quickSenderRule = true })
+            }
             if (!state.analyzed) {
                 SampleMessageStep(state, viewModel)
             } else {
@@ -338,6 +361,7 @@ private fun ExtractionStep(
                 onFieldChange = { viewModel.setTokenField(index, it) },
             )
         }
+        StepError(state, WizardField.EXTRACT)
     }
 }
 
@@ -419,6 +443,7 @@ private fun ConditionsStep(
             onValueChange = viewModel::onMustNotContainChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.rule_wizard_must_not)) },
+            isError = state.validationError == WizardValidationError.MUST_NOT_CONTAIN_PRESENT,
             singleLine = true,
         )
         Row(
@@ -441,6 +466,7 @@ private fun ConditionsStep(
             }
             Switch(checked = state.bindSender, onCheckedChange = viewModel::onBindSenderChange)
         }
+        StepError(state, WizardField.CONDITIONS)
     }
 }
 
@@ -452,6 +478,12 @@ private fun TestStep(
 ) {
     var patternVisible by remember { mutableStateOf(false) }
     var advancedOpen by remember { mutableStateOf(false) }
+    val patternError = state.validationError?.field == WizardField.PATTERN
+    // A pattern problem is only fixable in the advanced editor, so a
+    // rejected pattern opens it rather than pointing at a closed drawer.
+    LaunchedEffect(patternError) {
+        if (patternError) advancedOpen = true
+    }
     StepCard(title = stringResource(R.string.rule_wizard_step_test)) {
         TextButton(onClick = { patternVisible = !patternVisible }) {
             Icon(
@@ -525,6 +557,7 @@ private fun TestStep(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.rule_wizard_body_pattern)) },
                 textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                isError = patternError,
                 minLines = 2,
             )
             if (state.patternOverride != null) {
@@ -533,6 +566,7 @@ private fun TestStep(
                 }
             }
         }
+        StepError(state, WizardField.PATTERN)
     }
 }
 
@@ -560,10 +594,88 @@ private fun SaveStep(
         )
         state.validationError?.let { error ->
             Text(
-                text = validationErrorText(error),
+                text = stringResource(R.string.rule_error_cannot_save, validationErrorText(error, state.validationDetail)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
             )
+        }
+    }
+}
+
+/** The validation message, shown inside the step whose control caused it. */
+@Composable
+private fun StepError(
+    state: RuleWizardUiState,
+    field: WizardField,
+) {
+    val error = state.validationError ?: return
+    if (error.field != field) return
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Outlined.HighlightOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+        )
+        Text(
+            text = validationErrorText(error, state.validationDetail),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+/** Answer to a Save tap on an invalid rule: what is wrong, at the top where it is seen. */
+@Composable
+private fun SaveBlockedBanner(text: String) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.rule_error_not_saved_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}
+
+/** Shortcut to the one-step sender rule, above the full wizard. */
+@Composable
+private fun QuickSenderRuleCard(
+    sender: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.AutoMirrored.Outlined.Label, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.rule_wizard_quick_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text = stringResource(R.string.rule_wizard_quick_body, SenderRule.senderCore(sender)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            TextButton(onClick = onClick) { Text(stringResource(R.string.rule_wizard_quick_action)) }
         }
     }
 }
@@ -630,18 +742,34 @@ private fun ExtractedValues(result: CategorizationResult?) {
     }
 }
 
+/**
+ * Plain-language message for a validation failure: what is wrong and how to
+ * fix it, quoting the offending word/field/reason ([detail]) when there is one.
+ */
 @Composable
-private fun validationErrorText(error: WizardValidationError): String =
-    stringResource(
-        when (error) {
-            WizardValidationError.EMPTY_PATTERN -> R.string.rule_error_empty_pattern
-            WizardValidationError.INVALID_PATTERN -> R.string.rule_error_invalid_pattern
-            WizardValidationError.CATCH_ALL_WRAPPER -> R.string.rule_error_catch_all
-            WizardValidationError.CAPTURE_MISMATCH -> R.string.rule_error_capture_mismatch
-            WizardValidationError.DUPLICATE_FIELD -> R.string.rule_error_duplicate_field
-            WizardValidationError.NO_SOURCE_MATCH -> R.string.rule_error_no_source_match
-        },
-    )
+private fun validationErrorText(
+    error: WizardValidationError,
+    detail: String?,
+): String {
+    val quoted = detail.orEmpty()
+    return when (error) {
+        WizardValidationError.NEEDS_SAMPLE -> stringResource(R.string.rule_error_needs_sample)
+        WizardValidationError.NO_CONDITIONS -> stringResource(R.string.rule_error_no_conditions)
+        WizardValidationError.INVALID_PATTERN -> stringResource(R.string.rule_error_invalid_pattern, quoted)
+        WizardValidationError.INVALID_SENDER_PATTERN -> stringResource(R.string.rule_error_invalid_sender_pattern, quoted)
+        WizardValidationError.CATCH_ALL_WRAPPER -> stringResource(R.string.rule_error_catch_all)
+        WizardValidationError.DUPLICATE_FIELD -> stringResource(R.string.rule_error_duplicate_field, quoted)
+        WizardValidationError.CAPTURE_MISMATCH -> {
+            val (needed, have) = quoted.split('/').let { (it.getOrNull(0) ?: "?") to (it.getOrNull(1) ?: "?") }
+            stringResource(R.string.rule_error_capture_mismatch, needed, have)
+        }
+        WizardValidationError.SENDER_NOT_MATCHING -> stringResource(R.string.rule_error_sender_not_matching, quoted)
+        WizardValidationError.BODY_PATTERN_NOT_MATCHING -> stringResource(R.string.rule_error_body_not_matching)
+        WizardValidationError.MUST_CONTAIN_MISSING -> stringResource(R.string.rule_error_must_contain_missing, quoted)
+        WizardValidationError.MUST_NOT_CONTAIN_PRESENT -> stringResource(R.string.rule_error_must_not_present, quoted)
+        WizardValidationError.NO_SOURCE_MATCH -> stringResource(R.string.rule_error_no_source_match)
+    }
+}
 
 @Composable
 private fun tokenKindLabel(kind: TokenKind): String =

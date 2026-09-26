@@ -26,6 +26,7 @@ import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.ExtractedValue
 import app.clearsms.domain.model.MerchantCategory
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.ParsedDelivery
 import app.clearsms.domain.model.ParsedReminder
 import app.clearsms.domain.model.ParsedTransaction
@@ -35,6 +36,7 @@ import app.clearsms.domain.model.TransactionType
 import app.clearsms.domain.model.amount
 import app.clearsms.domain.model.date
 import app.clearsms.domain.model.merchant
+import app.clearsms.domain.model.sentTimestampOrNull
 import app.clearsms.domain.model.transactionType
 import app.clearsms.domain.parser.BalanceStatement
 import app.clearsms.domain.parser.DeliveryParser
@@ -135,7 +137,13 @@ class MessageRepositoryImpl(
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-    ): PagingSource<Int, InboxThreadRow> = messageDao.pagingInbox(category, unreadOnly)
+        scamOnly: Boolean,
+        sortOrder: MessageSortOrder,
+    ): PagingSource<Int, InboxThreadRow> =
+        when (sortOrder) {
+            MessageSortOrder.RECEIVED -> messageDao.pagingInbox(category, unreadOnly, scamOnly)
+            MessageSortOrder.SENT -> messageDao.pagingInboxBySent(category, unreadOnly, scamOnly)
+        }
 
     override suspend fun draftFor(threadId: Long): String? = draftDao.forThread(threadId)?.text
 
@@ -173,21 +181,34 @@ class MessageRepositoryImpl(
         return SqliteChunker.chunk(senders).sumOf { threadPinDao.countBySenders(it) }
     }
 
-    override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = messageDao.pagingThread(threadId)
+    override fun pagedThread(
+        threadId: Long,
+        sortOrder: MessageSortOrder,
+    ): PagingSource<Int, MessageEntity> =
+        when (sortOrder) {
+            MessageSortOrder.RECEIVED -> messageDao.pagingThread(threadId)
+            MessageSortOrder.SENT -> messageDao.pagingThreadBySent(threadId)
+        }
 
     override suspend fun firstInThread(threadId: Long): MessageEntity? = messageDao.firstInThread(threadId)
 
     override suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
-    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly)
+        scamOnly: Boolean,
+    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly, scamOnly)
 
     override suspend fun messageIdsInThread(threadId: Long): List<Long> = messageDao.messageIdsInThread(threadId)
 
     override suspend fun positionInThread(
         threadId: Long,
         messageId: Long,
-    ): Int = messageDao.newerCountInThread(threadId, messageId)
+        sortOrder: MessageSortOrder,
+    ): Int =
+        when (sortOrder) {
+            MessageSortOrder.RECEIVED -> messageDao.newerCountInThread(threadId, messageId)
+            MessageSortOrder.SENT -> messageDao.newerCountInThreadBySent(threadId, messageId)
+        }
 
     override suspend fun bodiesInOrder(ids: List<Long>): List<String> = SqliteChunker.chunk(ids).flatMap { messageDao.bodiesFor(it) }
 
@@ -535,15 +556,18 @@ class MessageRepositoryImpl(
         body: String,
         timestampMs: Long,
         systemSmsId: Long?,
+        dateSentMs: Long?,
     ): MessageRepository.IncomingIngest {
         val normalized = SenderNormalizer.normalize(sender)
+        // 0/negative from a PDU or provider means "not reported" - unknown.
+        val dateSent = sentTimestampOrNull(dateSentMs)
         // Blocked keywords and blocked senders are checked FIRST: a matching
         // message must never reach the inbox, notifications, or the finance
         // derivations below - it is born soft-deleted (bin on) or dropped
         // (bin off).
         val senderBlocked = isSenderBlocked(normalized)
         if (senderBlocked || BlockedKeywords.matches(body, blockedKeywords())) {
-            return ingestBornDeleted(sender, body, timestampMs, systemSmsId, blockedSender = senderBlocked)
+            return ingestBornDeleted(sender, body, timestampMs, systemSmsId, blockedSender = senderBlocked, dateSent = dateSent)
         }
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
@@ -569,6 +593,7 @@ class MessageRepositoryImpl(
                     subCategory = enriched.result.subCategory,
                     extractedOtp = enriched.otpCode,
                     extractedDataJson = encodeExtracted(enriched.extracted),
+                    dateSent = dateSent,
                 )
             // IGNORE (not REPLACE) on the unique systemSmsId index: a
             // concurrent catch-up import may have committed this provider row
@@ -748,6 +773,7 @@ class MessageRepositoryImpl(
         timestampMs: Long,
         systemSmsId: Long?,
         blockedSender: Boolean,
+        dateSent: Long? = null,
     ): MessageRepository.IncomingIngest {
         // Classification still runs (pure CPU) so a binned message shows an
         // honest category if the user opens the bin - but nothing is derived.
@@ -771,6 +797,7 @@ class MessageRepositoryImpl(
                 isBlockedSender = blockedSender,
                 deletedAt = timestampMs,
                 providerDeletePending = true,
+                dateSent = dateSent,
             )
         if (!binned) {
             // Dropped outright - exactly what a committed delete with the
@@ -1066,6 +1093,7 @@ class MessageRepositoryImpl(
                                 deletedAt = if (born) row.timestampMs else null,
                                 providerDeletePending = born,
                                 subscriptionId = row.subscriptionId,
+                                dateSent = row.dateSentMs,
                             )
                         } else {
                             // Outgoing (sent) message: stored as a read personal
@@ -2108,6 +2136,12 @@ internal data class ImportedSmsRow(
      * never guessed, never defaulted.
      */
     val subscriptionId: Int? = null,
+    /**
+     * The sender's network timestamp (provider `DATE_SENT`) for an INCOMING
+     * row, already normalized: null when the provider stored 0/absent
+     * (unknown) or the row is outgoing. Never guessed.
+     */
+    val dateSentMs: Long? = null,
 )
 
 /** Page source that is always empty - the unsearchable-query fallback. */

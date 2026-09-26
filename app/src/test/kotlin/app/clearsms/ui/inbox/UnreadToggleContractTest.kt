@@ -1,6 +1,7 @@
 package app.clearsms.ui.inbox
 
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.InboxPill
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
@@ -10,7 +11,8 @@ import java.io.File
  *
  * Users read the pill row as one vocabulary: chips select exclusively. The
  * Unread chip broke that (it composed with any category), so it now lives as
- * a right-aligned labeled Switch ABOVE the pills. These are source-level
+ * a labeled Switch on the app bar's TITLE LINE, leaving with the expanded
+ * title as the bar collapses (ScrollToTopTitleTest). These are source-level
  * contracts (the repo has no Compose UI test infrastructure, same style as
  * `CategoryTagSurfacesTest`) plus state-level assertions that the move did
  * not change filter semantics.
@@ -24,20 +26,22 @@ class UnreadToggleContractTest {
         // The old chip was the item keyed "unread" whose selection bound unreadOnly.
         assertThat(inbox).doesNotContain("item(key = \"unread\")")
         assertThat(inbox).doesNotContain("selected = filter.unreadOnly")
-        // The row's only content is the reorderable category pills.
-        assertThat(inbox).contains("items(orderedPills(pillOrder, Category.entries.toList())")
+        // The row's only content is the user's visible, reorderable pills.
+        assertThat(inbox).contains("items(pills.visible, key = { it.name })")
     }
 
     @Test
-    fun `unread toggle sits above the pill row`() {
+    fun `unread toggle ends the title line, above and apart from the pill row`() {
         val inbox = source("ui/inbox/InboxScreen.kt")
-        val toggle = inbox.indexOf("item(key = \"unread_toggle\")")
+        // It is the expanded-row trailing content of the shared title, so it
+        // is never a list item and can never be mistaken for a pill.
+        val toggle = inbox.indexOf("UnreadSwitch(")
         val pills = inbox.indexOf("item(key = \"filters\")")
         assertThat(toggle).isGreaterThan(-1)
         assertThat(pills).isGreaterThan(-1)
         assertThat(toggle).isLessThan(pills)
-        // Right-aligned, and a Switch (view mode), not another chip.
-        assertThat(inbox).contains("horizontalArrangement = Arrangement.End")
+        assertThat(inbox).doesNotContain("item(key = \"unread_toggle\")")
+        // A Switch (view mode), not another chip.
         assertThat(inbox).contains("Switch(checked = unreadOnly, onCheckedChange = null)")
     }
 
@@ -46,11 +50,11 @@ class UnreadToggleContractTest {
         val inbox = source("ui/inbox/InboxScreen.kt")
         assertThat(inbox).contains("onToggleUnread = viewModel::toggleUnread")
         // And that flag still composes with a selected category, both ways.
-        val state = InboxFilterState(category = Category.IMPORTANT).toggleUnread()
+        val state = InboxFilterState(pill = InboxPill.IMPORTANT).toggleUnread()
         assertThat(state.unreadOnly).isTrue()
         assertThat(state.category).isEqualTo(Category.IMPORTANT)
         assertThat(state.toggleUnread().unreadOnly).isFalse()
-        assertThat(state.selectCategory(Category.OTP).unreadOnly).isTrue()
+        assertThat(state.selectPill(InboxPill.OTP).unreadOnly).isTrue()
     }
 
     @Test
@@ -63,12 +67,12 @@ class UnreadToggleContractTest {
 
     @Test
     fun `pill order customization can never offer Unread`() {
-        // Unread is a filter flag, not a Category, so neither the Settings
-        // reorder sheet (built from Category.entries) nor a stored order can
+        // Unread is a filter flag, not an InboxPill, so neither the Settings
+        // reorder sheet (built from InboxPill.entries) nor a stored order can
         // ever produce an Unread pill.
-        assertThat(Category.entries.map { it.name }).doesNotContain("UNREAD")
+        assertThat(InboxPill.entries.map { it.name }).doesNotContain("UNREAD")
         val settings = source("ui/settings/SettingsScreen.kt")
-        assertThat(settings).contains("order = orderedPills(order, Category.entries.toList())")
+        assertThat(settings).contains("order = pills.ordered,")
     }
 
     @Test
@@ -76,6 +80,6 @@ class UnreadToggleContractTest {
         val archived = source("ui/inbox/ArchivedScreen.kt")
         assertThat(archived).doesNotContain("FilterChipRow")
         assertThat(archived).doesNotContain("filter_unread")
-        assertThat(archived).doesNotContain("UnreadToggleRow")
+        assertThat(archived).doesNotContain("UnreadSwitch")
     }
 }

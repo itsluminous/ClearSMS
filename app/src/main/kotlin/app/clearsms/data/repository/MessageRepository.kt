@@ -5,6 +5,7 @@ import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import kotlinx.coroutines.flow.Flow
 
 /** Metadata of one stored MMS attachment file, pending its Room row. */
@@ -35,10 +36,16 @@ interface MessageRepository {
 
     fun observeThread(threadId: Long): Flow<List<MessageEntity>>
 
-    /** Paged variant of [observeInbox] for incremental list loading. */
+    /**
+     * Paged variant of [observeInbox] for incremental list loading.
+     * [scamOnly] restricts to scam-flagged latest messages (the Spam pill).
+     */
     fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
+        /** Received (default) or sender's sent time - see [MessageSortOrder]. */
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     ): PagingSource<Int, InboxThreadRow>
 
     // region drafts
@@ -74,8 +81,14 @@ interface MessageRepository {
 
     // endregion
 
-    /** Paged thread messages, newest first (rendered reversed). */
-    fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity>
+    /**
+     * Paged thread messages, newest first (rendered reversed) under
+     * [sortOrder]; [positionInThread] must be asked with the SAME order.
+     */
+    fun pagedThread(
+        threadId: Long,
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
+    ): PagingSource<Int, MessageEntity>
 
     /** Oldest message of the thread (stable carrier of the sender address). */
     suspend fun firstInThread(threadId: Long): MessageEntity?
@@ -84,14 +97,19 @@ interface MessageRepository {
     suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
     ): List<Long>
 
     suspend fun messageIdsInThread(threadId: Long): List<Long>
 
-    /** Index of [messageId] in the newest-first thread ordering (0 when unknown). */
+    /**
+     * Index of [messageId] in the newest-first thread ordering under
+     * [sortOrder] (0 when unknown) - the pager's initial key for a jump.
+     */
     suspend fun positionInThread(
         threadId: Long,
         messageId: Long,
+        sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     ): Int
 
     /** Bodies of the given messages in chronological order (bulk copy). */
@@ -291,6 +309,12 @@ interface MessageRepository {
         body: String,
         timestampMs: Long,
         systemSmsId: Long? = null,
+        /**
+         * The sender's network (SMSC) timestamp from the PDU, when the
+         * network reported one - stored as [MessageEntity.dateSent] beside
+         * the received [timestampMs]. Null = unknown; never invented.
+         */
+        dateSentMs: Long? = null,
     ): IncomingIngest = IncomingIngest(insertIncoming(sender, body, timestampMs, systemSmsId), duplicate = false)
 
     // region MMS

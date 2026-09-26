@@ -125,4 +125,22 @@ class ContactSuggestionFeedTest {
             assertThat(results.last()).isEmpty()
             job.cancel()
         }
+
+    @Test
+    fun `a contact the provider returns twice reaches the list once`() =
+        runTest {
+            // Two accounts holding the same contact: identical DISPLAY_NAME and
+            // NUMBER rows. Un-deduped, the picker keys collide and Compose
+            // throws on the keystroke that surfaces the contact (issue #48).
+            val query = MutableStateFlow("")
+            val results = mutableListOf<List<ContactSuggestion>>()
+            val job = launch { contactSuggestionFeed(query, { listOf(alice, alice, amit) }).toList(results) }
+
+            query.value = "a"
+            advanceTimeBy(SUGGESTION_DEBOUNCE_MS + 1)
+
+            assertThat(results.last()).containsExactly(alice, amit).inOrder()
+            assertThat(results.last().map { it.listKey }).containsNoDuplicates()
+            job.cancel()
+        }
 }

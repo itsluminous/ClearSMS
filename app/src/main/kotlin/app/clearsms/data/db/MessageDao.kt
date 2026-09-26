@@ -52,7 +52,9 @@ interface MessageDao {
 
     /**
      * Paged variant of [observeInbox]: same latest-per-thread rows, loaded
-     * incrementally, each joined with its thread's draft and pin. Draft
+     * incrementally, each joined with its thread's draft and pin. [scamOnly]
+     * is the "Spam" pill: it keeps only threads whose latest message is
+     * scam-FLAGGED (`subCategory = SCAM`), whatever its primary category. Draft
      * presence never changes the ordering or the unread state - it only
      * decorates the preview. Pinned threads sort ABOVE everything else
      * (normal recency order within each group), and the category / unread
@@ -74,12 +76,46 @@ interface MessageDao {
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
+          AND (:scamOnly = 0 OR m.subCategory = 'SCAM')
         ORDER BY (p.pinnedAt IS NOT NULL) DESC, m.timestamp DESC
         """,
     )
     fun pagingInbox(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
+    ): PagingSource<Int, InboxThreadRow>
+
+    /**
+     * [pagingInbox] under the SENT-time ordering: each thread is still
+     * represented by its latest-inserted message, but threads are ranked by
+     * that message's `COALESCE(dateSent, timestamp)` - a conversation whose
+     * newest message was sent earlier than another's sorts below it even
+     * if it arrived later. Same pin precedence, filters and `id` tie-break
+     * as the received variant, so paging is stable under both.
+     */
+    @Query(
+        """
+        SELECT m.*, d.text AS draftText, p.pinnedAt AS pinnedAt FROM messages m
+        INNER JOIN (
+            SELECT threadId, MAX(id) AS maxId
+            FROM messages
+            WHERE deletedAt IS NULL
+            GROUP BY threadId
+        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        LEFT JOIN drafts d ON d.threadId = m.threadId
+        LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
+        WHERE m.isArchived = 0
+          AND (:category IS NULL OR m.category = :category)
+          AND (:unreadOnly = 0 OR m.isRead = 0)
+          AND (:scamOnly = 0 OR m.subCategory = 'SCAM')
+        ORDER BY (p.pinnedAt IS NOT NULL) DESC, COALESCE(m.dateSent, m.timestamp) DESC, m.id DESC
+        """,
+    )
+    fun pagingInboxBySent(
+        category: Category?,
+        unreadOnly: Boolean,
+        scamOnly: Boolean,
     ): PagingSource<Int, InboxThreadRow>
 
     /** Distinct normalized senders of the given threads (pin toggling). */
@@ -93,6 +129,23 @@ interface MessageDao {
      */
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL ORDER BY timestamp DESC, id DESC")
     fun pagingThread(threadId: Long): PagingSource<Int, MessageEntity>
+
+    /**
+     * [pagingThread] under the SENT-time ordering (Settings → Messages →
+     * Sort by): the sender's network timestamp where one is known, the
+     * received time otherwise, so two messages that arrived together after
+     * a signal gap land in the order they were sent. The `id DESC`
+     * tie-break is the same as the received pager's and
+     * [newerCountInThreadBySent] mirrors this exact key, so the highlight
+     * jump stays correct under either setting.
+     */
+    @Query(
+        """
+        SELECT * FROM messages WHERE threadId = :threadId AND deletedAt IS NULL
+        ORDER BY COALESCE(dateSent, timestamp) DESC, id DESC
+        """,
+    )
+    fun pagingThreadBySent(threadId: Long): PagingSource<Int, MessageEntity>
 
     /** Oldest message of a thread - carries the sender for the header. */
     @Query(
@@ -110,12 +163,14 @@ interface MessageDao {
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
+          AND (:scamOnly = 0 OR m.subCategory = 'SCAM')
         ORDER BY m.timestamp DESC
         """,
     )
     suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
+        scamOnly: Boolean,
     ): List<Long>
 
     @Query("SELECT id FROM messages WHERE threadId = :threadId AND deletedAt IS NULL")
@@ -141,6 +196,27 @@ interface MessageDao {
         """,
     )
     suspend fun newerCountInThread(
+        threadId: Long,
+        messageId: Long,
+    ): Int
+
+    /**
+     * [newerCountInThread] for [pagingThreadBySent]: the same COUNT over
+     * the sent-order key `COALESCE(dateSent, timestamp)` with the identical
+     * `id` tie-break, so the computed initial page matches the pager's
+     * index under the sent-time setting too.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM messages m,
+            (SELECT COALESCE(dateSent, timestamp) AS ts FROM messages WHERE id = :messageId) target
+        WHERE m.threadId = :threadId
+          AND m.deletedAt IS NULL
+          AND (COALESCE(m.dateSent, m.timestamp) > target.ts
+               OR (COALESCE(m.dateSent, m.timestamp) = target.ts AND m.id > :messageId))
+        """,
+    )
+    suspend fun newerCountInThreadBySent(
         threadId: Long,
         messageId: Long,
     ): Int
@@ -371,6 +447,30 @@ interface MessageDao {
 
     // endregion
 
+    // region sent-time (DATE_SENT) bookkeeping
+
+    /**
+     * Rows the one-time sent-time backfill could still fill: INCOMING,
+     * imported from the provider (a `systemSmsId` to match on) and with no
+     * sender timestamp recorded. Zero means a provider walk cannot fill
+     * anything and the pass can be skipped without a single provider read.
+     */
+    @Query(
+        "SELECT COUNT(*) FROM messages WHERE systemSmsId IS NOT NULL AND isOutgoing = 0 AND dateSent IS NULL",
+    )
+    suspend fun countNeedingSentTimeBackfill(): Int
+
+    /**
+     * Batched write for the sent-time backfill: every [updates] row lands
+     * in ONE transaction (Room's partial-entity update), never one
+     * transaction per row. Only [DateSentUpdate.dateSent] is written - the
+     * rest of the row is untouched.
+     */
+    @Update(entity = MessageEntity::class)
+    suspend fun setDateSentBatch(updates: List<DateSentUpdate>)
+
+    // endregion
+
     // region outgoing message status
 
     @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
@@ -427,13 +527,15 @@ interface MessageDao {
     /**
      * Worst-part failure: any part's failure report marks the whole message
      * FAILED, overwriting SENT/DELIVERED (a message with a lost part was not
-     * delivered). Returns the number of rows changed - 0 when the row was
-     * already FAILED, so callers can notify the user exactly once even when
-     * several parts of one message fail.
+     * delivered) and dropping any recorded acknowledgement time with it - a
+     * FAILED row must never carry a delivery instant. Returns the number of
+     * rows changed - 0 when the row was already FAILED, so callers can
+     * notify the user exactly once even when several parts of one message
+     * fail.
      */
     @Query(
         """
-        UPDATE messages SET deliveryStatus = :failed
+        UPDATE messages SET deliveryStatus = :failed, deliveredAt = NULL
         WHERE systemSmsId = :systemSmsId
           AND (deliveryStatus IS NULL OR deliveryStatus != :failed)
         """,
@@ -446,9 +548,16 @@ interface MessageDao {
     @Query("UPDATE messages SET deliveredParts = deliveredParts + 1 WHERE systemSmsId = :systemSmsId")
     suspend fun incrementDeliveredParts(systemSmsId: Long)
 
+    /**
+     * Promotes to DELIVERED once every part has reported, stamping
+     * [acknowledgedAtMs] - when THIS device processed the completing report
+     * - as the row's [MessageEntity.deliveredAt]. Same statement as the
+     * status flip, so the time can never exist without the status or the
+     * status (from this path) without the time.
+     */
     @Query(
         """
-        UPDATE messages SET deliveryStatus = :delivered
+        UPDATE messages SET deliveryStatus = :delivered, deliveredAt = :acknowledgedAtMs
         WHERE systemSmsId = :systemSmsId
           AND deliveredParts >= partCount
           AND deliveryStatus IN (:promotable)
@@ -456,6 +565,7 @@ interface MessageDao {
     )
     suspend fun promoteDeliveredIfComplete(
         systemSmsId: Long,
+        acknowledgedAtMs: Long,
         delivered: DeliveryStatus = DeliveryStatus.DELIVERED,
         promotable: List<DeliveryStatus> = listOf(DeliveryStatus.SENDING, DeliveryStatus.SENT),
     ): Int
@@ -463,14 +573,21 @@ interface MessageDao {
     /**
      * Records one part's carrier delivery report and applies the worst-part
      * rule: the message becomes DELIVERED only when EVERY part has reported
-     * delivery AND no part has failed (FAILED is never upgraded). Returns
+     * delivery AND no part has failed (FAILED is never upgraded). The
+     * completing report also records [acknowledgedAtMs] - the instant this
+     * device handled it - as the delivery time (see
+     * [MessageEntity.deliveredAt]); earlier parts' reports record nothing,
+     * because a partially delivered message has no delivery time. Returns
      * true when this report completed the delivery - the moment to mirror
      * `STATUS_COMPLETE` to the system provider row.
      */
     @Transaction
-    suspend fun recordPartDelivered(systemSmsId: Long): Boolean {
+    suspend fun recordPartDelivered(
+        systemSmsId: Long,
+        acknowledgedAtMs: Long,
+    ): Boolean {
         incrementDeliveredParts(systemSmsId)
-        return promoteDeliveredIfComplete(systemSmsId) > 0
+        return promoteDeliveredIfComplete(systemSmsId, acknowledgedAtMs) > 0
     }
 
     /** Records why the last send failed (a [app.clearsms.mms.SendFailureReason] name). */
@@ -480,11 +597,15 @@ interface MessageDao {
         reason: String?,
     )
 
-    /** Rewrites a failed row for re-dispatch: back to SENDING on a fresh provider row. */
+    /**
+     * Rewrites a failed row for re-dispatch: back to SENDING on a fresh
+     * provider row, with the part tally, failure reason and any stale
+     * acknowledgement time cleared - the new dispatch earns its own.
+     */
     @Query(
         """
         UPDATE messages SET deliveryStatus = :status, systemSmsId = :systemSmsId, deliveredParts = 0,
-            sendFailureReason = NULL
+            sendFailureReason = NULL, deliveredAt = NULL
         WHERE id = :id
         """,
     )
