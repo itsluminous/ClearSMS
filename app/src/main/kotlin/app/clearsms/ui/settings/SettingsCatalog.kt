@@ -5,11 +5,21 @@ import app.clearsms.R
 import app.clearsms.domain.model.EnabledSections
 
 /**
- * Settings sections in display order - enum declaration order IS the screen
- * order, so tests can assert the layout without composing anything.
+ * Settings sections in display order - enum declaration order IS the order
+ * of the top-level Settings screen, so tests can assert the layout without
+ * composing anything.
+ *
+ * Each section is either a SUB-SCREEN ([subScreen] true: the top-level
+ * screen shows one entry that opens a screen listing the section's rows) or
+ * a DIRECT entry ([subScreen] false: the section holds exactly one row and
+ * that row itself sits on the top-level screen - "Default screen" opens its
+ * picker there, "Manage rules" goes straight to the rules screen, "SMS
+ * signature" opens its editor; a one-row sub-screen would be a pointless
+ * extra tap).
  */
 enum class SettingsSection(
     @StringRes val titleRes: Int,
+    val subScreen: Boolean = true,
 ) {
     MESSAGES(R.string.settings_section_messages),
     APPEARANCE(R.string.settings_section_appearance),
@@ -18,22 +28,28 @@ enum class SettingsSection(
     INBOX(R.string.settings_section_inbox),
     FINANCE(R.string.settings_section_finance),
     ALERTS(R.string.settings_section_alerts),
-    STARTUP(R.string.settings_section_startup),
+    STARTUP(R.string.settings_section_startup, subScreen = false),
     BACKUP(R.string.settings_section_backup),
-    RULES(R.string.settings_section_rules),
-    SIGNATURE(R.string.settings_section_signature),
+    RULES(R.string.settings_section_rules, subScreen = false),
+    SIGNATURE(R.string.settings_section_signature, subScreen = false),
     DONATE(R.string.settings_section_donate),
     ABOUT(R.string.settings_section_about),
+    ;
+
+    /** The rows this section hosts, in display order. */
+    val items: List<SettingsItem>
+        get() = SettingsItem.entries.filter { it.section == this }
 }
 
 /**
  * Every settings row in display order - the single source of truth the
- * screen renders (and the search filters). [section] is null for the three
- * standalone entries that trail all sections without a header; they must
- * stay last so the null group renders as one block below the sections.
+ * screens render (and the search filters). [section] is never null: every
+ * row lives on exactly one screen - the section's sub-screen, or the
+ * top-level screen for a direct-entry section - so a row can neither be
+ * orphaned nor shown twice (pinned by SettingsCatalogTest).
  */
 enum class SettingsItem(
-    val section: SettingsSection?,
+    val section: SettingsSection,
     @StringRes val titleRes: Int,
 ) {
     ARCHIVED(SettingsSection.MESSAGES, R.string.settings_archived),
@@ -42,7 +58,8 @@ enum class SettingsItem(
     STRIP_ACCENTS(SettingsSection.MESSAGES, R.string.settings_strip_accents),
 
     // Delayed sending (GitHub #40): the toggle, then the delay it gates -
-    // both beside STRIP_ACCENTS with the other send-behaviour rows.
+    // both beside STRIP_ACCENTS with the other send-behaviour rows. The
+    // delay row is only rendered while the toggle is on (visibleSettingsItems).
     DELAYED_SEND(SettingsSection.MESSAGES, R.string.settings_delayed_send),
     DELAYED_SEND_DELAY(SettingsSection.MESSAGES, R.string.settings_delayed_send_delay),
     SHOW_EXTRACTED_DETAILS(SettingsSection.MESSAGES, R.string.settings_show_transaction_details),
@@ -98,24 +115,84 @@ enum class SettingsItem(
     PAYPAL(SettingsSection.DONATE, R.string.settings_donate_paypal),
     VERSION(SettingsSection.ABOUT, R.string.settings_version),
     SOURCE_CODE(SettingsSection.ABOUT, R.string.settings_source_code),
-    PERMISSIONS(null, R.string.settings_permissions),
-    PRIVACY_POLICY(null, R.string.settings_privacy_policy),
-    LICENSES(null, R.string.settings_licenses),
+
+    // Formerly trailing standalone rows; they are about the app, so they
+    // live on the About sub-screen below Version and Source code.
+    PERMISSIONS(SettingsSection.ABOUT, R.string.settings_permissions),
+    PRIVACY_POLICY(SettingsSection.ABOUT, R.string.settings_privacy_policy),
+    LICENSES(SettingsSection.ABOUT, R.string.settings_licenses),
+    ;
+
+    /**
+     * Whether this row is reached through a sub-screen (true) or sits on
+     * the top-level Settings screen itself (false) - the fact a deep link
+     * or search hit needs to pick its navigation target.
+     */
+    val nested: Boolean
+        get() = section.subScreen
 }
 
 /**
- * The rows the settings screen renders given which sections are enabled.
+ * What the settings screens have to render with, beyond the catalog itself:
+ * the two kinds of conditional visibility. Both follow the same pattern -
+ * a toggle row stays, the rows it gates disappear while it is off.
+ */
+data class SettingsVisibility(
+    val sections: EnabledSections,
+    /** "Delay before sending" - gates the "Sending delay" picker. */
+    val delayedSendEnabled: Boolean,
+)
+
+/**
+ * The rows the settings screens render given the current toggles.
+ *
  * A disabled Inbox/Finance/Alerts section keeps ONLY its "Show … tab"
  * toggle - the remaining rows configure a screen that no longer exists, so
  * showing them would be noise (and the toggle staying visible is what lets
- * the user re-enable the section). Every other section is untouched.
+ * the user re-enable the section). The section's sub-screen therefore stays
+ * listed and reachable, showing just that toggle: hiding the sub-screen
+ * would strand a user who disabled the section from inside it.
+ *
+ * "Sending delay" is meaningless while "Delay before sending" is off, so it
+ * is hidden the same way. Every other row is untouched.
  */
-fun visibleSettingsItems(sections: EnabledSections): List<SettingsItem> =
+fun visibleSettingsItems(visibility: SettingsVisibility): List<SettingsItem> =
     SettingsItem.entries.filter { item ->
         when (item.section) {
-            SettingsSection.INBOX -> sections.inbox || item == SettingsItem.SHOW_INBOX_TAB
-            SettingsSection.FINANCE -> sections.finance || item == SettingsItem.SHOW_FINANCE_TAB
-            SettingsSection.ALERTS -> sections.alerts || item == SettingsItem.SHOW_ALERTS_TAB
-            else -> true
+            SettingsSection.INBOX -> visibility.sections.inbox || item == SettingsItem.SHOW_INBOX_TAB
+            SettingsSection.FINANCE -> visibility.sections.finance || item == SettingsItem.SHOW_FINANCE_TAB
+            SettingsSection.ALERTS -> visibility.sections.alerts || item == SettingsItem.SHOW_ALERTS_TAB
+            else -> item != SettingsItem.DELAYED_SEND_DELAY || visibility.delayedSendEnabled
+        }
+    }
+
+/**
+ * One entry of the top-level Settings screen, in display order: a section
+ * that opens a sub-screen, or the single row of a direct-entry section
+ * rendered in place. Derived from [SettingsSection] order, so the top-level
+ * layout is a pure function of the catalog.
+ */
+sealed interface SettingsTopLevelEntry {
+    val section: SettingsSection
+
+    /** Opens the section's sub-screen. */
+    data class SubScreen(
+        override val section: SettingsSection,
+    ) : SettingsTopLevelEntry
+
+    /** The section's one row, rendered on the top-level screen itself. */
+    data class Direct(
+        override val section: SettingsSection,
+        val item: SettingsItem,
+    ) : SettingsTopLevelEntry
+}
+
+/** The top-level Settings screen's entries, in the order they are shown. */
+fun settingsTopLevelEntries(): List<SettingsTopLevelEntry> =
+    SettingsSection.entries.map { section ->
+        if (section.subScreen) {
+            SettingsTopLevelEntry.SubScreen(section)
+        } else {
+            SettingsTopLevelEntry.Direct(section, section.items.single())
         }
     }

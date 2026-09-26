@@ -73,7 +73,10 @@ import app.clearsms.ui.settings.LicensesScreen
 import app.clearsms.ui.settings.PermissionsInfoScreen
 import app.clearsms.ui.settings.PrivacyPolicyScreen
 import app.clearsms.ui.settings.SettingsItem
+import app.clearsms.ui.settings.SettingsNavigation
 import app.clearsms.ui.settings.SettingsScreen
+import app.clearsms.ui.settings.SettingsSection
+import app.clearsms.ui.settings.SettingsSectionScreen
 import app.clearsms.ui.theme.ClearSmsTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -249,7 +252,19 @@ private fun MainScaffold(
             navController.clearBackStack(route)
             val onActiveStack = runCatching { navController.getBackStackEntry(route) }.isSuccess
             if (onActiveStack) {
-                val settingsWasOnTop = navController.currentDestination?.route == Routes.SETTINGS
+                // The toggle lives on the section's settings sub-screen, so
+                // that is what is on top when this runs; both the Settings
+                // root beneath it and the sub-screen itself are re-pushed so
+                // the user stays exactly where they toggled, with Back still
+                // leading sub-screen -> Settings -> tab.
+                val top = navController.currentBackStackEntry
+                val settingsWasOnTop = top?.destination?.route == Routes.SETTINGS
+                val sectionOnTop =
+                    top
+                        ?.takeIf { it.destination.route == Routes.SETTINGS_SECTION }
+                        ?.arguments
+                        ?.getString("section")
+                        ?.let { name -> SettingsSection.entries.firstOrNull { it.name == name } }
                 navController.navigate(startDestination.toRoute()) {
                     popUpTo(route) {
                         inclusive = true
@@ -257,7 +272,8 @@ private fun MainScaffold(
                     }
                     launchSingleTop = true
                 }
-                if (settingsWasOnTop) navController.navigate(Routes.settings())
+                if (settingsWasOnTop || sectionOnTop != null) navController.navigate(Routes.settings())
+                if (sectionOnTop != null) navController.navigate(Routes.settingsSection(sectionOnTop))
             }
         }
     }
@@ -507,18 +523,37 @@ private fun MainScaffold(
                     ),
             ) { entry ->
                 SettingsScreen(
-                    highlight =
-                        entry.arguments
-                            ?.getString("highlight")
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { name -> SettingsItem.entries.firstOrNull { it.name == name } },
+                    highlight = entry.arguments?.getString("highlight").toSettingsItem(),
                     onBack = { navController.popBackStack() },
-                    onManageRules = { navController.navigate(Routes.RULES) },
-                    onArchived = { navController.navigate(Routes.ARCHIVED) },
-                    onRecycleBin = { navController.navigate(Routes.RECYCLE_BIN) },
-                    onPrivacyPolicy = { navController.navigate(Routes.PRIVACY_POLICY) },
-                    onLicenses = { navController.navigate(Routes.LICENSES) },
-                    onPermissions = { navController.navigate(Routes.PERMISSIONS_INFO) },
+                    // A search hit or section tap: the sub-screen goes ON TOP
+                    // of this screen, so Back returns here (search state and
+                    // all) and never to where Settings was opened from.
+                    onOpenSection = { section, item ->
+                        navController.navigate(Routes.settingsSection(section, item?.name))
+                    },
+                    navigation = settingsNavigation(navController),
+                )
+            }
+            composable(
+                route = Routes.SETTINGS_SECTION,
+                arguments =
+                    listOf(
+                        navArgument("section") { type = NavType.StringType },
+                        navArgument("highlight") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                SettingsSectionScreen(
+                    section =
+                        entry.arguments
+                            ?.getString("section")
+                            ?.let { name -> SettingsSection.entries.firstOrNull { it.name == name } }
+                            ?: SettingsSection.MESSAGES,
+                    highlight = entry.arguments?.getString("highlight").toSettingsItem(),
+                    onBack = { navController.popBackStack() },
+                    navigation = settingsNavigation(navController),
                 )
             }
             composable(Routes.PRIVACY_POLICY) { PrivacyPolicyScreen(onBack = { navController.popBackStack() }) }
@@ -552,13 +587,28 @@ private fun MainScaffold(
                     // same gesture search uses to point at a message.
                     onOpenSortSetting = {
                         navController.popBackStack()
-                        navController.navigate(Routes.settings(SettingsItem.SORT_AGAIN.name))
+                        Routes.settingsPath(SettingsItem.SORT_AGAIN).forEach(navController::navigate)
                     },
                 )
             }
         }
     }
 }
+
+/** A `?highlight=` argument back to the catalog row it names, or null when absent or unknown. */
+private fun String?.toSettingsItem(): SettingsItem? =
+    this?.takeIf { it.isNotBlank() }?.let { name -> SettingsItem.entries.firstOrNull { it.name == name } }
+
+/** Where settings rows navigate - shared by the root screen and every sub-screen. */
+private fun settingsNavigation(navController: NavHostController) =
+    SettingsNavigation(
+        onManageRules = { navController.navigate(Routes.RULES) },
+        onArchived = { navController.navigate(Routes.ARCHIVED) },
+        onRecycleBin = { navController.navigate(Routes.RECYCLE_BIN) },
+        onPermissions = { navController.navigate(Routes.PERMISSIONS_INFO) },
+        onPrivacyPolicy = { navController.navigate(Routes.PRIVACY_POLICY) },
+        onLicenses = { navController.navigate(Routes.LICENSES) },
+    )
 
 /** The nav route rendering a top-level tab. */
 private fun StartDestination.toRoute(): String =
