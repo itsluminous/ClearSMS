@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -100,6 +101,7 @@ import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.defaultLabel
+import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
@@ -126,6 +128,8 @@ fun InboxScreen(
     val allSelectedPinned by viewModel.allSelectedPinned.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Hoisted so the title's tap-to-top (ScrollToTopTitle) can drive the list.
+    val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val otpCopiedMessage = stringResource(R.string.otp_copied)
@@ -239,7 +243,30 @@ fun InboxScreen(
                 )
             } else {
                 LargeTopAppBar(
-                    title = { Text(stringResource(R.string.inbox_title)) },
+                    title = {
+                        // "Unread only" is a view mode, not a category: it
+                        // shares the title LINE (never the pill row, where it
+                        // read as one more mutually exclusive chip) and leaves
+                        // with the expanded title as the bar collapses - see
+                        // TitleCollapse. The user can hide it in Settings
+                        // (issue #49); counts and badges are unaffected.
+                        ScrollToTopTitle(
+                            scrollBehavior = scrollBehavior,
+                            listState = listState,
+                            expandedTrailing =
+                                if (state.showUnreadToggle) {
+                                    {
+                                        UnreadSwitch(
+                                            unreadOnly = state.filter.unreadOnly,
+                                            totalUnread = state.totalUnread,
+                                            onToggleUnread = viewModel::toggleUnread,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                        )
+                    },
                     actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                     scrollBehavior = scrollBehavior,
                 )
@@ -272,7 +299,7 @@ fun InboxScreen(
                     subtitle = stringResource(R.string.inbox_empty_subtitle),
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     // Top banners in the PINNED precedence order (OTP >
                     // default-SMS > contacts > sorting) - the enum order IS
                     // the on-screen order; see InboxBannerSlot.
@@ -325,20 +352,6 @@ fun InboxScreen(
                                         )
                                     }
                                 }
-                        }
-                    }
-                    // "Unread only" is a view mode, not a category: it lives on
-                    // its own right-aligned line ABOVE the pills so it cannot be
-                    // read as one more (mutually exclusive) category chip. The
-                    // user can hide it in Settings (issue #49); counts and
-                    // badges elsewhere are unaffected.
-                    if (state.showUnreadToggle) {
-                        item(key = "unread_toggle") {
-                            UnreadToggleRow(
-                                unreadOnly = state.filter.unreadOnly,
-                                totalUnread = state.totalUnread,
-                                onToggleUnread = viewModel::toggleUnread,
-                            )
                         }
                     }
                     // Every pill hidden = no row at all (see InboxPillConfig).
@@ -646,45 +659,41 @@ private fun SortingProgressBanner(
 }
 
 /**
- * Right-aligned "Unread" view-mode switch shown above the pill row. A labeled
- * [Switch] (not a [FilterChip]) so it reads as a mode toggle that composes
- * with the pills, rather than one more mutually-exclusive category; the label
- * carries the total unread count the old pill's badge used to show. Labeled,
- * so it needs no long-press tooltip.
+ * The "Unread" view-mode switch that ends the title line of the expanded app
+ * bar. A labeled [Switch] (not a [FilterChip]) so it reads as a mode toggle
+ * that composes with the pills, rather than one more mutually-exclusive
+ * category; the label carries the total unread count the old pill's badge
+ * used to show. Labeled, so it needs no long-press tooltip. The label style
+ * is set explicitly because the title slot provides the headline style.
  */
 @Composable
-private fun UnreadToggleRow(
+private fun UnreadSwitch(
     unreadOnly: Boolean,
     totalUnread: Int,
     onToggleUnread: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.End,
+        // One semantics node (Switch's own onCheckedChange is null below):
+        // TalkBack reads "Unread · N, switch, on/off" as a single control.
+        modifier =
+            Modifier.toggleable(
+                value = unreadOnly,
+                role = Role.Switch,
+                onValueChange = { onToggleUnread() },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            // One semantics node (Switch's own onCheckedChange is null below):
-            // TalkBack reads "Unread · N, switch, on/off" as a single control.
-            modifier =
-                Modifier.toggleable(
-                    value = unreadOnly,
-                    role = Role.Switch,
-                    onValueChange = { onToggleUnread() },
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text =
-                    if (totalUnread > 0) {
-                        stringResource(R.string.inbox_unread_toggle_count, totalUnread)
-                    } else {
-                        stringResource(R.string.filter_unread)
-                    },
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Switch(checked = unreadOnly, onCheckedChange = null)
-        }
+        Text(
+            text =
+                if (totalUnread > 0) {
+                    stringResource(R.string.inbox_unread_toggle_count, totalUnread)
+                } else {
+                    stringResource(R.string.filter_unread)
+                },
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Switch(checked = unreadOnly, onCheckedChange = null)
     }
 }
 

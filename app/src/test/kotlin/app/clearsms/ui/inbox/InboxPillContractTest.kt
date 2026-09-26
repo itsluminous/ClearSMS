@@ -38,10 +38,12 @@ class InboxPillContractTest {
     @Test
     fun `unread switch is rendered only while its setting is on`() {
         val inbox = source("ui/inbox/InboxScreen.kt")
+        // Off = the shared title gets no trailing content at all.
         val guard = inbox.indexOf("if (state.showUnreadToggle) {")
-        val toggle = inbox.indexOf("item(key = \"unread_toggle\")")
+        val toggle = inbox.indexOf("UnreadSwitch(")
         assertThat(guard).isGreaterThan(-1)
         assertThat(toggle).isGreaterThan(guard)
+        assertThat(inbox).contains("expandedTrailing =")
         // Hiding the switch must not touch how counts are derived.
         val vm = source("ui/inbox/InboxViewModel.kt")
         assertThat(vm).contains("totalUnread = counts.sumOf { it.count },")

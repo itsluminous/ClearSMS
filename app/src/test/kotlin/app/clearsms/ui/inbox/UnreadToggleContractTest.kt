@@ -11,7 +11,8 @@ import java.io.File
  *
  * Users read the pill row as one vocabulary: chips select exclusively. The
  * Unread chip broke that (it composed with any category), so it now lives as
- * a right-aligned labeled Switch ABOVE the pills. These are source-level
+ * a labeled Switch on the app bar's TITLE LINE, leaving with the expanded
+ * title as the bar collapses (ScrollToTopTitleTest). These are source-level
  * contracts (the repo has no Compose UI test infrastructure, same style as
  * `CategoryTagSurfacesTest`) plus state-level assertions that the move did
  * not change filter semantics.
@@ -30,15 +31,17 @@ class UnreadToggleContractTest {
     }
 
     @Test
-    fun `unread toggle sits above the pill row`() {
+    fun `unread toggle ends the title line, above and apart from the pill row`() {
         val inbox = source("ui/inbox/InboxScreen.kt")
-        val toggle = inbox.indexOf("item(key = \"unread_toggle\")")
+        // It is the expanded-row trailing content of the shared title, so it
+        // is never a list item and can never be mistaken for a pill.
+        val toggle = inbox.indexOf("UnreadSwitch(")
         val pills = inbox.indexOf("item(key = \"filters\")")
         assertThat(toggle).isGreaterThan(-1)
         assertThat(pills).isGreaterThan(-1)
         assertThat(toggle).isLessThan(pills)
-        // Right-aligned, and a Switch (view mode), not another chip.
-        assertThat(inbox).contains("horizontalArrangement = Arrangement.End")
+        assertThat(inbox).doesNotContain("item(key = \"unread_toggle\")")
+        // A Switch (view mode), not another chip.
         assertThat(inbox).contains("Switch(checked = unreadOnly, onCheckedChange = null)")
     }
 
@@ -77,6 +80,6 @@ class UnreadToggleContractTest {
         val archived = source("ui/inbox/ArchivedScreen.kt")
         assertThat(archived).doesNotContain("FilterChipRow")
         assertThat(archived).doesNotContain("filter_unread")
-        assertThat(archived).doesNotContain("UnreadToggleRow")
+        assertThat(archived).doesNotContain("UnreadSwitch")
     }
 }

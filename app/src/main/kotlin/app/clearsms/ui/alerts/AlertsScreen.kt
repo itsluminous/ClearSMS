@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -62,6 +63,7 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.finance.reminderGlyph
+import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.navigation.orderedPills
 import kotlinx.coroutines.launch
@@ -83,6 +85,8 @@ fun AlertsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Hoisted so the title's tap-to-top (ScrollToTopTitle) can drive the list.
+    val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
@@ -109,7 +113,8 @@ fun AlertsScreen(
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
-                title = { Text(stringResource(R.string.alerts_title)) },
+                // Same "Clear SMS" title as the Inbox, tap-to-top included (see ScrollToTopTitle).
+                title = { ScrollToTopTitle(scrollBehavior = scrollBehavior, listState = listState) },
                 // Same search + settings pair as the Inbox (see SearchSettingsActions).
                 actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                 scrollBehavior = scrollBehavior,
@@ -126,6 +131,7 @@ fun AlertsScreen(
             return@Scaffold
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {

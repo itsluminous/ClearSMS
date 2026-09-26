@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -84,6 +85,7 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.MaskedAmountText
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
+import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
 import app.clearsms.ui.navigation.orderedPills
 import app.clearsms.ui.theme.LocalSemanticAmountColors
@@ -105,6 +107,8 @@ fun FinanceScreen(
     val showOlderAccounts by viewModel.showOlderAccounts.collectAsStateWithLifecycle()
     val showOlderCards by viewModel.showOlderCards.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Hoisted so the title's tap-to-top (ScrollToTopTitle) can drive the list.
+    val listState = rememberLazyListState()
     var accountsCollapsed by rememberSaveable { mutableStateOf(false) }
     // Single-expansion contract shared with the account detail screen: at
     // most one transaction row (across the Transactions and Recharges
@@ -145,7 +149,8 @@ fun FinanceScreen(
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
-                title = { Text(stringResource(R.string.finance_title)) },
+                // Same "Clear SMS" title as the Inbox, tap-to-top included (see ScrollToTopTitle).
+                title = { ScrollToTopTitle(scrollBehavior = scrollBehavior, listState = listState) },
                 // Same search + settings pair as the Inbox (see SearchSettingsActions).
                 actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                 scrollBehavior = scrollBehavior,
@@ -167,6 +172,7 @@ fun FinanceScreen(
             return@Scaffold
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

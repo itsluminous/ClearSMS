@@ -9,6 +9,7 @@
     <string name="action_back">Back</string>
     <string name="action_search">Search</string>
     <string name="action_settings">Settings</string>
+    <string name="action_scroll_to_top">Scroll to top</string>
     <string name="action_compose">New message</string>
     <string name="action_send">Send</string>
     <string name="action_save">Save</string>
@@ -25,7 +26,6 @@
     <string name="action_add_rule">Add rule</string>
 
     <!-- Inbox -->
-    <string name="inbox_title">Clear SMS</string>
     <string name="inbox_empty_title">No messages yet</string>
     <string name="inbox_empty_subtitle">Incoming SMS will appear here, automatically organized into categories.</string>
     <string name="inbox_empty_filtered">Nothing here for this filter.</string>
@@ -114,7 +114,6 @@
     <string name="compose_message">Message</string>
 
     <!-- Finance -->
-    <string name="finance_title">Finance</string>
     <string name="finance_empty_title">No transactions yet</string>
     <string name="finance_empty_subtitle">Debit and credit alerts from your bank will build your dashboard here.</string>
     <string name="finance_this_month">This month</string>
@@ -154,7 +153,6 @@
     <string name="account_reference">Ref: %1$s</string>
 
     <!-- Alerts -->
-    <string name="alerts_title">Alerts</string>
     <string name="alerts_empty_title">No upcoming bills</string>
     <string name="alerts_empty_subtitle">Bill reminders and payment due dates from your SMS will show up here.</string>
     <string name="alerts_filter_all">All</string>
@@ -302,7 +300,7 @@
     <string name="settings_inbox_pill_labels_hint">A name is only what the pill shows - it still filters the same messages. Clear a field to go back to the built-in name.</string>
     <string name="settings_inbox_pill_label_field">Name for %1$s</string>
     <string name="settings_inbox_unread_toggle">Unread switch</string>
-    <string name="settings_inbox_unread_toggle_on">Shown above the pills</string>
+    <string name="settings_inbox_unread_toggle_on">Shown beside the title while the bar is expanded</string>
     <string name="settings_inbox_unread_toggle_off">Hidden - unread counts and badges are unaffected</string>
     <string name="settings_section_inbox">Inbox</string>
     <string name="settings_section_finance">Finance</string>
