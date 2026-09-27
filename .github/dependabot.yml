@@ -3,7 +3,7 @@
 #
 # Scope notes:
 # - The `gradle` ecosystem reads the version catalog at gradle/libs.versions.toml
-#   (a documented standard location), so `directory: "/"` is correct — no extra
+#   (a documented standard location), so `directory: "/"` is correct - no extra
 #   pointing needed.
 # - Per current GitHub docs, the gradle ecosystem MAY also propose Gradle
 #   wrapper updates (gradle/wrapper/*, gradlew*). CI validates the wrapper
@@ -14,7 +14,7 @@
 # - No `labels:` key: Dependabot applies (and auto-creates) its default
 #   `dependencies` label, so no repo label needs to be created first.
 # - `commit-message.prefix-development` is omitted: docs list it as supported
-#   only for bundler/composer/mix/maven/npm/pip/uv — not gradle or github-actions.
+#   only for bundler/composer/mix/maven/npm/pip/uv - not gradle or github-actions.
 # - No `ignore:` rules for the minSdk 23 / compileSdk 35 and F-Droid
 #   reproducibility constraints: no dependabot.yml key can express "reject
 #   bumps that raise compileSdk/minSdk". Instead, major androidx/library bumps
@@ -66,8 +66,8 @@ updates:
       # version (e.g. 2.0.21-1.0.28); a lone bump of either breaks the build.
       # The Compose compiler ships with Kotlin 2.x via the
       # org.jetbrains.kotlin.plugin.compose plugin, which this group covers.
-      # All update-types included — the pair must always travel as one PR.
-      # (Deliberately does NOT match org.jetbrains.kotlinx:* — those libraries
+      # All update-types included - the pair must always travel as one PR.
+      # (Deliberately does NOT match org.jetbrains.kotlinx:* - those libraries
       # version independently of the compiler.)
       kotlin-and-ksp:
         patterns:
@@ -85,7 +85,7 @@ updates:
         patterns:
           - "com.google.dagger*"
           - "androidx.hilt*"
-      # Test libraries together — low-risk, reviewed as one PR. Listed before
+      # Test libraries together - low-risk, reviewed as one PR. Listed before
       # androidx so androidx.test lands here.
       test-libraries:
         patterns:
@@ -125,7 +125,7 @@ updates:
     commit-message:
       prefix: "chore(ci)"
     groups:
-      # A handful of actions in one workflow — batch them all into one PR.
+      # A handful of actions in one workflow - batch them all into one PR.
       github-actions:
         patterns:
           - "*"

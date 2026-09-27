@@ -1,6 +1,6 @@
 # Vendored badges
 
-- `get-it-on-github.png` — "Get it on GitHub" badge, vendored from
+- `get-it-on-github.png` - "Get it on GitHub" badge, vendored from
   [Kunzisoft/Github-badge](https://github.com/Kunzisoft/Github-badge)
   (created by @flocke as part of the
   [F-Droid artwork](https://gitlab.com/fdroid/artwork/-/tree/master/badge/src)).

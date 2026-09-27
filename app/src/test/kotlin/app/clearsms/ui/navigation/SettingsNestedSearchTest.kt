@@ -86,6 +86,24 @@ class SettingsNestedSearchTest {
     }
 
     @Test
+    fun `Star on GitHub is found inside the Support sub-screen and routes there with the row flashed`() {
+        // The new row lives on the Support (ex-Donate) sub-screen, so it is a
+        // NESTED hit: search must find it by title and by its section name,
+        // attribute it to Support, and land on that sub-screen flashing it.
+        val hits = search("star on github")
+        assertThat(hits).containsExactly(SettingsItem.STAR_ON_GITHUB)
+        assertThat(hits.single().section).isEqualTo(SettingsSection.DONATE)
+        assertThat(sectionTitle(hits.single().section)).isEqualTo("Support")
+        assertThat(hits.single().nested).isTrue()
+        assertThat(search("support")).containsAtLeast(SettingsItem.UPI, SettingsItem.STAR_ON_GITHUB)
+
+        val target = Routes.settingsPath(SettingsItem.STAR_ON_GITHUB).last()
+        val (section, highlight) = parseSectionRoute(target)
+        assertThat(section).isEqualTo("DONATE")
+        assertThat(highlight).isEqualTo("STAR_ON_GITHUB")
+    }
+
+    @Test
     fun `searching a section's name lists that section's rows`() {
         // The section name is part of the haystack, so a user who only knows
         // "it's somewhere under About" gets the whole About screen.

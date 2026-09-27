@@ -481,11 +481,13 @@
     <string name="settings_default_finance_filter">Default Finance filter</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_source_code_summary">View the project on GitHub</string>
-    <string name="settings_section_donate">Donate</string>
+    <string name="settings_section_support">Support</string>
     <string name="settings_donate_paypal">Paypal</string>
     <string name="settings_donate_paypal_summary">If the app is useful to you, you can support it via PayPal</string>
     <string name="settings_donate_upi">UPI</string>
     <string name="settings_donate_upi_summary">Support app development with a UPI payment</string>
+    <string name="settings_star_on_github">Star on GitHub</string>
+    <string name="settings_star_on_github_summary">Free and takes a second - stars help other people find the app</string>
     <string name="settings_link_no_handler">No app found to open this link</string>
     <string name="link_scam_title">Open link from a suspicious message?</string>
     <string name="link_scam_body">This message is flagged as a possible scam. Links in scam messages are used to steal money and personal details.\n\n%1$s</string>

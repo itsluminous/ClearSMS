@@ -32,7 +32,13 @@ enum class SettingsSection(
     BACKUP(R.string.settings_section_backup),
     RULES(R.string.settings_section_rules, subScreen = false),
     SIGNATURE(R.string.settings_section_signature, subScreen = false),
-    DONATE(R.string.settings_section_donate),
+
+    // Shown as "Support": ways to help the project, paid (UPI, PayPal) and
+    // free (a GitHub star). The enum name stays DONATE because it IS the
+    // sub-screen route segment ("settings/section/DONATE") and the search /
+    // highlight target - renaming it would break every existing deep link
+    // for a label change.
+    DONATE(R.string.settings_section_support),
     ABOUT(R.string.settings_section_about),
     ;
 
@@ -120,7 +126,15 @@ enum class SettingsItem(
     MANAGE_RULES(SettingsSection.RULES, R.string.settings_manage_rules),
     SIGNATURE(SettingsSection.SIGNATURE, R.string.settings_signature),
     UPI(SettingsSection.DONATE, R.string.settings_donate_upi),
+
+    // Rendered only while PAYPAL_DONATION_ENABLED is true (see
+    // visibleSettingsItems); the row, its strings and its URL stay so that
+    // bringing it back is a one-line flip.
     PAYPAL(SettingsSection.DONATE, R.string.settings_donate_paypal),
+
+    // The no-cost way to help: opens the repository (the same URL as About's
+    // Source code row) so the user can star it.
+    STAR_ON_GITHUB(SettingsSection.DONATE, R.string.settings_star_on_github),
     VERSION(SettingsSection.ABOUT, R.string.settings_version),
     SOURCE_CODE(SettingsSection.ABOUT, R.string.settings_source_code),
 
@@ -156,6 +170,14 @@ data class SettingsVisibility(
 )
 
 /**
+ * Whether the PayPal row of the Support section is offered. Temporarily
+ * OFF: flip this one constant to `true` to bring the row back - nothing
+ * else (row, strings, URL, tests) was removed. No reason is shown to users
+ * by design; the row simply does not appear while this is false.
+ */
+internal const val PAYPAL_DONATION_ENABLED = false
+
+/**
  * The rows the settings screens render given the current toggles.
  *
  * A disabled Inbox/Finance/Alerts section keeps ONLY its "Show … tab"
@@ -166,14 +188,20 @@ data class SettingsVisibility(
  * would strand a user who disabled the section from inside it.
  *
  * "Sending delay" is meaningless while "Delay before sending" is off, so it
- * is hidden the same way. Every other row is untouched.
+ * is hidden the same way. The PayPal row follows [paypalEnabled]
+ * (production passes [PAYPAL_DONATION_ENABLED]; tests pass both values so
+ * neither path can rot). Every other row is untouched.
  */
-fun visibleSettingsItems(visibility: SettingsVisibility): List<SettingsItem> =
+fun visibleSettingsItems(
+    visibility: SettingsVisibility,
+    paypalEnabled: Boolean = PAYPAL_DONATION_ENABLED,
+): List<SettingsItem> =
     SettingsItem.entries.filter { item ->
         when (item.section) {
             SettingsSection.INBOX -> visibility.sections.inbox || item == SettingsItem.SHOW_INBOX_TAB
             SettingsSection.FINANCE -> visibility.sections.finance || item == SettingsItem.SHOW_FINANCE_TAB
             SettingsSection.ALERTS -> visibility.sections.alerts || item == SettingsItem.SHOW_ALERTS_TAB
+            SettingsSection.DONATE -> item != SettingsItem.PAYPAL || paypalEnabled
             else -> item != SettingsItem.DELAYED_SEND_DELAY || visibility.delayedSendEnabled
         }
     }
