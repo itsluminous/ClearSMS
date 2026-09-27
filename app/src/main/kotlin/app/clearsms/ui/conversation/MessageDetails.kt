@@ -14,19 +14,21 @@ import app.clearsms.mms.SendFailureReason
  * resolution for the name.
  *
  * Honesty rules, matching the bubble status line ([deliveryStatusLabelRes]):
- * no time is EVER invented. An incoming message shows the sender's network
- * timestamp ([MessageEntity.dateSent]) only when one was recorded, beside
- * the received time, both with seconds. For an outgoing SMS the app records
+ * no time is EVER invented, and nothing is said about a time nobody knows.
+ * An incoming message shows the sender's network timestamp
+ * ([MessageEntity.dateSent]) only when one was recorded, beside the received
+ * time, both with seconds; when the network stamped nothing there is simply
+ * NO sent row (no "not reported" filler). For an outgoing SMS the app records
  * WHEN it processed the carrier delivery report that completed delivery
  * ([MessageEntity.deliveredAt]) - the acknowledgement time, a close proxy
- * for the delivery time but not the carrier's own timestamp - so
- * [Row.Delivered] carries a [DeliveryKnowledge] plus that instant when one
- * was recorded: CONFIRMED with the acknowledgement time for a report this
- * build handled, CONFIRMED without one for a report that predates the
- * column or came in through the provider import (a report exists, its
- * arrival was never recorded), UNKNOWN_NO_REPORT for a sent SMS without any
- * report (never a fabricated time), and UNSUPPORTED_MMS for outgoing MMS
- * (this app does not support MMS delivery reports at all).
+ * for the delivery time - so [Row.Delivered] carries a [DeliveryKnowledge]
+ * plus that instant when one was recorded: CONFIRMED with the
+ * acknowledgement time for a report this build handled (the row shows the
+ * time), CONFIRMED without one for a report that predates the column or came
+ * in through the provider import (the row just says "Yes"), UNKNOWN_NO_REPORT
+ * for a sent SMS without any report ("Unknown", never a fabricated time), and
+ * UNSUPPORTED_MMS for outgoing MMS (this app does not support MMS delivery
+ * reports at all, so an MMS never reads as delivered).
  */
 object MessageDetails {
     /** What carried the message. */
@@ -81,18 +83,11 @@ object MessageDetails {
         ) : Row
 
         /**
-         * An incoming message whose sender timestamp the network never
-         * reported (provider `DATE_SENT` 0/absent): the row says so instead
-         * of showing the received time twice or inventing a value.
-         */
-        data object SentTimeUnknown : Row
-
-        /**
          * Delivery knowledge for a message that left the phone (SENT/DELIVERED).
          * [acknowledgedAtMs] is set only with [DeliveryKnowledge.CONFIRMED],
          * and only when the app recorded when it processed the completing
-         * delivery report; the dialog shows it as the delivery time, labelled
-         * as the report's arrival on this phone. Null = no time is shown.
+         * delivery report; the dialog shows it as the delivery time. Null =
+         * no time is shown: a bare "Yes" for CONFIRMED, "Unknown" otherwise.
          */
         data class Delivered(
             val knowledge: DeliveryKnowledge,
@@ -141,11 +136,9 @@ object MessageDetails {
                 // Sent first, then received - chronological, like AOSP. The
                 // sent instant is the network's: shown only when recorded
                 // (null = the SMSC stamped nothing, or an MMS), never
-                // substituted with the received time.
-                when (val sent = message.dateSent) {
-                    null -> add(Row.SentTimeUnknown)
-                    else -> add(Row.Timestamp(TimeKind.SENT_BY_NETWORK, sent))
-                }
+                // substituted with the received time. With nothing recorded
+                // there is no sent row at all - no "not reported" filler.
+                message.dateSent?.let { add(Row.Timestamp(TimeKind.SENT_BY_NETWORK, it)) }
                 add(Row.Timestamp(TimeKind.RECEIVED, message.timestamp))
             } else {
                 val timeKind =

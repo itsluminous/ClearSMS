@@ -44,20 +44,47 @@ class MessageDetailsMenuContractTest {
     }
 
     @Test
-    fun `delivery wording is honest - unknown without a report, unsupported for MMS, no time invented`() {
+    fun `delivery wording is short and honest - Yes, Unknown, never Yes for MMS, no time invented`() {
         val strings = File("src/main/res/values/strings_ui.xml").readText()
-        assertThat(strings).contains("message_details_delivered_unknown")
-        assertThat(strings).contains("message_details_delivered_mms")
-        // A confirmed delivery whose report arrival was never recorded
-        // still shows no time: none is invented.
-        assertThat(strings).contains("no delivery time can be shown")
-        // A recorded acknowledgement is shown WITH what it is: the report's
-        // arrival on this phone, not the carrier's own timestamp.
-        assertThat(strings).contains("message_details_delivered_at_note")
-        assertThat(strings).contains("not the carrier\\'s own timestamp")
+        // Confirmed without a recorded time: exactly "Yes" - no carrier story.
+        assertThat(strings).contains("<string name=\"message_details_delivered_confirmed\">Yes</string>")
+        // No report at all: a one-word honest "Unknown".
+        assertThat(strings).contains("<string name=\"message_details_delivered_unknown\">Unknown</string>")
+        // MMS: says Unknown (with why, briefly) and never "Yes".
+        assertThat(strings).contains(
+            "<string name=\"message_details_delivered_mms\">Unknown - not supported for MMS</string>",
+        )
+        assertThat(strings).doesNotContain("<string name=\"message_details_delivered_mms\">Yes")
         val dialog = source("ui/conversation/MessageDetailsDialog.kt")
+        // A recorded acknowledgement is shown as the bare time, nothing appended.
         assertThat(dialog).contains("row.acknowledgedAtMs != null ->")
-        assertThat(dialog).contains("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)")
-        assertThat(dialog).contains("R.string.message_details_delivered_at_note")
+        assertThat(dialog).contains("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)\n")
+        assertThat(dialog).doesNotContain("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour) +")
+        // MMS can only ever render through the unsupported string.
+        assertThat(dialog).contains("DeliveryKnowledge.UNSUPPORTED_MMS ->\n")
+        assertThat(dialog).contains("R.string.message_details_delivered_mms")
+    }
+
+    @Test
+    fun `the explanatory strings are gone - no not-reported sent row, no delivery-report note`() {
+        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        assertThat(strings).doesNotContain("message_details_sent_unknown")
+        assertThat(strings).doesNotContain("message_details_delivered_at_note")
+        assertThat(strings).doesNotContain("not the carrier\\'s own timestamp")
+        assertThat(strings).doesNotContain("no delivery time can be shown")
+        assertThat(strings).doesNotContain("Not reported - the network")
+        val dialog = source("ui/conversation/MessageDetailsDialog.kt")
+        val mapper = source("ui/conversation/MessageDetails.kt")
+        assertThat(dialog).doesNotContain("SentTimeUnknown")
+        assertThat(mapper).doesNotContain("SentTimeUnknown")
+        assertThat(dialog).doesNotContain("message_details_sent_unknown")
+        assertThat(dialog).doesNotContain("message_details_delivered_at_note")
+    }
+
+    @Test
+    fun `each details row merges label and value into one accessibility node`() {
+        // A screen reader must hear "Delivered, Yes", never a bare "Yes".
+        val dialog = source("ui/conversation/MessageDetailsDialog.kt")
+        assertThat(dialog).contains("Column(modifier = Modifier.semantics(mergeDescendants = true) {})")
     }
 }

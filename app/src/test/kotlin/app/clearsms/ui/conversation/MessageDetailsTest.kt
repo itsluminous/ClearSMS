@@ -14,11 +14,12 @@ import org.junit.Test
 
 /**
  * The "More details" rows come straight from persisted state, and delivery
- * is reported HONESTLY: only a real carrier report reads as delivered, with
- * a time only when the app recorded when it processed that report (the
- * acknowledgement time - never a fabricated one), a sent-without-report SMS
- * is Unknown, and outgoing MMS is always Unknown because this app does not
- * support MMS delivery reports. All fixtures are synthetic.
+ * is reported HONESTLY and briefly: only a real carrier report reads as
+ * delivered - the time when the app recorded processing that report, else a
+ * plain "Yes" (never a fabricated time) - a sent-without-report SMS is
+ * Unknown, and outgoing MMS is always Unknown because this app does not
+ * support MMS delivery reports. An incoming message with no network sent
+ * time has NO sent row at all. All fixtures are synthetic.
  */
 class MessageDetailsTest {
     private fun entity(
@@ -74,20 +75,23 @@ class MessageDetailsTest {
 
         assertThat(rows[2]).isEqualTo(Row.Timestamp(TimeKind.SENT_BY_NETWORK, 1_699_999_995_500))
         assertThat(rows[3]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
-        assertThat(rows.filterIsInstance<Row.SentTimeUnknown>()).isEmpty()
         // The outgoing "Sent" kind is never used for an incoming message.
         assertThat(rows.filterIsInstance<Row.Timestamp>().map { it.kind }).doesNotContain(TimeKind.SENT)
     }
 
     @Test
-    fun `incoming SMS without a network sent time - says so instead of inventing or duplicating one`() {
+    fun `incoming SMS without a network sent time - NO sent row at all, nothing invented or explained`() {
         val rows = rows(entity(outgoing = false, dateSent = null))
 
-        assertThat(rows[2]).isEqualTo(Row.SentTimeUnknown)
-        assertThat(rows[3]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        // Straight from the From row to the Received row: the Sent row is
+        // absent, not present with empty or "not reported" text.
+        assertThat(rows[2]).isEqualTo(Row.Timestamp(TimeKind.RECEIVED, 1_700_000_000_000))
+        assertThat(rows.filterIsInstance<Row.Timestamp>().map { it.kind })
+            .containsExactly(TimeKind.RECEIVED)
         // Exactly ONE timestamp row: the received time is never shown twice
         // under a "Sent" label.
         assertThat(rows.filterIsInstance<Row.Timestamp>()).hasSize(1)
+        assertThat(rows).hasSize(3)
     }
 
     @Test
@@ -96,7 +100,6 @@ class MessageDetailsTest {
 
         assertThat(rows.filterIsInstance<Row.Timestamp>())
             .containsExactly(Row.Timestamp(TimeKind.SENT, 1_700_000_000_000))
-        assertThat(rows.filterIsInstance<Row.SentTimeUnknown>()).isEmpty()
     }
 
     @Test
@@ -130,9 +133,10 @@ class MessageDetailsTest {
     }
 
     @Test
-    fun `delivered SMS whose report arrival was never recorded - confirmed WITHOUT a time, none invented`() {
+    fun `delivered SMS whose report arrival was never recorded - confirmed WITHOUT a time, so the row is a bare Yes`() {
         // Pre-column rows and provider-imported delivered rows: a report
-        // exists, but when it arrived is unknown - so no time.
+        // exists, but when it arrived is unknown - so no time, and the
+        // dialog renders CONFIRMED-without-time as exactly "Yes".
         val delivered =
             rows(entity(outgoing = true, status = DeliveryStatus.DELIVERED))
                 .filterIsInstance<Row.Delivered>()
@@ -167,9 +171,10 @@ class MessageDetailsTest {
     }
 
     @Test
-    fun `outgoing MMS marked delivered - still honestly unsupported, no acknowledgement time`() {
+    fun `outgoing MMS marked delivered - still honestly unsupported, never CONFIRMED, no acknowledgement time`() {
         // MMS delivery reports are not supported, so even a DELIVERED-marked
-        // MMS row (which the send path never produces) claims nothing.
+        // MMS row (which the send path never produces) claims nothing: it
+        // must never reach the "Yes" wording.
         val delivered =
             rows(
                 entity(outgoing = true, status = DeliveryStatus.DELIVERED, attachmentKinds = "IMAGE")
@@ -177,6 +182,8 @@ class MessageDetailsTest {
             ).filterIsInstance<Row.Delivered>().single()
 
         assertThat(delivered).isEqualTo(Row.Delivered(DeliveryKnowledge.UNSUPPORTED_MMS))
+        assertThat(delivered.knowledge).isNotEqualTo(DeliveryKnowledge.CONFIRMED)
+        assertThat(delivered.acknowledgedAtMs).isNull()
     }
 
     @Test
