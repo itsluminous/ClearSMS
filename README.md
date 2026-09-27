@@ -91,7 +91,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Expand the compose box to fill the screen for long messages (both the standalone composer and a conversation)
 - [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry; a single tick on sent and a double tick on delivered bubbles (never on failed, in-flight, scheduled or MMS-delivered), each announced to screen readers
 - [x] Share & forward selected messages; share text or images from other apps into a new message
-- [x] Per-message details (type, to/from, sent & received time, delivery time when a real report exists - shown as when your phone received the carrier's report, not the carrier's own timestamp - and failure reason)
+- [x] Per-message details (type, to/from, sent & received time - the Sent row is omitted when the network reported no sent time - delivery time when a real report exists, a plain "Yes" when a report exists but no time was recorded, and failure reason)
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
 - [x] Strip accents before sending, so one diacritic does not turn a single SMS into several (opt-in setting; applies silently, and only when it actually saves a message)

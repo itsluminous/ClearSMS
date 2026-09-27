@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
@@ -30,14 +31,16 @@ import app.clearsms.mms.SendFailureReason
  * - The column scrolls, so large font scales never clip rows; colors are
  *   all theme roles, so both themes stay readable.
  * - Times are shown WITH seconds (GitHub #45): an incoming message shows
- *   the sender's network time and the received time as two labelled rows.
- * - No time is ever invented: a missing network sent time reads as
- *   "not reported". The Delivered row shows a time only when the app
- *   recorded when it processed the carrier's delivery report (GitHub #44),
- *   and says that is what the time is - the report's arrival on this
- *   phone, a close proxy, not the carrier's own timestamp. A report whose
- *   arrival was never recorded reads as confirmed without a time, no report
- *   at all reads as unknown, and MMS (no delivery reports supported) says so.
+ *   the sender's network time and the received time as two labelled rows -
+ *   and when the network attached no sent time, the Sent row is simply
+ *   absent rather than carrying an explanation.
+ * - No time is ever invented, and the wording stays short: the Delivered
+ *   row shows the time when the app recorded when it processed the carrier's
+ *   delivery report (GitHub #44), a plain "Yes" for a report whose arrival
+ *   was never recorded, "Unknown" when no report came back, and for MMS (no
+ *   delivery reports supported) it never claims delivery.
+ * - Each row's label and value are merged into ONE accessibility node, so a
+ *   screen reader hears "Delivered, Yes" - never a bare "Yes".
  */
 @Composable
 internal fun MessageDetailsDialog(
@@ -87,7 +90,6 @@ private fun DetailRow(
                         MessageDetails.TimeKind.SENT -> R.string.message_details_sent
                         MessageDetails.TimeKind.SCHEDULED -> R.string.message_details_scheduled
                     }
-                MessageDetails.Row.SentTimeUnknown -> R.string.message_details_sent_by_network
                 is MessageDetails.Row.Delivered -> R.string.message_details_delivered
                 is MessageDetails.Row.Error -> R.string.message_details_error
                 is MessageDetails.Row.Sim -> R.string.message_details_sim
@@ -110,22 +112,22 @@ private fun DetailRow(
             // seconds, and that difference is what the row is for.
             is MessageDetails.Row.Timestamp ->
                 MessageMetadata.preciseTimestampLabel(row.timestampMs, is24Hour)
-            MessageDetails.Row.SentTimeUnknown -> stringResource(R.string.message_details_sent_unknown)
             is MessageDetails.Row.Delivered ->
                 when {
-                    // A recorded acknowledgement: the time (with seconds, like
-                    // the other time rows) plus what that time IS - when this
-                    // phone received the report, not the carrier's stamp.
+                    // A recorded acknowledgement: just the time (with seconds,
+                    // like the other time rows) - no story about the carrier.
                     row.acknowledgedAtMs != null ->
-                        MessageMetadata.preciseTimestampLabel(row.acknowledgedAtMs, is24Hour) + "\n" +
-                            stringResource(R.string.message_details_delivered_at_note)
+                        MessageMetadata.preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)
                     else ->
                         stringResource(
                             when (row.knowledge) {
+                                // Confirmed by a real report, time unknown: "Yes".
                                 MessageDetails.DeliveryKnowledge.CONFIRMED ->
                                     R.string.message_details_delivered_confirmed
+                                // No report at all: honestly "Unknown".
                                 MessageDetails.DeliveryKnowledge.UNKNOWN_NO_REPORT ->
                                     R.string.message_details_delivered_unknown
+                                // MMS: never "Yes" - no delivery reports exist here.
                                 MessageDetails.DeliveryKnowledge.UNSUPPORTED_MMS ->
                                     R.string.message_details_delivered_mms
                             },
@@ -144,7 +146,9 @@ private fun DetailRow(
             is MessageDetails.Row.Sim -> row.label
             MessageDetails.Row.InRecycleBin -> stringResource(R.string.message_details_bin)
         }
-    Column {
+    // One accessibility node per row: label then value, so TalkBack reads
+    // "Delivered, Yes" rather than a context-free "Yes".
+    Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
