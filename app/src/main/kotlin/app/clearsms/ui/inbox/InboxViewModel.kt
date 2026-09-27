@@ -253,6 +253,19 @@ class InboxViewModel
          * cached stream would drop the cached page event `LazyPagingItems`
          * seeds from, so every return to the screen would start from an
          * empty list and lose the scroll position.
+         *
+         * Placeholders are ON so the list's index space is the FULL thread
+         * order, whatever window happens to be loaded. Room invalidates the
+         * source on every write (opening a thread marks it read), and Paging
+         * answers with a refresh anchored around the last accessed row - a
+         * window that starts `initialLoadSize / 2` rows BEFORE that row.
+         * Without placeholders that window is presented from index 0, so a
+         * `LazyListState` restored to index N (saved state only holds an
+         * index, never a key) is clamped to the window's end, or to 0 when
+         * the refresh had no anchor to keep. With them, Room reports
+         * `itemsBefore`/`itemsAfter`, index N still means the N-th thread,
+         * and the rows around it load on access. Null rows render as
+         * [InboxRowPlaceholder][app.clearsms.ui.inbox.InboxRowPlaceholder].
          */
         val pagedItems: Flow<PagingData<InboxItem>> =
             pagerKeys
@@ -262,7 +275,7 @@ class InboxViewModel
                             PagingConfig(
                                 pageSize = PAGE_SIZE,
                                 initialLoadSize = PAGE_SIZE * 2,
-                                enablePlaceholders = false,
+                                enablePlaceholders = true,
                             ),
                         pagingSourceFactory = {
                             messageRepository

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
@@ -50,8 +51,10 @@ import app.clearsms.domain.model.Category
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.PagedRowPlaceholder
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.TooltipIconButton
+import app.clearsms.ui.components.awaitingFirstPage
 import app.clearsms.ui.components.displayName
 
 /** Full-text search with category and date filters and highlighted matches. */
@@ -65,6 +68,9 @@ fun SearchScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val results = viewModel.pagedResults.collectAsLazyPagingItems()
+    // Hoisted so the restored position can wait for the first page - see
+    // PagedListRestore.
+    val listState = rememberLazyListState()
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -100,7 +106,9 @@ fun SearchScreen(
             )
         },
     ) { padding ->
+        if (listState.awaitingFirstPage(results)) return@Scaffold
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
@@ -171,7 +179,13 @@ fun SearchScreen(
                 count = results.itemCount,
                 key = results.itemKey { it.message.id },
             ) { index ->
-                val item = results[index] ?: return@items
+                // Placeholders are on (see SearchViewModel): a result outside
+                // the loaded window is null and keeps a row's height.
+                val item = results[index]
+                if (item == null) {
+                    PagedRowPlaceholder()
+                    return@items
+                }
                 val message = item.message
                 ListItem(
                     modifier = Modifier.clickable { onOpenThread(message.threadId, message.id) },

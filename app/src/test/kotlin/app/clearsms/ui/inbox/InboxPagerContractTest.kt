@@ -62,6 +62,43 @@ class InboxPagerContractTest {
     }
 
     @Test
+    fun `paged lists keep the full index space with placeholders`() {
+        // A Room write while the screen is gone makes Paging refresh AROUND
+        // the last accessed row. Without placeholders that window is
+        // presented from index 0 and the LazyListState restored to row N
+        // (saved state holds an index, not a key) is clamped to the window's
+        // end, or to 0 when the refresh had no anchor left.
+        for (
+        (path, name) in
+        listOf(
+            "ui/inbox/InboxViewModel.kt" to "pagedItems",
+            "ui/search/SearchViewModel.kt" to "pagedResults",
+        )
+        ) {
+            assertThat(pagerDeclaration(source(path), name)).contains("enablePlaceholders = true")
+        }
+        for (screen in listOf("ui/inbox/InboxScreen.kt", "ui/search/SearchScreen.kt")) {
+            val src = source(screen)
+            // Null rows keep a row's height, never collapse to zero.
+            assertThat(src).doesNotContain("[index] ?: return@items")
+            assertThat(src).contains("PagedRowPlaceholder()")
+        }
+    }
+
+    @Test
+    fun `paged lists are not measured before their first page exists`() {
+        // The returned-to generation has loaded nothing until collected; a
+        // first measure with only the chrome present would clamp the
+        // restored index to it.
+        val helper = source("ui/components/PagedListRestore.kt")
+        assertThat(helper).contains("scrolled && items.itemCount == 0 && items.loadState.refresh is LoadState.Loading")
+        assertThat(source("ui/inbox/InboxScreen.kt"))
+            .contains("} else if (!awaitingFirstPage) {\n                LazyColumn(state = listState")
+        assertThat(source("ui/search/SearchScreen.kt"))
+            .contains("if (listState.awaitingFirstPage(results)) return@Scaffold\n        LazyColumn(\n            state = listState")
+    }
+
+    @Test
     fun `row mapping stays above cachedIn so the cached page event survives`() {
         // PagingData.map after cachedIn drops the cached Insert event that
         // LazyPagingItems seeds from; the list would then always come back
