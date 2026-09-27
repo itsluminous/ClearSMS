@@ -53,6 +53,8 @@ class SettingsRepositoryImplTest {
         runBlocking {
             val repo = repository()
             assertThat(repo.showRichAvatars.first()).isTrue()
+            // Extracted-details card is OFF until the user turns it on.
+            assertThat(repo.showTransactionDetails.first()).isFalse()
             assertThat(repo.notificationActions.first())
                 .isEqualTo(setOf(NotificationAction.MARK_READ, NotificationAction.REPLY, NotificationAction.DELETE))
             assertThat(repo.showBalance.first()).isFalse()
@@ -74,6 +76,34 @@ class SettingsRepositoryImplTest {
             assertThat(repo.showRichAvatars.first()).isFalse()
             repo.setShowRichAvatars(true)
             assertThat(repo.showRichAvatars.first()).isTrue()
+        }
+
+    @Test
+    fun `showTransactionDetails defaults off, is only persisted by an explicit choice, and keeps either stored value`() =
+        runBlocking {
+            val repo = repository()
+            val key = booleanPreferencesKey("show_transaction_details")
+            // Fresh install (or an existing install that never touched the
+            // toggle): the old ON default was synthesised at read time and
+            // never written, so the key is absent and the card is now off.
+            assertThat(dataStore.data.first()[key]).isNull()
+            assertThat(repo.showTransactionDetails.first()).isFalse()
+            // Reading did not persist the default.
+            assertThat(dataStore.data.first()[key]).isNull()
+
+            // A user who deliberately turned it on before the default flipped
+            // has true on disk and keeps the card.
+            dataStore.edit { it[key] = true }
+            assertThat(repo.showTransactionDetails.first()).isTrue()
+
+            // An explicit OFF is stored as a real false, not an absent key.
+            repo.setShowTransactionDetails(false)
+            assertThat(dataStore.data.first()[key]).isFalse()
+            assertThat(repo.showTransactionDetails.first()).isFalse()
+
+            repo.setShowTransactionDetails(true)
+            assertThat(dataStore.data.first()[key]).isTrue()
+            assertThat(repo.showTransactionDetails.first()).isTrue()
         }
 
     @Test

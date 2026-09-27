@@ -38,7 +38,7 @@ open class FakeSettingsRepository : SettingsRepository {
         otpDisplaySize.value = value
     }
 
-    override val showTransactionDetails = MutableStateFlow(true)
+    override val showTransactionDetails = MutableStateFlow(false)
 
     override suspend fun setShowTransactionDetails(value: Boolean) {
         showTransactionDetails.value = value
