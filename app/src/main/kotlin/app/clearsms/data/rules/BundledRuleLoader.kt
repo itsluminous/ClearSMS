@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.data.db.RuleDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -31,6 +32,15 @@ class BundledRuleLoader(
     private val ruleDao: RuleDao,
     private val json: Json,
     private val dataStore: DataStore<Preferences>,
+    /**
+     * The UI preferences store, read only for the legacy `disabled_rules`
+     * set: versions up to 0.20.0 disabled a rule by deleting its row and
+     * parking `source|definitionJson` there. A builtin parked that way must
+     * come back from the reseed DISABLED, or the update that first runs this
+     * code silently switches every rule the user had turned off back on.
+     * Null (tests) means no legacy store.
+     */
+    private val uiDataStore: DataStore<Preferences>? = null,
 ) {
     /** Version string of the currently loaded bundled document, if any. */
     suspend fun loadedVersion(): String? = dataStore.data.first()[LOADED_VERSION_KEY]
@@ -88,7 +98,9 @@ class BundledRuleLoader(
      *   be the thing that loses a rule the user still wants.
      * - **The disabled state of builtin rules.** `enabled` lives on the row,
      *   so deleting and re-inserting the builtin set would silently switch
-     *   every disabled builtin back on; the flag is carried across.
+     *   every disabled builtin back on; the flag is carried across. A builtin
+     *   a pre-0.21 version parked in preferences (its row deleted) counts as
+     *   disabled too - see [legacyParkedBuiltinIds].
      */
     suspend fun reseed(document: RuleDocument) {
         val userIds = ruleDao.getBySource(RuleSources.USER).map { it.id }.toSet()
@@ -97,7 +109,7 @@ class BundledRuleLoader(
                 .getBySource(RuleSources.BUILTIN)
                 .filterNot { it.enabled }
                 .map { it.id }
-                .toSet()
+                .toSet() + legacyParkedBuiltinIds()
         ruleDao.deleteBySource(RuleSources.BUILTIN)
         val rows =
             document.rules
@@ -111,11 +123,28 @@ class BundledRuleLoader(
         ruleDao.insertAll(rows)
     }
 
+    /** Ids of builtin rules a pre-0.21 version disabled by parking them in the UI preferences. */
+    private suspend fun legacyParkedBuiltinIds(): Set<String> {
+        val parked = uiDataStore?.data?.first()?.get(LEGACY_DISABLED_RULES_KEY) ?: return emptySet()
+        return parked
+            .filter { it.startsWith(RuleSources.BUILTIN + "|") }
+            .mapNotNull { entry ->
+                try {
+                    json.decodeFromString(RuleDefinition.serializer(), entry.substringAfter('|')).id
+                } catch (_: Exception) {
+                    null
+                }
+            }.toSet()
+    }
+
     companion object {
         private const val TAG = "BundledRuleLoader"
         private const val ASSET_NAME = "default_rules.json"
         private val LOADED_VERSION_KEY = stringPreferencesKey("bundled_rules_version")
         private val LOADED_FINGERPRINT_KEY = stringPreferencesKey("bundled_rules_fingerprint")
+
+        /** Mirrors `UiPrefs.KEY_DISABLED_RULES`; the legacy parked-rule set in the UI store. */
+        private val LEGACY_DISABLED_RULES_KEY = stringSetPreferencesKey("disabled_rules")
 
         /** SHA-256 of the document text, hex; what "the asset changed" is judged on. */
         fun fingerprint(text: String): String =

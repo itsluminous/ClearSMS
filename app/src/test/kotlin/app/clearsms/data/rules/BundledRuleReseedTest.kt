@@ -3,6 +3,7 @@ package app.clearsms.data.rules
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
@@ -121,6 +122,37 @@ class BundledRuleReseedTest {
             assertThat(rows.getValue("noisy").enabled).isFalse()
             // Content still refreshed to the shipped version.
             assertThat(rows.getValue("noisy").actionJson).contains("spam")
+            assertThat(rows.getValue("fine").enabled).isTrue()
+            assertThat(db.ruleDao().getEnabledBySource(RuleSources.BUILTIN).map { it.id }).containsExactly("fine")
+            assertThat(rows.getValue("noisy").source).isEqualTo(RuleSources.BUILTIN)
+        }
+
+    @Test
+    fun `reseed keeps a builtin a pre-0_21 version parked in the UI store disabled`() =
+        runBlocking {
+            // 0.20.0 disabled a rule by deleting its row and parking
+            // "builtin|<definition>" in the UI preferences. The update that
+            // introduces the flag reseeds first: that reseed must not switch
+            // the parked rule back on (which the update would otherwise do
+            // silently for every rule the user had turned off).
+            val uiStore = InMemoryPreferencesDataStore()
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val loader = BundledRuleLoader(context, db.ruleDao(), json, dataStore, uiStore)
+            val noisy = bundled("noisy")
+            uiStore.edit { prefs ->
+                prefs[stringSetPreferencesKey("disabled_rules")] =
+                    setOf(
+                        "builtin|" + json.encodeToString(RuleDefinition.serializer(), noisy),
+                        "user|" + json.encodeToString(RuleDefinition.serializer(), bundled("fine")),
+                        "garbage-without-json",
+                    )
+            }
+
+            loader.reseed(RuleDocument("1.1", listOf(noisy, bundled("fine"))))
+
+            val rows = db.ruleDao().getAll().associateBy { it.id }
+            assertThat(rows.getValue("noisy").enabled).isFalse()
+            // Only "builtin|" entries count; a user-parked copy of a bundled id does not.
             assertThat(rows.getValue("fine").enabled).isTrue()
             assertThat(db.ruleDao().getEnabledBySource(RuleSources.BUILTIN).map { it.id }).containsExactly("fine")
             assertThat(rows.getValue("noisy").source).isEqualTo(RuleSources.BUILTIN)

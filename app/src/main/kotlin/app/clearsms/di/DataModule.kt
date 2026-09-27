@@ -199,7 +199,8 @@ object DataModule {
         ruleDao: RuleDao,
         json: Json,
         dataStore: DataStore<Preferences>,
-    ): BundledRuleLoader = BundledRuleLoader(context, ruleDao, json, dataStore)
+        @UiSettingsDataStore uiDataStore: DataStore<Preferences>,
+    ): BundledRuleLoader = BundledRuleLoader(context, ruleDao, json, dataStore, uiDataStore)
 
     @Provides
     @Singleton

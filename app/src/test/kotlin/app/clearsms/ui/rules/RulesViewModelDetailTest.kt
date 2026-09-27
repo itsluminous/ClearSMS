@@ -189,10 +189,13 @@ class RulesViewModelDetailTest {
         }
 
     @Test
-    fun `a stale parked copy of a rule the table already holds is dropped, the row untouched`() =
+    fun `a parked copy of a rule the table already holds turns the row off and is dropped`() =
         runTest(dispatcher) {
             // The persisted state behind issue #43: the same id in the table
-            // AND the parked set. The page must open, show it once, and heal.
+            // AND the parked set (a reseed re-shipped a builtin the user had
+            // parked, or the old two-write disable died half way). The page
+            // must open, show it once, and keep the user's choice: parked
+            // means "I turned this off", so the surviving row is disabled.
             uiPrefs.addDisabledRule(parkedEntry(bundledRule, "builtin"))
 
             val vm = viewModel()
@@ -202,9 +205,16 @@ class RulesViewModelDetailTest {
             advanceUntilIdle()
 
             val row = repository.rules.value.single()
-            assertThat(row.enabled).isTrue()
+            assertThat(row.enabled).isFalse()
             assertThat(row.name).isEqualTo("HDFC debit")
             assertThat(uiPrefs.disabledRules.first()).isEmpty()
+            assertThat(
+                vm.uiState
+                    .first { !it.builtinRules.single().enabled }
+                    .builtinRules
+                    .single()
+                    .parkedEntry,
+            ).isNull()
 
             collector.cancel()
         }

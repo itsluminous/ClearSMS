@@ -166,9 +166,12 @@ class RulesViewModel
 
         /**
          * One-shot fold of legacy parked entries into the table as disabled
-         * rows (original source preserved). An entry whose id already has a
-         * row is stale - the row is what the engine sees - and is simply
-         * dropped; an unreadable entry is left alone and counted in the UI.
+         * rows (original source preserved). A parked entry records the
+         * user's choice to turn the rule off, so when its id already has a
+         * row - the reseed re-shipped that builtin, or the old two-write
+         * disable died between its writes - the row is switched off rather
+         * than the choice dropped; an unreadable entry is left alone and
+         * counted in the UI.
          */
         private suspend fun migrateParkedRules() {
             val parked = uiPrefs.disabledRules.first()
@@ -181,7 +184,9 @@ class RulesViewModel
                     .toSet()
             for (entry in parked) {
                 val (source, definition) = RulesUiStateBuilder.parkedDefinition(entry, json) ?: continue
-                if (definition.id !in existing) {
+                if (definition.id in existing) {
+                    ruleRepository.setRuleEnabled(definition.id, false)
+                } else {
                     ruleRepository.restoreParkedRule(definition, source, enabled = false)
                 }
                 uiPrefs.removeDisabledRule(entry)
