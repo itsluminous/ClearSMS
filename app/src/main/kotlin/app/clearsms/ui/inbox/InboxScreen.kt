@@ -97,6 +97,8 @@ import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.MutedIndicator
+import app.clearsms.ui.components.MutedIndicatorIcon
 import app.clearsms.ui.components.OtpBanner
 import app.clearsms.ui.components.PagedRowPlaceholder
 import app.clearsms.ui.components.SelectionState
@@ -453,6 +455,10 @@ fun InboxScreen(
                                 richAvatars = state.richAvatars,
                                 showCategoryTag = state.filter.showsCategoryTags,
                                 selected = selected,
+                                // Read only for a LOADED row: the null
+                                // placeholder above returned before this, so
+                                // a row whose page is still loading never
+                                // asks for a mute state or flashes the glyph.
                                 muted = state.isMuted(item),
                                 onClick = {
                                     if (selection.active) {
@@ -911,15 +917,10 @@ private fun InboxRow(
             Column(horizontalAlignment = Alignment.End) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (muted) {
-                        // The muted bell is not decoration: a thread that is
-                        // quiet with no visible cause reads as "messages
-                        // lost" (the lesson from the UNKNOWN category).
-                        Icon(
-                            Icons.Outlined.NotificationsOff,
-                            contentDescription = stringResource(R.string.inbox_muted),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp),
-                        )
+                        // The shared muted glyph (same icon and label as the
+                        // conversation title bar): the visible reason this
+                        // thread is quiet - see MutedIndicator.
+                        MutedIndicatorIcon(size = MutedIndicator.InboxRowSize)
                         Spacer(Modifier.width(4.dp))
                     }
                     if (item.pinned) {

@@ -100,6 +100,8 @@ import app.clearsms.ui.components.BodyLink
 import app.clearsms.ui.components.DialableNumber
 import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
+import app.clearsms.ui.components.MutedIndicator
+import app.clearsms.ui.components.MutedIndicatorIcon
 import app.clearsms.ui.components.NotRepliableBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
@@ -415,11 +417,26 @@ fun ConversationScreen(
                                 glyph = state.glyph,
                             )
                             Spacer(Modifier.width(12.dp))
+                            // weight(fill = false): a long name ellipsises
+                            // INSIDE the title slot instead of pushing the
+                            // muted glyph off the bar; a short name keeps the
+                            // glyph snug beside it.
                             Text(
                                 text = state.title,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
                             )
+                            if (state.muted) {
+                                // The same glyph the inbox row draws (one
+                                // definition, one label), so the reader of a
+                                // silent thread sees why while inside it. It
+                                // tracks uiState.muted, which follows
+                                // settings.mutedSenders - the overflow's
+                                // Mute/Unmute flips it without leaving.
+                                Spacer(Modifier.width(6.dp))
+                                MutedIndicatorIcon(size = MutedIndicator.TitleBarSize)
+                            }
                         }
                     },
                     navigationIcon = {
