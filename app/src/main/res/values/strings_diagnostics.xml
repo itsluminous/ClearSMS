@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings → About → Share diagnostic logs: the in-app log report. Kept
+     in its own file so the feature's strings do not collide with the
+     settings reorganisation landing in parallel. -->
+<resources>
+    <string name="settings_share_logs">Share diagnostic logs</string>
+    <string name="settings_share_logs_summary">Preview and send the app\'s own logs to help fix a bug. Never includes message text, numbers or names.</string>
+    <string name="diagnostics_intro">This report contains the app\'s recent activity (what it did, not what your messages say) and basic device facts. Read the preview below - it is exactly what will be shared.</string>
+    <string name="diagnostics_window">Include</string>
+    <string name="diagnostics_window_minutes">Last %1$d min</string>
+    <string name="diagnostics_window_hour">Last hour</string>
+    <string name="diagnostics_window_everything">Everything</string>
+    <string name="diagnostics_mask_senders">Mask sender IDs</string>
+    <string name="diagnostics_mask_senders_on">Names like VM-HDFCBK become sender#1, sender#2 … so the report does not reveal which banks and services text you. Untick only if a developer asks for the real IDs.</string>
+    <string name="diagnostics_mask_senders_off">Sender IDs such as VM-HDFCBK are sent as recorded - the report shows which banks and services text you. Phone numbers are never included either way.</string>
+    <string name="diagnostics_preview_heading">Preview - exactly what will be shared (about %1$d KB zipped)</string>
+    <string name="diagnostics_loading">Preparing the report…</string>
+    <string name="diagnostics_share_button">Share…</string>
+    <string name="diagnostics_share_title">Share diagnostic logs</string>
+    <string name="diagnostics_share_failed">Could not prepare the report file. Try again.</string>
+</resources>

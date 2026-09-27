@@ -5,6 +5,10 @@ import android.os.Build
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.ApplicationScope
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
+import app.clearsms.diagnostics.DiagField.Companion.label
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.SubCategory
@@ -40,6 +44,18 @@ class IncomingMessageRouter
     ) {
         /** Routes [entity] to its notification (or to silence). */
         suspend fun route(entity: MessageEntity) {
+            // The routing inputs, so a "no notification arrived" report shows
+            // which gate below silenced the message. Never the OTP itself.
+            Diag.d(
+                TAG,
+                "routing",
+                id("message", entity.id),
+                label("category", entity.category),
+                label("sub", entity.subCategory),
+                flag("otp", entity.extractedOtp != null),
+                flag("blocked", entity.isBlockedSender),
+                flag("deleted", entity.deletedAt != null),
+            )
             if (entity.isBlockedSender) return
             // Born-deleted rows (keyword-blocked at ingest) are silent: no
             // OTP, transaction, scam or message notification may exist for a
@@ -113,5 +129,9 @@ class IncomingMessageRouter
                 OtpClipboard.copy(context, otp, applicationScope)
             }
             otpNotifier.notify(entity, otp, settingsRepository.otpDisplaySize.first(), selectedActions)
+        }
+
+        private companion object {
+            const val TAG = "Router"
         }
     }

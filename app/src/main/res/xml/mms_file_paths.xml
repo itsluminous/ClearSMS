@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Exposes ONLY filesDir/mms/ through the FileProvider: the download
-     staging file the platform MMS service writes into, and the stored
-     attachment files shared/viewed via per-URI grants. Nothing else in the
-     app's private storage is reachable through this authority. -->
+<!-- Exposes ONLY filesDir/mms/ and filesDir/diagnostics/share/ through the
+     FileProvider: the download staging file the platform MMS service writes
+     into, the stored attachment files shared/viewed via per-URI grants, and
+     the zipped diagnostic report the user previews before sharing (the
+     rotating log files themselves live one level up and stay unreachable).
+     Nothing else in the app's private storage is reachable through this
+     authority. -->
 <paths>
     <files-path
         name="mms"
         path="mms/" />
+    <files-path
+        name="diagnostics"
+        path="diagnostics/share/" />
 </paths>

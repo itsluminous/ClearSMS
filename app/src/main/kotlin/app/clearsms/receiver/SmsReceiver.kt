@@ -4,10 +4,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import android.util.Log
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.ApplicationScope
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
+import app.clearsms.diagnostics.DiagField.Companion.label
+import app.clearsms.diagnostics.DiagField.Companion.sender
 import app.clearsms.domain.model.sentTimestampOrNull
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.sms.TelephonyWriter
@@ -64,10 +69,10 @@ class SmsReceiver : BroadcastReceiver() {
             try {
                 processIsolating(
                     mergeParts(parts),
-                    onError = { _, e ->
-                        // Convention: never log message content, OTPs or phone
-                        // numbers/sender ids - this line must stay content-free.
-                        Log.e(TAG, "Failed to process an incoming message", e)
+                    onError = { part, e ->
+                        // Structured fields only: the sender passes through the
+                        // logger's phone-number drop; the body never reaches it.
+                        Diag.e(TAG, "incoming message failed", e, sender(part.sender), count("parts", parts.size))
                     },
                 ) { merged -> process(merged, subscriptionId) }
             } finally {
@@ -105,6 +110,18 @@ class SmsReceiver : BroadcastReceiver() {
             messageDao.setSubscriptionId(entity.id, subscriptionId)
         }
         reminderAlarmScheduler.scheduleForMessage(entity.id)
+        Diag.i(
+            TAG,
+            "ingested",
+            sender(merged.sender),
+            id("message", entity.id),
+            id("thread", entity.threadId),
+            label("category", entity.category),
+            label("sub", entity.subCategory),
+            flag("providerRow", systemSmsId != null),
+            flag("duplicate", ingest.duplicate),
+            flag("sim", subscriptionId != null),
+        )
         // Duplicate = a concurrent catch-up import committed this provider
         // row first. The import sees the row as post-watermark (it just
         // arrived) and notifies it; notifying here too would double-post.
@@ -163,7 +180,7 @@ class SmsReceiver : BroadcastReceiver() {
                 try {
                     Telephony.Sms.Intents.getMessagesFromIntent(intent)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Malformed SMS broadcast; dropping", e)
+                    Diag.e(TAG, "malformed SMS broadcast dropped", e)
                     null
                 }
             return messages.orEmpty().mapNotNull { sms ->
@@ -171,7 +188,7 @@ class SmsReceiver : BroadcastReceiver() {
                     try {
                         sms?.displayOriginatingAddress
                     } catch (e: Exception) {
-                        Log.e(TAG, "Undecodable SMS PDU; skipping part", e)
+                        Diag.e(TAG, "undecodable SMS PDU skipped", e)
                         null
                     } ?: return@mapNotNull null
                 Part(

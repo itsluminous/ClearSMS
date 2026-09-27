@@ -20,6 +20,8 @@ import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleDefinition
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.data.rules.toDefinition
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.CategorizationResult
@@ -570,6 +572,17 @@ class MessageRepositoryImpl(
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
         val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
+        // The decision a rule-misclassification report needs: which rule
+        // fired and what it produced. Sender only (phone-shaped ones are
+        // dropped by the logger); never the body or the extracted values.
+        Diag.d(
+            "Categorizer",
+            "classified",
+            DiagField.sender(sender),
+            DiagField.ruleId(enriched.result.matchedRuleId),
+            DiagField.label("category", enriched.result.category),
+            DiagField.label("sub", enriched.result.subCategory),
+        )
         // Message + derived transaction/account/reminder rows commit together:
         // a failure mid-derivation must never leave a message without its
         // finance rows (or vice versa). Retrying the delivery then re-runs the

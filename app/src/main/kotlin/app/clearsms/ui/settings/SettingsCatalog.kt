@@ -119,6 +119,10 @@ enum class SettingsItem(
     VERSION(SettingsSection.ABOUT, R.string.settings_version),
     SOURCE_CODE(SettingsSection.ABOUT, R.string.settings_source_code),
 
+    // In-app diagnostic log report (preview + share); an action row that
+    // opens its own screen, nothing stored, nothing to back up.
+    SHARE_LOGS(SettingsSection.ABOUT, R.string.settings_share_logs),
+
     // Formerly trailing standalone rows; they are about the app, so they
     // live on the About sub-screen below Version and Source code.
     PERMISSIONS(SettingsSection.ABOUT, R.string.settings_permissions),

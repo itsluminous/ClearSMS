@@ -1,7 +1,6 @@
 package app.clearsms.work
 
 import android.content.Context
-import android.util.Log
 import androidx.core.net.toUri
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -13,6 +12,7 @@ import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.data.backup.BackupManager
 import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.prefs.SettingsRepository
+import app.clearsms.diagnostics.Diag
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
 import dagger.assisted.Assisted
@@ -108,7 +108,7 @@ class BackupWorker
             } catch (e: Exception) {
                 // Transient I/O trouble (storage full, provider hiccup):
                 // worth retrying, unlike a lost grant.
-                Log.w(TAG, "Scheduled backup failed", e)
+                Diag.w(TAG, "scheduled backup failed", e)
                 Result.retry()
             }
         }

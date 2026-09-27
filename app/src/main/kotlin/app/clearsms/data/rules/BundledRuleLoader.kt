@@ -1,13 +1,16 @@
 package app.clearsms.data.rules
 
 import android.content.Context
-import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.data.db.RuleDao
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.ruleId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -58,7 +61,7 @@ class BundledRuleLoader(
                     .bufferedReader()
                     .use { it.readText() }
             } catch (e: Exception) {
-                Log.w(TAG, "Could not load bundled rules", e)
+                Diag.w(TAG, "could not load bundled rules", e)
                 return loadedVersion()
             }
         return ensureLoaded(text)
@@ -70,7 +73,7 @@ class BundledRuleLoader(
             try {
                 json.decodeFromString(RuleDocument.serializer(), text)
             } catch (e: Exception) {
-                Log.w(TAG, "Could not parse bundled rules", e)
+                Diag.w(TAG, "could not parse bundled rules", e)
                 return loadedVersion()
             }
         val fingerprint = fingerprint(text)
@@ -79,6 +82,9 @@ class BundledRuleLoader(
             return document.version
         }
 
+        // The reseed itself; the loaded document version is part of the
+        // diagnostic report's header rather than repeated here.
+        Diag.i(TAG, "bundled rules reseeded", count("rules", document.rules.size), flag("firstLoad", prefs[LOADED_VERSION_KEY] == null))
         reseed(document)
         dataStore.edit {
             it[LOADED_VERSION_KEY] = document.version
@@ -115,7 +121,7 @@ class BundledRuleLoader(
             document.rules
                 .filter { rule ->
                     val shadowed = rule.id in userIds
-                    if (shadowed) Log.w(TAG, "Bundled rule '${rule.id}' skipped: a user rule owns that id")
+                    if (shadowed) Diag.w(TAG, "bundled rule skipped: a user rule owns that id", null, ruleId(rule.id))
                     !shadowed
                 }.map { rule ->
                     rule.toEntity(json, RuleSources.BUILTIN).copy(enabled = rule.id !in disabledBuiltins)

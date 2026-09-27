@@ -3,7 +3,7 @@ package app.clearsms.work
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.util.Log
+import app.clearsms.diagnostics.Diag
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.OutputStream
 import javax.inject.Inject
@@ -63,7 +63,7 @@ class SafBackupDocumentStore(
                     }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Backup directory unavailable for listing", e)
+            Diag.w(TAG, "backup directory unavailable for listing", e)
             emptyList()
         }
 
@@ -75,7 +75,7 @@ class SafBackupDocumentStore(
                 ?.let { DocumentsContract.deleteDocument(context.contentResolver, it) }
                 ?: false
         } catch (e: Exception) {
-            Log.w(TAG, "Could not delete old backup $fileName", e)
+            Diag.w(TAG, "could not delete an old backup", e)
             false
         }
 
@@ -93,10 +93,10 @@ class SafBackupDocumentStore(
                     )
             documentUri?.let { context.contentResolver.openOutputStream(it, "wt") }
         } catch (e: SecurityException) {
-            Log.w(TAG, "Backup directory permission revoked", e)
+            Diag.w(TAG, "backup directory permission revoked", e)
             null
         } catch (e: Exception) {
-            Log.w(TAG, "Backup directory unavailable", e)
+            Diag.w(TAG, "backup directory unavailable", e)
             null
         }
 
