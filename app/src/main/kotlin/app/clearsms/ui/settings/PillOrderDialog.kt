@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,8 +72,19 @@ fun <T> PillOrderDialog(
     onReset: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var drag by remember(order) { mutableStateOf(PillDragState(order)) }
+    // ONE state holder for the dialog's whole life - never re-keyed on
+    // [order]. The drag-gesture coroutines below capture whatever
+    // MutableState existed when they were (re)started and keep running
+    // across recompositions, so re-keying the holder on the order (which swapped it
+    // on every commit) left them writing a stale copy: the second drag in a
+    // dialog then started from an order two commits old and committed a
+    // corrupted list (seen on device). Store changes are reconciled into the
+    // single holder instead, and never while a finger is down.
+    var drag by remember { mutableStateOf(PillDragState(order)) }
     val rowHeights = remember { mutableMapOf<Int, Int>() }
+    LaunchedEffect(order) {
+        if (!drag.isDragging && drag.order != order) drag = PillDragState(order)
+    }
 
     fun settle(settled: PillDragState.Settled<T>) {
         drag = settled.state

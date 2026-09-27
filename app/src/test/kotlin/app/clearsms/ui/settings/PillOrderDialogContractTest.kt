@@ -62,6 +62,14 @@ class PillOrderDialogContractTest {
     @Test
     fun `the gesture is a thin shell - every reorder goes through the pure state machine`() {
         assertThat(dialog).contains("mutableStateOf(PillDragState(order))")
+        // One state holder for the dialog's life. The gesture coroutines keep
+        // whatever MutableState they captured when they started, so re-keying
+        // the holder on `order` (remember(order) { ... }) made the second drag
+        // in a dialog operate on a stale copy and commit a corrupted order.
+        assertThat(dialog).contains("var drag by remember { mutableStateOf(PillDragState(order)) }")
+        assertThat(dialog).doesNotContain("remember(order) {")
+        assertThat(dialog).contains("LaunchedEffect(order) {")
+        assertThat(dialog).contains("if (!drag.isDragging && drag.order != order) drag = PillDragState(order)")
         assertThat(dialog).contains("onDragStart = { drag = drag.begin(index) },")
         assertThat(dialog).contains("drag = drag.dragBy(delta.y, height.toFloat())")
         assertThat(dialog).contains("onDragEnd = { settle(drag.finish()) },")
