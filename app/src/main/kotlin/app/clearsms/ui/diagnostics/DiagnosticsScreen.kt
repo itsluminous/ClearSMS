@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -129,8 +131,21 @@ fun DiagnosticsScreen(
                     )
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = state.maskSenders, onCheckedChange = viewModel::setMaskSenders)
+            // The whole row toggles (label tap included) and reads as one
+            // checkbox to TalkBack; the Checkbox itself has no handler so a
+            // tap is not counted twice.
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = state.maskSenders,
+                            onValueChange = viewModel::setMaskSenders,
+                            role = Role.Checkbox,
+                        ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = state.maskSenders, onCheckedChange = null)
                 Column(modifier = Modifier.padding(start = 4.dp)) {
                     Text(stringResource(R.string.diagnostics_mask_senders), style = MaterialTheme.typography.bodyLarge)
                     Text(
