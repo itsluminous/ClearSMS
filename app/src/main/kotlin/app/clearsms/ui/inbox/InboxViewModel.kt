@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.paging.map
 import androidx.work.WorkManager
@@ -174,8 +175,15 @@ class InboxViewModel
         private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
         val undoEventFlow: Flow<UndoUiEvent> = undoEvents.receiveAsFlow()
 
-        /** Bumped when contacts become available so rows re-resolve names. */
-        private val contactsTick = MutableStateFlow(0)
+        /**
+         * The PagingSource the running pager is currently loading from, so a
+         * presentational change (contacts becoming available) can ask Paging
+         * for an in-place refresh - the same anchored refresh Room triggers
+         * on every write - instead of rebuilding the pager. Set from the
+         * pager's factory on the IO dispatcher, read on the main thread.
+         */
+        @Volatile
+        private var activePagingSource: PagingSource<Int, InboxThreadRow>? = null
 
         /** Sender → display cache so paged rows never repeat provider lookups. */
         private val displayCache = ConcurrentHashMap<String, SenderDisplay>()
@@ -227,28 +235,43 @@ class InboxViewModel
             }.distinctUntilChanged()
 
         /**
+         * What the pager is rebuilt from: ONLY the query inputs (see
+         * [InboxPagerKey]). Everything presentational the rows also need -
+         * unread counts, the OTP banner, chrome - lives in [uiState], which
+         * the screen combines downstream; none of it can reach the
+         * `flatMapLatest` below.
+         */
+        internal val pagerKeys: Flow<InboxPagerKey> = inboxPagerKeys(effectiveFilter, settings.messageSortOrder)
+
+        /**
          * Paged inbox rows: Room's PagingSource loads windows of
          * latest-per-thread messages instead of materializing the table, and
          * per-item work (sender resolution, glyph, time label) happens here
          * on the IO dispatcher - never during composition.
+         *
+         * The row mapping MUST stay above `cachedIn`: `PagingData.map` on the
+         * cached stream would drop the cached page event `LazyPagingItems`
+         * seeds from, so every return to the screen would start from an
+         * empty list and lose the scroll position.
          */
         val pagedItems: Flow<PagingData<InboxItem>> =
-            combine(effectiveFilter, contactsTick, settings.messageSortOrder) { current, _, sortOrder ->
-                current to sortOrder
-            }.flatMapLatest { (current, sortOrder) ->
-                Pager(
-                    config =
-                        PagingConfig(
-                            pageSize = PAGE_SIZE,
-                            initialLoadSize = PAGE_SIZE * 2,
-                            enablePlaceholders = false,
-                        ),
-                    pagingSourceFactory = {
-                        messageRepository.pagedInbox(current.category, current.unreadOnly, sortOrder)
-                    },
-                ).flow
-                    .map { data -> data.map { it.toInboxItem(sortOrder) } }
-            }.flowOn(ioDispatcher)
+            pagerKeys
+                .flatMapLatest { key ->
+                    Pager(
+                        config =
+                            PagingConfig(
+                                pageSize = PAGE_SIZE,
+                                initialLoadSize = PAGE_SIZE * 2,
+                                enablePlaceholders = false,
+                            ),
+                        pagingSourceFactory = {
+                            messageRepository
+                                .pagedInbox(key.category, key.unreadOnly, key.sortOrder)
+                                .also { activePagingSource = it }
+                        },
+                    ).flow
+                        .map { data -> data.map { it.toInboxItem(key.sortOrder) } }
+                }.flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 
         private val latestOtp =
@@ -341,11 +364,16 @@ class InboxViewModel
             filter.update { it.toggleUnread() }
         }
 
-        /** READ_CONTACTS was just granted: drop stale lookups and re-resolve. */
+        /**
+         * READ_CONTACTS was just granted: drop stale lookups and re-resolve.
+         * Names are presentational, so this refreshes the loaded pages IN
+         * PLACE (Paging reloads around the anchor and re-runs the row mapping)
+         * rather than rebuilding the pager - the list stays where it is.
+         */
         fun onContactsPermissionGranted() {
             contactsSource.invalidate()
             displayCache.clear()
-            contactsTick.update { it + 1 }
+            activePagingSource?.invalidate()
         }
 
         // Deliberately no refresh()/recategorize entry point here: the inbox

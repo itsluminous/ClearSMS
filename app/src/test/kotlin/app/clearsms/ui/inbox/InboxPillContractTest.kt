@@ -56,9 +56,10 @@ class InboxPillContractTest {
     fun `queries and select-all run on the filter constrained to visible pills`() {
         val vm = source("ui/inbox/InboxViewModel.kt")
         assertThat(vm).contains("current.constrainedTo(config.visible, unreadControl = unreadShown)")
-        assertThat(vm).contains("combine(effectiveFilter, contactsTick")
+        // The pager's query key is derived from the effective filter (see InboxPagerContractTest).
+        assertThat(vm).contains("inboxPagerKeys(effectiveFilter, settings.messageSortOrder)")
         assertThat(vm).contains("val current = effectiveFilter.first()")
-        assertThat(vm).contains("messageRepository.pagedInbox(current.category, current.unreadOnly, sortOrder)")
+        assertThat(vm).contains(".pagedInbox(key.category, key.unreadOnly, key.sortOrder)")
         assertThat(vm).contains("messageRepository.inboxThreadIds(current.category, current.unreadOnly)")
     }
 

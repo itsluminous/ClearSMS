@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -354,9 +355,14 @@ class ConversationViewModel
          * resolved under the SAME sort order the pager uses (GitHub #45), so
          * the jump lands on the target under either setting; a sort change
          * rebuilds the pager from a freshly resolved position.
+         *
+         * `distinctUntilChanged` because the DataStore-backed settings flow
+         * re-emits its current value on ANY preference write; only a real
+         * sort-order change may rebuild the pager (and jump the list).
          */
         val pagedItems: Flow<PagingData<ConversationItem>> =
             settings.messageSortOrder
+                .distinctUntilChanged()
                 .flatMapLatest { sortOrder ->
                     val position = initialPosition(sortOrder)
                     Pager(
