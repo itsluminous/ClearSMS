@@ -58,7 +58,10 @@ class DeliveryTickContractTest {
     fun `failed and sending keep their explicit bubble line - the tick never replaces it`() {
         val screen = source("ui/conversation/ConversationScreen.kt")
         assertThat(screen).contains("DeliveryStatus.SENDING, DeliveryStatus.FAILED ->")
-        assertThat(screen).contains("stringResource(R.string.conversation_not_sent)")
+        // The failed line now carries the recorded reason ("Not sent · no
+        // MMS connection") through the single SendFailureText mapping; the
+        // bare "Not sent" is that mapping's fallback.
+        assertThat(screen).contains("SendFailureText.bubbleLabelRes(")
         assertThat(screen).contains("MaterialTheme.colorScheme.error")
         assertThat(screen).contains("DeliveryStatus.SCHEDULED -> {")
     }

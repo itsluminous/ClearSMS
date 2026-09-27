@@ -6,9 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.telephony.SmsManager
-import android.util.Log
 import androidx.core.content.FileProvider
 import app.clearsms.BuildConfig
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.receiver.MmsDownloadReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -60,6 +62,7 @@ class SystemMmsDownloader
                 if (!file.exists()) file.createNewFile()
                 val uri = FileProvider.getUriForFile(context, AUTHORITY, file)
                 grantWriteToPlatformMmsService(uri)
+                Diag.i(TAG, "mms download started", id("message", messageId), count("attempt", attempt))
                 smsManager().downloadMultimediaMessage(
                     context,
                     contentLocation,
@@ -71,7 +74,7 @@ class SystemMmsDownloader
                 // A failure to even start the transaction is a download
                 // failure: the receiver never fires, so mark it here by
                 // broadcasting the failure path ourselves.
-                Log.e(TAG, "Failed to start MMS download", e)
+                Diag.e(TAG, "mms download start failed", e, id("message", messageId), count("attempt", attempt))
                 context.sendBroadcast(
                     MmsDownloadReceiver.intent(context, messageId, attempt).putExtra(MmsDownloadReceiver.EXTRA_START_FAILED, true),
                 )
@@ -120,7 +123,7 @@ class SystemMmsDownloader
             }
 
         private companion object {
-            const val TAG = "SystemMmsDownloader"
+            const val TAG = "MmsDownload"
             const val AUTHORITY = BuildConfig.APPLICATION_ID + ".fileprovider"
         }
     }

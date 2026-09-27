@@ -20,6 +20,10 @@ import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.ApplicationScope
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.sortTimestamp
@@ -488,7 +492,10 @@ class ConversationViewModel
                                 chosenSim.value,
                                 System.currentTimeMillis() + delay.millis,
                             )
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            // The user sees "Message not sent" with no row
+                            // to tap: the report must say what threw.
+                            Diag.e(TAG, "delayed send scheduling failed", e)
                             sendEvents.send(SendEvent.Failed(NO_MESSAGE))
                             return@launch
                         }
@@ -507,8 +514,19 @@ class ConversationViewModel
                         } else {
                             mmsSender.send(destination, body, attachments, chosenSim.value)
                         }
-                    } catch (_: Exception) {
-                        // Persisting the message itself failed - nothing to retry against.
+                    } catch (e: Exception) {
+                        // Persisting the message itself failed - nothing to
+                        // retry against, and the only trace is this line.
+                        Diag.e(
+                            TAG,
+                            "send failed before a row existed",
+                            e,
+                            count("attachments", attachments.size),
+                            flag(
+                                "defaultSubscription",
+                                chosenSim.value == null,
+                            ),
+                        )
                         sendEvents.send(SendEvent.Failed(NO_MESSAGE))
                         return@launch
                     }
@@ -533,7 +551,8 @@ class ConversationViewModel
                     } else {
                         smsSender.resend(messageId)
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Diag.e(TAG, "retry failed", e, id("message", messageId))
                     sendEvents.send(SendEvent.Failed(messageId))
                     return@launch
                 }
@@ -730,6 +749,7 @@ class ConversationViewModel
             )
 
         private companion object {
+            const val TAG = "Conversation"
             const val PAGE_SIZE = 60
 
             /** Sentinel for a send that failed before a row existed. */

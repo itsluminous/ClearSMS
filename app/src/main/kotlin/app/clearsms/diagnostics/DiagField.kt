@@ -8,9 +8,9 @@ package app.clearsms.diagnostics
  * that accepts an arbitrary [String]. Counts, booleans, database row ids,
  * platform result codes and enum names cannot carry a message body, a phone
  * number, a contact name, an OTP, an account tail, a VPA or an amount. The
- * two string-shaped inputs - [sender] and [ruleId] - are validated against
- * the narrow shape they are meant to carry and replaced by a placeholder
- * when the value does not fit.
+ * three string-shaped inputs - [sender], [ruleId] and [mime] - are
+ * validated against the narrow shape they are meant to carry and replaced
+ * by a placeholder when the value does not fit.
  *
  * The source-level twin of this guard is `DiagnosticLogConventionTest`,
  * which fails the build when a `Diag.*` call site names a sensitive value
@@ -94,7 +94,29 @@ class DiagField private constructor(
          */
         fun sender(value: String?): DiagField = DiagField("sender", LoggableSender.of(value))
 
+        /**
+         * An attachment's MIME type (`image/jpeg`, `video/mp4`). What a
+         * carrier accepts depends on it, so an MMS bug report needs the
+         * exact type - and it is not personal: the value must be a bare
+         * `type/subtype` token from the IANA top-level types, so a body,
+         * a name or a file name can never fit. Anything else is dropped.
+         */
+        fun mime(value: String?): DiagField =
+            DiagField(
+                "mime",
+                when {
+                    value == null -> "null"
+                    else -> {
+                        val trimmed = value.trim().lowercase()
+                        if (MIME.matches(trimmed) && trimmed.substringBefore('/') in MIME_TOP_LEVEL) trimmed else DROPPED
+                    }
+                },
+            )
+
         private val RULE_ID = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+        private val MIME = Regex("^[a-z]{1,11}/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$")
+        private val MIME_TOP_LEVEL =
+            setOf("application", "audio", "font", "image", "message", "model", "multipart", "text", "video")
     }
 }
 

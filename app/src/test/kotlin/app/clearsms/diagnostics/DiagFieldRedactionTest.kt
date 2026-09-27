@@ -22,14 +22,14 @@ class DiagFieldRedactionTest {
             DiagField.Companion::class
                 .declaredFunctions
                 .filter { it.visibility == KVisibility.PUBLIC }
-        assertThat(factories.map { it.name }).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender")
+        assertThat(factories.map { it.name }).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender", "mime")
         factories.forEach { factory ->
             // Skip the receiver (Companion) parameter.
             val params = factory.parameters.drop(1)
             val stringParams = params.filter { it.type.jvmErasure == String::class }
             when (factory.name) {
-                // The two validated string inputs take exactly one String: the value itself.
-                "sender", "ruleId" -> assertThat(params).hasSize(1)
+                // The three validated string inputs take exactly one String: the value itself.
+                "sender", "ruleId", "mime" -> assertThat(params).hasSize(1)
                 else -> {
                     // Every other factory's only String is the field NAME; the
                     // value is Int / Long / Boolean / Enum.
@@ -107,6 +107,28 @@ class DiagFieldRedactionTest {
         assertThat(render(DiagField.ruleId("987654"))).contains("rule=[dropped]")
         assertThat(render(DiagField.ruleId("has space"))).contains("rule=[dropped]")
         assertThat(render(DiagField.ruleId("x".repeat(80)))).contains("rule=[dropped]")
+    }
+
+    @Test
+    fun `mime types keep a bare type-subtype token and drop everything else`() {
+        assertThat(render(DiagField.mime("image/jpeg"))).contains("mime=image/jpeg")
+        assertThat(render(DiagField.mime(" Video/MP4 "))).contains("mime=video/mp4")
+        assertThat(render(DiagField.mime("application/vnd.oma.drm.message"))).contains("mime=application/vnd.oma.drm.message")
+        assertThat(render(DiagField.mime(null))).contains("mime=null")
+        // A body, a name, a file name, a number or a made-up top-level type
+        // is not a MIME token and never travels.
+        listOf(
+            "Your OTP is 4321",
+            "photo of us.jpg",
+            "IMG_20260927_1234.jpg",
+            "9876543210",
+            "alice/bob",
+            "image/jpeg; name=holiday.jpg",
+            "image/",
+            "",
+        ).forEach {
+            assertWithMessage(it).that(render(DiagField.mime(it))).contains("mime=[dropped]")
+        }
     }
 
     @Test

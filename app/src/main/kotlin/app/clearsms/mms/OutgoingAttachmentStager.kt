@@ -3,16 +3,19 @@ package app.clearsms.mms
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import app.clearsms.BuildConfig
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.InputStream
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import app.clearsms.diagnostics.DiagField.Companion.mime as mimeField
 
 /**
  * One compose-bar attachment, already copied into app-private staging and
@@ -85,25 +88,53 @@ class OutgoingAttachmentStager
                 val cap = stagingCapBytes(mime)
                 // Refuse absurd picks before copying a single byte, when
                 // the provider is willing to say how big the content is.
-                declaredSize(uri)?.let { size -> if (size > cap) return StagingResult.TooLarge }
+                val declared = declaredSize(uri)
+                if (declared != null && declared > cap) {
+                    Diag.w(
+                        TAG,
+                        "attachment refused as too large",
+                        null,
+                        mimeField(mime),
+                        count("declaredBytes", declared),
+                        count("capBytes", cap),
+                    )
+                    return StagingResult.TooLarge
+                }
                 val copied =
                     resolver.openInputStream(uri)?.use { input -> copyBounded(input, raw, cap) }
-                        ?: return StagingResult.Unreadable
+                if (copied == null) {
+                    Diag.w(TAG, "attachment unreadable - no stream", null, mimeField(mime), flag("sizeDeclared", declared != null))
+                    return StagingResult.Unreadable
+                }
                 when {
                     // The size column was absent or lied; the bounded copy
                     // is the backstop.
                     copied < 0 -> {
+                        Diag.w(
+                            TAG,
+                            "attachment refused mid-copy as too large",
+                            null,
+                            mimeField(mime),
+                            count("capBytes", cap),
+                            flag(
+                                "sizeDeclared",
+                                declared != null,
+                            ),
+                        )
                         raw.delete()
                         StagingResult.TooLarge
                     }
                     copied == 0L -> {
+                        Diag.w(TAG, "attachment unreadable - empty", null, mimeField(mime), flag("sizeDeclared", declared != null))
                         raw.delete()
                         StagingResult.Unreadable
                     }
                     else -> finish(raw, mime, id) { shrunkMime -> displayNameFor(uri, shrunkMime) }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to stage attachment", e)
+                // The URI, the file name and the bytes stay out of the log:
+                // the exception class chain says what kind of failure it was.
+                Diag.e(TAG, "attachment staging failed", e)
                 raw.delete()
                 StagingResult.Unreadable
             }
@@ -128,7 +159,7 @@ class OutgoingAttachmentStager
                 if (!file.exists() || file.length() == 0L) return StagingResult.Unreadable
                 finish(file, "image/jpeg", UUID.randomUUID().toString()) { "photo.jpg" }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to stage camera capture", e)
+                Diag.e(TAG, "camera capture staging failed", e)
                 StagingResult.Unreadable
             } finally {
                 file.delete()
@@ -164,16 +195,28 @@ class OutgoingAttachmentStager
             id: String,
             nameFor: (String) -> String,
         ): StagingResult {
+            val rawBytes = raw.length()
             val shrunk = ImageShrink.shrink(raw, mime, File(dir, "$id.shrunk"))
             val name = nameFor(shrunk.mimeType)
             val final = File(dir, "$id-$name")
             if (!shrunk.file.renameTo(final)) {
                 // Same-directory rename should not fail; degrade honestly.
+                Diag.e(TAG, "staged attachment rename failed", null, mimeField(shrunk.mimeType))
                 raw.delete()
                 shrunk.file.delete()
                 return StagingResult.Unreadable
             }
             if (shrunk.file != raw) raw.delete()
+            // The payload as it will travel: type and size after
+            // compression, beside what came in - never the name.
+            Diag.i(
+                TAG,
+                "attachment staged",
+                mimeField(shrunk.mimeType),
+                count("bytes", final.length()),
+                count("sourceBytes", rawBytes),
+                flag("compressed", shrunk.file != raw),
+            )
             return StagingResult.Staged(
                 StagedAttachment(
                     id = id,
@@ -232,7 +275,7 @@ class OutgoingAttachmentStager
                 ?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it.lowercase()) }
 
         private companion object {
-            const val TAG = "OutgoingAttachmentStager"
+            const val TAG = "MmsAttachment"
             const val AUTHORITY = BuildConfig.APPLICATION_ID + ".fileprovider"
         }
     }

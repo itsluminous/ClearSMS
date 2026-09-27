@@ -13,6 +13,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.MmsGateway
+import app.clearsms.mms.MmsSendConditionsProbe
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.sms.SimChoiceStore
@@ -149,6 +150,7 @@ class ComposeMessageViewModelTest {
                 AttachmentStore(context),
                 OutgoingAttachmentStager(context),
                 FakeMmsGateway(),
+                MmsSendConditionsProbe(context, FakeSubscriptionSource()),
                 Dispatchers.Unconfined,
             )
         return ComposeMessageViewModel(

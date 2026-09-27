@@ -1,7 +1,11 @@
 package app.clearsms.mms
 
-import android.util.Log
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
+import app.clearsms.diagnostics.DiagField.Companion.mime
 import app.clearsms.notification.IncomingMessageRouter
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,6 +41,15 @@ class MmsInbound
             timestampMs: Long = System.currentTimeMillis(),
         ): Long? {
             val notification = MmsNotificationParser.parse(pdu, nowMs = timestampMs) ?: return null
+            // The notification names the sender (or defers it with the
+            // insert-address token) and says how big the content is; the
+            // size is what a "download keeps failing" report needs.
+            Diag.i(
+                TAG,
+                "mms notification parsed",
+                flag("senderKnown", !notification.sender.isNullOrEmpty()),
+                count("declaredBytes", notification.messageSizeBytes ?: -1L),
+            )
             val entity =
                 messageRepository.insertMmsNotification(
                     // The insert-address token leaves the sender to the
@@ -62,9 +75,19 @@ class MmsInbound
                 return
             }
             val location = contentLocation()
-            if (attempt < MAX_ATTEMPTS - 1 && location != null) {
+            val retrying = attempt < MAX_ATTEMPTS - 1 && location != null
+            Diag.w(
+                TAG,
+                "mms download attempt failed",
+                null,
+                id("message", messageId),
+                count("attempt", attempt),
+                flag("locationKnown", location != null),
+                flag("retrying", retrying),
+            )
+            if (retrying) {
                 // One transient-failure retry, then give up visibly.
-                downloader.download(messageId, location, attempt = attempt + 1)
+                downloader.download(messageId, location!!, attempt = attempt + 1)
             } else {
                 messageRepository.markMmsFailed(messageId)
             }
@@ -72,8 +95,18 @@ class MmsInbound
 
         /** User tapped a FAILED row: flip it back to PENDING and re-download. */
         suspend fun retry(messageId: Long) {
-            val row = messageRepository.markMmsPendingForRetry(messageId) ?: return
-            val location = row.mmsContentLocation ?: return
+            val row = messageRepository.markMmsPendingForRetry(messageId)
+            if (row == null) {
+                Diag.w(TAG, "mms retry for missing message", null, id("message", messageId))
+                return
+            }
+            val location = row.mmsContentLocation
+            if (location == null) {
+                // Without the content location there is nothing to fetch:
+                // the row stays PENDING forever - a user-visible dead end.
+                Diag.w(TAG, "mms retry without content location", null, id("message", messageId))
+                return
+            }
             // A retry burns the single automatic retry too: attempt starts
             // at the last slot so the next failure goes straight to FAILED.
             downloader.download(messageId, location, attempt = MAX_ATTEMPTS - 1)
@@ -85,15 +118,47 @@ class MmsInbound
                 try {
                     staged.takeIf { it.exists() }?.readBytes()?.let(MmsRetrieveConfParser::parse)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to read staged MMS PDU", e)
+                    Diag.e(TAG, "staged mms pdu unreadable", e, id("message", messageId), count("stagedBytes", staged.length()))
                     null
                 }
             if (parsed == null) {
-                // "Downloaded" but unreadable is a failure the user can retry.
+                // "Downloaded" but unreadable is a failure the user can
+                // retry. A zero-length staging file means the platform
+                // reported success without writing anything.
+                Diag.w(
+                    TAG,
+                    "mms retrieve-conf unusable",
+                    null,
+                    id("message", messageId),
+                    flag("stagedFileExists", staged.exists()),
+                    count("stagedBytes", staged.length()),
+                )
                 staged.delete()
                 messageRepository.markMmsFailed(messageId)
                 return
             }
+            parsed.attachments.forEachIndexed { index, part ->
+                Diag.d(
+                    TAG,
+                    "mms attachment received",
+                    id("message", messageId),
+                    count("index", index),
+                    mime(part.mimeType),
+                    count("bytes", part.data.size),
+                )
+            }
+            // How many parties the message was addressed to (group MMS is
+            // attributed to its sender today) - a count, never the parties.
+            val groupSize = parsed.recipients.size
+            Diag.i(
+                TAG,
+                "mms retrieve-conf parsed",
+                id("message", messageId),
+                count("attachments", parsed.attachments.size),
+                count("attachmentBytes", parsed.attachments.sumOf { it.data.size.toLong() }),
+                flag("senderKnown", !parsed.sender.isNullOrEmpty()),
+                count("groupSize", groupSize),
+            )
             val drafts = attachmentStore.write(messageId, parsed.attachments)
             val entity =
                 messageRepository.completeMmsDownload(

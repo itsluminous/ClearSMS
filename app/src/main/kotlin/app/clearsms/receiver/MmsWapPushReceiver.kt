@@ -4,8 +4,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import android.util.Log
 import app.clearsms.di.ApplicationScope
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.mms.MmsInbound
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -41,18 +44,27 @@ class MmsWapPushReceiver : BroadcastReceiver() {
     ) {
         if (intent.action != Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION) return
         // The pushed m-notification-ind bytes ride the standard "data" extra.
-        val pdu = intent.getByteArrayExtra("data") ?: return
+        val pdu = intent.getByteArrayExtra("data")
+        if (pdu == null) {
+            // A WAP push with no payload is a platform oddity, not ours -
+            // but a "my MMS never arrive" report needs to see it happened.
+            Diag.w(TAG, "wap push without pdu", null, flag("hasSubscription", intent.hasExtra("subscription")))
+            return
+        }
         val pendingResult = goAsync()
         applicationScope.launch {
             try {
-                if (mmsInbound.onNotification(pdu) == null) {
-                    Log.w(TAG, "Undecodable MMS notification; dropping")
+                val stored = mmsInbound.onNotification(pdu)
+                if (stored == null) {
+                    Diag.w(TAG, "undecodable mms notification dropped", null, count("pduBytes", pdu.size))
+                } else {
+                    Diag.i(TAG, "mms notification accepted", id("message", stored), count("pduBytes", pdu.size))
                 }
             } catch (e: Exception) {
                 // A storage or download-start failure must never crash the
                 // process - the default SMS app has to survive every
                 // incoming broadcast. Content-free by convention.
-                Log.e(TAG, "Failed to handle incoming MMS notification", e)
+                Diag.e(TAG, "incoming mms notification failed", e, count("pduBytes", pdu.size))
             } finally {
                 pendingResult.finish()
             }

@@ -63,10 +63,26 @@
     <string name="conversation_not_sent">Not sent</string>
     <string name="conversation_failed_dialog_title">Message not sent</string>
     <string name="conversation_failed_dialog_message">Retry sending this message, or delete it?</string>
-    <string name="send_failure_no_mms_network">The MMS connection never came up. Check that mobile data is on - and note that some carriers (including most Indian networks) no longer support MMS at all, so no app can send one on this SIM.</string>
-    <string name="send_failure_apn">Your carrier\'s MMS settings (APN) look missing or rejected. Check the APN settings for this SIM.</string>
-    <string name="send_failure_http">Your carrier\'s MMS server refused the message.</string>
-    <string name="send_failure_transient">A temporary network problem interrupted the send - retrying may work.</string>
+    <!-- Why a send failed, one sentence or two, said only as far as the phone
+         actually knows: the app cannot see inside the carrier's network, so
+         each text names what was reported and no more. -->
+    <string name="send_failure_no_mms_network">The carrier\'s MMS connection did not come up. Check that mobile data is on. Some carriers no longer offer MMS at all - then no app can send one on this SIM.</string>
+    <string name="send_failure_apn">This SIM\'s carrier MMS settings (APN) are missing or were rejected.</string>
+    <string name="send_failure_http">The carrier\'s MMS server refused the message.</string>
+    <string name="send_failure_transient">A temporary network problem interrupted the send. Retrying may work.</string>
+    <string name="send_failure_carrier_disabled">Your carrier has switched MMS off for this SIM, so no app can send one.</string>
+    <string name="send_failure_sim_unavailable">The SIM this message was sent from is not active right now.</string>
+    <string name="send_failure_dispatch">The message could not be handed to the phone\'s messaging service.</string>
+    <string name="send_failure_unknown">The phone reported that the send failed, without saying why.</string>
+    <!-- The short form under the bubble: the status word, then the reason
+         in a few words. -->
+    <string name="conversation_not_sent_no_mms_network">Not sent · no MMS connection</string>
+    <string name="conversation_not_sent_apn">Not sent · MMS settings missing</string>
+    <string name="conversation_not_sent_http">Not sent · refused by carrier</string>
+    <string name="conversation_not_sent_transient">Not sent · network problem</string>
+    <string name="conversation_not_sent_carrier_disabled">Not sent · MMS off on this SIM</string>
+    <string name="conversation_not_sent_sim_unavailable">Not sent · SIM not active</string>
+    <string name="conversation_not_sent_dispatch">Not sent · could not start</string>
     <string name="conversation_delivered">Delivered</string>
 
     <!-- More details dialog (single selected message) -->
@@ -86,7 +102,6 @@
     <string name="message_details_delivered_unknown">Unknown</string>
     <string name="message_details_delivered_mms">Unknown - not supported for MMS</string>
     <string name="message_details_error">Error</string>
-    <string name="message_details_error_unknown">The send failed, but the radio reported no further detail. Tap the message bubble to retry.</string>
     <string name="message_details_sim">SIM</string>
     <string name="message_details_status">Status</string>
     <string name="message_details_bin">In the Recycle bin</string>

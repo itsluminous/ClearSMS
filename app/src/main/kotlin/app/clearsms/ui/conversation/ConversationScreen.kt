@@ -630,15 +630,7 @@ fun ConversationScreen(
                 .firstOrNull { it.id == messageId }
                 ?.message
                 ?.sendFailureReason
-                ?.let { reason ->
-                    when (SendFailureReason.entries.firstOrNull { it.name == reason }) {
-                        SendFailureReason.NO_MMS_NETWORK -> stringResource(R.string.send_failure_no_mms_network)
-                        SendFailureReason.APN_CONFIGURATION -> stringResource(R.string.send_failure_apn)
-                        SendFailureReason.HTTP_FAILURE -> stringResource(R.string.send_failure_http)
-                        SendFailureReason.TRANSIENT -> stringResource(R.string.send_failure_transient)
-                        else -> null
-                    }
-                }
+                ?.let { reason -> stringResource(SendFailureText.explanationRes(SendFailureReason.fromName(reason))) }
         AlertDialog(
             onDismissRequest = { failedMessageId = null },
             title = { Text(stringResource(R.string.conversation_failed_dialog_title)) },
@@ -1160,7 +1152,14 @@ private fun MessageBubble(
                                 Text(
                                     text =
                                         if (item.deliveryStatus == DeliveryStatus.FAILED) {
-                                            stringResource(R.string.conversation_not_sent)
+                                            // "Not sent" plus the recorded reason in a
+                                            // few words - the same reason the Retry
+                                            // dialog and details row explain in full.
+                                            stringResource(
+                                                SendFailureText.bubbleLabelRes(
+                                                    SendFailureReason.fromName(item.message?.sendFailureReason),
+                                                ),
+                                            )
                                         } else {
                                             stringResource(R.string.conversation_sending)
                                         },
