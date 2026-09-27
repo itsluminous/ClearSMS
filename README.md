@@ -10,7 +10,7 @@
 [![Forks](https://img.shields.io/github/forks/itsluminous/ClearSMS?style=flat&color=blue)](https://github.com/itsluminous/ClearSMS/forks)
 
 **Clear SMS** is an open-source, privacy-first SMS app for Android that automatically
-organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP),
+organizes your inbox. It categorizes messages (Important / Promotional / Personal / OTP / Spam),
 extracts transactions into a personal finance dashboard, surfaces bill reminders, and
 handles OTPs intelligently - all completely offline, on your device.
 
@@ -54,7 +54,7 @@ handles OTPs intelligently - all completely offline, on your device.
 ## Features
 
 - **Smart inbox** - messages are automatically sorted into Important, Promotional,
-  Personal, Unknown, and OTP using a transparent, regex-based rules engine (no ML black box).
+  Personal, Unknown, OTP, and Spam using a transparent, regex-based rules engine (no ML black box).
 - **MMS receive & send** - picture messages download automatically and can be
   sent from the compose bar (attach from the photo picker, camera, or any
   file; images are compressed to carrier limits on-device). Both directions
@@ -111,7 +111,7 @@ Everything shipped, and what's on the roadmap:
       message; real transcoding needs MediaCodec/Media3 Transformer)
 
 **Smart inbox**
-- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown (460+ community rules + 715k sender directory)
+- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown / Spam (460+ community rules + 715k sender directory)
 - [x] Automatic full re-sort after an app update ships new rules, with a progress banner in the inbox
 - [x] A rule added from a message applies to that sender's existing messages at once (body-only rules point you at the full re-sort instead)
 - [x] Category filter pills (reorderable) with tags hidden under single-category filters

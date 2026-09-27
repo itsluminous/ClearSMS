@@ -137,12 +137,11 @@ class MessageRepositoryImpl(
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-        scamOnly: Boolean,
         sortOrder: MessageSortOrder,
     ): PagingSource<Int, InboxThreadRow> =
         when (sortOrder) {
-            MessageSortOrder.RECEIVED -> messageDao.pagingInbox(category, unreadOnly, scamOnly)
-            MessageSortOrder.SENT -> messageDao.pagingInboxBySent(category, unreadOnly, scamOnly)
+            MessageSortOrder.RECEIVED -> messageDao.pagingInbox(category, unreadOnly)
+            MessageSortOrder.SENT -> messageDao.pagingInboxBySent(category, unreadOnly)
         }
 
     override suspend fun draftFor(threadId: Long): String? = draftDao.forThread(threadId)?.text
@@ -195,8 +194,7 @@ class MessageRepositoryImpl(
     override suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
-        scamOnly: Boolean,
-    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly, scamOnly)
+    ): List<Long> = messageDao.inboxThreadIds(category, unreadOnly)
 
     override suspend fun messageIdsInThread(threadId: Long): List<Long> = messageDao.messageIdsInThread(threadId)
 

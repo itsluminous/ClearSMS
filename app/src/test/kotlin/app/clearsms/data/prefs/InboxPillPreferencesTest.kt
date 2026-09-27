@@ -38,14 +38,60 @@ class InboxPillPreferencesTest {
         }
 
     @Test
-    fun `a pill order stored before the spam pill existed decodes with SCAM appended`() =
+    fun `a pill order stored before the Spam pill existed decodes with SPAM appended`() =
         runBlocking<Unit> {
-            // Exactly what v0.20.0 wrote: Category names, no SCAM.
-            dataStore.edit { it[orderKey] = Category.entries.reversed().joinToString(",") { c -> c.name } }
+            // Exactly what v0.20.0 wrote: the five Category names of the day, no SPAM.
+            val legacy = listOf("OTP", "UNKNOWN", "PERSONAL", "PROMOTIONAL", "IMPORTANT")
+            dataStore.edit { it[orderKey] = legacy.joinToString(",") }
             val order = repo.inboxPillOrder.first()
-            assertThat(order.take(Category.entries.size)).isEqualTo(Category.entries.reversed().map(InboxPill::of))
-            assertThat(order.last()).isEqualTo(InboxPill.SCAM)
+            assertThat(order.take(5).map { it.name }).isEqualTo(legacy)
+            assertThat(order.last()).isEqualTo(InboxPill.SPAM)
             assertThat(order).containsExactlyElementsIn(InboxPill.entries)
+        }
+
+    @Test
+    fun `the unreleased scam-flag pill name SCAM is dropped like any unknown name`() =
+        runBlocking<Unit> {
+            // A development build of this branch briefly persisted "SCAM" for
+            // the interim scam-flag pill; it was never released. Lenient
+            // decoding drops it and appends the real Spam pill.
+            dataStore.edit {
+                it[orderKey] = "SCAM,IMPORTANT,OTP"
+                it[hiddenKey] = setOf("SCAM", "PROMOTIONAL")
+                it[labelsKey] = "SCAM=Junk\nIMPORTANT=Bank"
+            }
+            val order = repo.inboxPillOrder.first()
+            assertThat(order.take(2)).containsExactly(InboxPill.IMPORTANT, InboxPill.OTP).inOrder()
+            assertThat(order).containsExactlyElementsIn(InboxPill.entries)
+            assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.PROMOTIONAL)
+            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank"))
+        }
+
+    @Test
+    fun `a new install's SPAM name round-trips through order, hidden set, labels and default filter`() =
+        runBlocking<Unit> {
+            repo.setInboxPillOrder(listOf(InboxPill.SPAM) + InboxPill.entries.filterNot { it == InboxPill.SPAM })
+            repo.setInboxHiddenPills(setOf(InboxPill.SPAM))
+            repo.setInboxPillLabels(mapOf(InboxPill.SPAM to "Junk"))
+            repo.setDefaultInboxFilter(Category.SPAM)
+
+            val stored = dataStore.data.first()
+            assertThat(stored[orderKey]).startsWith("SPAM,")
+            assertThat(stored[hiddenKey]).containsExactly("SPAM")
+            assertThat(stored[labelsKey]).isEqualTo("SPAM=Junk")
+            assertThat(repo.inboxPillOrder.first().first()).isEqualTo(InboxPill.SPAM)
+            assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.SPAM)
+            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.SPAM to "Junk"))
+            assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.SPAM)
+        }
+
+    @Test
+    fun `a default filter name an older app does not know falls back to All`() =
+        runBlocking<Unit> {
+            // The mirror image: a backup restored onto (or a value written by)
+            // a build that knows a category this one does not.
+            dataStore.edit { it[stringPreferencesKey("default_inbox_filter")] = "SOME_FUTURE_CATEGORY" }
+            assertThat(repo.defaultInboxFilter.first()).isNull()
         }
 
     @Test
@@ -65,10 +111,10 @@ class InboxPillPreferencesTest {
     @Test
     fun `hidden set and labels round trip and reset`() =
         runBlocking<Unit> {
-            repo.setInboxHiddenPills(setOf(InboxPill.PROMOTIONAL, InboxPill.SCAM))
-            repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SCAM to "Junk"))
-            assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.PROMOTIONAL, InboxPill.SCAM)
-            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SCAM to "Junk"))
+            repo.setInboxHiddenPills(setOf(InboxPill.PROMOTIONAL, InboxPill.SPAM))
+            repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SPAM to "Junk"))
+            assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.PROMOTIONAL, InboxPill.SPAM)
+            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SPAM to "Junk"))
 
             // Reset to defaults: everything shown, built-in names.
             repo.setInboxHiddenPills(emptySet())

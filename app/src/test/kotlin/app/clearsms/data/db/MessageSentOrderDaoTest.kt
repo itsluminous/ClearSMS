@@ -171,7 +171,7 @@ class MessageSentOrderDaoTest {
                     (result as PagingSource.LoadResult.Page).data.map { it.message.threadId }
                 }
 
-            assertThat(inboxThreads(dao.pagingInbox(null, false, false))).isEqualTo(listOf(1L, 3L, 2L))
-            assertThat(inboxThreads(dao.pagingInboxBySent(null, false, false))).isEqualTo(listOf(3L, 2L, 1L))
+            assertThat(inboxThreads(dao.pagingInbox(null, false))).isEqualTo(listOf(1L, 3L, 2L))
+            assertThat(inboxThreads(dao.pagingInboxBySent(null, false))).isEqualTo(listOf(3L, 2L, 1L))
         }
 }

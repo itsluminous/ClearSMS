@@ -36,14 +36,10 @@ interface MessageRepository {
 
     fun observeThread(threadId: Long): Flow<List<MessageEntity>>
 
-    /**
-     * Paged variant of [observeInbox] for incremental list loading.
-     * [scamOnly] restricts to scam-flagged latest messages (the Spam pill).
-     */
+    /** Paged variant of [observeInbox] for incremental list loading. */
     fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-        scamOnly: Boolean,
         /** Received (default) or sender's sent time - see [MessageSortOrder]. */
         sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     ): PagingSource<Int, InboxThreadRow>
@@ -97,7 +93,6 @@ interface MessageRepository {
     suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
-        scamOnly: Boolean,
     ): List<Long>
 
     suspend fun messageIdsInThread(threadId: Long): List<Long>

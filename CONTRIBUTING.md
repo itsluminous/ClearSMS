@@ -81,8 +81,17 @@ Each file is a document with a `version` and a list of `rules`:
 | `match.body_must_contain` | no | All strings must be present (case-sensitive) |
 | `match.body_must_not_contain` | no | None of these strings may be present |
 | `match.guards_none` | no | Named guards that must NOT match the body - the rule does not apply if any listed guard fires. Ids come from `rules/guards.json` or `rules/rule_guards.json` (e.g. `otp_mention`, `settled_payment`); a rule naming an unknown id is skipped with a logged warning |
-| `action.category` | yes | `important` \| `promotional` \| `personal` \| `otp` \| `unknown` |
+| `action.category` | yes | `important` \| `promotional` \| `personal` \| `otp` \| `unknown` \| `spam` |
 | `action.sub_category` | no | e.g. `transaction`, `otp`, `bill`, `bank_alert`, `delivery`, `offer`, `scam`, `recharge`, `government`, `investment` |
+
+`spam` is the category for junk the rules recognise (prize bait, phishing);
+it is a sorting decision. The `scam` **sub-category** is the fraud flag:
+it drives the warning treatment (security notification, link confirmation)
+and may sit on any category - a phishing SMS is `spam` + `scam`, while a
+suspicious message impersonating a bank you actually use can stay
+`important` + `scam` so the warning shows without hiding it. Neither can
+hide a verification code or a money movement: the app lifts an OTP or an
+extracted transaction out of `spam` exactly as it does out of `promotional`.
 | `action.extract` | no | Map of extracted keys to `$n` capture-group references or literals (`amount`, `account_last4`, `type`, `bank`, `otp_code`, `due_date`, `merchant`, …) |
 | `action.extract_types` | no | Explicit types for extract keys where inference is wrong (see below) |
 | `action.notification` | no | e.g. `otp_popup` |

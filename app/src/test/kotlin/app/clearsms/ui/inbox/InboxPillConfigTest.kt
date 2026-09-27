@@ -25,14 +25,14 @@ class InboxPillConfigTest {
 
     @Test
     fun `the spam pill is part of the default row`() {
-        assertThat(InboxPillConfig().visible).contains(InboxPill.SCAM)
+        assertThat(InboxPillConfig().visible).contains(InboxPill.SPAM)
     }
 
     @Test
     fun `hiding removes exactly the hidden pills and keeps the rest in order`() {
         val config = InboxPillConfig(hidden = setOf(InboxPill.PROMOTIONAL, InboxPill.UNKNOWN))
         assertThat(config.visible)
-            .containsExactly(InboxPill.IMPORTANT, InboxPill.PERSONAL, InboxPill.OTP, InboxPill.SCAM)
+            .containsExactly(InboxPill.IMPORTANT, InboxPill.PERSONAL, InboxPill.OTP, InboxPill.SPAM)
             .inOrder()
         // The Settings view still lists every pill, hidden ones included.
         assertThat(config.ordered).isEqualTo(all)
@@ -62,9 +62,9 @@ class InboxPillConfigTest {
 
     @Test
     fun `pill order is preserved across visibility changes`() {
-        val order = listOf(InboxPill.OTP, InboxPill.SCAM, InboxPill.PERSONAL, InboxPill.IMPORTANT)
+        val order = listOf(InboxPill.OTP, InboxPill.SPAM, InboxPill.PERSONAL, InboxPill.IMPORTANT)
         val shown = InboxPillConfig(order = order)
-        val hiddenScam = shown.copy(hidden = setOf(InboxPill.SCAM))
+        val hiddenScam = shown.copy(hidden = setOf(InboxPill.SPAM))
         val shownAgain = hiddenScam.copy(hidden = emptySet())
 
         assertThat(hiddenScam.visible)
@@ -101,9 +101,9 @@ class InboxPillConfigTest {
 
     @Test
     fun `removing the override resets to the built-in label`() {
-        val renamed = InboxPillConfig(labels = mapOf(InboxPill.SCAM to "Junk"))
-        val reset = renamed.copy(labels = renamed.labels - InboxPill.SCAM)
-        assertThat(reset.label(InboxPill.SCAM) { "Spam" }).isEqualTo("Spam")
+        val renamed = InboxPillConfig(labels = mapOf(InboxPill.SPAM to "Junk"))
+        val reset = renamed.copy(labels = renamed.labels - InboxPill.SPAM)
+        assertThat(reset.label(InboxPill.SPAM) { "Spam" }).isEqualTo("Spam")
     }
 
     @Test
@@ -142,11 +142,12 @@ class InboxPillConfigTest {
     }
 
     @Test
-    fun `every category has exactly one pill and the spam pill has none`() {
+    fun `every category has exactly one pill, the spam pill included`() {
         Category.entries.forEach { category ->
             assertThat(InboxPill.of(category).category).isEqualTo(category)
             assertThat(all.count { it.category == category }).isEqualTo(1)
         }
-        assertThat(InboxPill.SCAM.category).isNull()
+        assertThat(InboxPill.SPAM.category).isEqualTo(Category.SPAM)
+        assertThat(InboxPill.of(Category.SPAM)).isEqualTo(InboxPill.SPAM)
     }
 }

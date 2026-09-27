@@ -112,7 +112,7 @@ class SenderRuleTest {
 
     @Test
     fun `an unknown category is refused rather than stored`() {
-        val error = runCatching { SenderRule.definition("VM-HDFCBK", "spam") }.exceptionOrNull()
+        val error = runCatching { SenderRule.definition("VM-HDFCBK", "junk") }.exceptionOrNull()
         assertThat(error).isInstanceOf(IllegalArgumentException::class.java)
     }
 

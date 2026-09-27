@@ -22,7 +22,7 @@ object SenderRule {
     const val USER_BAND_PRIORITY = 1001
 
     /** Categories a sender rule can assign, in display order. */
-    val CATEGORIES: List<String> = listOf("important", "promotional", "personal", "otp", "unknown")
+    val CATEGORIES: List<String> = listOf("important", "promotional", "personal", "otp", "unknown", "spam")
 
     /**
      * The sender core the rule is about: TRAI route prefix/suffix stripped

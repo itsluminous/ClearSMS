@@ -31,7 +31,6 @@ open class FakeMessageRepository : MessageRepository {
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
-        scamOnly: Boolean,
         sortOrder: MessageSortOrder,
     ): PagingSource<Int, InboxThreadRow> = InboxRowPagingSource(inbox.value.map { InboxThreadRow(it, draftText = drafts[it.threadId]) })
 
@@ -69,7 +68,6 @@ open class FakeMessageRepository : MessageRepository {
     override suspend fun inboxThreadIds(
         category: Category?,
         unreadOnly: Boolean,
-        scamOnly: Boolean,
     ): List<Long> = emptyList()
 
     override suspend fun messageIdsInThread(threadId: Long): List<Long> = emptyList()

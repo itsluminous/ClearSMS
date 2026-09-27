@@ -1,5 +1,6 @@
 package app.clearsms.ui.inbox
 
+import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.ui.components.defaultLabel
 import com.google.common.truth.Truth.assertThat
@@ -57,17 +58,19 @@ class InboxPillContractTest {
         assertThat(vm).contains("current.constrainedTo(config.visible, unreadControl = unreadShown)")
         assertThat(vm).contains("combine(effectiveFilter, contactsTick")
         assertThat(vm).contains("val current = effectiveFilter.first()")
-        assertThat(vm).contains("messageRepository.pagedInbox(current.category, current.unreadOnly, current.scamOnly")
-        assertThat(vm).contains("messageRepository.inboxThreadIds(current.category, current.unreadOnly, current.scamOnly")
+        assertThat(vm).contains("messageRepository.pagedInbox(current.category, current.unreadOnly, sortOrder)")
+        assertThat(vm).contains("messageRepository.inboxThreadIds(current.category, current.unreadOnly)")
     }
 
     @Test
-    fun `the spam pill is a scam-flag filter in SQL, not a category`() {
+    fun `the spam pill is a real category, and the DAO has no scam-flag filter left`() {
         val dao = source("data/db/MessageDao.kt")
-        assertThat(dao).contains("AND (:scamOnly = 0 OR m.subCategory = 'SCAM')")
-        assertThat(source("domain/model/Category.kt")).doesNotContain("SPAM")
-        assertThat(InboxPill.SCAM.category).isNull()
-        assertThat(InboxPill.SCAM.defaultLabel()).isEqualTo("Spam")
+        assertThat(dao).doesNotContain("scamOnly")
+        assertThat(dao).doesNotContain("m.subCategory = 'SCAM'")
+        assertThat(InboxPill.SPAM.category).isEqualTo(Category.SPAM)
+        assertThat(InboxPill.SPAM.defaultLabel()).isEqualTo("Spam")
+        // One pill per category, one category per pill.
+        assertThat(InboxPill.entries.map { it.category }).containsExactlyElementsIn(Category.entries)
     }
 
     @Test

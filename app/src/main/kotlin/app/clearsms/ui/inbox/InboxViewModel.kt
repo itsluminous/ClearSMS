@@ -67,11 +67,8 @@ data class InboxFilterState(
     val pill: InboxPill? = null,
     val unreadOnly: Boolean = false,
 ) {
-    /** The category the query filters on; null for All and for the scam pill. */
+    /** The category the query filters on; null for All. */
     val category: Category? get() = pill?.category
-
-    /** True under the scam pill: the query keeps only scam-FLAGGED messages. */
-    val scamOnly: Boolean get() = pill == InboxPill.SCAM
 
     /** Selects [value], or clears the pill when it is already selected. */
     fun selectPill(value: InboxPill): InboxFilterState = copy(pill = if (pill == value) null else value)
@@ -97,10 +94,9 @@ data class InboxFilterState(
 
     /**
      * Whether inbox rows should carry their category tag. Only views that mix
-     * categories need it to disambiguate: no category pill selected (all
-     * messages, or the scam pill, which spans categories), with or without
-     * the Unread toggle. Under a single-category pill every row would repeat
-     * the pill's own label, so the tag is hidden.
+     * categories need it to disambiguate: no pill selected (all messages),
+     * with or without the Unread toggle. Under a single-category pill every
+     * row would repeat the pill's own label, so the tag is hidden.
      */
     val showsCategoryTags: Boolean get() = category == null
 }
@@ -249,7 +245,7 @@ class InboxViewModel
                             enablePlaceholders = false,
                         ),
                     pagingSourceFactory = {
-                        messageRepository.pagedInbox(current.category, current.unreadOnly, current.scamOnly, sortOrder)
+                        messageRepository.pagedInbox(current.category, current.unreadOnly, sortOrder)
                     },
                 ).flow
                     .map { data -> data.map { it.toInboxItem(sortOrder) } }
@@ -429,7 +425,7 @@ class InboxViewModel
         fun selectAll() {
             viewModelScope.launch(ioDispatcher) {
                 val current = effectiveFilter.first()
-                val ids = messageRepository.inboxThreadIds(current.category, current.unreadOnly, current.scamOnly)
+                val ids = messageRepository.inboxThreadIds(current.category, current.unreadOnly)
                 selectionState.update { it.withAll(ids) }
             }
         }

@@ -6,7 +6,7 @@ import org.junit.Test
 class InboxPillLabelsTest {
     @Test
     fun `round trip keeps every override by pill identity`() {
-        val labels = mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SCAM to "Junk", InboxPill.OTP to "Codes")
+        val labels = mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SPAM to "Junk", InboxPill.OTP to "Codes")
         assertThat(InboxPillLabels.decode(InboxPillLabels.encode(labels))).isEqualTo(labels)
     }
 
@@ -43,8 +43,8 @@ class InboxPillLabelsTest {
         val long = "x".repeat(InboxPillLabels.MAX_LENGTH + 10)
         assertThat(InboxPillLabels.sanitize(long)).hasLength(InboxPillLabels.MAX_LENGTH)
         // A line break can therefore never corrupt the line-per-entry encoding.
-        val encoded = InboxPillLabels.encode(mapOf(InboxPill.OTP to "One\nTwo", InboxPill.SCAM to "Junk"))
-        assertThat(InboxPillLabels.decode(encoded)).isEqualTo(mapOf(InboxPill.OTP to "One Two", InboxPill.SCAM to "Junk"))
+        val encoded = InboxPillLabels.encode(mapOf(InboxPill.OTP to "One\nTwo", InboxPill.SPAM to "Junk"))
+        assertThat(InboxPillLabels.decode(encoded)).isEqualTo(mapOf(InboxPill.OTP to "One Two", InboxPill.SPAM to "Junk"))
     }
 
     @Test

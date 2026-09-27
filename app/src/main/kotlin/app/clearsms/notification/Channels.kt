@@ -33,6 +33,20 @@ object Channels {
      * blocked would reproduce the silence this channel exists to fix.
      */
     const val UNKNOWN = "unknown_senders"
+
+    /**
+     * Messages sorted as junk (Category.SPAM). Created BLOCKED
+     * (IMPORTANCE_NONE), the [PROMOTIONS] pattern, and for the same reason:
+     * a spam notification is noise by definition - the whole point of the
+     * category is that the user did not ask for these messages. This is the
+     * opposite trade-off from [UNKNOWN], where blocked-by-default was the
+     * bug: an unknown sender may be a person, a spam sender was RECOGNISED
+     * as junk by a rule or the scam heuristics. Posting on a blocked channel
+     * still matters - it is what makes the channel switchable on in system
+     * settings for users who want to see spam arrive. Scam-FLAGGED messages
+     * do not come here at all: the flag routes to [SECURITY] first.
+     */
+    const val SPAM = "spam"
     const val TRANSACTIONS = "transactions"
     const val SECURITY = "security"
     const val SUMMARY = "summary"
@@ -93,6 +107,12 @@ object Channels {
                     context.getString(R.string.channel_unknown),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply { description = context.getString(R.string.channel_unknown_desc) },
+                // Blocked at creation, like Promotions - see [SPAM].
+                NotificationChannel(
+                    SPAM,
+                    context.getString(R.string.channel_spam),
+                    NotificationManager.IMPORTANCE_NONE,
+                ).apply { description = context.getString(R.string.channel_spam_desc) },
                 // DEFAULT (not HIGH) on purpose: parsed transaction alerts
                 // are informative, not urgent, and must not heads-up.
                 NotificationChannel(

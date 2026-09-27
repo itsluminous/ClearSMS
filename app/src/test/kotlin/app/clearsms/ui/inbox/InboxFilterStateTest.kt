@@ -48,24 +48,22 @@ class InboxFilterStateTest {
     fun `default state is all categories and all read states`() {
         val state = InboxFilterState()
         assertThat(state.category).isNull()
-        assertThat(state.scamOnly).isFalse()
         assertThat(state.unreadOnly).isFalse()
     }
 
     @Test
     fun `every single-category pill hides the tags, with or without unread`() {
-        InboxPill.entries.filter { it.category != null }.forEach { pill ->
+        InboxPill.entries.forEach { pill ->
             assertThat(InboxFilterState(pill = pill).showsCategoryTags).isFalse()
             assertThat(InboxFilterState(pill = pill, unreadOnly = true).showsCategoryTags).isFalse()
         }
     }
 
     @Test
-    fun `the scam pill spans categories so its rows keep their tags`() {
-        val state = InboxFilterState(pill = InboxPill.SCAM)
-        assertThat(state.scamOnly).isTrue()
-        assertThat(state.category).isNull()
-        assertThat(state.showsCategoryTags).isTrue()
+    fun `the spam pill is a single-category pill like every other`() {
+        val state = InboxFilterState(pill = InboxPill.SPAM)
+        assertThat(state.category).isEqualTo(Category.SPAM)
+        assertThat(state.showsCategoryTags).isFalse()
     }
 
     @Test

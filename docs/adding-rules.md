@@ -38,6 +38,7 @@ Before touching a regex, answer three questions:
 | Did money actually move? | a transaction (`sub_category: transaction`) |
 | Is money *going to be* owed? | a reminder (`bill`, and a `due_date`) |
 | Neither - it is a notice? | `important` with a descriptive sub-category |
+| Unsolicited junk or phishing? | `spam` (add `sub_category: scam` when it is fraud, so the warning shows) |
 
 Getting this wrong is the most common mistake. A "your bill of ₹1,178 is due on
 10-Jun" message is a **reminder**, not a transaction - nothing has been paid yet.

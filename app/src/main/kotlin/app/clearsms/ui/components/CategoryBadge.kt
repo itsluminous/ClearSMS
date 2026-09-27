@@ -22,16 +22,15 @@ fun Category.displayName(): String =
         Category.PERSONAL -> "Personal"
         Category.UNKNOWN -> "Unknown"
         Category.OTP -> "OTP"
+        Category.SPAM -> "Spam"
     }
 
 /**
  * Built-in label of an Inbox pill - what it shows until the user renames it
- * in Settings. Category pills reuse [displayName], so a category tag and its
- * pill agree by construction; the scam-flag pill is labelled "Spam", the
- * word the users who asked for it use, though what it filters is the set of
- * scam-FLAGGED messages (see [InboxPill.SCAM]).
+ * in Settings. Every pill reuses its category's [displayName], so a category
+ * tag and its pill agree by construction.
  */
-fun InboxPill.defaultLabel(): String = category?.displayName() ?: "Spam"
+fun InboxPill.defaultLabel(): String = category.displayName()
 
 /** Subtle tonal badge showing a message's category under the sender name. */
 @Composable

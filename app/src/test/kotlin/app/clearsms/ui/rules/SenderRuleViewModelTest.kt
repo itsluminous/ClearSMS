@@ -101,7 +101,7 @@ class SenderRuleViewModelTest {
         runTest(dispatcher) {
             val vm = viewModel()
             vm.save("", "promotional")
-            vm.save("VM-HDFCBK", "spam")
+            vm.save("VM-HDFCBK", "junk")
             advanceUntilIdle()
 
             assertThat(rules.rules.value).isEmpty()

@@ -63,7 +63,7 @@ import app.clearsms.domain.rules.SenderRule
 import app.clearsms.domain.rules.SuggestedToken
 import app.clearsms.domain.rules.TokenKind
 
-private val CATEGORY_OPTIONS = listOf("important", "promotional", "personal", "otp", "unknown")
+private val CATEGORY_OPTIONS = listOf("important", "promotional", "personal", "otp", "unknown", "spam")
 private val SUB_CATEGORY_OPTIONS =
     listOf(
         "transaction",

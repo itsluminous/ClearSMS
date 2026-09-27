@@ -17,7 +17,7 @@ import javax.inject.Singleton
 /**
  * The single notification-routing decision for an incoming message: OTP,
  * scam warning, parsed transaction/balance/bill, plain message, promotion,
- * unknown-sender notification, or silence - respecting every user-facing
+ * spam, unknown-sender notification, or silence - respecting every user-facing
  * gate (blocked senders, the
  * transaction-notification toggle, OTP auto-copy, selected actions).
  *
@@ -76,6 +76,14 @@ class IncomingMessageRouter
                 // toggle would appear to do nothing.
                 entity.category == Category.PROMOTIONAL ->
                     messageNotifier.notify(entity, selectedActions, channelId = Channels.PROMOTIONS)
+                // Spam: same shape as promotions, its own blocked channel
+                // (Channels.SPAM). Ordered AFTER the scam branch above on
+                // purpose - a message that is both sorted as spam and
+                // FLAGGED as a scam keeps its security warning; only
+                // unflagged spam lands here. MessageNotifier applies the
+                // Inbox section gate like every other message notification.
+                entity.category == Category.SPAM ->
+                    messageNotifier.notify(entity, selectedActions, channelId = Channels.SPAM)
                 // Unknown senders get the same per-thread message notification
                 // on their own ENABLED channel (Channels.UNKNOWN) - a real
                 // person texting from a non-contact number must not arrive

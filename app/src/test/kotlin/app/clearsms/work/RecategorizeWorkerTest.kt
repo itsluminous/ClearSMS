@@ -68,7 +68,6 @@ class RecategorizeWorkerTest {
             override fun pagedInbox(
                 category: Category?,
                 unreadOnly: Boolean,
-                scamOnly: Boolean,
                 sortOrder: MessageSortOrder,
             ): PagingSource<Int, InboxThreadRow> = throw UnsupportedOperationException()
 
@@ -96,7 +95,6 @@ class RecategorizeWorkerTest {
             override suspend fun inboxThreadIds(
                 category: Category?,
                 unreadOnly: Boolean,
-                scamOnly: Boolean,
             ): List<Long> = emptyList()
 
             override suspend fun messageIdsInThread(threadId: Long): List<Long> = emptyList()

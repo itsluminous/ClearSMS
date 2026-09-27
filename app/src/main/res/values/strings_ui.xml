@@ -293,7 +293,7 @@
     <string name="settings_inbox_visible_pills_summary_all">All %1$d shown</string>
     <string name="settings_inbox_visible_pills_summary_some">%1$d of %2$d shown</string>
     <string name="settings_inbox_visible_pills_summary_none">None - the pill row is hidden</string>
-    <string name="settings_inbox_visible_pills_hint">Untick a pill to remove it from the inbox. Hiding all of them removes the row; the Unread switch still works. \"Spam\" shows messages the app flagged as likely scams, whatever their category.</string>
+    <string name="settings_inbox_visible_pills_hint">Untick a pill to remove it from the inbox. Hiding all of them removes the row; the Unread switch still works.</string>
     <string name="settings_inbox_pill_labels">Rename pills</string>
     <string name="settings_inbox_pill_labels_summary_default">Built-in names</string>
     <string name="settings_inbox_pill_labels_summary_custom">%1$d renamed</string>
