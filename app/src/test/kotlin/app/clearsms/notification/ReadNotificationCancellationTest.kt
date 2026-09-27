@@ -57,8 +57,7 @@ class ReadNotificationCancellationTest {
         object : NotificationSenderResolver(
             context,
             app.clearsms.sms.ContactsSource(context),
-            app.clearsms.data.senderid
-                .SenderIdStore(context),
+            SenderIdLookup { null },
         ) {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }

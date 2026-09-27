@@ -1,5 +1,6 @@
 package app.clearsms.ui.alerts
 
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.MessageEntity
@@ -53,10 +54,11 @@ class AlertsViewModelTest {
     private fun viewModel(
         repository: FakeFinanceRepository = FakeFinanceRepository(past = listOf(reminder(1), reminder(2))),
         messages: Map<Long, MessageEntity> = emptyMap(),
+        settings: FakeSettingsRepository = FakeSettingsRepository(),
     ): AlertsViewModel =
         AlertsViewModel(
             financeRepository = repository,
-            settingsRepository = FakeSettingsRepository(),
+            settingsRepository = settings,
             messageLookup = MessageLookup { id -> messages[id] },
             ioDispatcher = dispatcher,
         )
@@ -77,6 +79,84 @@ class AlertsViewModelTest {
 
                 vm.togglePastExpanded()
                 assertThat(awaitItem().pastExpanded).isFalse()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    // --- Pill visibility (shared PillConfig mechanism) -----------------------
+
+    private fun emi(id: Long) = reminder(id).copy(type = ReminderType.EMI)
+
+    private suspend fun ReceiveTurbine<AlertsUiState>.loaded(): AlertsUiState {
+        var state = awaitItem()
+        while (!state.loaded) state = awaitItem()
+        return state
+    }
+
+    @Test
+    fun `hidden pills leave the row - in order - and all hidden removes the row`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            settings.alertsHiddenPills.value = setOf(AlertFilter.EMI, AlertFilter.TRAVEL)
+            val vm = viewModel(settings = settings)
+
+            vm.uiState.test {
+                val state = loaded()
+                assertThat(state.pills.visible).isEqualTo(AlertFilter.entries - AlertFilter.EMI - AlertFilter.TRAVEL)
+                assertThat(state.pills.showsRow).isTrue()
+
+                settings.alertsHiddenPills.value = AlertFilter.entries.toSet()
+                val none = awaitItem()
+                assertThat(none.pills.visible).isEmpty()
+                assertThat(none.pills.showsRow).isFalse()
+                // No row, no filter: the list is the unfiltered view.
+                assertThat(none.filter).isEqualTo(AlertFilter.ALL)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `hiding the selected pill drops the filter back to ALL, and un-hiding restores it`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            val repository = FakeFinanceRepository(upcoming = listOf(reminder(1), emi(2)))
+            val vm = viewModel(repository = repository, settings = settings)
+
+            vm.uiState.test {
+                loaded()
+                vm.setFilter(AlertFilter.EMI)
+                val filtered = awaitItem()
+                assertThat(filtered.filter).isEqualTo(AlertFilter.EMI)
+                assertThat(filtered.upcoming.map { it.id }).containsExactly(2L)
+
+                settings.alertsHiddenPills.value = setOf(AlertFilter.EMI)
+                val guarded = awaitItem()
+                assertThat(guarded.filter).isEqualTo(AlertFilter.ALL)
+                assertThat(guarded.upcoming.map { it.id }).containsExactly(1L, 2L)
+                assertThat(guarded.pills.visible).doesNotContain(AlertFilter.EMI)
+
+                // The raw selection was kept: showing the pill again restores it.
+                settings.alertsHiddenPills.value = emptySet()
+                val restored = awaitItem()
+                assertThat(restored.filter).isEqualTo(AlertFilter.EMI)
+                assertThat(restored.upcoming.map { it.id }).containsExactly(2L)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `hiding the ALL chip keeps the unfiltered view - nothing is silently filtered`() =
+        runTest {
+            val settings = FakeSettingsRepository()
+            settings.alertsHiddenPills.value = setOf(AlertFilter.ALL)
+            val repository = FakeFinanceRepository(upcoming = listOf(reminder(1), emi(2)))
+            val vm = viewModel(repository = repository, settings = settings)
+
+            vm.uiState.test {
+                val state = loaded()
+                assertThat(state.filter).isEqualTo(AlertFilter.ALL)
+                assertThat(state.upcoming).hasSize(2)
+                assertThat(state.pills.visible.first()).isEqualTo(AlertFilter.CREDIT_CARDS)
                 cancelAndIgnoreRemainingEvents()
             }
         }

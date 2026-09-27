@@ -32,7 +32,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.clearsms.ui.theme.ClearSmsTheme
-import kotlin.math.abs
 
 /**
  * Brand-style avatar for known senders, clipped to the shared
@@ -61,7 +60,7 @@ fun SenderBrandMark(
         if (brandColor != null) {
             brandTileColor(brandColor, darkTheme = isSystemInDarkTheme())
         } else {
-            Color.hsl(BRAND_HUES[abs(name.hashCode()) % BRAND_HUES.size], 0.55f, 0.38f)
+            Color.hsl(BRAND_HUES[Math.floorMod(name.hashCode(), BRAND_HUES.size)], 0.55f, 0.38f)
         }
     val monogram = brand?.monogram?.take(3)?.ifBlank { null } ?: initialsOf(name)
     val style = if (brand != null) AvatarStyle.BRAND else AvatarStyle.BRAND_MARK

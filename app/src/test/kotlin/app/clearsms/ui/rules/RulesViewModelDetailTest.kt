@@ -28,8 +28,9 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * Tapping a BUNDLED rule opens a read-only detail (pattern, priority,
- * extracts, guards) - never an editor - and the enable/disable toggle keeps
- * its park/restore behaviour after the tap-to-edit wiring.
+ * extracts, guards) - never an editor; the enable/disable toggle flips the
+ * row's flag in place; and rules an older version parked in preferences are
+ * folded back into the table once (issue #43).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -107,7 +108,7 @@ class RulesViewModelDetailTest {
         }
 
     @Test
-    fun `enable-disable toggle still parks and restores the rule`() =
+    fun `enable-disable toggle flips the row flag in place - no parking, no second store`() =
         runTest(dispatcher) {
             val vm = viewModel()
             // uiState is WhileSubscribed: keep a collector alive during the test.
@@ -120,30 +121,117 @@ class RulesViewModelDetailTest {
             assertThat(shown.enabled).isTrue()
 
             vm.setEnabled(shown, false)
-            // Disabling removes the row from the engine's table and parks it.
-            repository.rules.first { it.isEmpty() }
-            // uiState combines the rules table with the parked-prefs flow, so
-            // await the settled state (exactly one, disabled), not the
-            // intermediate one where the row and the parked entry coexist.
-            val parked =
-                vm.uiState
-                    .first { state ->
-                        state.builtinRules.size == 1 && state.builtinRules.none { it.enabled }
-                    }.builtinRules
-                    .single()
-            assertThat(parked.id).isEqualTo(bundledRule.id)
-            assertThat(parked.parkedEntry).isNotNull()
-
-            vm.setEnabled(parked, true)
-            repository.rules.first { it.isNotEmpty() }
+            advanceUntilIdle()
+            // The row stays (the engine filters on the flag); nothing is parked,
+            // so there is no window in which the rule exists in two stores.
             assertThat(
                 repository.rules.value
                     .single()
-                    .id,
-            ).isEqualTo(bundledRule.id)
-            // The parked entry is removed after the rule is restored.
-            uiPrefs.disabledRules.first { it.isEmpty() }
+                    .enabled,
+            ).isFalse()
+            assertThat(
+                repository.rules.value
+                    .single()
+                    .source,
+            ).isEqualTo(RuleSources.BUILTIN)
+            assertThat(uiPrefs.disabledRules.first()).isEmpty()
+            val disabled =
+                vm.uiState.value.builtinRules
+                    .single()
+            assertThat(disabled.enabled).isFalse()
+            assertThat(disabled.parkedEntry).isNull()
+
+            vm.setEnabled(disabled, true)
+            advanceUntilIdle()
+            val row = repository.rules.value.single()
+            assertThat(row.enabled).isTrue()
+            // Re-enabling used to re-insert the builtin as a USER rule.
+            assertThat(row.source).isEqualTo(RuleSources.BUILTIN)
+            assertThat(row.isUserDefined).isFalse()
+            assertThat(
+                vm.uiState.value.builtinRules
+                    .single()
+                    .enabled,
+            ).isTrue()
 
             collector.cancel()
+        }
+
+    private fun parkedEntry(
+        definition: RuleDefinition,
+        source: String,
+    ) = "$source|" + json.encodeToString(RuleDefinition.serializer(), definition)
+
+    @Test
+    fun `legacy parked rules are folded into the table as disabled rows with their source`() =
+        runTest(dispatcher) {
+            val mine = RuleDefinition(id = "user_abcd1234", name = "Mine", action = RuleAction(category = "personal"))
+            val theirs = RuleDefinition(id = "sbi-otp", name = "SBI OTP", action = RuleAction(category = "otp"))
+            uiPrefs.addDisabledRule(parkedEntry(mine, "user"))
+            uiPrefs.addDisabledRule(parkedEntry(theirs, "builtin"))
+
+            val vm = viewModel()
+            val collector = launch { vm.uiState.collect {} }
+            advanceUntilIdle()
+
+            val rows = repository.rules.value.associateBy { it.id }
+            assertThat(rows.keys).containsExactly("hdfc-debit", "user_abcd1234", "sbi-otp")
+            assertThat(rows.getValue("user_abcd1234").enabled).isFalse()
+            assertThat(rows.getValue("user_abcd1234").source).isEqualTo(RuleSources.USER)
+            assertThat(rows.getValue("sbi-otp").enabled).isFalse()
+            assertThat(rows.getValue("sbi-otp").source).isEqualTo(RuleSources.BUILTIN)
+            assertThat(uiPrefs.disabledRules.first()).isEmpty()
+            val state = vm.uiState.value
+            assertThat(state.userRules.map { it.id }).containsExactly("user_abcd1234")
+            assertThat(state.builtinRules.map { it.id }).containsExactly("hdfc-debit", "sbi-otp")
+
+            collector.cancel()
+        }
+
+    @Test
+    fun `a parked copy of a rule the table already holds turns the row off and is dropped`() =
+        runTest(dispatcher) {
+            // The persisted state behind issue #43: the same id in the table
+            // AND the parked set (a reseed re-shipped a builtin the user had
+            // parked, or the old two-write disable died half way). The page
+            // must open, show it once, and keep the user's choice: parked
+            // means "I turned this off", so the surviving row is disabled.
+            uiPrefs.addDisabledRule(parkedEntry(bundledRule, "builtin"))
+
+            val vm = viewModel()
+            val collector = launch { vm.uiState.collect {} }
+            val state = vm.uiState.first { it.loaded }
+            assertThat(state.builtinRules.map { it.id }).containsExactly("hdfc-debit")
+            advanceUntilIdle()
+
+            val row = repository.rules.value.single()
+            assertThat(row.enabled).isFalse()
+            assertThat(row.name).isEqualTo("HDFC debit")
+            assertThat(uiPrefs.disabledRules.first()).isEmpty()
+            assertThat(
+                vm.uiState
+                    .first { !it.builtinRules.single().enabled }
+                    .builtinRules
+                    .single()
+                    .parkedEntry,
+            ).isNull()
+
+            collector.cancel()
+        }
+
+    @Test
+    fun `deleting a rule also removes any legacy parked copy of it`() =
+        runTest(dispatcher) {
+            val mine = RuleDefinition(id = "user_abcd1234", name = "Mine", action = RuleAction(category = "personal"))
+            repository.addUserRule(mine)
+            val entry = parkedEntry(mine, "user")
+            uiPrefs.addDisabledRule(entry)
+            val vm = viewModel()
+
+            vm.deleteUserRule("user_abcd1234")
+            advanceUntilIdle()
+
+            assertThat(repository.rules.value.map { it.id }).containsExactly("hdfc-debit")
+            assertThat(uiPrefs.disabledRules.first()).isEmpty()
         }
 }

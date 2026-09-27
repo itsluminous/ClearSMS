@@ -13,12 +13,19 @@ import java.io.File
  *    [MessageComposerBar] via [ComposerExpansion] - neither compose entry
  *    screen may grow its own expansion, and both must feed the bar the
  *    recipient identity it shows while expanded.
- * 2. Draft safety: the field state is a TextFieldValue in rememberSaveable
- *    (text + selection survive rotation) behind the empty-boundary
- *    adoption gate, and there is exactly ONE OutlinedTextField call so the
- *    field node (selection, internal scroll) survives every toggle.
+ * 2. Draft safety: the field state is a saved TextFieldState (text +
+ *    selection survive rotation) behind the empty-boundary adoption gate,
+ *    and there is exactly ONE BasicTextField call so the field node
+ *    (selection, internal scroll) survives every toggle.
  * 3. Back collapses first; insets are live, never an assumed height; the
  *    small toggle keeps distinct expand/collapse accessibility labels.
+ * 4. Issue #30 held-cursor scroll: the field is the STATE-based
+ *    BasicTextField (its cursor-handle drag is not clamped to the visible
+ *    window and its core follows the cursor into view), owning its own
+ *    ScrollState, with the collapsed height capped in lines - never a
+ *    value-based field, never a clipping height modifier.
+ * 5. The expand toggle shows only when useful: gated on the REAL laid-out
+ *    line count from onTextLayout through the pure toggleVisible rule.
  */
 class ComposerExpansionConventionTest {
     private val srcRoot = File("src/main/kotlin/app/clearsms")
@@ -72,16 +79,29 @@ class ComposerExpansionConventionTest {
     }
 
     @Test
-    fun `draft text and selection ride TextFieldValue-Saver behind the adoption gate`() {
+    fun `draft text and selection ride a saved TextFieldState behind the adoption gate`() {
         val bar = source("ui/components/MessageComposerBar.kt")
-        // Selection/cursor preserved across config changes...
-        assertThat(bar).contains("rememberSaveable(stateSaver = TextFieldValue.Saver)")
+        // Selection/cursor preserved across config changes:
+        // rememberTextFieldState saves through TextFieldState.Saver.
+        assertThat(bar).contains("rememberTextFieldState(initialText = draft, initialSelection = TextRange(draft.length))")
         // ...and external draft changes only land across an empty boundary,
         // so a flow echo can never clobber typing (unit-tested rule).
-        assertThat(bar).contains("ComposerExpansion.shouldAdoptExternalDraft(external = draft, field = fieldValue.text)")
-        // ONE field node for both states: a second OutlinedTextField would
-        // fork selection/scroll state on toggle.
-        assertThat(Regex("""OutlinedTextField\(""").findAll(bar).count()).isEqualTo(1)
+        assertThat(bar).contains(
+            "ComposerExpansion.shouldAdoptExternalDraft(external = draft, field = textState.text.toString())",
+        )
+        assertThat(bar).contains("textState.setTextAndPlaceCursorAtEnd(draft)")
+        // Field -> ViewModel through the observed state; the initial value
+        // is the starting text, not an edit, and must not be echoed (it
+        // could write "" over a persisted draft that loads a beat later).
+        assertThat(bar).contains("snapshotFlow { textState.text.toString() }")
+        assertThat(bar).contains(".drop(1)")
+        // ONE field node for both states: a second field would fork
+        // selection/scroll state on toggle - and no value-based field at all
+        // (its cursor-handle drag is clamped to the visible window, #30).
+        assertThat(Regex("""BasicTextField\(""").findAll(bar).count()).isEqualTo(1)
+        assertThat(Regex("""OutlinedTextField\(""").findAll(bar).count()).isEqualTo(0)
+        // (KDoc may still NAME the value-based field as what this replaced.)
+        assertThat(bar.lines().filter { it.startsWith("import ") && it.contains("TextFieldValue") }).isEmpty()
     }
 
     @Test
@@ -128,7 +148,7 @@ class ComposerExpansionConventionTest {
         assertThat(header).doesNotContain("ExpandToggle(")
         // The call site rides the field's Box corner, unconditionally - a
         // state-gated `if (!expanded)` here is the regression shape.
-        val callSite = bar.substringAfter("OutlinedTextField(").substringBefore("barState.simIndicatorVisible")
+        val callSite = bar.substringAfter("BasicTextField(").substringBefore("barState.simIndicatorVisible")
         assertThat(callSite).contains("ExpandToggle(")
         assertThat(callSite).contains("modifier = Modifier.align(Alignment.TopEnd)")
         assertThat(callSite).doesNotContain("if (!expanded)")
@@ -157,17 +177,64 @@ class ComposerExpansionConventionTest {
 
     @Test
     fun `the collapsed field takes its bounded-scrollable window from the pure affordances`() {
-        // Bug 1 (issue #30): the collapsed box's scrolling comes from being
-        // a maxLines-BOUNDED text field (Compose pans such a window
-        // internally - ScrollBy semantics). The bound must flow from the
-        // tested affordances, and nothing may pin the field's height or
-        // flatten it to a single line, which are the two shapes that would
-        // genuinely clip a long draft without scrolling.
+        // Issue #30: the collapsed box's scrolling comes from being a
+        // height-in-lines-BOUNDED text field that owns its own ScrollState
+        // (the text lays out in full and pans within the window). The bound
+        // must flow from the tested affordances, and nothing may pin the
+        // field's height or flatten it to a single line, which are the two
+        // shapes that would genuinely clip a long draft without scrolling.
         val bar = source("ui/components/MessageComposerBar.kt")
-        assertThat(bar).contains("maxLines = barState.fieldMaxLines")
+        assertThat(bar).contains("lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = barState.fieldMaxLines)")
+        assertThat(bar).contains("scrollState = fieldScroll")
+        assertThat(bar).contains("val fieldScroll = rememberScrollState()")
         assertThat(bar).doesNotContain("singleLine = true")
-        val fieldBox = bar.substringAfter("// ONE OutlinedTextField call").substringBefore("barState.simIndicatorVisible")
+        assertThat(bar).doesNotContain("SingleLine")
+        val fieldBox = bar.substringAfter("// ONE BasicTextField call").substringBefore("barState.simIndicatorVisible")
         assertThat(fieldBox).doesNotContain(".height(")
         assertThat(fieldBox).doesNotContain(".heightIn(")
+        // No ancestor scroll around the field either: a verticalScroll
+        // wrapper would re-clip the cursor drag the state-based field just
+        // un-clamped.
+        assertThat(fieldBox).doesNotContain("verticalScroll(")
+    }
+
+    @Test
+    fun `the field keeps the OutlinedTextField look it replaced`() {
+        // Same pill, same 56dp floor, same placeholder: the swap to the
+        // state-based field must be invisible to the eye.
+        val bar = source("ui/components/MessageComposerBar.kt")
+        val fieldBox = bar.substringAfter("// ONE BasicTextField call").substringBefore("barState.simIndicatorVisible")
+        assertThat(fieldBox).contains("OutlinedTextFieldDefaults.DecorationBox(")
+        assertThat(fieldBox).contains("OutlinedTextFieldDefaults.Container(")
+        assertThat(fieldBox).contains("shape = RoundedCornerShape(28.dp)")
+        assertThat(fieldBox).contains("minHeight = OutlinedTextFieldDefaults.MinHeight")
+        assertThat(fieldBox).contains("R.string.conversation_reply_hint")
+    }
+
+    @Test
+    fun `the toggle shows only from the second REAL laid-out line - never a character heuristic`() {
+        val bar = source("ui/components/MessageComposerBar.kt")
+        val fieldBox = bar.substringAfter("// ONE BasicTextField call").substringBefore("barState.simIndicatorVisible")
+        // The count comes from the field's own text layout...
+        assertThat(fieldBox).contains("onTextLayout = { getResult ->")
+        assertThat(fieldBox).contains("reported = getResult()?.lineCount")
+        // ...through the blink-proof holder and the pure visibility rule...
+        assertThat(fieldBox).contains("ComposerExpansion.nextLaidOutLineCount(")
+        assertThat(bar).contains("ComposerExpansion.toggleVisible(laidOutLineCount = laidOutLines, expanded = expanded)")
+        // ...evaluated as derived state so only a FLIP recomposes the toggle.
+        assertThat(bar).contains("derivedStateOf {")
+        assertThat(fieldBox).contains("visible = toggleVisible")
+        // Never a character count or a guessed width.
+        assertThat(fieldBox).doesNotContain(".length >")
+        assertThat(fieldBox).doesNotContain("text.length /")
+        // The toggle fades on an OVERLAY (no layout jolt, no re-wrap loop):
+        // AnimatedVisibility with fade only, and no trailingIcon slot.
+        val toggle = bar.substringAfter("private fun ExpandToggle").substringBefore("internal object ComposerToggleMetrics")
+        assertThat(toggle).contains("AnimatedVisibility(")
+        assertThat(toggle).contains("enter = fadeIn()")
+        assertThat(toggle).contains("exit = fadeOut()")
+        assertThat(toggle).doesNotContain("expandVertically")
+        assertThat(toggle).doesNotContain("shrinkVertically")
+        assertThat(fieldBox).doesNotContain("trailingIcon =")
     }
 }

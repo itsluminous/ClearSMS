@@ -11,7 +11,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.UndoManager
-import app.clearsms.data.senderid.SenderIdStore
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.MmsDownloader
@@ -153,7 +153,7 @@ class ConversationViewModelScheduleTest {
                 Dispatchers.Unconfined,
             )
         val json = Json { ignoreUnknownKeys = true }
-        val resolver = NotificationSenderResolver(context, ContactsSource(context), SenderIdStore(context))
+        val resolver = NotificationSenderResolver(context, ContactsSource(context), SenderIdLookup { null })
         val iconFactory = SenderIconFactory(context)
         val router =
             IncomingMessageRouter(
@@ -181,7 +181,7 @@ class ConversationViewModelScheduleTest {
             savedStateHandle = SavedStateHandle(mapOf("threadId" to THREAD_ID)),
             messageRepository = repository,
             undoManager = UndoManager(repository, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), { true }),
-            senderIdStore = SenderIdStore(context),
+            senderIdLookup = SenderIdLookup { null },
             contactsSource = ContactsSource(context),
             smsSender = smsSender,
             mmsSender = mmsSender,

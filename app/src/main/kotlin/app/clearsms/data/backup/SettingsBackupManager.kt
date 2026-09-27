@@ -7,11 +7,17 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import app.clearsms.data.db.RuleEntity
+import app.clearsms.data.rules.RuleDocument
+import app.clearsms.data.rules.RuleImporter
+import app.clearsms.data.rules.RuleSources
+import app.clearsms.data.rules.toDefinition
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -28,6 +34,8 @@ data class SettingsRestoreResult(
     val applied: Int,
     /** Entries skipped: unknown keys, excluded keys, or wrong-typed values. */
     val skipped: Int,
+    /** User rules added or updated from the file's rules section (0 for a rules-less file). */
+    val rules: Int = 0,
 )
 
 /**
@@ -107,6 +115,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("otp_auto_delete_policy"),
             SettingsBackupEntry.StringEntry("otp_display_size"),
             SettingsBackupEntry.BooleanEntry("show_transaction_details"),
+            SettingsBackupEntry.StringEntry("message_sort_order"),
             SettingsBackupEntry.BooleanEntry("recycle_bin_enabled"),
             SettingsBackupEntry.BooleanEntry("delayed_send_enabled"),
             SettingsBackupEntry.StringEntry("delayed_send_delay"),
@@ -125,8 +134,12 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.BooleanEntry("transaction_notifications"),
             SettingsBackupEntry.StringEntry("logo_background"),
             SettingsBackupEntry.StringEntry("inbox_pill_order"),
+            SettingsBackupEntry.StringSetEntry("inbox_hidden_pills"),
+            SettingsBackupEntry.BooleanEntry("inbox_unread_toggle"),
             SettingsBackupEntry.StringEntry("finance_pill_order"),
+            SettingsBackupEntry.StringSetEntry("finance_hidden_pills"),
             SettingsBackupEntry.StringEntry("alerts_pill_order"),
+            SettingsBackupEntry.StringSetEntry("alerts_hidden_pills"),
             SettingsBackupEntry.StringSetEntry("blocked_keywords"),
             SettingsBackupEntry.StringSetEntry("blocked_senders"),
         )
@@ -167,24 +180,46 @@ internal object SettingsBackupCatalog {
 
 /**
  * Local backup and restore of the app's settings (the Preferences DataStore)
- * as a single JSON document - the settings sibling of [BackupManager], which
- * covers the database. Backups are plain files the user controls; nothing
- * ever leaves the device.
+ * PLUS the user's own categorization rules, as a single JSON document - the
+ * settings sibling of [BackupManager], which covers the database. Backups
+ * are plain files the user controls; nothing ever leaves the device.
+ *
+ * Why rules ride along: a user's setup is their preferences (including the
+ * pill order / hidden pills / labels, which are ordinary preferences in the
+ * catalog) AND the rules they taught the app. One file restores both, so
+ * nobody has to remember two exports.
+ *
+ * Only USER rules travel. Bundled rules ship with the APK and are reseeded
+ * by [app.clearsms.data.rules.BundledRuleLoader]; a stale copy in a backup
+ * would fight that reseed and could resurrect a rule a later version
+ * deliberately changed. User and bundled rules are told apart by the
+ * `source` column, which the code path that inserted the row set - never
+ * by anything a file claims.
  *
  * Unlike the database restore, a document with a NEWER format version is not
  * rejected: settings are independent key/value pairs, so the recognised
  * entries are applied and the rest reported as skipped - the honest best
- * effort for a file from a future app version.
+ * effort for a file from a future app version. Symmetrically, an older app
+ * opening a format-2 file applies the settings it knows and ignores the
+ * rules section, which it never looks at.
  */
 class SettingsBackupManager(
     private val dataStore: DataStore<Preferences>,
     private val json: Json,
     private val appVersion: String,
+    private val userRules: UserRuleStore,
+    private val ruleImporter: RuleImporter,
 ) {
     /**
-     * Serializes every set, non-excluded preference to [output] as JSON.
-     * The stream is not closed. Preferences still at their defaults (never
-     * written) are omitted: restore then only touches what the user changed.
+     * Serializes every set, non-excluded preference and every user rule to
+     * [output] as JSON. The stream is not closed. Preferences still at their
+     * defaults (never written) are omitted: restore then only touches what
+     * the user changed.
+     *
+     * The rules section is the same [RuleDocument] shape the standalone
+     * rule export/import uses, so a rule keeps its category, patterns and
+     * extracts exactly and the same trust-boundary validation applies on
+     * the way back in.
      */
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun exportTo(output: OutputStream) {
@@ -195,6 +230,13 @@ class SettingsBackupManager(
                     entry.export(prefs)?.let { put(entry.name, it) }
                 }
             }
+        val rules = userRules.userRules().filter { it.source == RuleSources.USER }
+        val rulesDocument =
+            RuleDocument(
+                version = RULES_SECTION_VERSION,
+                rules = rules.mapNotNull { it.toDefinition(json) },
+            )
+        val disabledRuleIds = rules.filter { !it.enabled }.map { it.id }.sorted()
         val document =
             buildJsonObject {
                 put("type", DOCUMENT_TYPE)
@@ -202,6 +244,8 @@ class SettingsBackupManager(
                 put("appVersion", appVersion)
                 put("createdAt", System.currentTimeMillis())
                 put("settings", settings)
+                put("rules", json.encodeToJsonElement(RuleDocument.serializer(), rulesDocument))
+                put("disabledRuleIds", JsonArray(disabledRuleIds.map(::JsonPrimitive)))
             }
         json.encodeToStream(JsonObject.serializer(), document, output)
     }
@@ -210,15 +254,34 @@ class SettingsBackupManager(
      * Applies the settings backup read from [input].
      *
      * Safety properties:
-     * - the ENTIRE document is decoded and every entry validated BEFORE any
-     *   mutation, so an unparseable or non-settings file changes nothing;
+     * - the ENTIRE document is decoded and every entry and every rule
+     *   validated BEFORE any mutation, so an unparseable or non-settings
+     *   file - or a corrupt/truncated/unsafe rules section - changes
+     *   nothing at all, preferences included;
      * - unknown keys, excluded keys and wrong-typed values never throw -
      *   they are skipped and tallied in the returned [SettingsRestoreResult];
-     * - all recognised entries land in one [DataStore.edit], so the apply is
-     *   atomic and every settings Flow picks the change up immediately.
+     * - rules land in one Room transaction and preferences in one
+     *   [DataStore.edit], so each store is applied atomically; rules go
+     *   first because a repeat of the rules step is idempotent (see below),
+     *   so a failure between the two is recovered by simply restoring again;
+     * - a rules-less file (format 1, app 0.20.0 and earlier) restores its
+     *   preferences exactly as before and touches no rule.
+     *
+     * Rules are MERGED, never replaced: a restore adds the file's rules and
+     * refreshes the ones it already knows, and rules the user created after
+     * the backup was taken are left alone. Replacing would silently delete
+     * those - a backup must never be the thing that loses a rule the user
+     * still wants. The cost is that a rule deleted after the backup comes
+     * back; the returned [SettingsRestoreResult.rules] count says how many
+     * rules the file touched. Where a restored rule lands is decided by
+     * [resolveRestoredRuleId]; bundled rows are never a target.
+     *
+     * The rules section is parsed as a rules document and never touches the
+     * DataStore, so it cannot smuggle an excluded preference back in.
      *
      * @throws IllegalArgumentException when the stream is not a settings
-     * backup (corrupt JSON, missing marker, or a database backup file).
+     * backup (corrupt JSON, missing marker, or a database backup file), or
+     * its rules section is not a valid rules document.
      */
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun importFrom(input: InputStream): SettingsRestoreResult {
@@ -241,17 +304,90 @@ class SettingsBackupManager(
             val write = entry?.prepare(element)
             if (write == null) skipped++ else writes += write
         }
+
+        // Validate the whole rules section before touching either store.
+        val restoredRules = parseRulesSection(document["rules"])
+        val rows =
+            if (restoredRules.isEmpty()) {
+                emptyList()
+            } else {
+                val existingUserIds = userRules.userRules().map { it.id }.toSet()
+                val disabledIds =
+                    (document["disabledRuleIds"] as? JsonArray)
+                        .orEmpty()
+                        .mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
+                        .map { resolveRestoredRuleId(it, existingUserIds) }
+                        .toSet()
+                restoredRules.map { rule ->
+                    val id = resolveRestoredRuleId(rule.id, existingUserIds)
+                    rule.copy(
+                        id = id,
+                        // Never trust the file's provenance; see toUserEntity in BackupModels.
+                        isUserDefined = true,
+                        source = RuleSources.USER,
+                        enabled = id !in disabledIds,
+                    )
+                }
+            }
+
+        if (rows.isNotEmpty()) {
+            userRules.upsertUserRules(rows)
+        }
         if (writes.isNotEmpty()) {
             dataStore.edit { prefs -> writes.forEach { it(prefs) } }
         }
-        return SettingsRestoreResult(applied = writes.size, skipped = skipped)
+        return SettingsRestoreResult(applied = writes.size, skipped = skipped, rules = rows.size)
+    }
+
+    /**
+     * Turns the document's `rules` element into validated user rule rows.
+     * Absent (a format-1 file) means no rules; anything else must be a
+     * valid rules document, checked by [RuleImporter] - the same trust
+     * boundary the standalone import uses (rule count, pattern length,
+     * catastrophic-backtracking wrappers).
+     */
+    private fun parseRulesSection(element: JsonElement?): List<RuleEntity> {
+        if (element == null || element is JsonNull) return emptyList()
+        return try {
+            ruleImporter.import(json.encodeToString(JsonElement.serializer(), element))
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Settings backup has an invalid rules section: ${e.message}", e)
+        }
     }
 
     companion object {
         /** Marker distinguishing settings backups from database backups. */
         const val DOCUMENT_TYPE = "clearsms-settings"
 
-        /** Current settings backup document format. */
-        const val FORMAT_VERSION = 1
+        /**
+         * Current settings backup document format. 1 = preferences only
+         * (through app 0.20.0); 2 adds the `rules` and `disabledRuleIds`
+         * sections. A format-1 file restores unchanged.
+         */
+        const val FORMAT_VERSION = 2
+
+        /** Version stamp of the embedded rules document (the rules JSON schema). */
+        const val RULES_SECTION_VERSION = "1.0"
+
+        /**
+         * Decides which row a restored rule with the file id [id] lands on.
+         *
+         * - If a USER rule with exactly that id already exists, it is
+         *   updated in place - restoring onto the same device (or restoring
+         *   twice) refreshes rules instead of duplicating them.
+         * - Otherwise the id is namespaced into the `user:` space
+         *   ([RuleEntity.namespacedUserId]) and inserted as a new user rule.
+         *
+         * Either way the target is a user row: bundled rule ids never carry
+         * the `user:` prefix (a test over the bundled asset asserts it), so a
+         * file naming a bundled id - by accident or by design - can never
+         * overwrite that bundled row via the REPLACE insert strategy, and
+         * never plants a user-sourced row under a bundled id that the next
+         * reseed would then clobber.
+         */
+        internal fun resolveRestoredRuleId(
+            id: String,
+            existingUserIds: Set<String>,
+        ): String = if (id in existingUserIds) id else RuleEntity.namespacedUserId(id)
     }
 }

@@ -1,7 +1,6 @@
 package app.clearsms.ui.navigation
 
 import app.clearsms.domain.model.Category
-import app.clearsms.ui.settings.move
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -49,15 +48,5 @@ class PillOrderingTest {
         val result = orderedPills(listOf(Category.PROMOTIONAL, Category.OTP), reduced)
         assertThat(result).containsExactlyElementsIn(reduced)
         assertThat(result).doesNotContain(Category.PROMOTIONAL)
-    }
-
-    @Test
-    fun `move reorders within bounds and ignores invalid targets`() {
-        val list = mutableListOf("a", "b", "c")
-        list.move(2, 0)
-        assertThat(list).containsExactly("c", "a", "b").inOrder()
-        list.move(0, -1)
-        list.move(0, 9)
-        assertThat(list).containsExactly("c", "a", "b").inOrder()
     }
 }

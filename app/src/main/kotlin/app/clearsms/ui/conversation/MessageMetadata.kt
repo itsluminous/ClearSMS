@@ -53,6 +53,8 @@ object MessageMetadata {
     private val date = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
     private val time24 = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
     private val time12 = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)
+    private val time24Seconds = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ENGLISH)
+    private val time12Seconds = DateTimeFormatter.ofPattern("h:mm:ss a", Locale.ENGLISH)
 
     /**
      * Exact date + time of a message, honouring the device's 12/24-hour
@@ -65,6 +67,23 @@ object MessageMetadata {
     ): String {
         val then = Instant.ofEpochMilli(timestampMs).atZone(zone)
         val time = if (is24Hour) time24.format(then) else time12.format(then).lowercase(Locale.ENGLISH)
+        return "${date.format(then)}, $time"
+    }
+
+    /**
+     * [timestampLabel] WITH seconds - "26 Jul 2026, 16:59:07" or
+     * "26 Jul 2026, 4:59:07 pm" - for the details dialog (GitHub #45), where
+     * the sent and received instants of one message can differ by seconds
+     * and the difference is the point.
+     */
+    fun preciseTimestampLabel(
+        timestampMs: Long,
+        is24Hour: Boolean,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): String {
+        val then = Instant.ofEpochMilli(timestampMs).atZone(zone)
+        val time =
+            if (is24Hour) time24Seconds.format(then) else time12Seconds.format(then).lowercase(Locale.ENGLISH)
         return "${date.format(then)}, $time"
     }
 

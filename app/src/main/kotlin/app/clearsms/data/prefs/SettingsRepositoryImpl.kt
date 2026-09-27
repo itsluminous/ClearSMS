@@ -12,7 +12,9 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -63,6 +65,13 @@ class SettingsRepositoryImpl(
 
     override suspend fun setShowTransactionDetails(value: Boolean) {
         dataStore.edit { it[KEY_SHOW_TRANSACTION_DETAILS] = value }
+    }
+
+    override val messageSortOrder: Flow<MessageSortOrder> =
+        dataStore.data.map { it[KEY_MESSAGE_SORT_ORDER].toEnum(MessageSortOrder.RECEIVED) }
+
+    override suspend fun setMessageSortOrder(value: MessageSortOrder) {
+        dataStore.edit { it[KEY_MESSAGE_SORT_ORDER] = value.name }
     }
 
     override val recycleBinEnabled: Flow<Boolean> =
@@ -239,11 +248,25 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_HANDLED_OTP_MESSAGE_ID] = value }
     }
 
-    override val inboxPillOrder: Flow<List<Category>> =
+    override val inboxPillOrder: Flow<List<InboxPill>> =
         dataStore.data.map { it[KEY_INBOX_PILL_ORDER].toEnumOrder() }
 
-    override suspend fun setInboxPillOrder(value: List<Category>) {
+    override suspend fun setInboxPillOrder(value: List<InboxPill>) {
         dataStore.edit { it[KEY_INBOX_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val inboxHiddenPills: Flow<Set<InboxPill>> =
+        dataStore.data.map { it[KEY_INBOX_HIDDEN_PILLS].toHiddenPills() }
+
+    override suspend fun setInboxHiddenPills(value: Set<InboxPill>) {
+        dataStore.edit { it[KEY_INBOX_HIDDEN_PILLS] = value.toStoredNames() }
+    }
+
+    override val inboxUnreadToggle: Flow<Boolean> =
+        dataStore.data.map { it[KEY_INBOX_UNREAD_TOGGLE] ?: true }
+
+    override suspend fun setInboxUnreadToggle(value: Boolean) {
+        dataStore.edit { it[KEY_INBOX_UNREAD_TOGGLE] = value }
     }
 
     override val financePillOrder: Flow<List<FinanceTab>> =
@@ -251,6 +274,13 @@ class SettingsRepositoryImpl(
 
     override suspend fun setFinancePillOrder(value: List<FinanceTab>) {
         dataStore.edit { it[KEY_FINANCE_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val financeHiddenPills: Flow<Set<FinanceTab>> =
+        dataStore.data.map { it[KEY_FINANCE_HIDDEN_PILLS].toHiddenPills() }
+
+    override suspend fun setFinanceHiddenPills(value: Set<FinanceTab>) {
+        dataStore.edit { it[KEY_FINANCE_HIDDEN_PILLS] = value.toStoredNames() }
     }
 
     override val blockedKeywords: Flow<Set<String>> =
@@ -272,6 +302,13 @@ class SettingsRepositoryImpl(
 
     override suspend fun setAlertsPillOrder(value: List<AlertFilter>) {
         dataStore.edit { it[KEY_ALERTS_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val alertsHiddenPills: Flow<Set<AlertFilter>> =
+        dataStore.data.map { it[KEY_ALERTS_HIDDEN_PILLS].toHiddenPills() }
+
+    override suspend fun setAlertsHiddenPills(value: Set<AlertFilter>) {
+        dataStore.edit { it[KEY_ALERTS_HIDDEN_PILLS] = value.toStoredNames() }
     }
 
     override val lastSortedVersionCode: Flow<Int> =
@@ -305,12 +342,27 @@ class SettingsRepositoryImpl(
 
     private fun List<Enum<*>>.toStoredOrder(): String = joinToString(ORDER_DELIMITER) { it.name }
 
+    /**
+     * Decodes a stored set of enum names into the HIDDEN pills of a screen -
+     * the one reader the Inbox, Finance and Alerts hidden sets share.
+     * Lenient like the pill order: a name no current pill carries (removed
+     * in a later version, or corrupt) is simply dropped, never a crash.
+     * Null (nothing stored) means nothing hidden.
+     */
+    private inline fun <reified T : Enum<T>> Set<String>?.toHiddenPills(): Set<T> =
+        orEmpty()
+            .mapNotNull { name -> enumValues<T>().firstOrNull { it.name == name } }
+            .toSet()
+
+    private fun Set<Enum<*>>.toStoredNames(): Set<String> = map { it.name }.toSet()
+
     private companion object {
         val KEY_THEME = stringPreferencesKey("theme")
         val KEY_OTP_AUTO_COPY = booleanPreferencesKey("otp_auto_copy")
         val KEY_OTP_AUTO_DELETE = stringPreferencesKey("otp_auto_delete_policy")
         val KEY_OTP_DISPLAY_SIZE = stringPreferencesKey("otp_display_size")
         val KEY_SHOW_TRANSACTION_DETAILS = booleanPreferencesKey("show_transaction_details")
+        val KEY_MESSAGE_SORT_ORDER = stringPreferencesKey("message_sort_order")
         val KEY_RECYCLE_BIN_ENABLED = booleanPreferencesKey("recycle_bin_enabled")
         val KEY_DELAYED_SEND_ENABLED = booleanPreferencesKey("delayed_send_enabled")
         val KEY_DELAYED_SEND_DELAY = stringPreferencesKey("delayed_send_delay")
@@ -333,8 +385,12 @@ class SettingsRepositoryImpl(
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
         val KEY_SCHEDULE_SEND_TIP_SHOWN = booleanPreferencesKey("schedule_send_tip_shown")
         val KEY_INBOX_PILL_ORDER = stringPreferencesKey("inbox_pill_order")
+        val KEY_INBOX_HIDDEN_PILLS = stringSetPreferencesKey("inbox_hidden_pills")
+        val KEY_INBOX_UNREAD_TOGGLE = booleanPreferencesKey("inbox_unread_toggle")
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
+        val KEY_FINANCE_HIDDEN_PILLS = stringSetPreferencesKey("finance_hidden_pills")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
+        val KEY_ALERTS_HIDDEN_PILLS = stringSetPreferencesKey("alerts_hidden_pills")
         val KEY_BLOCKED_KEYWORDS = stringSetPreferencesKey("blocked_keywords")
         val KEY_BLOCKED_SENDERS = stringSetPreferencesKey("blocked_senders")
         val KEY_LAST_SORTED_VERSION_CODE = intPreferencesKey("last_sorted_version_code")

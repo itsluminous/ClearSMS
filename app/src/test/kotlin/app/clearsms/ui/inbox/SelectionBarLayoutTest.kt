@@ -53,13 +53,13 @@ class SelectionBarLayoutTest {
     }
 
     @Test
-    fun `overflow for a single thread adds block and change-category`() {
+    fun `overflow for a single thread adds block and always-sort-as`() {
         assertThat(SelectionBarLayout.overflowActions(allSelectedPinned = false, singleThread = true))
             .containsExactly(
                 SelectionAction.PIN,
                 SelectionAction.SELECT_ALL,
                 SelectionAction.BLOCK,
-                SelectionAction.CHANGE_CATEGORY,
+                SelectionAction.ALWAYS_SORT_AS,
             ).inOrder()
     }
 

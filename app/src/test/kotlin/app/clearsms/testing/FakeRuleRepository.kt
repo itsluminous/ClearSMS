@@ -34,6 +34,15 @@ class FakeRuleRepository(
         rules.value = rules.value.filterNot { it.id == id }
     }
 
+    override suspend fun restoreParkedRule(
+        definition: RuleDefinition,
+        source: String,
+        enabled: Boolean,
+    ) {
+        if (rules.value.any { it.id == definition.id }) return
+        rules.value = rules.value + definition.toEntity(json, source).copy(enabled = enabled)
+    }
+
     override suspend fun setRuleEnabled(
         id: String,
         enabled: Boolean,

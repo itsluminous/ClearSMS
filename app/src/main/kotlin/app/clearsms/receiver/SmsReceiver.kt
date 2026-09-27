@@ -8,6 +8,7 @@ import android.util.Log
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.ApplicationScope
+import app.clearsms.domain.model.sentTimestampOrNull
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.work.ReminderAlarmScheduler
@@ -52,7 +53,9 @@ class SmsReceiver : BroadcastReceiver() {
         intent: Intent,
     ) {
         if (intent.action != Telephony.Sms.Intents.SMS_DELIVER_ACTION) return
-        val parts = extractParts(intent)
+        // Received time is stamped ONCE, here, for every part of this
+        // broadcast: it is when this device got the message (provider DATE).
+        val parts = extractParts(intent, receivedAtMs = System.currentTimeMillis())
         if (parts.isEmpty()) return
         val subscriptionId = extractSubscriptionId { key, def -> intent.getIntExtra(key, def) }
 
@@ -83,11 +86,17 @@ class SmsReceiver : BroadcastReceiver() {
         // message MUST stay visible in the app either way.
         val systemSmsId =
             telephonyWriter
-                .writeInbox(merged.sender, merged.body, merged.timestampMs)
+                .writeInbox(merged.sender, merged.body, merged.timestampMs, merged.sentAtMs)
                 ?.lastPathSegment
                 ?.toLongOrNull()
         val ingest =
-            messageRepository.ingestIncoming(merged.sender, merged.body, merged.timestampMs, systemSmsId)
+            messageRepository.ingestIncoming(
+                merged.sender,
+                merged.body,
+                merged.timestampMs,
+                systemSmsId,
+                dateSentMs = merged.sentAtMs,
+            )
         val entity = ingest.entity
         // Provenance for dual-SIM users: which SIM received the message.
         // Recorded post-ingest (the ingestion contract is subscription-
@@ -103,11 +112,22 @@ class SmsReceiver : BroadcastReceiver() {
         incomingMessageRouter.route(entity)
     }
 
-    /** One decoded PDU (or one merged message). */
+    /**
+     * One decoded PDU (or one merged message).
+     *
+     * @property timestampMs when THIS device received the message - the
+     *   row's `timestamp` / provider `DATE`, exactly the split AOSP uses.
+     * @property sentAtMs the sender's network (SMSC) timestamp from the PDU
+     *   - provider `DATE_SENT` - or null when the network reported none
+     *   (a 0 in the PDU). Before GitHub #45 the SMSC time was stored AS the
+     *   received time, which made "received" a lie for delayed deliveries
+     *   and left the two instants indistinguishable.
+     */
     data class Part(
         val sender: String,
         val body: String,
         val timestampMs: Long,
+        val sentAtMs: Long? = null,
     )
 
     companion object {
@@ -135,7 +155,10 @@ class SmsReceiver : BroadcastReceiver() {
          * every redelivery of the same message, so failures are logged and
          * yield an empty list (no-op) instead.
          */
-        internal fun extractParts(intent: Intent): List<Part> {
+        internal fun extractParts(
+            intent: Intent,
+            receivedAtMs: Long = System.currentTimeMillis(),
+        ): List<Part> {
             val messages =
                 try {
                     Telephony.Sms.Intents.getMessagesFromIntent(intent)
@@ -151,7 +174,15 @@ class SmsReceiver : BroadcastReceiver() {
                         Log.e(TAG, "Undecodable SMS PDU; skipping part", e)
                         null
                     } ?: return@mapNotNull null
-                Part(sender, sms.displayMessageBody.orEmpty(), sms.timestampMillis)
+                Part(
+                    sender = sender,
+                    body = sms.displayMessageBody.orEmpty(),
+                    timestampMs = receivedAtMs,
+                    // SmsMessage.getTimestampMillis() is the SERVICE CENTRE
+                    // timestamp - when the network says it was sent, not when
+                    // it arrived. 0 = not reported = unknown.
+                    sentAtMs = sentTimestampOrNull(sms.timestampMillis),
+                )
             }
         }
 
@@ -177,7 +208,8 @@ class SmsReceiver : BroadcastReceiver() {
 
         /**
          * Concatenates multipart segments into whole messages, keeping the
-         * earliest timestamp of each group.
+         * earliest received AND earliest known sent timestamp of each group
+         * (a group whose parts all lack a sent time stays unknown).
          *
          * The platform does not expose the multipart reference number on
          * [android.telephony.SmsMessage], so segments are grouped by sender -
@@ -208,6 +240,7 @@ class SmsReceiver : BroadcastReceiver() {
                 sender = run.first().sender,
                 body = run.joinToString(separator = "") { it.body },
                 timestampMs = run.minOf { it.timestampMs },
+                sentAtMs = run.mapNotNull { it.sentAtMs }.minOrNull(),
             )
     }
 }

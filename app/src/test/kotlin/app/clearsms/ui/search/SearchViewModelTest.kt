@@ -3,7 +3,7 @@ package app.clearsms.ui.search
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.repository.SearchQueryFormat
-import app.clearsms.data.senderid.SenderIdStore
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeMessageRepository
@@ -52,7 +52,7 @@ class SearchViewModelTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         return SearchViewModel(
             messageRepository = repository,
-            senderIdStore = SenderIdStore(context),
+            senderIdLookup = SenderIdLookup { null },
             contactsSource = ContactsSource(context),
             contactSuggestions = ContactSuggestions(context),
             settings = FakeSettingsRepository(),

@@ -64,6 +64,7 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -76,6 +77,7 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -83,7 +85,6 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
-import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.HighlightTiming
@@ -91,19 +92,23 @@ import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
+import app.clearsms.ui.components.defaultLabel
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.otpPreviewFontSp
 import app.clearsms.ui.composemsg.ContactSuggestion
 import app.clearsms.ui.finance.displayName
-import app.clearsms.ui.navigation.orderedPills
+import app.clearsms.ui.navigation.PillConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class SettingsDialog {
     THEME,
     INBOX_PILL_ORDER,
+    INBOX_VISIBLE_PILLS,
     FINANCE_PILL_ORDER,
+    FINANCE_VISIBLE_PILLS,
     ALERTS_PILL_ORDER,
+    ALERTS_VISIBLE_PILLS,
     LOGO_BACKGROUND,
     NOTIFICATION_ACTIONS,
     SWIPE_START,
@@ -114,6 +119,7 @@ private enum class SettingsDialog {
     DEFAULT_FINANCE_FILTER,
     OTP_DELETE,
     DELAYED_SEND_DELAY,
+    MESSAGE_SORT_ORDER,
     OTP_SIZE,
     CLEAR_OTP,
     SIGNATURE,
@@ -123,44 +129,281 @@ private enum class SettingsDialog {
 }
 
 /**
- * One settings row in the declarative list the screen renders and the
+ * One settings row in the declarative list the screens render and the
  * search filters. [title] and [summary] carry the resolved user-visible
  * strings so the search matches exactly what is on screen; [content] renders
  * the row itself (a plain row, a toggle, an action, or the inline sort
- * progress) with its behaviour unchanged. [section] is null for the
- * standalone entries that render below all sections without a header.
+ * progress) with its behaviour unchanged. [item] is the catalog entry the
+ * row renders - the handle a highlight targets - and is null only for the
+ * top-level screen's "open this sub-screen" entries.
  */
-private class SettingsRowEntry(
-    val section: String?,
+internal class SettingsRowEntry(
+    val section: SettingsSection,
     val title: String,
     val summary: String,
-    /** Which catalog entry this row renders - the handle a highlight targets. */
     val item: SettingsItem? = null,
     val content: @Composable () -> Unit,
 )
 
-/** Settings root: every section from the product spec, searchable from the top bar. */
+/**
+ * Where the settings rows navigate to. One bundle rather than six lambdas
+ * on each of the two settings screens, so the shell wires the targets once.
+ */
+class SettingsNavigation(
+    val onManageRules: () -> Unit,
+    val onArchived: () -> Unit,
+    val onRecycleBin: () -> Unit,
+    val onPermissions: () -> Unit,
+    val onPrivacyPolicy: () -> Unit,
+    val onLicenses: () -> Unit,
+)
+
+/**
+ * Settings root: one entry per section (see [settingsTopLevelEntries]) - a
+ * sub-screen opener listing the rows it holds, or the section's single row
+ * rendered in place - searchable from the top bar across EVERY row,
+ * including those inside sub-screens. A nested search hit navigates to its
+ * sub-screen with the row highlighted, via [onOpenSection].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    /** Row to scroll to and flash on arrival, e.g. when a dialog sent the user here. */
+    /**
+     * Row to flash on arrival. A row that lives on a sub-screen flashes its
+     * section's entry here (the sub-screen itself is what a deep link
+     * pushes on top - see Routes.settingsPath), so an old link that only
+     * reaches this screen still points the way.
+     */
     highlight: SettingsItem? = null,
     onBack: () -> Unit,
-    onManageRules: () -> Unit,
-    onArchived: () -> Unit,
-    onRecycleBin: () -> Unit,
-    onPrivacyPolicy: () -> Unit,
-    onLicenses: () -> Unit,
-    onPermissions: () -> Unit,
+    /** Open [SettingsSection]'s sub-screen, optionally scrolled to and flashing one of its rows. */
+    onOpenSection: (SettingsSection, SettingsItem?) -> Unit,
+    navigation: SettingsNavigation,
     viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(searchActive) {
+        if (searchActive) searchFocus.requestFocus()
+    }
+
+    SettingsRowsHost(viewModel = viewModel, navigation = navigation) { rows, busy, snackbarHostState ->
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        if (searchActive) {
+                            TextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                                singleLine = true,
+                                colors =
+                                    TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                    ),
+                                modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                            )
+                        } else {
+                            Text(stringResource(R.string.settings_title))
+                        }
+                    },
+                    navigationIcon = {
+                        TooltipIconButton(
+                            label =
+                                if (searchActive) {
+                                    stringResource(R.string.settings_search_close)
+                                } else {
+                                    stringResource(R.string.action_back)
+                                },
+                            onClick = {
+                                if (searchActive) {
+                                    searchActive = false
+                                    query = ""
+                                } else {
+                                    onBack()
+                                }
+                            },
+                            icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        )
+                    },
+                    actions = {
+                        if (searchActive) {
+                            if (query.isNotEmpty()) {
+                                TooltipIconButton(
+                                    label = stringResource(R.string.settings_search_clear),
+                                    onClick = { query = "" },
+                                    icon = Icons.Outlined.Close,
+                                )
+                            }
+                        } else {
+                            TooltipIconButton(
+                                label = stringResource(R.string.settings_search),
+                                onClick = { searchActive = true },
+                                icon = Icons.Outlined.Search,
+                            )
+                        }
+                    },
+                )
+            },
+            snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
+        ) { padding ->
+            val effectiveQuery = if (searchActive) query else ""
+            if (effectiveQuery.isBlank()) {
+                // The section list. A sub-screen entry's summary names the rows
+                // it holds, so what lives behind it is visible without a tap.
+                val entries =
+                    settingsTopLevelEntries().map { entry ->
+                        when (entry) {
+                            is SettingsTopLevelEntry.Direct -> rows.first { it.item == entry.item }
+                            is SettingsTopLevelEntry.SubScreen -> {
+                                val sectionTitle = stringResource(entry.section.titleRes)
+                                val heldRows = rows.filter { it.section == entry.section }.joinToString { it.title }
+                                SettingsRowEntry(entry.section, sectionTitle, heldRows) {
+                                    SettingRow(
+                                        title = sectionTitle,
+                                        subtitle = heldRows,
+                                        singleLineSubtitle = true,
+                                        onClick = { onOpenSection(entry.section, null) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                SettingsRowList(
+                    rows = entries,
+                    busy = busy,
+                    showHeaders = false,
+                    // A nested target flashes its section's entry: the row
+                    // itself is on the sub-screen a deep link pushes next.
+                    isHighlightTarget = { row ->
+                        highlight != null && (row.item == highlight || (row.item == null && row.section == highlight.section))
+                    },
+                    highlightKey = highlight,
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            } else {
+                // Search spans every row on every screen. A hit keeps its
+                // section header for context; a nested hit renders as a
+                // navigation row that opens its sub-screen with the row
+                // flashed, a top-level hit renders its real control in place.
+                val matches = searchSettingsRows(rows, effectiveQuery)
+                if (matches.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_search_empty, query),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(padding).padding(24.dp),
+                    )
+                } else {
+                    val results =
+                        matches.map { row ->
+                            val item = row.item
+                            if (item != null && item.nested) {
+                                SettingsRowEntry(row.section, row.title, row.summary, item) {
+                                    SettingRow(
+                                        title = row.title,
+                                        subtitle = row.summary,
+                                        onClick = { onOpenSection(item.section, item) },
+                                    )
+                                }
+                            } else {
+                                row
+                            }
+                        }
+                    SettingsRowList(
+                        rows = results,
+                        busy = busy,
+                        showHeaders = true,
+                        isHighlightTarget = { false },
+                        highlightKey = null,
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One section's rows on their own screen. The title bar names the section,
+ * so no header is drawn; a [highlight] arriving from search or a deep link
+ * scrolls to that row and flashes it exactly as the root screen used to.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsSectionScreen(
+    section: SettingsSection,
+    highlight: SettingsItem? = null,
+    onBack: () -> Unit,
+    navigation: SettingsNavigation,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    SettingsRowsHost(viewModel = viewModel, navigation = navigation) { rows, busy, snackbarHostState ->
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(section.titleRes)) },
+                    navigationIcon = {
+                        TooltipIconButton(
+                            label = stringResource(R.string.action_back),
+                            onClick = onBack,
+                            icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        )
+                    },
+                )
+            },
+            snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
+        ) { padding ->
+            SettingsRowList(
+                rows = rows.filter { it.section == section },
+                busy = busy,
+                showHeaders = false,
+                isHighlightTarget = { row -> highlight != null && row.item == highlight },
+                highlightKey = highlight,
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
+        }
+    }
+}
+
+/**
+ * Search over the row catalog: a keyword may match the row's title, its
+ * summary, or the name of the section it lives in, so "about" lists every
+ * About row and a nested hit is found by what its section is called too.
+ */
+@Composable
+internal fun searchSettingsRows(
+    rows: List<SettingsRowEntry>,
+    query: String,
+): List<SettingsRowEntry> {
+    val sectionTitles = SettingsSection.entries.associateWith { stringResource(it.titleRes) }
+    return filterSettingsRows(rows, query, { it.title }) { "${sectionTitles.getValue(it.section)} ${it.summary}" }
+}
+
+/**
+ * Everything both settings screens share below the top bar: the ViewModel
+ * state, the file pickers, the snackbar events, the dialogs, and the full
+ * row catalog resolved to entries. [content] gets every visible row (the
+ * root shows the sections and searches all of them; a sub-screen filters
+ * to its own), whether a long-running job is busy, and the snackbar host
+ * state for its scaffold.
+ */
+@Composable
+private fun SettingsRowsHost(
+    viewModel: SettingsViewModel,
+    navigation: SettingsNavigation,
+    content: @Composable (rows: List<SettingsRowEntry>, busy: Boolean, snackbarHostState: SnackbarHostState) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingOtpClear by viewModel.pendingOtpClear.collectAsStateWithLifecycle()
     val senderSuggestions by viewModel.senderSuggestions.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
-    var searchActive by rememberSaveable { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
 
     val backupDone = stringResource(R.string.settings_backup_done)
     val backupFailed = stringResource(R.string.settings_backup_failed)
@@ -274,6 +517,15 @@ fun SettingsScreen(
                                     event.result.applied,
                                 ),
                             )
+                            if (event.result.rules > 0) {
+                                append(' ')
+                                append(
+                                    resources.getString(
+                                        R.string.settings_restore_settings_rules,
+                                        event.result.rules,
+                                    ),
+                                )
+                            }
                             if (event.result.skipped > 0) {
                                 append(' ')
                                 append(
@@ -309,145 +561,17 @@ fun SettingsScreen(
             onBackupSettings = { settingsBackupLauncher.launch(BackupFileNames.manualSettings(System.currentTimeMillis())) },
             onRestoreSettings = { settingsRestoreLauncher.launch(arrayOf("application/json", "text/plain")) },
             onPickBackupLocation = { backupDirectoryLauncher.launch(null) },
-            onManageRules = onManageRules,
-            onArchived = onArchived,
-            onRecycleBin = onRecycleBin,
-            onPermissions = onPermissions,
-            onPrivacyPolicy = onPrivacyPolicy,
-            onLicenses = onLicenses,
+            onManageRules = navigation.onManageRules,
+            onArchived = navigation.onArchived,
+            onRecycleBin = navigation.onRecycleBin,
+            onPermissions = navigation.onPermissions,
+            onPrivacyPolicy = navigation.onPrivacyPolicy,
+            onLicenses = navigation.onLicenses,
             onOpenLink = openLink,
             onSystemNotificationSettings = openSystemNotificationSettings,
         )
 
-    val searchFocus = remember { FocusRequester() }
-    LaunchedEffect(searchActive) {
-        if (searchActive) searchFocus.requestFocus()
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (searchActive) {
-                        TextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
-                            singleLine = true,
-                            colors =
-                                TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                ),
-                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
-                        )
-                    } else {
-                        Text(stringResource(R.string.settings_title))
-                    }
-                },
-                navigationIcon = {
-                    TooltipIconButton(
-                        label =
-                            if (searchActive) {
-                                stringResource(R.string.settings_search_close)
-                            } else {
-                                stringResource(R.string.action_back)
-                            },
-                        onClick = {
-                            if (searchActive) {
-                                searchActive = false
-                                query = ""
-                            } else {
-                                onBack()
-                            }
-                        },
-                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
-                    )
-                },
-                actions = {
-                    if (searchActive) {
-                        if (query.isNotEmpty()) {
-                            TooltipIconButton(
-                                label = stringResource(R.string.settings_search_clear),
-                                onClick = { query = "" },
-                                icon = Icons.Outlined.Close,
-                            )
-                        }
-                    } else {
-                        TooltipIconButton(
-                            label = stringResource(R.string.settings_search),
-                            onClick = { searchActive = true },
-                            icon = Icons.Outlined.Search,
-                        )
-                    }
-                },
-            )
-        },
-        snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
-    ) { padding ->
-        val scrollState = rememberScrollState()
-        // The flash fades once, then never returns for this visit - a wash that
-        // reappeared on every recomposition would be a strobe.
-        var highlighted by remember(highlight) { mutableStateOf(highlight) }
-        var highlightOffset by remember(highlight) { mutableStateOf<Int?>(null) }
-        LaunchedEffect(highlight, highlightOffset) {
-            val offset = highlightOffset ?: return@LaunchedEffect
-            // Leave the row a little clear of the top bar rather than pinning it
-            // flush, so its section header stays visible for context.
-            scrollState.animateScrollTo((offset - 200).coerceAtLeast(0))
-            delay(HighlightTiming.HOLD_MS)
-            highlighted = null
-        }
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(scrollState),
-        ) {
-            if (state.busy) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            val effectiveQuery = if (searchActive) query else ""
-            val visible = filterSettingsRows(rows, effectiveQuery, { it.title }, { it.summary })
-            if (visible.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.settings_search_empty, query),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(24.dp),
-                )
-            } else {
-                // Matching rows keep their section header for context; the
-                // trailing standalone entries (null section) get a divider
-                // instead of a header so they read as their own block.
-                var lastSection: String? = null
-                var standaloneDividerShown = false
-                visible.forEach { row ->
-                    if (row.section == null) {
-                        if (!standaloneDividerShown) {
-                            standaloneDividerShown = true
-                            HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
-                        }
-                    } else if (row.section != lastSection) {
-                        lastSection = row.section
-                        SectionHeader(row.section)
-                    }
-                    if (row.item != null && row.item == highlight) {
-                        HighlightedRow(
-                            active = highlighted == row.item,
-                            onPositioned = { y -> if (highlightOffset == null) highlightOffset = y },
-                            content = row.content,
-                        )
-                    } else {
-                        row.content()
-                    }
-                }
-            }
-        }
-    }
+    content(rows, state.busy, snackbarHostState)
 
     when (dialog) {
         SettingsDialog.THEME ->
@@ -462,15 +586,14 @@ fun SettingsScreen(
                 onDismiss = { dialog = null },
             )
         SettingsDialog.INBOX_PILL_ORDER -> {
-            val order by viewModel.inboxPillOrder.collectAsStateWithLifecycle()
+            // Hidden pills are reordered too, under their built-in names: the
+            // order is one preference, visibility another (InboxPillConfig).
+            val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
             PillOrderDialog(
                 title = stringResource(R.string.settings_pill_order),
-                order = orderedPills(order, Category.entries.toList()),
-                label = { it.displayName() },
-                onConfirm = {
-                    viewModel.setInboxPillOrder(it)
-                    dialog = null
-                },
+                order = pills.ordered,
+                label = { it.defaultLabel() },
+                onOrderChange = viewModel::setInboxPillOrder,
                 onReset = {
                     viewModel.resetInboxPillOrder()
                     dialog = null
@@ -478,16 +601,54 @@ fun SettingsScreen(
                 onDismiss = { dialog = null },
             )
         }
-        SettingsDialog.FINANCE_PILL_ORDER -> {
-            val order by viewModel.financePillOrder.collectAsStateWithLifecycle()
-            PillOrderDialog(
-                title = stringResource(R.string.settings_pill_order),
-                order = orderedPills(order, FinanceTab.entries.toList()),
-                label = { it.displayName() },
+        SettingsDialog.INBOX_VISIBLE_PILLS -> {
+            val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
+            VisiblePillsDialog(
+                pills = pills.pills,
+                hint = stringResource(R.string.settings_inbox_visible_pills_hint),
+                label = { it.defaultLabel() },
                 onConfirm = {
-                    viewModel.setFinancePillOrder(it)
+                    viewModel.setInboxHiddenPills(it)
                     dialog = null
                 },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.FINANCE_VISIBLE_PILLS -> {
+            val pills by viewModel.financePills.collectAsStateWithLifecycle()
+            VisiblePillsDialog(
+                pills = pills,
+                hint = stringResource(R.string.settings_finance_visible_pills_hint),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setFinanceHiddenPills(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.ALERTS_VISIBLE_PILLS -> {
+            val pills by viewModel.alertsPills.collectAsStateWithLifecycle()
+            VisiblePillsDialog(
+                pills = pills,
+                hint = stringResource(R.string.settings_alerts_visible_pills_hint),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setAlertsHiddenPills(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.FINANCE_PILL_ORDER -> {
+            // Hidden pills are reordered too (order and visibility are
+            // independent preferences), exactly like the Inbox.
+            val pills by viewModel.financePills.collectAsStateWithLifecycle()
+            PillOrderDialog(
+                title = stringResource(R.string.settings_pill_order),
+                order = pills.ordered,
+                label = { it.displayName() },
+                onOrderChange = viewModel::setFinancePillOrder,
                 onReset = {
                     viewModel.resetFinancePillOrder()
                     dialog = null
@@ -496,15 +657,12 @@ fun SettingsScreen(
             )
         }
         SettingsDialog.ALERTS_PILL_ORDER -> {
-            val order by viewModel.alertsPillOrder.collectAsStateWithLifecycle()
+            val pills by viewModel.alertsPills.collectAsStateWithLifecycle()
             PillOrderDialog(
                 title = stringResource(R.string.settings_pill_order),
-                order = orderedPills(order, AlertFilter.entries.toList()),
+                order = pills.ordered,
                 label = { it.displayName() },
-                onConfirm = {
-                    viewModel.setAlertsPillOrder(it)
-                    dialog = null
-                },
+                onOrderChange = viewModel::setAlertsPillOrder,
                 onReset = {
                     viewModel.resetAlertsPillOrder()
                     dialog = null
@@ -620,6 +778,17 @@ fun SettingsScreen(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.MESSAGE_SORT_ORDER ->
+            RadioDialog(
+                title = stringResource(R.string.settings_message_sort_order),
+                options = MessageSortOrder.entries.map { it to messageSortOrderLabel(it) },
+                selected = state.messageSortOrder,
+                onSelect = {
+                    viewModel.setMessageSortOrder(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
         SettingsDialog.OTP_SIZE ->
             OtpSizeDialog(
                 selected = state.otpDisplaySize,
@@ -707,6 +876,59 @@ fun SettingsScreen(
 }
 
 /**
+ * The scrolling list both settings screens render: the rows in catalog
+ * order, an optional section header whenever the section changes (search
+ * results keep them for context; a sub-screen's title bar already names
+ * its section), and the arrival highlight - the first row satisfying
+ * [isHighlightTarget] is scrolled to and flashed once, keyed on
+ * [highlightKey] so a new target re-arms it and a recomposition does not.
+ */
+@Composable
+private fun SettingsRowList(
+    rows: List<SettingsRowEntry>,
+    busy: Boolean,
+    showHeaders: Boolean,
+    isHighlightTarget: (SettingsRowEntry) -> Boolean,
+    highlightKey: Any?,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    // The flash fades once, then never returns for this visit - a wash that
+    // reappeared on every recomposition would be a strobe.
+    var highlighted by remember(highlightKey) { mutableStateOf(highlightKey != null) }
+    var highlightOffset by remember(highlightKey) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(highlightKey, highlightOffset) {
+        val offset = highlightOffset ?: return@LaunchedEffect
+        // Leave the row a little clear of the top bar rather than pinning it
+        // flush, so its section header stays visible for context.
+        scrollState.animateScrollTo((offset - 200).coerceAtLeast(0))
+        delay(HighlightTiming.HOLD_MS)
+        highlighted = false
+    }
+    Column(modifier = modifier.verticalScroll(scrollState)) {
+        if (busy) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        var lastSection: SettingsSection? = null
+        rows.forEach { row ->
+            if (showHeaders && row.section != lastSection) {
+                lastSection = row.section
+                SectionHeader(stringResource(row.section.titleRes))
+            }
+            if (isHighlightTarget(row)) {
+                HighlightedRow(
+                    active = highlighted,
+                    onPositioned = { y -> if (highlightOffset == null) highlightOffset = y },
+                    content = row.content,
+                )
+            } else {
+                row.content()
+            }
+        }
+    }
+}
+
+/**
  * The full settings list as a declarative model: one entry per row, with
  * the resolved title/summary the search filters on. Section order and row
  * order come from [SettingsItem]'s declaration order (see SettingsCatalog),
@@ -733,7 +955,7 @@ private fun settingsRowEntries(
     onSystemNotificationSettings: () -> Unit,
 ): List<SettingsRowEntry> {
     fun row(
-        section: String?,
+        section: SettingsSection,
         title: String,
         summary: String,
         onClick: () -> Unit,
@@ -742,7 +964,7 @@ private fun settingsRowEntries(
     }
 
     fun toggle(
-        section: String?,
+        section: SettingsSection,
         title: String,
         summary: String,
         checked: Boolean,
@@ -751,10 +973,11 @@ private fun settingsRowEntries(
         ToggleRow(title = title, subtitle = summary, checked = checked, onToggle = onToggle)
     }
 
-    // A disabled section contributes only its "Show … tab" toggle: the
-    // other rows configure a screen that is currently hidden.
-    return visibleSettingsItems(state.sections).map { item ->
-        val section = item.section?.let { stringResource(it.titleRes) }
+    // A disabled section contributes only its "Show … tab" toggle (the
+    // other rows configure a screen that is currently hidden), and the
+    // sending-delay picker only appears while delayed sending is on.
+    return visibleSettingsItems(SettingsVisibility(state.sections, state.delayedSendEnabled)).map { item ->
+        val section = item.section
         val title = stringResource(item.titleRes)
         // Every row is tagged with the catalog entry it renders, so a highlight
         // can target one without each branch having to remember to say so.
@@ -834,6 +1057,10 @@ private fun settingsRowEntries(
                         checked = state.showTransactionDetails,
                         onToggle = viewModel::setShowTransactionDetails,
                     )
+                SettingsItem.MESSAGE_SORT_ORDER ->
+                    row(section, title, messageSortOrderLabel(state.messageSortOrder)) {
+                        openDialog(SettingsDialog.MESSAGE_SORT_ORDER)
+                    }
                 SettingsItem.THEME ->
                     row(section, title, themeLabel(state.theme)) { openDialog(SettingsDialog.THEME) }
                 SettingsItem.DYNAMIC_COLOR ->
@@ -947,6 +1174,29 @@ private fun settingsRowEntries(
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.INBOX_PILL_ORDER)
                     }
+                SettingsItem.INBOX_VISIBLE_PILLS -> {
+                    val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
+                    row(section, title, visiblePillsSummary(pills.pills)) {
+                        openDialog(SettingsDialog.INBOX_VISIBLE_PILLS)
+                    }
+                }
+                SettingsItem.INBOX_UNREAD_TOGGLE -> {
+                    val shown by viewModel.inboxUnreadToggle.collectAsStateWithLifecycle()
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary =
+                            stringResource(
+                                if (shown) {
+                                    R.string.settings_inbox_unread_toggle_on
+                                } else {
+                                    R.string.settings_inbox_unread_toggle_off
+                                },
+                            ),
+                        checked = shown,
+                        onToggle = viewModel::setInboxUnreadToggle,
+                    )
+                }
                 SettingsItem.DEFAULT_INBOX_FILTER ->
                     row(section, title, inboxFilterLabel(state.defaultInboxFilter)) {
                         openDialog(SettingsDialog.DEFAULT_FILTER)
@@ -1028,6 +1278,12 @@ private fun settingsRowEntries(
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.FINANCE_PILL_ORDER)
                     }
+                SettingsItem.FINANCE_VISIBLE_PILLS -> {
+                    val pills by viewModel.financePills.collectAsStateWithLifecycle()
+                    row(section, title, visiblePillsSummary(pills)) {
+                        openDialog(SettingsDialog.FINANCE_VISIBLE_PILLS)
+                    }
+                }
                 // Privacy, not Appearance: hiding balances behind the device lock is
                 // a confidentiality control, not a cosmetic one - living under
                 // Finance also keeps it visually distinct from the extracted-details
@@ -1070,6 +1326,12 @@ private fun settingsRowEntries(
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.ALERTS_PILL_ORDER)
                     }
+                SettingsItem.ALERTS_VISIBLE_PILLS -> {
+                    val pills by viewModel.alertsPills.collectAsStateWithLifecycle()
+                    row(section, title, visiblePillsSummary(pills)) {
+                        openDialog(SettingsDialog.ALERTS_VISIBLE_PILLS)
+                    }
+                }
                 SettingsItem.DEFAULT_SCREEN ->
                     // The summary shows the EFFECTIVE start screen: a stored
                     // preference for a disabled section resolves to the first
@@ -1269,6 +1531,8 @@ private fun SettingRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    /** Sub-screen entries list the rows they hold: one ellipsised line, not a paragraph. */
+    singleLineSubtitle: Boolean = false,
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
@@ -1278,6 +1542,8 @@ private fun SettingRow(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (singleLineSubtitle) 1 else Int.MAX_VALUE,
+                overflow = TextOverflow.Ellipsis,
             )
         },
     )
@@ -1698,6 +1964,17 @@ private fun notificationActionsSummary(actions: Set<NotificationAction>): String
             .joinToString(separator = ", ")
     }
 
+/** "All 6 shown" / "4 of 6 shown" / "None - the pill row is hidden" - one summary for every screen's pills. */
+@Composable
+private fun <T> visiblePillsSummary(pills: PillConfig<T>): String {
+    val total = pills.ordered.size
+    return when (val shown = pills.visible.size) {
+        total -> stringResource(R.string.settings_inbox_visible_pills_summary_all, total)
+        0 -> stringResource(R.string.settings_inbox_visible_pills_summary_none)
+        else -> stringResource(R.string.settings_inbox_visible_pills_summary_some, shown, total)
+    }
+}
+
 @Composable
 private fun swipeDeadZoneSummary(zone: SwipeDeadZone): String =
     if (zone.enabled) {
@@ -1713,6 +1990,13 @@ private fun swipeActionLabel(action: SwipeAction): String =
         SwipeAction.TOGGLE_READ -> stringResource(R.string.swipe_action_toggle_read)
         SwipeAction.DELETE -> stringResource(R.string.ui_action_delete)
         SwipeAction.ARCHIVE -> stringResource(R.string.action_archive)
+    }
+
+@Composable
+private fun messageSortOrderLabel(order: MessageSortOrder): String =
+    when (order) {
+        MessageSortOrder.RECEIVED -> stringResource(R.string.settings_message_sort_received)
+        MessageSortOrder.SENT -> stringResource(R.string.settings_message_sort_sent)
     }
 
 @Composable

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SubCategory
@@ -40,8 +41,7 @@ class NotificationDeepLinkTest {
         object : NotificationSenderResolver(
             context,
             app.clearsms.sms.ContactsSource(context),
-            app.clearsms.data.senderid
-                .SenderIdStore(context),
+            SenderIdLookup { null },
         ) {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }

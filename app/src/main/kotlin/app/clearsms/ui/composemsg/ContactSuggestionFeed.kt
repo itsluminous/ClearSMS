@@ -13,7 +13,10 @@ import kotlinx.coroutines.flow.map
  *
  * A blank query yields no suggestions, so an empty field never shows a list;
  * [search] itself fails soft to an empty list when READ_CONTACTS is missing,
- * which is why no permission handling appears here.
+ * which is why no permission handling appears here. Whatever [search]
+ * returns is passed through [dedupeSuggestions]: the lists this feed drives
+ * are keyed per row, and a contact stored twice must never become two rows
+ * with one key (that is a hard crash in a lazy list).
  */
 @OptIn(FlowPreview::class)
 internal fun contactSuggestionFeed(
@@ -23,7 +26,7 @@ internal fun contactSuggestionFeed(
 ): Flow<List<ContactSuggestion>> =
     query
         .debounce(debounceMs)
-        .map { text -> if (text.isBlank()) emptyList() else search(text) }
+        .map { text -> if (text.isBlank()) emptyList() else dedupeSuggestions(search(text)) }
 
 /** Typing pause before the contacts provider is queried. */
 internal const val SUGGESTION_DEBOUNCE_MS = 200L

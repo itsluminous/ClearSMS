@@ -279,6 +279,7 @@ class RuleEngine(
                 "informational" -> Category.IMPORTANT
                 "personal" -> Category.PERSONAL
                 "otp" -> Category.OTP
+                "spam" -> Category.SPAM
                 else -> Category.UNKNOWN
             }
 

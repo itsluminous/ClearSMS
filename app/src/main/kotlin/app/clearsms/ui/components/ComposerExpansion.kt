@@ -19,6 +19,40 @@ object ComposerExpansion {
     const val COLLAPSED_MAX_LINES = 4
 
     /**
+     * The laid-out line count from which the collapsed box shows the expand
+     * toggle: one line (or an empty field) has nothing to expand for, so the
+     * icon appears only once the text wraps or breaks onto a second line -
+     * the Telegram convention the operator asked for.
+     */
+    const val TOGGLE_MIN_LINES = 2
+
+    /**
+     * Whether the expand/shrink toggle is shown, from the REAL laid-out line
+     * count (Compose's TextLayoutResult.lineCount for the text as it sits in
+     * the field - font scale, emoji, CJK and soft wraps all included; never
+     * a character heuristic) and the expansion state. Expanded, the shrink
+     * control is unconditional: it is the only visible way back, so it must
+     * never depend on how much text there is.
+     */
+    fun toggleVisible(
+        laidOutLineCount: Int,
+        expanded: Boolean,
+    ): Boolean = expanded || laidOutLineCount >= TOGGLE_MIN_LINES
+
+    /**
+     * The line count to hold after a text layout pass reports [reported].
+     * A pass may hand back no result at all (the layout is momentarily
+     * stale or not yet computed); mapping that to "one line" would blink the
+     * icon off between two multi-line layouts, so a missing result KEEPS
+     * [current] - the icon only ever moves on a real count. Counts are
+     * floored at one line: an empty field still lays out one (empty) line.
+     */
+    fun nextLaidOutLineCount(
+        current: Int,
+        reported: Int?,
+    ): Int = reported?.coerceAtLeast(1) ?: current
+
+    /**
      * What the compose bar shows in each expansion state. Expanded hides
      * the attach and Send affordances (the operator's ask) plus the SIM
      * indicator and staged-attachment chips - sending is only reachable
@@ -36,7 +70,12 @@ object ComposerExpansion {
         val recipientHeaderVisible: Boolean,
         /** Expanded, the field fills all height the insets leave it. */
         val fieldFillsHeight: Boolean,
-        /** Unbounded expanded - long text scrolls inside the fixed-height field. */
+        /**
+         * The field's height cap in lines (TextFieldLineLimits.MultiLine's
+         * maxHeightInLines): text beyond it scrolls inside the field, whose
+         * own ScrollState the field follows as the cursor moves. Unbounded
+         * expanded - there the fixed-height field is the bound.
+         */
         val fieldMaxLines: Int,
     )
 

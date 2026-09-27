@@ -22,7 +22,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.abs
 
 /**
  * Builds the large icon / [IconCompat] shown for a sender in notifications.
@@ -141,7 +140,7 @@ class SenderIconFactory internal constructor(
 
         /** Deterministic tile color for senders without a curated brand color. */
         internal fun fallbackColorFor(name: String): Int =
-            ColorUtils.HSLToColor(floatArrayOf(FALLBACK_HUES[abs(name.hashCode()) % FALLBACK_HUES.size], 0.55f, 0.38f))
+            ColorUtils.HSLToColor(floatArrayOf(FALLBACK_HUES[Math.floorMod(name.hashCode(), FALLBACK_HUES.size)], 0.55f, 0.38f))
 
         /**
          * The category badge letter drawn on generated brand tiles -

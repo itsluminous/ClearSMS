@@ -52,6 +52,7 @@ class InitialSyncWorker
         private val catchUpNotifier: CatchUpNotifier,
         private val settings: SettingsRepository,
         private val simBackfill: SimBackfill,
+        private val sentTimeBackfill: SentTimeBackfill,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             Channels.ensureCreated(applicationContext)
@@ -87,6 +88,10 @@ class InitialSyncWorker
                     // backfill has nothing to fill. Mark it done so it never
                     // re-walks the provider this import just paged through.
                     simBackfill.markDone()
+                    // Likewise for date_sent: the importer just recorded it
+                    // for every incoming row that had one; a walk could only
+                    // find rows the network never stamped.
+                    sentTimeBackfill.markDone()
                 }
                 Result.success()
             } catch (e: Exception) {

@@ -5,7 +5,9 @@ import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -40,6 +42,12 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setShowTransactionDetails(value: Boolean) {
         showTransactionDetails.value = value
+    }
+
+    override val messageSortOrder = MutableStateFlow(MessageSortOrder.RECEIVED)
+
+    override suspend fun setMessageSortOrder(value: MessageSortOrder) {
+        messageSortOrder.value = value
     }
 
     override val recycleBinEnabled = MutableStateFlow(true)
@@ -138,17 +146,37 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setLogoBackground(value: LogoBackground) = Unit
 
-    override val inboxPillOrder = MutableStateFlow(Category.entries.toList())
+    override val inboxPillOrder = MutableStateFlow(InboxPill.entries.toList())
 
-    override suspend fun setInboxPillOrder(value: List<Category>) = Unit
+    override suspend fun setInboxPillOrder(value: List<InboxPill>) = Unit
+
+    override val inboxHiddenPills = MutableStateFlow(emptySet<InboxPill>())
+
+    override suspend fun setInboxHiddenPills(value: Set<InboxPill>) = Unit
+
+    override val inboxUnreadToggle = MutableStateFlow(true)
+
+    override suspend fun setInboxUnreadToggle(value: Boolean) = Unit
 
     override val financePillOrder = MutableStateFlow(FinanceTab.entries.toList())
 
     override suspend fun setFinancePillOrder(value: List<FinanceTab>) = Unit
 
+    override val financeHiddenPills = MutableStateFlow(emptySet<FinanceTab>())
+
+    override suspend fun setFinanceHiddenPills(value: Set<FinanceTab>) {
+        financeHiddenPills.value = value
+    }
+
     override val alertsPillOrder = MutableStateFlow(AlertFilter.entries.toList())
 
     override suspend fun setAlertsPillOrder(value: List<AlertFilter>) = Unit
+
+    override val alertsHiddenPills = MutableStateFlow(emptySet<AlertFilter>())
+
+    override suspend fun setAlertsHiddenPills(value: Set<AlertFilter>) {
+        alertsHiddenPills.value = value
+    }
 
     override val blockedKeywords = MutableStateFlow(emptySet<String>())
 

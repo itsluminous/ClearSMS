@@ -60,10 +60,11 @@ class ComposerExpansionTest {
 
     @Test
     fun `collapsed field is a bounded window that scrolls - never single-line, never unbounded`() {
-        // Issue #30 bug 1 finding: a maxLines-bounded Compose text field IS
-        // internally scrollable (it exposes ScrollBy semantics and pans by
-        // drag/fling); the reporter's upward drags were captured by the
-        // cursor-handle/selection gesture, not by missing scrolling. What
+        // Issue #30 finding: the field IS scrollable (a height-capped Compose
+        // text field pans by drag/fling); the reporter's upward drags were
+        // captured by the cursor-handle gesture, not by missing scrolling -
+        // and the value-based field clamps THAT gesture to the visible window
+        // (fixed by the state-based field, see the source contract). What
         // the app owns is the window shape: more than one line (so there is
         // something to scroll within) and strictly bounded (so a long draft
         // can never swallow the conversation).
@@ -71,6 +72,50 @@ class ComposerExpansionTest {
         assertThat(collapsed).isEqualTo(ComposerExpansion.COLLAPSED_MAX_LINES)
         assertThat(collapsed).isGreaterThan(1)
         assertThat(collapsed).isLessThan(Int.MAX_VALUE)
+    }
+
+    @Test
+    fun `the expand toggle hides for an empty or single-line draft and appears from the second laid-out line`() {
+        // Telegram convention: nothing to expand for while the text fits one
+        // line. The decision is the REAL laid-out line count (font scale,
+        // emoji, CJK, soft wraps included), never a character count.
+        assertThat(ComposerExpansion.toggleVisible(laidOutLineCount = 1, expanded = false)).isFalse()
+        assertThat(ComposerExpansion.toggleVisible(laidOutLineCount = 2, expanded = false)).isTrue()
+        assertThat(ComposerExpansion.toggleVisible(laidOutLineCount = 7, expanded = false)).isTrue()
+        assertThat(ComposerExpansion.TOGGLE_MIN_LINES).isEqualTo(2)
+    }
+
+    @Test
+    fun `the 1 to 2 line boundary is exact both ways - typing reveals - deleting back to one line hides`() {
+        // Reassessed as the user types and deletes: the same rule both ways,
+        // with no dead zone that would leave a stale icon on a one-line draft
+        // or hide it on a two-line one.
+        val typing = listOf(1, 1, 2, 2, 3).map { ComposerExpansion.toggleVisible(it, expanded = false) }
+        assertThat(typing).containsExactly(false, false, true, true, true).inOrder()
+        val deleting = listOf(3, 2, 1).map { ComposerExpansion.toggleVisible(it, expanded = false) }
+        assertThat(deleting).containsExactly(true, true, false).inOrder()
+    }
+
+    @Test
+    fun `expanded - the shrink control stays visible whatever the line count`() {
+        // The shrink icon is the only visible way back from full screen; a
+        // one-line (or emptied) draft must never strand the user there.
+        for (lines in listOf(1, 2, 40)) {
+            assertThat(ComposerExpansion.toggleVisible(laidOutLineCount = lines, expanded = true)).isTrue()
+        }
+    }
+
+    @Test
+    fun `a layout pass with no result keeps the last line count - the icon cannot blink at the boundary`() {
+        // Compose may call onTextLayout with a momentarily unavailable
+        // result; treating that as "one line" would flash the icon off
+        // between two multi-line layouts.
+        assertThat(ComposerExpansion.nextLaidOutLineCount(current = 3, reported = null)).isEqualTo(3)
+        // A real count always wins, in both directions.
+        assertThat(ComposerExpansion.nextLaidOutLineCount(current = 3, reported = 1)).isEqualTo(1)
+        assertThat(ComposerExpansion.nextLaidOutLineCount(current = 1, reported = 2)).isEqualTo(2)
+        // An empty field lays out one (empty) line - never zero.
+        assertThat(ComposerExpansion.nextLaidOutLineCount(current = 2, reported = 0)).isEqualTo(1)
     }
 
     @Test

@@ -7,6 +7,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.ImportedSmsRow
 import app.clearsms.data.repository.MessageRepositoryImpl
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.model.sentTimestampOrNull
 import app.clearsms.work.SyncCheckpointStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -59,6 +60,12 @@ class SystemSmsImporter
             val delivered: Boolean,
             /** Provider `sub_id`; null when the column is missing or the value invalid. */
             val subscriptionId: Int?,
+            /**
+             * Provider `date_sent` (the sender's network timestamp); null
+             * when the column is missing or the stored value is 0/negative -
+             * the provider's way of saying the network reported none.
+             */
+            val dateSent: Long?,
         )
 
         /**
@@ -142,6 +149,10 @@ class SystemSmsImporter
                                                 },
                                             delivered = raw.delivered,
                                             subscriptionId = raw.subscriptionId,
+                                            // Only an incoming row has a sender
+                                            // timestamp distinct from its own;
+                                            // an outgoing row's send time IS date.
+                                            dateSentMs = if (raw.incoming) raw.dateSent else null,
                                         )
                                     }
                                 }.awaitAll()
@@ -201,6 +212,7 @@ class SystemSmsImporter
                 val readIdx = it.getColumnIndex(Telephony.Sms.READ)
                 val statusIdx = it.getColumnIndex(Telephony.Sms.STATUS)
                 val subIdx = it.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
+                val dateSentIdx = it.getColumnIndex(Telephony.Sms.DATE_SENT)
                 buildList {
                     while (it.moveToNext()) {
                         add(
@@ -223,6 +235,14 @@ class SystemSmsImporter
                                 subscriptionId =
                                     if (subIdx >= 0 && !it.isNull(subIdx)) {
                                         it.getInt(subIdx).takeIf { sub -> sub >= 0 }
+                                    } else {
+                                        null
+                                    },
+                                // Same guard again; 0 is the provider's
+                                // "not reported" and reads as unknown.
+                                dateSent =
+                                    if (dateSentIdx >= 0 && !it.isNull(dateSentIdx)) {
+                                        sentTimestampOrNull(it.getLong(dateSentIdx))
                                     } else {
                                         null
                                     },
@@ -278,6 +298,8 @@ class SystemSmsImporter
                     Telephony.Sms.STATUS,
                     // API 22+ (minSdk 23): which SIM the message travelled over.
                     Telephony.Sms.SUBSCRIPTION_ID,
+                    // The sender's network timestamp (GitHub #45); 0 when absent.
+                    Telephony.Sms.DATE_SENT,
                 )
         }
     }

@@ -25,6 +25,15 @@ class MessageMetadataTest {
     }
 
     @Test
+    fun `precise labels carry seconds in both clock styles - the details view's format`() {
+        val withSeconds = afternoon + 7_000L // 16:59:07 IST
+        assertThat(MessageMetadata.preciseTimestampLabel(withSeconds, is24Hour = true, zone = zone))
+            .isEqualTo("26 Jul 2026, 16:59:07")
+        assertThat(MessageMetadata.preciseTimestampLabel(withSeconds, is24Hour = false, zone = zone))
+            .isEqualTo("26 Jul 2026, 4:59:07 pm")
+    }
+
+    @Test
     fun `morning times keep the am marker and no leading zero`() {
         val morning = afternoon - 8 * 60 * 60 * 1000 // 08:59 IST
         assertThat(MessageMetadata.timestampLabel(morning, is24Hour = false, zone = zone))

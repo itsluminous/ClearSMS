@@ -15,8 +15,8 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SearchQueryFormat
 import app.clearsms.data.repository.SenderMatchReason
 import app.clearsms.data.repository.SenderQueryResolver
-import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.components.BrandGlyph
@@ -85,7 +85,7 @@ class SearchViewModel
     @Inject
     constructor(
         private val messageRepository: MessageRepository,
-        private val senderIdStore: SenderIdStore,
+        private val senderIdLookup: SenderIdLookup,
         private val contactsSource: ContactsSource,
         private val contactSuggestions: ContactSuggestions,
         settings: SettingsRepository,
@@ -158,7 +158,7 @@ class SearchViewModel
                                 contactNumbersMatching = { q ->
                                     contactSuggestions.search(q, limit = CONTACT_MATCH_LIMIT).map { it.number }
                                 },
-                                resolvedName = { sender -> senderIdStore.lookup(sender)?.name },
+                                resolvedName = { sender -> senderIdLookup.lookup(sender)?.name },
                             )
                         senderMatchContext = SenderMatchContext(request.query, matches.reasons)
                         Pager(
@@ -212,7 +212,7 @@ class SearchViewModel
                     resolveSenderDisplay(
                         sender = sender,
                         contactLookup = contactsSource::lookup,
-                        directoryLookup = { senderIdStore.lookup(it)?.name },
+                        directoryLookup = { senderIdLookup.lookup(it)?.name },
                     )
                 }
             val context = senderMatchContext

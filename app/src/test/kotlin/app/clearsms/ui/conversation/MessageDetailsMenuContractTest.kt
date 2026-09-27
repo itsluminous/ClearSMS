@@ -48,7 +48,16 @@ class MessageDetailsMenuContractTest {
         val strings = File("src/main/res/values/strings_ui.xml").readText()
         assertThat(strings).contains("message_details_delivered_unknown")
         assertThat(strings).contains("message_details_delivered_mms")
-        // Even a confirmed delivery shows no time: none is recorded.
+        // A confirmed delivery whose report arrival was never recorded
+        // still shows no time: none is invented.
         assertThat(strings).contains("no delivery time can be shown")
+        // A recorded acknowledgement is shown WITH what it is: the report's
+        // arrival on this phone, not the carrier's own timestamp.
+        assertThat(strings).contains("message_details_delivered_at_note")
+        assertThat(strings).contains("not the carrier\\'s own timestamp")
+        val dialog = source("ui/conversation/MessageDetailsDialog.kt")
+        assertThat(dialog).contains("row.acknowledgedAtMs != null ->")
+        assertThat(dialog).contains("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)")
+        assertThat(dialog).contains("R.string.message_details_delivered_at_note")
     }
 }

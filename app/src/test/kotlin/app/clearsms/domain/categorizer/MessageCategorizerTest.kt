@@ -108,15 +108,15 @@ class MessageCategorizerTest {
     }
 
     @Test
-    fun `content fallback detects scam`() {
+    fun `content fallback detects scam - filed as SPAM and flagged`() {
         val result =
             categorizer().categorize(
-                sender = "SPAM",
+                sender = "JUNKSD",
                 body = "You have won a lucky draw prize! Claim now at bit.ly/win123",
                 userRules = emptyList(),
                 builtinRules = emptyList(),
             )
-        assertThat(result.category).isEqualTo(Category.PROMOTIONAL)
+        assertThat(result.category).isEqualTo(Category.SPAM)
         assertThat(result.subCategory).isEqualTo(SubCategory.SCAM)
     }
 

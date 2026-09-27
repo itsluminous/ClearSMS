@@ -9,7 +9,9 @@ enum class SelectionAction {
     UNPIN,
     SELECT_ALL,
     BLOCK,
-    CHANGE_CATEGORY,
+
+    /** "Always sort as…": the one-step sender rule ([app.clearsms.ui.rules.SenderRuleDialog]). */
+    ALWAYS_SORT_AS,
 }
 
 /**
@@ -42,8 +44,16 @@ object SelectionBarLayout {
         listOf(SelectionAction.TOGGLE_READ, SelectionAction.ARCHIVE, SelectionAction.DELETE)
 
     /**
-     * Overflow menu entries in display order. Block / change-category act on
-     * one sender, so they appear only when exactly one thread is selected.
+     * Overflow menu entries in display order. Block and "Always sort as…"
+     * act on ONE sender, so they appear only when exactly one thread is
+     * selected. Inbox threads are keyed by normalized sender (one thread per
+     * sender core - `MessageDao.threadIdFor`), so two selected threads are
+     * always two different senders and "always sort THIS sender as" has no
+     * single answer: the entry is hidden (not disabled) for multi-select,
+     * exactly as the conversation bar hides its single-message extras
+     * ([app.clearsms.ui.conversation.ConversationSelectionBarLayout]).
+     * [InboxScreen] renders the overflow FROM this list, so the menu cannot
+     * drift from the rule.
      */
     fun overflowActions(
         allSelectedPinned: Boolean,
@@ -54,7 +64,7 @@ object SelectionBarLayout {
             add(SelectionAction.SELECT_ALL)
             if (singleThread) {
                 add(SelectionAction.BLOCK)
-                add(SelectionAction.CHANGE_CATEGORY)
+                add(SelectionAction.ALWAYS_SORT_AS)
             }
         }
 }

@@ -2,16 +2,22 @@ package app.clearsms.ui.components
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,8 +31,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
@@ -34,16 +47,25 @@ import androidx.compose.material.icons.outlined.CloseFullscreen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,14 +79,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.clearsms.R
 import app.clearsms.mms.StagedAttachment
 import app.clearsms.ui.common.AttachmentError
+import kotlinx.coroutines.flow.drop
 
 /**
  * The compose-bar SIM indicator. [visible] only on devices with 2+ active
@@ -116,13 +140,15 @@ data class SimUiState(
  * and a Send button whose long-press opens the schedule picker (text-only
  * messages; with attachments staged, scheduling is SMS-only and the
  * long-press explains that instead). A small toggle at the box's top right
- * expands the field to fill all space above the keyboard for long
- * messages ([ComposerExpansion] holds the pure state logic); expanded,
- * attach/SIM/Send hide and [recipientLabel] keeps the recipient visible.
+ * - shown once the draft spans more than one laid-out line, and always
+ * while expanded - expands the field to fill all space above the keyboard
+ * for long messages ([ComposerExpansion] holds the pure state logic);
+ * expanded, attach/SIM/Send hide and [recipientLabel] keeps the recipient
+ * visible.
  * Shared by the conversation screen and the new-conversation screen so
  * send affordances - and the expansion behaviour - never diverge.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MessageComposerBar(
     draft: String,
@@ -148,16 +174,41 @@ fun MessageComposerBar(
     // never swallowed and leaves the screen as always.
     BackHandler(enabled = ComposerExpansion.backCollapsesFirst(expanded)) { expanded = false }
 
-    // The field's text + cursor/selection, saved across config changes via
-    // TextFieldValue.Saver, so a long message never loses the caret. The
-    // String draft stays the source of truth in the ViewModel; external
+    // The field's text + cursor/selection live in a TextFieldState (the
+    // state-based BasicTextField), saved across config changes by
+    // rememberTextFieldState's TextFieldState.Saver, so a long message never
+    // loses the caret. State-based on purpose - see the field below: the
+    // TextFieldValue field's cursor-handle drag is clamped to the visible
+    // window, so a held cursor could never scroll (issue #30), and it exposes
+    // no text-layout callback for the line count the toggle needs.
+    // The String draft stays the source of truth in the ViewModel; external
     // changes (send-consume, failure-restore, persisted-draft load) are
     // adopted only across an empty boundary - see shouldAdoptExternalDraft.
-    var fieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(draft, TextRange(draft.length)))
+    val textState = rememberTextFieldState(initialText = draft, initialSelection = TextRange(draft.length))
+    val currentOnDraftChange by rememberUpdatedState(onDraftChange)
+    LaunchedEffect(textState) {
+        // Field -> ViewModel. drop(1): the first value is the text the field
+        // STARTED with (the draft itself, or the restored text), not an
+        // edit - echoing it would write "" over a persisted draft that
+        // happened to load between composition and this collection.
+        snapshotFlow { textState.text.toString() }
+            .drop(1)
+            .collect { currentOnDraftChange(it) }
     }
-    if (ComposerExpansion.shouldAdoptExternalDraft(external = draft, field = fieldValue.text)) {
-        fieldValue = TextFieldValue(draft, TextRange(draft.length))
+    LaunchedEffect(draft) {
+        // ViewModel -> field, across the empty boundary only.
+        if (ComposerExpansion.shouldAdoptExternalDraft(external = draft, field = textState.text.toString())) {
+            textState.setTextAndPlaceCursorAtEnd(draft)
+        }
+    }
+    // The REAL laid-out line count, straight from the field's text layout
+    // (see onTextLayout below); drives the expand toggle's visibility.
+    var laidOutLines by remember { mutableIntStateOf(1) }
+    // derivedStateOf: the toggle recomposes only when the visibility
+    // decision FLIPS, not on every 2->3->4 line change - and never when a
+    // layout pass reports no result (nextLaidOutLineCount holds the count).
+    val toggleVisible by remember {
+        derivedStateOf { ComposerExpansion.toggleVisible(laidOutLineCount = laidOutLines, expanded = expanded) }
     }
 
     // Expanded, the box pads by the LIVE insets - max(IME, nav bar), pure
@@ -247,29 +298,96 @@ fun MessageComposerBar(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // ONE OutlinedTextField call for both states (only modifiers and
-            // maxLines change), so the field node - and with it the in-flight
+            // ONE BasicTextField call for both states (only modifiers and the
+            // line limit change), so the field node - and with it the in-flight
             // selection and internal scroll - survives every expand/collapse.
+            // The STATE-based BasicTextField (TextFieldState), dressed as an
+            // OutlinedTextField via its DecorationBox, rather than the
+            // TextFieldValue OutlinedTextField, for issue #30's held-cursor
+            // scroll: the value-based field's cursor-handle drag clamps the
+            // pointer to the visible window (TextLayoutResultProxy coerces it
+            // into the scroll viewport), so the cursor could never leave the
+            // visible lines and the field never had an off-screen offset to
+            // follow - the drag "would not scroll past the visible text". The
+            // state-based field places the cursor from the un-clamped
+            // text-layout position and its core node scrolls its ScrollState
+            // (and bringIntoView) to follow the moved cursor, so holding the
+            // cursor and dragging past the top or bottom edge scrolls the
+            // field to the line under the finger. It also exposes the text
+            // layout (onTextLayout), the expand toggle's line count.
             Box(
                 modifier =
                     Modifier
                         .weight(1f)
                         .then(if (barState.fieldFillsHeight) Modifier.fillMaxHeight() else Modifier),
             ) {
-                OutlinedTextField(
-                    value = fieldValue,
-                    onValueChange = {
-                        fieldValue = it
-                        onDraftChange(it.text)
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .then(if (barState.fieldFillsHeight) Modifier.fillMaxHeight() else Modifier),
-                    placeholder = { Text(stringResource(R.string.conversation_reply_hint)) },
-                    shape = RoundedCornerShape(28.dp),
-                    maxLines = barState.fieldMaxLines,
-                )
+                val interactionSource = remember { MutableInteractionSource() }
+                val focused by interactionSource.collectIsFocusedAsState()
+                val colors = OutlinedTextFieldDefaults.colors()
+                // The field's OWN vertical scroll: with the collapsed height
+                // capped in lines (fieldMaxLines), text beyond the cap scrolls
+                // here - no ancestor scroll, no clipping height modifier.
+                val fieldScroll = rememberScrollState()
+                CompositionLocalProvider(LocalTextSelectionColors provides colors.textSelectionColors) {
+                    BasicTextField(
+                        state = textState,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .then(if (barState.fieldFillsHeight) Modifier.fillMaxHeight() else Modifier)
+                                // What OutlinedTextField applies around its own
+                                // field: the same 56dp floor, so the bar's height
+                                // and touch geometry are unchanged.
+                                .defaultMinSize(
+                                    minWidth = OutlinedTextFieldDefaults.MinWidth,
+                                    minHeight = OutlinedTextFieldDefaults.MinHeight,
+                                ),
+                        textStyle =
+                            LocalTextStyle.current.merge(
+                                TextStyle(color = if (focused) colors.focusedTextColor else colors.unfocusedTextColor),
+                            ),
+                        // Height-in-lines cap, NOT a layout line cap: the text
+                        // lays out in full (so lineCount is the real count) and
+                        // scrolls within the capped window.
+                        lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = barState.fieldMaxLines),
+                        onTextLayout = { getResult ->
+                            // The actual laid-out line count of the text as
+                            // rendered - font scale, emoji, CJK, soft wraps
+                            // included. A null result keeps the last count
+                            // (nextLaidOutLineCount) so the icon cannot blink.
+                            laidOutLines =
+                                ComposerExpansion.nextLaidOutLineCount(
+                                    current = laidOutLines,
+                                    reported = getResult()?.lineCount,
+                                )
+                        },
+                        interactionSource = interactionSource,
+                        cursorBrush = SolidColor(colors.cursorColor),
+                        scrollState = fieldScroll,
+                        decorator =
+                            TextFieldDecorator { innerTextField ->
+                                OutlinedTextFieldDefaults.DecorationBox(
+                                    value = textState.text.toString(),
+                                    innerTextField = innerTextField,
+                                    enabled = true,
+                                    singleLine = false,
+                                    visualTransformation = VisualTransformation.None,
+                                    interactionSource = interactionSource,
+                                    placeholder = { Text(stringResource(R.string.conversation_reply_hint)) },
+                                    colors = colors,
+                                    container = {
+                                        OutlinedTextFieldDefaults.Container(
+                                            enabled = true,
+                                            isError = false,
+                                            interactionSource = interactionSource,
+                                            colors = colors,
+                                            shape = RoundedCornerShape(28.dp),
+                                        )
+                                    },
+                                )
+                            },
+                    )
+                }
                 // The operator's "one small icon on top right": it rides the
                 // compose box's own top-right corner - in BOTH states. The
                 // shrink toggle used to sit in the recipient header at the
@@ -278,7 +396,15 @@ fun MessageComposerBar(
                 // header comment above); on the field's corner - the exact
                 // spot the working expand icon occupies - the finger that
                 // just expanded finds the shrink control in the same place.
+                // Shown only when useful (toggleVisible, pure): hidden for an
+                // empty or single-line draft, from the second laid-out line
+                // on, and always while expanded. It is an OVERLAY on the
+                // field's Box, never a trailing slot: it takes part in no
+                // measurement, so appearing/disappearing cannot re-wrap the
+                // text (no 1->2->1 feedback loop at the boundary) and the row
+                // does not jolt. A fade, not a pop, at the boundary.
                 ExpandToggle(
+                    visible = toggleVisible,
                     expanded = expanded,
                     onToggle = { expanded = ComposerExpansion.toggled(expanded) },
                     modifier = Modifier.align(Alignment.TopEnd),
@@ -427,25 +553,37 @@ fun MessageComposerBar(
  */
 @Composable
 private fun ExpandToggle(
+    visible: Boolean,
     expanded: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val label = stringResource(if (expanded) R.string.compose_collapse else R.string.compose_expand)
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            modifier
-                .clip(CircleShape)
-                .clickable(onClick = onToggle, onClickLabel = label)
-                .padding(ComposerToggleMetrics.GlyphPadding),
+    // Fade, never a pop, and never a layout change: [visible] flips at the
+    // one-line/two-line boundary while the user types, and the wrapper takes
+    // part in no measurement of the row (it overlays the field's corner).
+    // Hidden, nothing is composed - the field's corner is fully tappable.
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(),
+        exit = fadeOut(),
     ) {
-        Icon(
-            if (expanded) Icons.Outlined.CloseFullscreen else Icons.Outlined.OpenInFull,
-            contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(ComposerToggleMetrics.GlyphSize),
-        )
+        val label = stringResource(if (expanded) R.string.compose_collapse else R.string.compose_expand)
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .clip(CircleShape)
+                    .clickable(onClick = onToggle, onClickLabel = label)
+                    .padding(ComposerToggleMetrics.GlyphPadding),
+        ) {
+            Icon(
+                if (expanded) Icons.Outlined.CloseFullscreen else Icons.Outlined.OpenInFull,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(ComposerToggleMetrics.GlyphSize),
+            )
+        }
     }
 }
 

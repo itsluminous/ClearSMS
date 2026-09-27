@@ -35,12 +35,19 @@ class SettingsHighlightRouteTest {
     }
 
     @Test
-    fun `the rule wizard points at the sort row, by catalog name rather than a literal`() {
+    fun `the rule wizard points at the sort row, through the one path resolver rather than a literal`() {
         val app = source("ui/navigation/ClearSmsApp.kt")
 
-        assertWithMessage("the wizard's hint must navigate to the highlighted setting")
+        // "Sort inbox again" lives on the Inbox SUB-SCREEN since Settings was
+        // split, so the link must resolve through Routes.settingsPath (root,
+        // then sub-screen with the highlight) - a literal root route would
+        // land on Settings with nothing to flash.
+        assertWithMessage("the wizard's hint must navigate to the highlighted setting via the resolver")
             .that(app)
-            .contains("Routes.settings(SettingsItem.SORT_AGAIN.name)")
+            .contains("Routes.settingsPath(SettingsItem.SORT_AGAIN).forEach(navController::navigate)")
+        assertThat(Routes.settingsPath(SettingsItem.SORT_AGAIN))
+            .containsExactly("settings?highlight=", "settings/section/INBOX?highlight=SORT_AGAIN")
+            .inOrder()
         assertWithMessage("the wizard must be popped so Back does not return to it")
             .that(app.substringAfter("onOpenSortSetting = {").substringBefore("},"))
             .contains("popBackStack()")

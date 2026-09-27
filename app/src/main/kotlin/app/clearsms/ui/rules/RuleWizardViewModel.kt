@@ -17,6 +17,7 @@ import app.clearsms.domain.rules.RuleApplyScope
 import app.clearsms.domain.rules.RuleComposer
 import app.clearsms.domain.rules.RuleScopeResolver
 import app.clearsms.domain.rules.RuleSuggester
+import app.clearsms.domain.rules.SenderRule
 import app.clearsms.domain.rules.SuggestedToken
 import app.clearsms.domain.rules.TokenKind
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,14 +34,66 @@ import javax.inject.Inject
 /** Sentinel "field" meaning a detected token is not captured. */
 const val FIELD_IGNORE = "ignore"
 
-/** Why the draft rule cannot be saved; mapped to actionable messages in the UI. */
-enum class WizardValidationError {
-    EMPTY_PATTERN,
-    INVALID_PATTERN,
-    CATCH_ALL_WRAPPER,
-    DUPLICATE_FIELD,
-    CAPTURE_MISMATCH,
-    NO_SOURCE_MATCH,
+/** The wizard step a validation problem belongs to, so the message can sit next to its cause. */
+enum class WizardField {
+    /** Step 0/1: the sample message. */
+    SOURCE,
+
+    /** Step 3: detected values → fields. */
+    EXTRACT,
+
+    /** Step 4: keywords, exclusions, sender binding. */
+    CONDITIONS,
+
+    /** Step 5: the (advanced) body pattern. */
+    PATTERN,
+}
+
+/**
+ * Why the draft rule cannot be saved. Every value names ONE thing that is
+ * wrong and belongs to ONE step ([field]), so the UI can show the message at
+ * the control that caused it - "the rule was rejected but I couldn't figure
+ * out why" (issue #38) was a single generic line at the bottom of the screen.
+ * [detail] on the state carries the specific word/reason the message quotes.
+ */
+enum class WizardValidationError(
+    val field: WizardField,
+) {
+    /** No sample analyzed yet: nothing to build a rule from. */
+    NEEDS_SAMPLE(WizardField.SOURCE),
+
+    /** Neither a sender binding nor a body pattern: the rule would match everything. */
+    NO_CONDITIONS(WizardField.CONDITIONS),
+
+    /** The advanced body pattern is not valid regex; detail = the engine's reason. */
+    INVALID_PATTERN(WizardField.PATTERN),
+
+    /** The rule's stored sender pattern is not valid regex; detail = the engine's reason. */
+    INVALID_SENDER_PATTERN(WizardField.CONDITIONS),
+
+    /** The body pattern starts or ends with a `.*`-style wrapper. */
+    CATCH_ALL_WRAPPER(WizardField.PATTERN),
+
+    /** Two detected values map to the same field; detail = the field. */
+    DUPLICATE_FIELD(WizardField.EXTRACT),
+
+    /** Extraction references more groups than the pattern has; detail = "needed/have". */
+    CAPTURE_MISMATCH(WizardField.PATTERN),
+
+    /** Sender binding is on but the sender pattern does not match the sample's sender. */
+    SENDER_NOT_MATCHING(WizardField.CONDITIONS),
+
+    /** The body pattern does not match the sample text. */
+    BODY_PATTERN_NOT_MATCHING(WizardField.PATTERN),
+
+    /** A must-contain keyword is absent from the sample; detail = the word. */
+    MUST_CONTAIN_MISSING(WizardField.CONDITIONS),
+
+    /** A must-not-contain word is present in the sample; detail = the word. */
+    MUST_NOT_CONTAIN_PRESENT(WizardField.CONDITIONS),
+
+    /** The engine rejects the sample for a reason the checks above did not isolate. */
+    NO_SOURCE_MATCH(WizardField.PATTERN),
 }
 
 data class RuleWizardUiState(
@@ -87,6 +140,14 @@ data class RuleWizardUiState(
     val name: String = "",
     val priority: String = DEFAULT_USER_PRIORITY.toString(),
     val validationError: WizardValidationError? = null,
+    /** The word, field or regex reason the validation message quotes, when there is one. */
+    val validationDetail: String? = null,
+    /**
+     * Set when Save was tapped while the rule was invalid. The FAB cannot be
+     * disabled without hiding why, so the screen answers the tap with the
+     * problem instead of silently doing nothing.
+     */
+    val saveBlocked: Boolean = false,
     val saved: Boolean = false,
     /**
      * Set once the rule is stored: whether it was applied to existing messages
@@ -99,7 +160,7 @@ data class RuleWizardUiState(
 }
 
 /** Default priority in the user band: outranks every bundled rule (< 1000). */
-const val DEFAULT_USER_PRIORITY = 1001
+const val DEFAULT_USER_PRIORITY = SenderRule.USER_BAND_PRIORITY
 
 @HiltViewModel
 class RuleWizardViewModel
@@ -247,7 +308,10 @@ class RuleWizardViewModel
 
         fun save() {
             val current = state.value
-            if (current.validationError != null) return
+            if (current.validationError != null) {
+                state.value = current.copy(saveBlocked = true)
+                return
+            }
             val definition = buildDefinition(current) ?: return
             viewModelScope.launch(ioDispatcher) {
                 ruleRepository.addUserRule(definition)
@@ -278,19 +342,28 @@ class RuleWizardViewModel
         private fun update(transform: (RuleWizardUiState) -> RuleWizardUiState) {
             val next = transform(state.value)
             val composed = RuleComposer.composeBody(next.sourceBody, picksOf(next))
+            val bodyPattern = next.patternOverride ?: composed.bodyPattern
             val recomposed =
                 next.copy(
                     composedSenderPattern =
                         next.senderPatternOverride
                             ?: if (next.sourceSender.isBlank()) "" else RuleSuggester.senderPattern(next.sourceSender),
                     composedBodyPattern = composed.bodyPattern,
-                    extract = next.extractOverride ?: composed.extract,
+                    // No body pattern means no capture groups, so there is
+                    // nothing to extract: a sender-only rule (the body pattern
+                    // cleared under Advanced) must not be rejected for the
+                    // extracts the sample analysis suggested.
+                    extract = if (bodyPattern.isBlank()) emptyMap() else next.extractOverride ?: composed.extract,
                 )
-            val error = validate(recomposed)
+            val problem = validate(recomposed)
+            val error = problem?.error
             val definition = if (error == null) buildDefinition(recomposed) else null
             state.value =
                 recomposed.copy(
                     validationError = error,
+                    validationDetail = problem?.detail,
+                    // A fixed rule clears the "not saved" banner on its own.
+                    saveBlocked = next.saveBlocked && error != null,
                     sourceResult =
                         definition?.let {
                             ruleEngine.evaluate(listOf(it), recomposed.sourceSender, recomposed.sourceBody)
@@ -308,31 +381,89 @@ class RuleWizardViewModel
                 .filter { it.value != FIELD_IGNORE }
                 .mapNotNull { (index, field) -> s.tokens.getOrNull(index)?.let { CapturePick(it, field) } }
 
-        private fun validate(s: RuleWizardUiState): WizardValidationError? {
-            if (!s.analyzed) return WizardValidationError.EMPTY_PATTERN
+        /** A validation failure plus the specific thing the message should quote. */
+        private data class Problem(
+            val error: WizardValidationError,
+            val detail: String? = null,
+        )
+
+        /**
+         * Checks run in the order a user can fix them, and every failure names
+         * the ONE condition that failed. A rule bound to a sender with no body
+         * pattern (the one-tap sender rule, or the wizard with everything but
+         * the sender switch cleared) passes every check by construction: the
+         * app composed the pattern from a literal, so there is nothing here
+         * that can reject it.
+         */
+        private fun validate(s: RuleWizardUiState): Problem? {
+            if (!s.analyzed) return Problem(WizardValidationError.NEEDS_SAMPLE)
             val body = s.effectiveBodyPattern
-            if (body.isBlank() && s.composedSenderPattern.isBlank()) return WizardValidationError.EMPTY_PATTERN
-            try {
-                if (body.isNotBlank()) Regex(body)
-                if (s.bindSender) Regex(s.composedSenderPattern)
-            } catch (_: Exception) {
-                return WizardValidationError.INVALID_PATTERN
-            }
-            if (RuleComposer.hasCatchAllWrapper(body)) return WizardValidationError.CATCH_ALL_WRAPPER
+            val senderBound = s.bindSender && s.composedSenderPattern.isNotBlank()
+            if (body.isBlank() && !senderBound) return Problem(WizardValidationError.NO_CONDITIONS)
+            val bodyRegex =
+                if (body.isBlank()) {
+                    null
+                } else {
+                    try {
+                        Regex(body)
+                    } catch (e: Exception) {
+                        return Problem(WizardValidationError.INVALID_PATTERN, regexReason(e))
+                    }
+                }
+            val senderRegex =
+                if (!senderBound) {
+                    null
+                } else {
+                    try {
+                        Regex(s.composedSenderPattern)
+                    } catch (e: Exception) {
+                        return Problem(WizardValidationError.INVALID_SENDER_PATTERN, regexReason(e))
+                    }
+                }
+            if (RuleComposer.hasCatchAllWrapper(body)) return Problem(WizardValidationError.CATCH_ALL_WRAPPER)
             val fields = s.tokenFields.values.filter { it != FIELD_IGNORE }
-            if (fields.size != fields.distinct().size) return WizardValidationError.DUPLICATE_FIELD
-            if (RuleComposer.maxGroupReference(s.extract) > RuleComposer.captureGroupCount(body)) {
-                return WizardValidationError.CAPTURE_MISMATCH
+            fields.groupingBy { it }.eachCount().entries.firstOrNull { it.value > 1 }?.let {
+                return Problem(WizardValidationError.DUPLICATE_FIELD, it.key)
             }
-            val probe = buildDefinition(s) ?: return WizardValidationError.EMPTY_PATTERN
+            val needed = RuleComposer.maxGroupReference(s.extract)
+            val have = RuleComposer.captureGroupCount(body)
+            if (needed > have) {
+                return Problem(WizardValidationError.CAPTURE_MISMATCH, "$needed/$have")
+            }
             // Editing an existing rule has no source message to match against.
-            if (s.sourceBody.isNotBlank() &&
-                ruleEngine.evaluate(listOf(probe), s.sourceSender, s.sourceBody) == null
-            ) {
-                return WizardValidationError.NO_SOURCE_MATCH
+            if (s.sourceBody.isBlank()) return null
+            if (senderRegex != null && !senderRegex.containsMatchIn(s.sourceSender)) {
+                return Problem(WizardValidationError.SENDER_NOT_MATCHING, s.sourceSender)
+            }
+            if (bodyRegex != null && bodyRegex.find(s.sourceBody) == null) {
+                return Problem(WizardValidationError.BODY_PATTERN_NOT_MATCHING)
+            }
+            s.mustContain.firstOrNull { !s.sourceBody.contains(it, ignoreCase = true) }?.let {
+                return Problem(WizardValidationError.MUST_CONTAIN_MISSING, it)
+            }
+            mustNotContainWords(s.mustNotContain).firstOrNull { s.sourceBody.contains(it, ignoreCase = true) }?.let {
+                return Problem(WizardValidationError.MUST_NOT_CONTAIN_PRESENT, it)
+            }
+            val probe = buildDefinition(s) ?: return Problem(WizardValidationError.NO_CONDITIONS)
+            if (ruleEngine.evaluate(listOf(probe), s.sourceSender, s.sourceBody) == null) {
+                return Problem(WizardValidationError.NO_SOURCE_MATCH)
             }
             return null
         }
+
+        /** The regex engine's own description of what is wrong, minus the pattern echo. */
+        private fun regexReason(e: Exception): String =
+            (e as? java.util.regex.PatternSyntaxException)?.description
+                ?: e.message
+                    ?.lineSequence()
+                    ?.firstOrNull()
+                    .orEmpty()
+
+        private fun mustNotContainWords(raw: String): List<String> =
+            raw
+                .split(',')
+                .map(String::trim)
+                .filter(String::isNotEmpty)
 
         private fun buildDefinition(s: RuleWizardUiState): RuleDefinition? {
             val body = s.effectiveBodyPattern.takeIf { it.isNotBlank() }
@@ -348,11 +479,7 @@ class RuleWizardViewModel
                         senderPattern = sender,
                         bodyPattern = body,
                         bodyMustContain = s.mustContain.toList(),
-                        bodyMustNotContain =
-                            s.mustNotContain
-                                .split(',')
-                                .map(String::trim)
-                                .filter(String::isNotEmpty),
+                        bodyMustNotContain = mustNotContainWords(s.mustNotContain),
                         guardsNone = s.guardsNone,
                     ),
                 action =

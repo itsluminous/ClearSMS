@@ -19,6 +19,18 @@ interface RuleRepository {
     suspend fun deleteRule(id: String)
 
     /**
+     * Folds a rule that an older version parked in preferences back into the
+     * table with its ORIGINAL [source] and the given [enabled] state. A row
+     * that already exists under that id is left untouched (the row is what
+     * the engine evaluates; the parked copy is a stale duplicate).
+     */
+    suspend fun restoreParkedRule(
+        definition: RuleDefinition,
+        source: String,
+        enabled: Boolean,
+    )
+
+    /**
      * Enables/disables a rule in place. The row (and its `source`) is kept,
      * so a disable/enable round trip cannot change a rule's identity or turn
      * a builtin rule into a user rule.

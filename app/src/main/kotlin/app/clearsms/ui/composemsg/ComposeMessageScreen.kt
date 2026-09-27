@@ -196,7 +196,11 @@ fun ComposeMessageScreen(
             }
             if (state.picked == null && suggestions.isNotEmpty()) {
                 LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    items(suggestions, key = { it.name + it.number }) { suggestion ->
+                    // Keyed on listKey (name NUL number), never on a bare
+                    // concatenation: a duplicate key here is an
+                    // IllegalArgumentException from the lazy list, i.e. a
+                    // crash on the keystroke that surfaces the contact (#48).
+                    items(suggestions, key = { it.listKey }) { suggestion ->
                         ListItem(
                             modifier = Modifier.clickable { viewModel.pickSuggestion(suggestion) },
                             leadingContent = {

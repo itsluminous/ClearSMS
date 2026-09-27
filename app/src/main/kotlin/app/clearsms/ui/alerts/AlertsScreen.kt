@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -62,8 +63,9 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.finance.reminderGlyph
+import app.clearsms.ui.navigation.PillConfig
+import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
-import app.clearsms.ui.navigation.orderedPills
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -83,6 +85,8 @@ fun AlertsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Hoisted so the title's tap-to-top (ScrollToTopTitle) can drive the list.
+    val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val sourceDeletedMessage = stringResource(R.string.source_message_deleted)
@@ -109,7 +113,8 @@ fun AlertsScreen(
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
-                title = { Text(stringResource(R.string.alerts_title)) },
+                // Same "Clear SMS" title as the Inbox, tap-to-top included (see ScrollToTopTitle).
+                title = { ScrollToTopTitle(scrollBehavior = scrollBehavior, listState = listState) },
                 // Same search + settings pair as the Inbox (see SearchSettingsActions).
                 actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                 scrollBehavior = scrollBehavior,
@@ -126,38 +131,14 @@ fun AlertsScreen(
             return@Scaffold
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
-            item(key = "chips") {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(orderedPills(state.pillOrder, AlertFilter.entries.toList()), key = { it.name }) { option ->
-                        val label = option.displayName()
-                        val count = state.counts[option] ?: 0
-                        val description =
-                            pluralStringResource(R.plurals.alerts_filter_pill_reminders, count, label, count)
-                        FilterChip(
-                            selected = state.filter == option,
-                            onClick = { viewModel.setFilter(option) },
-                            label = { Text(label) },
-                            trailingIcon =
-                                if (count > 0) {
-                                    { Badge { Text(count.toString()) } }
-                                } else {
-                                    null
-                                },
-                            modifier =
-                                Modifier
-                                    // No explicit height: M3 chips are 32dp tall and already
-                                    // expand their touch target to the 48dp minimum, so forcing
-                                    // a taller height here made this row inconsistent with the
-                                    // Inbox and Finance chip rows.
-                                    .semantics { contentDescription = description },
-                        )
-                    }
+            // Every pill hidden = no pill row at all (shared PillConfig rule).
+            if (state.pills.showsRow) {
+                item(key = "chips") {
+                    AlertsPillRow(state = state, onSelect = viewModel::setFilter)
                 }
             }
             items(state.upcoming, key = { "up_${it.id}" }) { reminder ->
@@ -233,6 +214,46 @@ fun AlertsScreen(
                 }
             },
         )
+    }
+}
+
+/**
+ * The Alerts filter chips: only the VISIBLE pills, in the user's order,
+ * keyed and selected by identity (see [PillConfig]).
+ */
+@Composable
+private fun AlertsPillRow(
+    state: AlertsUiState,
+    onSelect: (AlertFilter) -> Unit,
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(state.pills.visible, key = { it.name }) { option ->
+            val label = option.displayName()
+            val count = state.counts[option] ?: 0
+            val description =
+                pluralStringResource(R.plurals.alerts_filter_pill_reminders, count, label, count)
+            FilterChip(
+                selected = state.filter == option,
+                onClick = { onSelect(option) },
+                label = { Text(label) },
+                trailingIcon =
+                    if (count > 0) {
+                        { Badge { Text(count.toString()) } }
+                    } else {
+                        null
+                    },
+                modifier =
+                    Modifier
+                        // No explicit height: M3 chips are 32dp tall and already
+                        // expand their touch target to the 48dp minimum, so forcing
+                        // a taller height here made this row inconsistent with the
+                        // Inbox and Finance chip rows.
+                        .semantics { contentDescription = description },
+            )
+        }
     }
 }
 

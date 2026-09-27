@@ -30,7 +30,7 @@ class DefaultRulesAssetTest {
     @Test
     fun `bundled document parses with contract models`() {
         val document = document()
-        assertThat(document.version).isEqualTo("1.3")
+        assertThat(document.version).isEqualTo("1.4")
         assertThat(document.rules).isNotEmpty()
     }
 
@@ -50,7 +50,7 @@ class DefaultRulesAssetTest {
 
     @Test
     fun `all action categories are known`() {
-        val known = setOf("important", "promotional", "informational", "personal", "otp", "unknown")
+        val known = setOf("important", "promotional", "informational", "personal", "otp", "unknown", "spam")
         for (rule in document().rules) {
             assertThat(known).contains(rule.action.category.lowercase())
         }

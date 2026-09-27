@@ -21,9 +21,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
@@ -84,6 +86,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import app.clearsms.R
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.mms.MmsSnippet
 import app.clearsms.sms.DefaultSmsAppHelper
@@ -98,9 +101,11 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.TooltipIconButton
-import app.clearsms.ui.components.displayName
+import app.clearsms.ui.components.defaultLabel
+import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
-import app.clearsms.ui.navigation.orderedPills
+import app.clearsms.ui.rules.SenderRuleDialog
+import app.clearsms.ui.rules.senderRuleSavedMessage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -124,6 +129,8 @@ fun InboxScreen(
     val allSelectedPinned by viewModel.allSelectedPinned.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Hoisted so the title's tap-to-top (ScrollToTopTitle) can drive the list.
+    val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val otpCopiedMessage = stringResource(R.string.otp_copied)
@@ -179,6 +186,34 @@ fun InboxScreen(
         onPauseOrDispose { }
     }
 
+    // "Always sort as…" is the one-step sender rule (issue #38): pick a
+    // category, done. The full wizard stays one tap away inside the dialog.
+    // Reached from the selection overflow; the SAME SenderRuleDialog the
+    // conversation screen opens, so there is one rule-creation path.
+    var senderRuleTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    senderRuleTarget?.let { (sender, body) ->
+        SenderRuleDialog(
+            sender = sender,
+            onDismiss = { senderRuleTarget = null },
+            onSaved = { saved ->
+                senderRuleTarget = null
+                // Saving re-sorted the sender's existing messages
+                // (RuleScopeResolver -> recategorizeSenderCore), so the
+                // selected row has just changed category and, under a
+                // category pill, left the list: drop the selection now
+                // rather than leave it pointing at a row that moved. A
+                // Cancel keeps the selection - nothing moved.
+                viewModel.exitSelection()
+                scope.launch { snackbarHostState.showSnackbar(senderRuleSavedMessage(resources, saved)) }
+            },
+            onDetailedRule = {
+                senderRuleTarget = null
+                viewModel.exitSelection()
+                onCreateRule(sender, body)
+            },
+        )
+    }
+
     // System back exits selection mode instead of leaving the screen.
     BackHandler(enabled = selection.active) { viewModel.exitSelection() }
 
@@ -212,14 +247,38 @@ fun InboxScreen(
                         viewModel.block(sender)
                         viewModel.exitSelection()
                     },
-                    onChangeCategory = { sender, body ->
-                        viewModel.exitSelection()
-                        onCreateRule(sender, body)
+                    onAlwaysSortAs = { sender, body ->
+                        // Selection stays until the dialog saves (see onSaved):
+                        // a Cancel returns the user to the rows they had picked.
+                        senderRuleTarget = sender to body
                     },
                 )
             } else {
                 LargeTopAppBar(
-                    title = { Text(stringResource(R.string.inbox_title)) },
+                    title = {
+                        // "Unread only" is a view mode, not a category: it
+                        // shares the title LINE (never the pill row, where it
+                        // read as one more mutually exclusive chip) and leaves
+                        // with the expanded title as the bar collapses - see
+                        // TitleCollapse. The user can hide it in Settings
+                        // (issue #49); counts and badges are unaffected.
+                        ScrollToTopTitle(
+                            scrollBehavior = scrollBehavior,
+                            listState = listState,
+                            expandedTrailing =
+                                if (state.showUnreadToggle) {
+                                    {
+                                        UnreadSwitch(
+                                            unreadOnly = state.filter.unreadOnly,
+                                            totalUnread = state.totalUnread,
+                                            onToggleUnread = viewModel::toggleUnread,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                        )
+                    },
                     actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
                     scrollBehavior = scrollBehavior,
                 )
@@ -252,7 +311,7 @@ fun InboxScreen(
                     subtitle = stringResource(R.string.inbox_empty_subtitle),
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     // Top banners in the PINNED precedence order (OTP >
                     // default-SMS > contacts > sorting) - the enum order IS
                     // the on-screen order; see InboxBannerSlot.
@@ -307,23 +366,16 @@ fun InboxScreen(
                                 }
                         }
                     }
-                    // "Unread only" is a view mode, not a category: it lives on
-                    // its own right-aligned line ABOVE the pills so it cannot be
-                    // read as one more (mutually exclusive) category chip.
-                    item(key = "unread_toggle") {
-                        UnreadToggleRow(
-                            unreadOnly = state.filter.unreadOnly,
-                            totalUnread = state.totalUnread,
-                            onToggleUnread = viewModel::toggleUnread,
-                        )
-                    }
-                    item(key = "filters") {
-                        FilterChipRow(
-                            filter = state.filter,
-                            unreadCounts = state.unreadCounts,
-                            pillOrder = state.pillOrder,
-                            onSelectCategory = viewModel::selectCategory,
-                        )
+                    // Every pill hidden = no row at all (see InboxPillConfig).
+                    if (state.pills.showsRow) {
+                        item(key = "filters") {
+                            FilterChipRow(
+                                filter = state.filter,
+                                unreadCounts = state.unreadCounts,
+                                pills = state.pills,
+                                onSelectPill = viewModel::selectPill,
+                            )
+                        }
                     }
                     if (emptyLoaded) {
                         item(key = "empty_filter") {
@@ -411,7 +463,7 @@ private fun InboxSelectionBar(
     onTogglePin: () -> Unit,
     onSelectAll: () -> Unit,
     onBlock: (sender: String) -> Unit,
-    onChangeCategory: (sender: String, body: String) -> Unit,
+    onAlwaysSortAs: (sender: String, body: String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     TopAppBar(
@@ -455,48 +507,63 @@ private fun InboxSelectionBar(
                 icon = Icons.Outlined.MoreVert,
             )
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                // Pin flips to Unpin only when EVERY selected thread is
-                // already pinned; a mixed selection pins the rest.
-                val pinLabel =
-                    stringResource(if (allSelectedPinned) R.string.action_unpin else R.string.action_pin)
-                DropdownMenuItem(
-                    text = { Text(pinLabel) },
-                    leadingIcon = {
-                        Icon(
-                            if (allSelectedPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        menuOpen = false
-                        onTogglePin()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_select_all)) },
-                    leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
-                    onClick = {
-                        menuOpen = false
-                        onSelectAll()
-                    },
-                )
-                if (singleItem != null) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_block_sender)) },
-                        leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onBlock(singleItem.message.sender)
-                        },
+                // Entries and their single-thread gating come from the layout
+                // object (SelectionBarLayoutTest), never re-decided here.
+                val overflow =
+                    SelectionBarLayout.overflowActions(
+                        allSelectedPinned = allSelectedPinned,
+                        singleThread = singleItem != null,
                     )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_change_category)) },
-                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onChangeCategory(singleItem.message.sender, singleItem.message.body)
-                        },
-                    )
+                overflow.forEach { action ->
+                    when (action) {
+                        // Pin flips to Unpin only when EVERY selected thread is
+                        // already pinned; a mixed selection pins the rest.
+                        SelectionAction.PIN, SelectionAction.UNPIN -> {
+                            val unpin = action == SelectionAction.UNPIN
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (unpin) R.string.action_unpin else R.string.action_pin)) },
+                                leadingIcon = {
+                                    Icon(
+                                        if (unpin) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    onTogglePin()
+                                },
+                            )
+                        }
+                        SelectionAction.SELECT_ALL ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_select_all)) },
+                                leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onSelectAll()
+                                },
+                            )
+                        SelectionAction.BLOCK ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_block_sender)) },
+                                leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.let { onBlock(it.message.sender) }
+                                },
+                            )
+                        SelectionAction.ALWAYS_SORT_AS ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_always_sort_as)) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Label, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.let { onAlwaysSortAs(it.message.sender, it.message.body) }
+                                },
+                            )
+                        // Inline-only actions never reach the overflow.
+                        SelectionAction.TOGGLE_READ, SelectionAction.ARCHIVE, SelectionAction.DELETE -> Unit
+                    }
                 }
             }
         },
@@ -619,65 +686,67 @@ private fun SortingProgressBanner(
 }
 
 /**
- * Right-aligned "Unread" view-mode switch shown above the pill row. A labeled
- * [Switch] (not a [FilterChip]) so it reads as a mode toggle that composes
- * with the pills, rather than one more mutually-exclusive category; the label
- * carries the total unread count the old pill's badge used to show. Labeled,
- * so it needs no long-press tooltip.
+ * The "Unread" view-mode switch that ends the title line of the expanded app
+ * bar. A labeled [Switch] (not a [FilterChip]) so it reads as a mode toggle
+ * that composes with the pills, rather than one more mutually-exclusive
+ * category; the label carries the total unread count the old pill's badge
+ * used to show. Labeled, so it needs no long-press tooltip. The label style
+ * is set explicitly because the title slot provides the headline style.
  */
 @Composable
-private fun UnreadToggleRow(
+private fun UnreadSwitch(
     unreadOnly: Boolean,
     totalUnread: Int,
     onToggleUnread: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.End,
+        // One semantics node (Switch's own onCheckedChange is null below):
+        // TalkBack reads "Unread · N, switch, on/off" as a single control.
+        modifier =
+            Modifier.toggleable(
+                value = unreadOnly,
+                role = Role.Switch,
+                onValueChange = { onToggleUnread() },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            // One semantics node (Switch's own onCheckedChange is null below):
-            // TalkBack reads "Unread · N, switch, on/off" as a single control.
-            modifier =
-                Modifier.toggleable(
-                    value = unreadOnly,
-                    role = Role.Switch,
-                    onValueChange = { onToggleUnread() },
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text =
-                    if (totalUnread > 0) {
-                        stringResource(R.string.inbox_unread_toggle_count, totalUnread)
-                    } else {
-                        stringResource(R.string.filter_unread)
-                    },
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Switch(checked = unreadOnly, onCheckedChange = null)
-        }
+        Text(
+            text =
+                if (totalUnread > 0) {
+                    stringResource(R.string.inbox_unread_toggle_count, totalUnread)
+                } else {
+                    stringResource(R.string.filter_unread)
+                },
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Switch(checked = unreadOnly, onCheckedChange = null)
     }
 }
 
+/**
+ * The pill row: the user's VISIBLE pills in their order, each under its
+ * display label. Selection and keys go by [InboxPill] identity, never by
+ * label, so a renamed pill filters exactly what it did before. The scam pill
+ * carries no badge: unread counts are per category, and it spans them.
+ */
 @Composable
 private fun FilterChipRow(
     filter: InboxFilterState,
     unreadCounts: Map<Category, Int>,
-    pillOrder: List<Category>,
-    onSelectCategory: (Category) -> Unit,
+    pills: InboxPillConfig,
+    onSelectPill: (InboxPill) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(orderedPills(pillOrder, Category.entries.toList()), key = { it.name }) { category ->
-            val count = unreadCounts[category] ?: 0
+        items(pills.visible, key = { it.name }) { pill ->
+            val count = pill.category?.let { unreadCounts[it] } ?: 0
             FilterChip(
-                selected = filter.category == category,
-                onClick = { onSelectCategory(category) },
-                label = { Text(category.displayName()) },
+                selected = filter.pill == pill,
+                onClick = { onSelectPill(pill) },
+                label = { Text(pill.defaultLabel()) },
                 trailingIcon =
                     if (count > 0) {
                         { Badge { Text(count.toString()) } }

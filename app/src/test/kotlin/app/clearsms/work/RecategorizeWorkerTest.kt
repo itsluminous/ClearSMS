@@ -17,6 +17,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.testing.FakeSettingsRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
@@ -67,6 +68,7 @@ class RecategorizeWorkerTest {
             override fun pagedInbox(
                 category: Category?,
                 unreadOnly: Boolean,
+                sortOrder: MessageSortOrder,
             ): PagingSource<Int, InboxThreadRow> = throw UnsupportedOperationException()
 
             override suspend fun draftFor(threadId: Long): String? = null
@@ -83,7 +85,10 @@ class RecategorizeWorkerTest {
                 text: String,
             ) = Unit
 
-            override fun pagedThread(threadId: Long): PagingSource<Int, MessageEntity> = throw UnsupportedOperationException()
+            override fun pagedThread(
+                threadId: Long,
+                sortOrder: MessageSortOrder,
+            ): PagingSource<Int, MessageEntity> = throw UnsupportedOperationException()
 
             override suspend fun firstInThread(threadId: Long): MessageEntity? = null
 
@@ -101,6 +106,7 @@ class RecategorizeWorkerTest {
             override suspend fun positionInThread(
                 threadId: Long,
                 messageId: Long,
+                sortOrder: MessageSortOrder,
             ): Int = 0
 
             override suspend fun bodiesInOrder(ids: List<Long>): List<String> = emptyList()

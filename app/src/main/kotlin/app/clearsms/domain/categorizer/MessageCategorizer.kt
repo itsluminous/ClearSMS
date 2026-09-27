@@ -124,10 +124,22 @@ class MessageCategorizer(
      *    summaries, recorded payments, order-number-plus-amount) demote a
      *    promotional result to IMPORTANT, unless the body is a marketing
      *    pitch (the `marketing_pitch` guard vetoes the rescue).
+     * 5. [Category.SPAM] ranks exactly like PROMOTIONAL under invariants 1,
+     *    2 and 4: whatever produced it - a bundled bait rule, the heuristic
+     *    fallback, or a user's "always sort this sender as Spam" rule - an
+     *    extractable OTP code, a parsed transaction, a payment request or
+     *    financial evidence lifts the message OUT of Spam. A sender rule is
+     *    a sorting preference; it is never allowed to hide a verification
+     *    code or a money movement, which is the worst outcome this class
+     *    can produce. (The heuristic fallback never reaches Spam with such
+     *    a body anyway, because OTP/transaction/reminder are tried first.)
      *
      * Exceptions, deliberately narrow:
      * - SCAM results stay put - a phishing message quoting an "OTP" or a
-     *   fake debit must not be promoted into the trusted categories.
+     *   fake debit must not be promoted into the trusted categories. This is
+     *   the FLAG ([SubCategory.SCAM]), which only the heuristic detector or
+     *   an explicit `scam` sub-category sets; a plain Spam sender rule does
+     *   not carry it, so invariant 5 still applies to it.
      * - UPI-mandate lifecycle notices (created / cancelled) carry an amount
      *   but move no money; they must never be promoted AS a transaction. They
      *   surface as IMPORTANT bank alerts via [normalizeInformational].
@@ -155,7 +167,10 @@ class MessageCategorizer(
             }
         }
 
-        if (result.category != Category.PROMOTIONAL) return result
+        // Invariants 1, 2 and 4 apply to the two junk categories alike:
+        // Spam must be no better than Promotional at hiding a real code or
+        // a real money movement (invariant 5).
+        if (result.category != Category.PROMOTIONAL && result.category != Category.SPAM) return result
 
         otpParser.parse(evalBody)?.let { otp ->
             return result.copy(
@@ -232,8 +247,11 @@ class MessageCategorizer(
         if (reminderParser.parse(sender, body, anchor) != null) {
             return CategorizationResult(category = Category.IMPORTANT, subCategory = SubCategory.BILL)
         }
+        // A sender no rule or directory entry knows, with a body the
+        // heuristic detector calls a scam: junk, filed under SPAM and
+        // FLAGGED, so it gets the Spam pill AND the warning treatment.
         if (scamDetector.isScam(body)) {
-            return CategorizationResult(category = Category.PROMOTIONAL, subCategory = SubCategory.SCAM)
+            return CategorizationResult(category = Category.SPAM, subCategory = SubCategory.SCAM)
         }
         return null
     }
