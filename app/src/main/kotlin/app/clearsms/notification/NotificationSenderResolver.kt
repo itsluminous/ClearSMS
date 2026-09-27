@@ -1,7 +1,7 @@
 package app.clearsms.notification
 
 import android.content.Context
-import app.clearsms.data.senderid.SenderIdStore
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.sms.ContactInfo
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.components.Brand
@@ -93,13 +93,13 @@ open class NotificationSenderResolver
     constructor(
         @ApplicationContext private val context: Context,
         private val contactsSource: ContactsSource,
-        private val senderIdStore: SenderIdStore,
+        private val senderIdLookup: SenderIdLookup,
     ) {
         open fun resolve(sender: String): NotificationSender =
             resolveNotificationSender(
                 sender = sender,
                 contactLookup = contactsSource::lookup,
-                directoryLookup = { senderIdStore.lookup(it)?.name },
+                directoryLookup = { senderIdLookup.lookup(it)?.name },
                 brandLookup = { BrandCatalog.get(context).resolve(it) },
             )
     }

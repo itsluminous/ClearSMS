@@ -6,8 +6,8 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.UndoManager
-import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -45,7 +45,7 @@ class ArchivedViewModel
     constructor(
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
-        private val senderIdStore: SenderIdStore,
+        private val senderIdLookup: SenderIdLookup,
         private val contactsSource: ContactsSource,
         settings: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -137,7 +137,7 @@ class ArchivedViewModel
                     resolveSenderDisplay(
                         sender = sender,
                         contactLookup = contactsSource::lookup,
-                        directoryLookup = { senderIdStore.lookup(it)?.name },
+                        directoryLookup = { senderIdLookup.lookup(it)?.name },
                     )
                 }
             return InboxItem(

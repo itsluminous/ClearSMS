@@ -14,8 +14,8 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.data.repository.UndoManager
-import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.MessageSortOrder
@@ -161,7 +161,7 @@ class InboxViewModel
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
         private val senderBlocker: SenderBlocker,
-        private val senderIdStore: SenderIdStore,
+        private val senderIdLookup: SenderIdLookup,
         private val contactsSource: ContactsSource,
         private val settings: SettingsRepository,
         private val catchUpSyncScheduler: CatchUpSyncScheduler,
@@ -492,7 +492,7 @@ class InboxViewModel
                 resolveSenderDisplay(
                     sender = sender,
                     contactLookup = contactsSource::lookup,
-                    directoryLookup = { senderIdStore.lookup(it)?.name },
+                    directoryLookup = { senderIdLookup.lookup(it)?.name },
                 )
             }
 

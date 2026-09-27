@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
-import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.SenderDisplay
@@ -55,7 +55,7 @@ class BinViewModel
     @Inject
     constructor(
         private val messageRepository: MessageRepository,
-        private val senderIdStore: SenderIdStore,
+        private val senderIdLookup: SenderIdLookup,
         private val contactsSource: ContactsSource,
         settings: SettingsRepository,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -104,7 +104,7 @@ class BinViewModel
                     resolveSenderDisplay(
                         sender = sender,
                         contactLookup = contactsSource::lookup,
-                        directoryLookup = { senderIdStore.lookup(it)?.name },
+                        directoryLookup = { senderIdLookup.lookup(it)?.name },
                     )
                 }
             return InboxItem(

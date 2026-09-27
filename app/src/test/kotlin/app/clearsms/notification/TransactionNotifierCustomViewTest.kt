@@ -5,6 +5,7 @@ import androidx.core.content.ContextCompat
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.notification.TransactionNotifier.Content
 import app.clearsms.testing.FakeSettingsRepository
@@ -31,8 +32,7 @@ class TransactionNotifierCustomViewTest {
             object : NotificationSenderResolver(
                 context,
                 app.clearsms.sms.ContactsSource(context),
-                app.clearsms.data.senderid
-                    .SenderIdStore(context),
+                SenderIdLookup { null },
             ) {
                 override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
             },

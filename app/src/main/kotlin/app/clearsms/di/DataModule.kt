@@ -34,6 +34,7 @@ import app.clearsms.data.rules.RuleImporter
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
+import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.notification.NotificationDismisser
 import app.clearsms.receiver.DefaultSendReportSideEffects
@@ -182,11 +183,22 @@ object DataModule {
         @ApplicationContext context: Context,
     ): DataStore<Preferences> = context.uiPrefsDataStore
 
+    /**
+     * The bundled sender directory, exposed ONLY as [SenderIdLookup]: every
+     * consumer (categorizer, ViewModels, notification resolver) needs just
+     * `lookup`, and binding the interface lets their unit tests pass a
+     * one-line fake instead of the asset-backed store. That matters
+     * because Robolectric serves a compressed asset by inflating ALL of it
+     * into one heap byte array - for the 44 MB `sender_ids.db` that is a
+     * humongous allocation per test on a fresh Application, which
+     * exhausted the 512 MB test heap on CI (see
+     * SenderIdStoreIsolationConventionTest).
+     */
     @Provides
     @Singleton
-    fun provideSenderIdStore(
+    fun provideSenderIdLookup(
         @ApplicationContext context: Context,
-    ): SenderIdStore = SenderIdStore(context)
+    ): SenderIdLookup = SenderIdStore(context)
 
     @Provides
     @Singleton
@@ -206,12 +218,12 @@ object DataModule {
     @Singleton
     fun provideMessageCategorizer(
         ruleEngine: RuleEngine,
-        senderIdStore: SenderIdStore,
+        senderIdLookup: SenderIdLookup,
         contactLookup: Optional<ContactLookup>,
     ): MessageCategorizer =
         MessageCategorizer(
             ruleEngine = ruleEngine,
-            senderIdLookup = senderIdStore,
+            senderIdLookup = senderIdLookup,
             contactLookup = ContactLookup { address -> contactLookup.map { it.isContact(address) }.orElse(false) },
         )
 
