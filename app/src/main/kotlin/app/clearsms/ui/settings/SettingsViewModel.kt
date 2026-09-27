@@ -61,7 +61,8 @@ import javax.inject.Inject
 data class SettingsUiState(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
-    val showTransactionDetails: Boolean = true,
+    /** Parsed card under a tapped bank/OTP bubble; default OFF (mirrors the repository). */
+    val showTransactionDetails: Boolean = false,
     /** Conversations/messages ordered by received (default) or sent time. */
     val messageSortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     /** Recycle bin for deleted messages (30-day retention); default ON. */

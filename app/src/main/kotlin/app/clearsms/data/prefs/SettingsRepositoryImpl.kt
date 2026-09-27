@@ -61,7 +61,12 @@ class SettingsRepositoryImpl(
     }
 
     override val showTransactionDetails: Flow<Boolean> =
-        dataStore.data.map { it[KEY_SHOW_TRANSACTION_DETAILS] ?: true }
+        // Off by default. The fallback is synthesised at read time and never
+        // written: the key lands on disk only through setShowTransactionDetails
+        // (the Settings toggle) or a settings-backup restore, so an absent
+        // key means "never chosen" and an explicit true from before the
+        // default flipped keeps the card on.
+        dataStore.data.map { it[KEY_SHOW_TRANSACTION_DETAILS] ?: false }
 
     override suspend fun setShowTransactionDetails(value: Boolean) {
         dataStore.edit { it[KEY_SHOW_TRANSACTION_DETAILS] = value }

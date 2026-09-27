@@ -147,8 +147,8 @@ data class ConversationUiState(
     val richAvatars: Boolean = true,
     /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
     val repliable: Boolean = false,
-    /** Mirrors Settings → Appearance → Show extracted message details. */
-    val showTransactionDetails: Boolean = true,
+    /** Mirrors Settings -> Messages -> Show extracted message details (default OFF). */
+    val showTransactionDetails: Boolean = false,
     /**
      * Whether this sender is muted (no notifications; messages still
      * arrive) - drives the overflow's Mute/Unmute toggle label.

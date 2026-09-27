@@ -143,7 +143,7 @@ class SettingsBackupManagerTest {
         repo.setOtpAutoCopy(false)
         repo.setOtpAutoDeletePolicy(OtpAutoDeletePolicy.DAYS_3)
         repo.setOtpDisplaySize(OtpDisplaySize.OPTION_5)
-        repo.setShowTransactionDetails(false)
+        repo.setShowTransactionDetails(true)
         repo.setMessageSortOrder(MessageSortOrder.SENT)
         repo.setRecycleBinEnabled(true)
         repo.setDelayedSendEnabled(true)
@@ -181,7 +181,7 @@ class SettingsBackupManagerTest {
         assertThat(repo.otpAutoCopy.first()).isFalse()
         assertThat(repo.otpAutoDeletePolicy.first()).isEqualTo(OtpAutoDeletePolicy.DAYS_3)
         assertThat(repo.otpDisplaySize.first()).isEqualTo(OtpDisplaySize.OPTION_5)
-        assertThat(repo.showTransactionDetails.first()).isFalse()
+        assertThat(repo.showTransactionDetails.first()).isTrue()
         assertThat(repo.messageSortOrder.first()).isEqualTo(MessageSortOrder.SENT)
         assertThat(repo.recycleBinEnabled.first()).isTrue()
         assertThat(repo.delayedSendEnabled.first()).isTrue()
@@ -331,6 +331,39 @@ class SettingsBackupManagerTest {
             assertThat(repo.theme.first()).isEqualTo(ThemeMode.DARK)
             assertThat(result.applied).isEqualTo(1)
             assertThat(result.skipped).isEqualTo(3)
+        }
+
+    @Test
+    fun `a restored backup applies show_transaction_details whichever way it was set`() =
+        runBlocking {
+            // The default is OFF and never persisted, so the only way this
+            // key reaches a fresh install is an explicit choice - by toggle
+            // or by restore. Both stored values must land verbatim.
+            val on = newDataStore("details-on")
+            val onFile =
+                """
+                {"type":"clearsms-settings","formatVersion":1,
+                 "settings":{"show_transaction_details":true}}
+                """.trimIndent()
+            val onResult = manager(on).importFrom(ByteArrayInputStream(onFile.toByteArray()))
+            assertThat(SettingsRepositoryImpl(on).showTransactionDetails.first()).isTrue()
+            assertThat(onResult.applied).isEqualTo(1)
+
+            val off = newDataStore("details-off")
+            SettingsRepositoryImpl(off).setShowTransactionDetails(true)
+            val offFile =
+                """
+                {"type":"clearsms-settings","formatVersion":1,
+                 "settings":{"show_transaction_details":false}}
+                """.trimIndent()
+            val offResult = manager(off).importFrom(ByteArrayInputStream(offFile.toByteArray()))
+            assertThat(SettingsRepositoryImpl(off).showTransactionDetails.first()).isFalse()
+            assertThat(offResult.applied).isEqualTo(1)
+
+            // A file that never mentions the key leaves the default alone.
+            val untouched = newDataStore("details-untouched")
+            manager(untouched).importFrom(ByteArrayInputStream("""{"type":"clearsms-settings","settings":{}}""".toByteArray()))
+            assertThat(SettingsRepositoryImpl(untouched).showTransactionDetails.first()).isFalse()
         }
 
     @Test
