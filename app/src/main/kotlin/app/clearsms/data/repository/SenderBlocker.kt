@@ -25,7 +25,9 @@ import javax.inject.Singleton
  * Every [block] additionally:
  * - updates the derived per-row `isBlockedSender` cache, and
  * - moves the sender's existing conversation to the recycle bin (or drops
- *   it when the bin is off) - the "blocked threads disappear" effect.
+ *   it when the bin is off) - the "blocked threads disappear" effect, and
+ * - clears any mute on the sender ([SenderMuter]): blocking is the stronger
+ *   state and makes the mute entry meaningless.
  *
  * Blocking deliberately offers NO undo snackbar: an undo would have to
  * atomically unblock AND restore, which the single-pending-action
@@ -43,6 +45,7 @@ class SenderBlocker
     constructor(
         private val settings: SettingsRepository,
         private val repository: MessageRepository,
+        private val senderMuter: SenderMuter,
         @UiSettingsDataStore private val uiSettingsDataStore: DataStore<Preferences>,
         @ApplicationScope private val scope: CoroutineScope,
     ) {
@@ -50,6 +53,10 @@ class SenderBlocker
             val normalized = SenderNormalizer.normalize(sender)
             if (normalized.isEmpty()) return
             settings.setBlockedSenders(settings.blockedSenders.first() + normalized)
+            // Block supersedes mute: a binned sender is silent by
+            // construction, and a leftover "muted" entry would list a sender
+            // in Settings that muting can no longer explain (SenderMuter).
+            senderMuter.unmute(normalized)
             repository.setBlocked(normalized, blocked = true)
             repository.binThreadForSender(normalized)
         }

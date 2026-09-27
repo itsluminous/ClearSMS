@@ -39,6 +39,8 @@ import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
@@ -98,6 +100,8 @@ import app.clearsms.ui.components.BodyLink
 import app.clearsms.ui.components.DialableNumber
 import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
+import app.clearsms.ui.components.MutedIndicator
+import app.clearsms.ui.components.MutedIndicatorIcon
 import app.clearsms.ui.components.NotRepliableBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
@@ -210,6 +214,16 @@ fun ConversationScreen(
 
     // One-step sender rule (issue #38): the conversation already knows the
     // sender, so "Change category" here is a tap, a category, and Save.
+    // Mute confirmation: names what the mute covers (OTPs included, scam
+    // warnings kept) so the quiet that follows is never a mystery.
+    val mutedMessage = stringResource(R.string.mute_applied)
+    val unmutedMessage = stringResource(R.string.mute_removed)
+    LaunchedEffect(Unit) {
+        viewModel.muteEventFlow.collect { event ->
+            snackbarHostState.showSnackbar(if (event.muted) mutedMessage else unmutedMessage)
+        }
+    }
+
     var changeCategoryOpen by remember { mutableStateOf(false) }
     if (changeCategoryOpen && state.address.isNotBlank()) {
         SenderRuleDialog(
@@ -403,11 +417,26 @@ fun ConversationScreen(
                                 glyph = state.glyph,
                             )
                             Spacer(Modifier.width(12.dp))
+                            // weight(fill = false): a long name ellipsises
+                            // INSIDE the title slot instead of pushing the
+                            // muted glyph off the bar; a short name keeps the
+                            // glyph snug beside it.
                             Text(
                                 text = state.title,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
                             )
+                            if (state.muted) {
+                                // The same glyph the inbox row draws (one
+                                // definition, one label), so the reader of a
+                                // silent thread sees why while inside it. It
+                                // tracks uiState.muted, which follows
+                                // settings.mutedSenders - the overflow's
+                                // Mute/Unmute flips it without leaving.
+                                Spacer(Modifier.width(6.dp))
+                                MutedIndicatorIcon(size = MutedIndicator.TitleBarSize)
+                            }
                         }
                     },
                     navigationIcon = {
@@ -434,6 +463,36 @@ fun ConversationScreen(
                                 onClick = { changeCategoryOpen = true },
                                 icon = Icons.AutoMirrored.Outlined.Label,
                             )
+                            // Overflow: the per-sender notification toggle,
+                            // mirroring the inbox selection overflow. One
+                            // entry whose label reflects the current state.
+                            var menuOpen by remember { mutableStateOf(false) }
+                            TooltipIconButton(
+                                label = stringResource(R.string.action_more_options),
+                                onClick = { menuOpen = true },
+                                icon = Icons.Outlined.MoreVert,
+                            )
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (state.muted) R.string.action_unmute_sender else R.string.action_mute_sender,
+                                            ),
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (state.muted) Icons.Outlined.NotificationsActive else Icons.Outlined.NotificationsOff,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        viewModel.toggleMute()
+                                    },
+                                )
+                            }
                         }
                     },
                 )

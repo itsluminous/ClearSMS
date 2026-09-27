@@ -32,6 +32,7 @@ class SectionNotificationGatingTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val settings = FakeSettingsRepository()
     private val gate = NotificationSectionGate(settings)
+    private val mutedGate = MutedSenderGate(settings)
     private val iconFactory = SenderIconFactory(context)
 
     private val rawResolver =
@@ -43,10 +44,10 @@ class SectionNotificationGatingTest {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }
 
-    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, gate)
-    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, gate)
+    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, gate, mutedGate)
+    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, gate, mutedGate)
     private val transactionNotifier =
-        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, gate)
+        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, gate, mutedGate)
     private val reminderNotifier = ReminderNotifier(context, gate)
 
     private fun message(
@@ -124,6 +125,7 @@ class SectionNotificationGatingTest {
                     otpNotifier,
                     messageNotifier,
                     transactionNotifier,
+                    mutedGate,
                     this,
                 )
             val catchUp = CatchUpNotifier(context, router, gate)

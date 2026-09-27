@@ -17,6 +17,7 @@ import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.notification.MessageNotifier
+import app.clearsms.notification.MutedSenderGate
 import app.clearsms.notification.NotificationSectionGate
 import app.clearsms.notification.NotificationSender
 import app.clearsms.notification.NotificationSenderResolver
@@ -113,8 +114,22 @@ class MmsInboundTest {
             IncomingMessageRouter(
                 context = context,
                 settingsRepository = FakeSettingsRepository(),
-                otpNotifier = OtpNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
-                messageNotifier = MessageNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+                otpNotifier =
+                    OtpNotifier(
+                        context,
+                        rawResolver,
+                        iconFactory,
+                        NotificationSectionGate(FakeSettingsRepository()),
+                        MutedSenderGate(FakeSettingsRepository()),
+                    ),
+                messageNotifier =
+                    MessageNotifier(
+                        context,
+                        rawResolver,
+                        iconFactory,
+                        NotificationSectionGate(FakeSettingsRepository()),
+                        MutedSenderGate(FakeSettingsRepository()),
+                    ),
                 transactionNotifier =
                     TransactionNotifier(
                         context,
@@ -122,7 +137,9 @@ class MmsInboundTest {
                         rawResolver,
                         iconFactory,
                         NotificationSectionGate(FakeSettingsRepository()),
+                        MutedSenderGate(FakeSettingsRepository()),
                     ),
+                mutedSenderGate = MutedSenderGate(FakeSettingsRepository()),
                 applicationScope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob()),
             )
         inbound = MmsInbound(repository, downloader, attachmentStore, router)

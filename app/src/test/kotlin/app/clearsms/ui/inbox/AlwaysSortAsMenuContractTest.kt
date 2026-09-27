@@ -36,6 +36,9 @@ class AlwaysSortAsMenuContractTest {
             .containsExactly(
                 SelectionAction.PIN,
                 SelectionAction.SELECT_ALL,
+                // Mute (the per-sender notification toggle) joined the
+                // single-thread group in front of Block; Always sort as… stays last.
+                SelectionAction.MUTE,
                 SelectionAction.BLOCK,
                 SelectionAction.ALWAYS_SORT_AS,
             ).inOrder()

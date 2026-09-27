@@ -173,6 +173,7 @@ class SettingsBackupManagerTest {
         repo.setAlertsHiddenPills(setOf(AlertFilter.DEPOSIT, AlertFilter.TRAVEL))
         repo.setBlockedKeywords(setOf("loan offer", "casino"))
         repo.setBlockedSenders(setOf("JIOPAY", "5551234567"))
+        repo.setMutedSenders(setOf("PROMOCO", "5559876543"))
     }
 
     private suspend fun assertAllNonDefaults(repo: SettingsRepositoryImpl) {
@@ -209,6 +210,7 @@ class SettingsBackupManagerTest {
         assertThat(repo.alertsHiddenPills.first()).isEqualTo(setOf(AlertFilter.DEPOSIT, AlertFilter.TRAVEL))
         assertThat(repo.blockedKeywords.first()).isEqualTo(setOf("loan offer", "casino"))
         assertThat(repo.blockedSenders.first()).isEqualTo(setOf("JIOPAY", "5551234567"))
+        assertThat(repo.mutedSenders.first()).isEqualTo(setOf("PROMOCO", "5559876543"))
     }
 
     private fun export(

@@ -67,6 +67,7 @@ class NotifierLargeIconTest {
                 brandResolver,
                 iconFactory,
                 NotificationSectionGate(FakeSettingsRepository()),
+                MutedSenderGate(FakeSettingsRepository()),
             ).notify(message)
         }
         val posted = postedNotifications().single()
@@ -89,6 +90,7 @@ class NotifierLargeIconTest {
                 brandResolver,
                 iconFactory,
                 NotificationSectionGate(FakeSettingsRepository()),
+                MutedSenderGate(FakeSettingsRepository()),
             ).notifyScam(message.copy(id = 11L))
         }
         val posted = postedNotifications().single()
@@ -98,11 +100,17 @@ class NotifierLargeIconTest {
     @Test
     fun `transaction notification attaches the bank's large icon`() {
         val notification =
-            TransactionNotifier(context, Json, brandResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
-                .buildNotification(
-                    message.copy(extractedDataJson = """{"amount":"500.0","type":"debit","bank":"HDFC Bank"}"""),
-                    MessageNotifier.DEFAULT_SELECTED,
-                )
+            TransactionNotifier(
+                context,
+                Json,
+                brandResolver,
+                iconFactory,
+                NotificationSectionGate(FakeSettingsRepository()),
+                MutedSenderGate(FakeSettingsRepository()),
+            ).buildNotification(
+                message.copy(extractedDataJson = """{"amount":"500.0","type":"debit","bank":"HDFC Bank"}"""),
+                MessageNotifier.DEFAULT_SELECTED,
+            )
         assertThat(notification).isNotNull()
         assertThat(notification!!.getLargeIcon()).isNotNull()
     }
@@ -110,13 +118,18 @@ class NotifierLargeIconTest {
     @Test
     fun `otp notification attaches the large icon on the private and public versions`() {
         val notification =
-            OtpNotifier(context, brandResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
-                .build(
-                    message.copy(category = Category.OTP, extractedOtp = "123456"),
-                    "123456",
-                    OtpDisplaySize.DEFAULT,
-                    MessageNotifier.DEFAULT_SELECTED,
-                )
+            OtpNotifier(
+                context,
+                brandResolver,
+                iconFactory,
+                NotificationSectionGate(FakeSettingsRepository()),
+                MutedSenderGate(FakeSettingsRepository()),
+            ).build(
+                message.copy(category = Category.OTP, extractedOtp = "123456"),
+                "123456",
+                OtpDisplaySize.DEFAULT,
+                MessageNotifier.DEFAULT_SELECTED,
+            )
         assertThat(notification.getLargeIcon()).isNotNull()
         // Lockscreen privacy is intact: private visibility, digit-free public.
         assertThat(notification.visibility).isEqualTo(NotificationCompat.VISIBILITY_PRIVATE)

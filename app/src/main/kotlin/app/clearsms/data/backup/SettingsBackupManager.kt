@@ -142,6 +142,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringSetEntry("alerts_hidden_pills"),
             SettingsBackupEntry.StringSetEntry("blocked_keywords"),
             SettingsBackupEntry.StringSetEntry("blocked_senders"),
+            SettingsBackupEntry.StringSetEntry("muted_senders"),
         )
 
     val byName: Map<String, SettingsBackupEntry> = entries.associateBy { it.name }

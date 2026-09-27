@@ -47,10 +47,12 @@ class NotificationDeepLinkTest {
         }
 
     private val sectionGate = NotificationSectionGate(FakeSettingsRepository())
-    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, sectionGate)
-    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, sectionGate)
+
+    private val mutedGate = MutedSenderGate(FakeSettingsRepository())
+    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, sectionGate, mutedGate)
+    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, sectionGate, mutedGate)
     private val transactionNotifier =
-        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, sectionGate)
+        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, sectionGate, mutedGate)
 
     private val message =
         MessageEntity(
@@ -111,6 +113,7 @@ class NotificationDeepLinkTest {
                 otpNotifier = otpNotifier,
                 messageNotifier = messageNotifier,
                 transactionNotifier = transactionNotifier,
+                mutedSenderGate = mutedGate,
                 applicationScope =
                     kotlinx.coroutines.CoroutineScope(
                         kotlinx.coroutines.Dispatchers.Unconfined + kotlinx.coroutines.SupervisorJob(),

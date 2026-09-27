@@ -8,6 +8,15 @@ enum class SelectionAction {
     PIN,
     UNPIN,
     SELECT_ALL,
+
+    /**
+     * Mute / unmute notifications for the one selected sender - a single
+     * toggle whose entry reflects the current state (like PIN / UNPIN).
+     * Messages keep arriving; only notifications stop
+     * ([app.clearsms.data.repository.SenderMuter]).
+     */
+    MUTE,
+    UNMUTE,
     BLOCK,
 
     /** "Always sort as…": the one-step sender rule ([app.clearsms.ui.rules.SenderRuleDialog]). */
@@ -43,10 +52,14 @@ object SelectionBarLayout {
     val inlineActions: List<SelectionAction> =
         listOf(SelectionAction.TOGGLE_READ, SelectionAction.ARCHIVE, SelectionAction.DELETE)
 
+    /** The mute menu entry for the selected thread: [SelectionAction.UNMUTE] when it is already muted. */
+    fun muteAction(singleThreadMuted: Boolean): SelectionAction = if (singleThreadMuted) SelectionAction.UNMUTE else SelectionAction.MUTE
+
     /**
-     * Overflow menu entries in display order. Block and "Always sort as…"
-     * act on ONE sender, so they appear only when exactly one thread is
-     * selected. Inbox threads are keyed by normalized sender (one thread per
+     * Overflow menu entries in display order. Mute, Block and "Always sort
+     * as…" act on ONE sender, so they appear only when exactly one thread is
+     * selected; Mute precedes Block (the gentler action first, and the two
+     * read as an escalation). Inbox threads are keyed by normalized sender (one thread per
      * sender core - `MessageDao.threadIdFor`), so two selected threads are
      * always two different senders and "always sort THIS sender as" has no
      * single answer: the entry is hidden (not disabled) for multi-select,
@@ -58,11 +71,13 @@ object SelectionBarLayout {
     fun overflowActions(
         allSelectedPinned: Boolean,
         singleThread: Boolean,
+        singleThreadMuted: Boolean = false,
     ): List<SelectionAction> =
         buildList {
             add(pinAction(allSelectedPinned))
             add(SelectionAction.SELECT_ALL)
             if (singleThread) {
+                add(muteAction(singleThreadMuted))
                 add(SelectionAction.BLOCK)
                 add(SelectionAction.ALWAYS_SORT_AS)
             }

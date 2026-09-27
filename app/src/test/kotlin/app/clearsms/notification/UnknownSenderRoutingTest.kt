@@ -36,6 +36,7 @@ class UnknownSenderRoutingTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val settings = FakeSettingsRepository()
     private val gate = NotificationSectionGate(settings)
+    private val mutedGate = MutedSenderGate(settings)
     private val iconFactory = SenderIconFactory(context)
 
     private val rawResolver =
@@ -47,10 +48,10 @@ class UnknownSenderRoutingTest {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }
 
-    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, gate)
-    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, gate)
+    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, gate, mutedGate)
+    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, gate, mutedGate)
     private val transactionNotifier =
-        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, gate)
+        TransactionNotifier(context, Json { ignoreUnknownKeys = true }, rawResolver, iconFactory, gate, mutedGate)
 
     private val router =
         IncomingMessageRouter(
@@ -59,6 +60,7 @@ class UnknownSenderRoutingTest {
             otpNotifier = otpNotifier,
             messageNotifier = messageNotifier,
             transactionNotifier = transactionNotifier,
+            mutedSenderGate = mutedGate,
             applicationScope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob()),
         )
 

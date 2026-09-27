@@ -22,8 +22,16 @@ import javax.inject.Singleton
  * The single notification-routing decision for an incoming message: OTP,
  * scam warning, parsed transaction/balance/bill, plain message, promotion,
  * spam, unknown-sender notification, or silence - respecting every user-facing
- * gate (blocked senders, the
+ * gate (blocked senders, muted senders, the
  * transaction-notification toggle, OTP auto-copy, selected actions).
+ *
+ * The MUTE decision is made here, once, before any notifier is chosen -
+ * this is the source every incoming-message notification flows from, so a
+ * muted sender cannot slip through a branch that forgot to check. The
+ * per-message notifiers consult [MutedSenderGate] again before posting
+ * (NotificationSectionConventionTest pins that), so a future caller that
+ * reaches a notifier around this router is caught too. What a mute keeps
+ * and drops (OTP dropped, scam warning kept) is argued on [MutedSenderGate].
  *
  * Extracted from [app.clearsms.receiver.SmsReceiver] so the catch-up import
  * ([app.clearsms.work.InitialSyncWorker] via [CatchUpNotifier]) can notify
@@ -40,10 +48,12 @@ class IncomingMessageRouter
         private val otpNotifier: OtpNotifier,
         private val messageNotifier: MessageNotifier,
         private val transactionNotifier: TransactionNotifier,
+        private val mutedSenderGate: MutedSenderGate,
         @ApplicationScope private val applicationScope: CoroutineScope,
     ) {
         /** Routes [entity] to its notification (or to silence). */
         suspend fun route(entity: MessageEntity) {
+            val muted = mutedSenderGate.isMuted(entity.sender)
             // The routing inputs, so a "no notification arrived" report shows
             // which gate below silenced the message. Never the OTP itself.
             Diag.d(
@@ -54,6 +64,7 @@ class IncomingMessageRouter
                 label("sub", entity.subCategory),
                 flag("otp", entity.extractedOtp != null),
                 flag("blocked", entity.isBlockedSender),
+                flag("muted", muted),
                 flag("deleted", entity.deletedAt != null),
             )
             if (entity.isBlockedSender) return
@@ -61,6 +72,15 @@ class IncomingMessageRouter
             // OTP, transaction, scam or message notification may exist for a
             // message that was never inbox-visible.
             if (entity.deletedAt != null) return
+            // Muted sender: the ONE notification that survives is the scam
+            // warning - muting is not accepting the risk that the sender
+            // starts phishing. Everything else, the OTP included, stays quiet
+            // (the code is still extracted and copyable in-app). Decided
+            // before the type switch so no branch below can forget it.
+            if (muted) {
+                if (entity.subCategory == SubCategory.SCAM) messageNotifier.notifyScam(entity)
+                return
+            }
             val selectedActions = settingsRepository.notificationActions.first()
             when {
                 entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(entity, selectedActions)

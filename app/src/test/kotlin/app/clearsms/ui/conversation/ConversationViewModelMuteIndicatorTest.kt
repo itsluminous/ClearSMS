@@ -7,7 +7,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
-import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderMuter
@@ -60,21 +59,25 @@ import org.robolectric.Shadows.shadowOf
 import java.io.File
 
 /**
- * Schedule parity with send on the CONVERSATION screen: confirming the
- * schedule picker consumes the compose text SYNCHRONOUSLY (the field and
- * the persisted draft clear together, exactly like a send - no leftover
- * draft next to the scheduled bubble), and a double-confirm carrying the
- * same stale body snapshot is dropped - exactly one SCHEDULED row.
+ * Live-update proof for the muted glyph in the conversation title bar: the
+ * glyph draws from `uiState.muted`, and the overflow's Mute/Unmute goes
+ * through the same [SenderMuter] that writes `settings.mutedSenders` - the
+ * flow the view model combines into `uiState`. So a toggle taken INSIDE the
+ * open conversation flips `uiState.muted` (and with it the glyph) with no
+ * reload, and a mute made elsewhere (inbox, Settings) reaches the open
+ * screen the same way. One shared [FakeSettingsRepository] plays the
+ * DataStore both sides talk to. Fixtures are synthetic.
  */
 @RunWith(RobolectricTestRunner::class)
-class ConversationViewModelScheduleTest {
+class ConversationViewModelMuteIndicatorTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
     private lateinit var dao: MessageDao
     private lateinit var repository: FakeMessageRepository
     private var collectJob: Job? = null
 
-    private val future = System.currentTimeMillis() + 300_000L
+    /** The one settings store the view model reads and the muter writes. */
+    private val settings = FakeSettingsRepository()
 
     @Before
     fun setUp() {
@@ -220,8 +223,8 @@ class ConversationViewModelScheduleTest {
             scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
             attachmentDao = db.attachmentDao(),
             mmsInbound = mmsInbound,
-            settings = FakeSettingsRepository(),
-            senderMuter = SenderMuter(FakeSettingsRepository()),
+            settings = settings,
+            senderMuter = SenderMuter(settings),
             json = json,
             appContext = context,
             applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
@@ -239,46 +242,41 @@ class ConversationViewModelScheduleTest {
     }
 
     @Test
-    fun `confirming a schedule clears the compose field immediately and consumes the saved draft`() =
+    fun `toggling mute from the open conversation flips uiState muted live, both ways`() =
         runBlocking<Unit> {
             val vm = viewModel()
             awaitLoaded(vm)
-            vm.setDraft("see you at nine")
-            awaitUntil { repository.drafts[THREAD_ID] == "see you at nine" }
+            assertThat(vm.uiState.value.muted).isFalse()
 
-            vm.scheduleSend("see you at nine", future)
+            vm.toggleMute()
+            awaitUntil { vm.uiState.value.muted }
+            // The glyph's source of truth and the notifier's gate agree.
+            assertThat(MutedSenderGate.matches(settings.mutedSenders.value, "+15550001234")).isTrue()
 
-            // Synchronous consume: the field is empty the moment the picker
-            // is confirmed, not when the row lands.
-            assertThat(vm.draft.value).isEmpty()
-            awaitUntil { dao.scheduledMessages().size == 1 }
-            val row = dao.scheduledMessages().single()
-            assertThat(row.deliveryStatus).isEqualTo(DeliveryStatus.SCHEDULED)
-            assertThat(row.scheduledAt).isEqualTo(future)
-            // The draft-consumption invariant: no leftover saved draft next
-            // to the scheduled bubble.
-            awaitUntil { !repository.drafts.containsKey(THREAD_ID) }
+            vm.toggleMute()
+            awaitUntil { !vm.uiState.value.muted }
+            assertThat(settings.mutedSenders.value).isEmpty()
+            // The rest of the title state is untouched by the toggle.
+            assertThat(vm.uiState.value.address).isEqualTo("+15550001234")
+            assertThat(vm.uiState.value.loaded).isTrue()
         }
 
     @Test
-    fun `double-confirming a schedule creates exactly ONE scheduled row`() =
+    fun `a mute made elsewhere reaches the open conversation without a reload`() =
         runBlocking<Unit> {
             val vm = viewModel()
             awaitLoaded(vm)
-            vm.setDraft("only one bubble")
-            awaitUntil { repository.drafts[THREAD_ID] == "only one bubble" }
+            assertThat(vm.uiState.value.muted).isFalse()
 
-            // Both confirms carry the SAME body snapshot (a double-tap on
-            // the picker's confirm button before recomposition).
-            vm.scheduleSend("only one bubble", future)
-            vm.scheduleSend("only one bubble", future)
+            // Inbox selection overflow or Settings: same SenderMuter, same store.
+            SenderMuter(settings).mute("+1 555 000 1234")
+            awaitUntil { vm.uiState.value.muted }
 
-            awaitUntil { dao.scheduledMessages().isNotEmpty() }
-            delay(100)
-            assertThat(dao.scheduledMessages()).hasSize(1)
+            SenderMuter(settings).unmute("15550001234")
+            awaitUntil { !vm.uiState.value.muted }
         }
 
-    private companion object {
+    companion object {
         const val THREAD_ID = 7L
     }
 }

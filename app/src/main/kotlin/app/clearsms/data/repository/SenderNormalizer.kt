@@ -23,4 +23,21 @@ object SenderNormalizer {
             .replace(PREFIX_REGEX, "")
             .replace(SUFFIX_REGEX, "")
     }
+
+    /**
+     * Whether [sender] (raw or normalized) matches any of [entries] under
+     * normalization - THE membership rule for the blocked- and muted-sender
+     * sets. Entries are stored normalized but re-normalized here, so a raw
+     * variant ("VM-JIOPAY" from an old backup or a hand-typed number with
+     * spaces) still matches. A sender that normalizes to nothing matches
+     * nothing.
+     */
+    fun matchesAny(
+        entries: Set<String>,
+        sender: String,
+    ): Boolean {
+        val normalized = normalize(sender)
+        if (normalized.isEmpty()) return false
+        return entries.any { normalize(it) == normalized }
+    }
 }
