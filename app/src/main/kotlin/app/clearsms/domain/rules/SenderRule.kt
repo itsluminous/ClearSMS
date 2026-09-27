@@ -4,6 +4,7 @@ import app.clearsms.data.repository.SenderNormalizer
 import app.clearsms.data.rules.RuleAction
 import app.clearsms.data.rules.RuleDefinition
 import app.clearsms.data.rules.RuleMatch
+import app.clearsms.domain.model.Category
 import java.util.UUID
 
 /**
@@ -21,8 +22,16 @@ object SenderRule {
     /** Priority of every user-made rule: outranks every bundled rule (all < 1000). */
     const val USER_BAND_PRIORITY = 1001
 
-    /** Categories a sender rule can assign, in display order. */
-    val CATEGORIES: List<String> = listOf("important", "promotional", "personal", "otp", "unknown", "spam")
+    /**
+     * Categories a sender rule can assign - the rule-action key of every
+     * primary [Category], in enum order. Derived, not listed: a category
+     * added to the enum (SPAM was) shows up in the chips of
+     * [app.clearsms.ui.rules.SenderRuleDialog] without anyone touching this
+     * file. The key is the lower-cased enum name, which is what
+     * [app.clearsms.data.rules.RuleEngine.categoryOf] reads back
+     * (`SenderRuleTest` pins the round trip for every entry).
+     */
+    val CATEGORIES: List<String> = Category.entries.map { it.name.lowercase() }
 
     /**
      * The sender core the rule is about: TRAI route prefix/suffix stripped

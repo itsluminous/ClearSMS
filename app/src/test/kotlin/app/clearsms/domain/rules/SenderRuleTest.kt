@@ -10,6 +10,7 @@ import app.clearsms.domain.model.Category
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
+import java.io.File
 
 /**
  * The one-step sender rule (issue #38): "messages from THIS sender are always
@@ -41,6 +42,24 @@ class SenderRuleTest {
     fun `categories offered are exactly the app's primary categories`() {
         assertThat(SenderRule.CATEGORIES.map { RuleEngine.categoryOf(it) })
             .containsExactlyElementsIn(Category.entries)
+    }
+
+    @Test
+    fun `the category list is derived from the enum, so a new category appears without editing the rule`() {
+        // Same entries, same order as the enum: this is what makes SPAM (and
+        // whatever comes next) reach SenderRuleDialog's chips automatically.
+        assertThat(SenderRule.CATEGORIES).containsExactlyElementsIn(Category.entries.map { it.name.lowercase() }).inOrder()
+        assertThat(SenderRule.CATEGORIES).contains("spam")
+        // And every key the list emits reads back as the SAME enum entry - a
+        // category whose key fell through to the UNKNOWN default would be
+        // offered but silently mis-filed.
+        for (category in Category.entries) {
+            assertThat(RuleEngine.categoryOf(category.name.lowercase())).isEqualTo(category)
+        }
+        // Source contract: no hand-maintained literal list to forget.
+        val source = File("src/main/kotlin/app/clearsms/domain/rules/SenderRule.kt").readText()
+        assertThat(source).contains("Category.entries.map { it.name.lowercase() }")
+        assertThat(source).doesNotContain("listOf(\"important\"")
     }
 
     @Test

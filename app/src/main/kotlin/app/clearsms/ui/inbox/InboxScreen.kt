@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
@@ -185,8 +186,10 @@ fun InboxScreen(
         onPauseOrDispose { }
     }
 
-    // "Change category" is the one-step sender rule (issue #38): pick a
+    // "Always sort as…" is the one-step sender rule (issue #38): pick a
     // category, done. The full wizard stays one tap away inside the dialog.
+    // Reached from the selection overflow; the SAME SenderRuleDialog the
+    // conversation screen opens, so there is one rule-creation path.
     var senderRuleTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     senderRuleTarget?.let { (sender, body) ->
         SenderRuleDialog(
@@ -194,10 +197,18 @@ fun InboxScreen(
             onDismiss = { senderRuleTarget = null },
             onSaved = { saved ->
                 senderRuleTarget = null
+                // Saving re-sorted the sender's existing messages
+                // (RuleScopeResolver -> recategorizeSenderCore), so the
+                // selected row has just changed category and, under a
+                // category pill, left the list: drop the selection now
+                // rather than leave it pointing at a row that moved. A
+                // Cancel keeps the selection - nothing moved.
+                viewModel.exitSelection()
                 scope.launch { snackbarHostState.showSnackbar(senderRuleSavedMessage(resources, saved)) }
             },
             onDetailedRule = {
                 senderRuleTarget = null
+                viewModel.exitSelection()
                 onCreateRule(sender, body)
             },
         )
@@ -236,8 +247,9 @@ fun InboxScreen(
                         viewModel.block(sender)
                         viewModel.exitSelection()
                     },
-                    onChangeCategory = { sender, body ->
-                        viewModel.exitSelection()
+                    onAlwaysSortAs = { sender, body ->
+                        // Selection stays until the dialog saves (see onSaved):
+                        // a Cancel returns the user to the rows they had picked.
                         senderRuleTarget = sender to body
                     },
                 )
@@ -451,7 +463,7 @@ private fun InboxSelectionBar(
     onTogglePin: () -> Unit,
     onSelectAll: () -> Unit,
     onBlock: (sender: String) -> Unit,
-    onChangeCategory: (sender: String, body: String) -> Unit,
+    onAlwaysSortAs: (sender: String, body: String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     TopAppBar(
@@ -495,48 +507,63 @@ private fun InboxSelectionBar(
                 icon = Icons.Outlined.MoreVert,
             )
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                // Pin flips to Unpin only when EVERY selected thread is
-                // already pinned; a mixed selection pins the rest.
-                val pinLabel =
-                    stringResource(if (allSelectedPinned) R.string.action_unpin else R.string.action_pin)
-                DropdownMenuItem(
-                    text = { Text(pinLabel) },
-                    leadingIcon = {
-                        Icon(
-                            if (allSelectedPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        menuOpen = false
-                        onTogglePin()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_select_all)) },
-                    leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
-                    onClick = {
-                        menuOpen = false
-                        onSelectAll()
-                    },
-                )
-                if (singleItem != null) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_block_sender)) },
-                        leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onBlock(singleItem.message.sender)
-                        },
+                // Entries and their single-thread gating come from the layout
+                // object (SelectionBarLayoutTest), never re-decided here.
+                val overflow =
+                    SelectionBarLayout.overflowActions(
+                        allSelectedPinned = allSelectedPinned,
+                        singleThread = singleItem != null,
                     )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_change_category)) },
-                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onChangeCategory(singleItem.message.sender, singleItem.message.body)
-                        },
-                    )
+                overflow.forEach { action ->
+                    when (action) {
+                        // Pin flips to Unpin only when EVERY selected thread is
+                        // already pinned; a mixed selection pins the rest.
+                        SelectionAction.PIN, SelectionAction.UNPIN -> {
+                            val unpin = action == SelectionAction.UNPIN
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (unpin) R.string.action_unpin else R.string.action_pin)) },
+                                leadingIcon = {
+                                    Icon(
+                                        if (unpin) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    onTogglePin()
+                                },
+                            )
+                        }
+                        SelectionAction.SELECT_ALL ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_select_all)) },
+                                leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onSelectAll()
+                                },
+                            )
+                        SelectionAction.BLOCK ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_block_sender)) },
+                                leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.let { onBlock(it.message.sender) }
+                                },
+                            )
+                        SelectionAction.ALWAYS_SORT_AS ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_always_sort_as)) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Label, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.let { onAlwaysSortAs(it.message.sender, it.message.body) }
+                                },
+                            )
+                        // Inline-only actions never reach the overflow.
+                        SelectionAction.TOGGLE_READ, SelectionAction.ARCHIVE, SelectionAction.DELETE -> Unit
+                    }
                 }
             }
         },
