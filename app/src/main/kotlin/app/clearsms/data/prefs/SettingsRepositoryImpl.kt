@@ -257,17 +257,10 @@ class SettingsRepositoryImpl(
     }
 
     override val inboxHiddenPills: Flow<Set<InboxPill>> =
-        dataStore.data.map { prefs ->
-            // Lenient like the pill order: a name no current pill carries
-            // (removed in a later version, or corrupt) is simply dropped.
-            prefs[KEY_INBOX_HIDDEN_PILLS]
-                .orEmpty()
-                .mapNotNull { name -> InboxPill.entries.firstOrNull { it.name == name } }
-                .toSet()
-        }
+        dataStore.data.map { it[KEY_INBOX_HIDDEN_PILLS].toHiddenPills() }
 
     override suspend fun setInboxHiddenPills(value: Set<InboxPill>) {
-        dataStore.edit { it[KEY_INBOX_HIDDEN_PILLS] = value.map { pill -> pill.name }.toSet() }
+        dataStore.edit { it[KEY_INBOX_HIDDEN_PILLS] = value.toStoredNames() }
     }
 
     override val inboxPillLabels: Flow<Map<InboxPill, String>> =
@@ -291,6 +284,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_FINANCE_PILL_ORDER] = value.toStoredOrder() }
     }
 
+    override val financeHiddenPills: Flow<Set<FinanceTab>> =
+        dataStore.data.map { it[KEY_FINANCE_HIDDEN_PILLS].toHiddenPills() }
+
+    override suspend fun setFinanceHiddenPills(value: Set<FinanceTab>) {
+        dataStore.edit { it[KEY_FINANCE_HIDDEN_PILLS] = value.toStoredNames() }
+    }
+
     override val blockedKeywords: Flow<Set<String>> =
         dataStore.data.map { it[KEY_BLOCKED_KEYWORDS] ?: emptySet() }
 
@@ -310,6 +310,13 @@ class SettingsRepositoryImpl(
 
     override suspend fun setAlertsPillOrder(value: List<AlertFilter>) {
         dataStore.edit { it[KEY_ALERTS_PILL_ORDER] = value.toStoredOrder() }
+    }
+
+    override val alertsHiddenPills: Flow<Set<AlertFilter>> =
+        dataStore.data.map { it[KEY_ALERTS_HIDDEN_PILLS].toHiddenPills() }
+
+    override suspend fun setAlertsHiddenPills(value: Set<AlertFilter>) {
+        dataStore.edit { it[KEY_ALERTS_HIDDEN_PILLS] = value.toStoredNames() }
     }
 
     override val lastSortedVersionCode: Flow<Int> =
@@ -342,6 +349,20 @@ class SettingsRepositoryImpl(
     }
 
     private fun List<Enum<*>>.toStoredOrder(): String = joinToString(ORDER_DELIMITER) { it.name }
+
+    /**
+     * Decodes a stored set of enum names into the HIDDEN pills of a screen -
+     * the one reader the Inbox, Finance and Alerts hidden sets share.
+     * Lenient like the pill order: a name no current pill carries (removed
+     * in a later version, or corrupt) is simply dropped, never a crash.
+     * Null (nothing stored) means nothing hidden.
+     */
+    private inline fun <reified T : Enum<T>> Set<String>?.toHiddenPills(): Set<T> =
+        orEmpty()
+            .mapNotNull { name -> enumValues<T>().firstOrNull { it.name == name } }
+            .toSet()
+
+    private fun Set<Enum<*>>.toStoredNames(): Set<String> = map { it.name }.toSet()
 
     private companion object {
         val KEY_THEME = stringPreferencesKey("theme")
@@ -376,7 +397,9 @@ class SettingsRepositoryImpl(
         val KEY_INBOX_PILL_LABELS = stringPreferencesKey("inbox_pill_labels")
         val KEY_INBOX_UNREAD_TOGGLE = booleanPreferencesKey("inbox_unread_toggle")
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
+        val KEY_FINANCE_HIDDEN_PILLS = stringSetPreferencesKey("finance_hidden_pills")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
+        val KEY_ALERTS_HIDDEN_PILLS = stringSetPreferencesKey("alerts_hidden_pills")
         val KEY_BLOCKED_KEYWORDS = stringSetPreferencesKey("blocked_keywords")
         val KEY_BLOCKED_SENDERS = stringSetPreferencesKey("blocked_senders")
         val KEY_LAST_SORTED_VERSION_CODE = intPreferencesKey("last_sorted_version_code")

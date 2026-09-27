@@ -25,20 +25,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
-import app.clearsms.domain.model.InboxPill
-import app.clearsms.ui.components.defaultLabel
-import app.clearsms.ui.inbox.InboxPillConfig
+import app.clearsms.ui.navigation.PillConfig
 
 /**
- * Which Inbox pills are shown (issue #49). One checkbox per pill in the
+ * Which pills a screen shows - the one visibility dialog the Inbox (issue
+ * #49), Finance and Alerts settings all open. One checkbox per pill in the
  * user's order, labelled with the pill's current display name. There is NO
- * minimum: unticking every pill is allowed and simply removes the pill row
- * (see [InboxPillConfig]); the hint says so.
+ * minimum on any screen: unticking every pill is allowed and simply removes
+ * the pill row (see [PillConfig]); the per-screen [hint] says so.
  */
 @Composable
-fun InboxVisiblePillsDialog(
-    pills: InboxPillConfig,
-    onConfirm: (hidden: Set<InboxPill>) -> Unit,
+fun <T> VisiblePillsDialog(
+    pills: PillConfig<T>,
+    hint: String,
+    label: @Composable (T) -> String,
+    onConfirm: (hidden: Set<T>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var hidden by remember(pills) { mutableStateOf(pills.hidden) }
@@ -48,7 +49,7 @@ fun InboxVisiblePillsDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = stringResource(R.string.settings_inbox_visible_pills_hint),
+                    text = hint,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -68,7 +69,7 @@ fun InboxVisiblePillsDialog(
                     ) {
                         Checkbox(checked = checked, onCheckedChange = null)
                         Spacer(Modifier.padding(horizontal = 6.dp))
-                        Text(pills.label(pill, InboxPill::defaultLabel))
+                        Text(label(pill))
                     }
                 }
             }

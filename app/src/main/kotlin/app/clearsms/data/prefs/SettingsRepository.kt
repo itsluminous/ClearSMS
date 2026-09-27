@@ -235,6 +235,16 @@ interface SettingsRepository {
     suspend fun setFinancePillOrder(value: List<FinanceTab>)
 
     /**
+     * Finance pills the user has HIDDEN; same contract as [inboxHiddenPills]
+     * (independent of the order, unknown names dropped, no minimum - all
+     * hidden removes the row and the screen is the month summary alone).
+     * Resolved through the shared [app.clearsms.ui.navigation.PillConfig].
+     */
+    val financeHiddenPills: Flow<Set<FinanceTab>>
+
+    suspend fun setFinanceHiddenPills(value: Set<FinanceTab>)
+
+    /**
      * Keywords whose presence in an incoming message body (case-insensitive
      * substring) routes the message straight to the recycle bin - or drops
      * it entirely when the bin is off. Validated through
@@ -268,6 +278,16 @@ interface SettingsRepository {
     val alertsPillOrder: Flow<List<AlertFilter>>
 
     suspend fun setAlertsPillOrder(value: List<AlertFilter>)
+
+    /**
+     * Alerts pills the user has HIDDEN; same contract as [inboxHiddenPills]
+     * (independent of the order, unknown names dropped, no minimum - all
+     * hidden removes the row and the list shows every reminder). Resolved
+     * through the shared [app.clearsms.ui.navigation.PillConfig].
+     */
+    val alertsHiddenPills: Flow<Set<AlertFilter>>
+
+    suspend fun setAlertsHiddenPills(value: Set<AlertFilter>)
 
     /**
      * App versionCode whose rules/parsers last fully sorted the database -

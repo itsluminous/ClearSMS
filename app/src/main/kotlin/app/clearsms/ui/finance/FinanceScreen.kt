@@ -85,9 +85,9 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.MaskedAmountText
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
+import app.clearsms.ui.navigation.PillConfig
 import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
-import app.clearsms.ui.navigation.orderedPills
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 
@@ -194,15 +194,20 @@ fun FinanceScreen(
                     onToggleBalances = onToggleBalances,
                 )
             }
-            item(key = "pills") {
-                FinancePillRow(
-                    selected = selectedTab,
-                    counts = state.pillCounts,
-                    pillOrder = state.pillOrder,
-                    onSelect = viewModel::setTab,
-                )
+            // Every pill hidden = no pill row at all (shared PillConfig rule).
+            if (state.pills.showsRow) {
+                item(key = "pills") {
+                    FinancePillRow(
+                        selected = selectedTab,
+                        counts = state.pillCounts,
+                        pills = state.pills,
+                        onSelect = viewModel::setTab,
+                    )
+                }
             }
             when (selectedTab) {
+                // Every tab hidden: the screen is the month summary alone.
+                null -> Unit
                 FinanceTab.ACCOUNTS ->
                     accountsSection(
                         state = state,
@@ -245,13 +250,13 @@ fun FinanceScreen(
 
 @Composable
 private fun FinancePillRow(
-    selected: FinanceTab,
+    selected: FinanceTab?,
     counts: Map<FinanceTab, Int>,
-    pillOrder: List<FinanceTab>,
+    pills: PillConfig<FinanceTab>,
     onSelect: (FinanceTab) -> Unit,
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(orderedPills(pillOrder, FinanceTab.entries.toList()), key = { it.name }) { tab ->
+        items(pills.visible, key = { it.name }) { tab ->
             val count = counts[tab] ?: 0
             FilterChip(
                 selected = selected == tab,

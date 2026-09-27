@@ -130,7 +130,9 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("inbox_pill_labels"),
             SettingsBackupEntry.BooleanEntry("inbox_unread_toggle"),
             SettingsBackupEntry.StringEntry("finance_pill_order"),
+            SettingsBackupEntry.StringSetEntry("finance_hidden_pills"),
             SettingsBackupEntry.StringEntry("alerts_pill_order"),
+            SettingsBackupEntry.StringSetEntry("alerts_hidden_pills"),
             SettingsBackupEntry.StringSetEntry("blocked_keywords"),
             SettingsBackupEntry.StringSetEntry("blocked_senders"),
         )

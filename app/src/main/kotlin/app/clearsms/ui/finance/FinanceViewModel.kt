@@ -9,9 +9,12 @@ import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.FinanceTab
+import app.clearsms.ui.navigation.PillConfig
+import app.clearsms.ui.navigation.activePill
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -60,8 +63,12 @@ data class FinanceUiState(
     val isLoadingMore: Boolean = false,
     /** Badge counts per pill: accounts / cards / transactions this month. */
     val pillCounts: Map<FinanceTab, Int> = emptyMap(),
-    /** Pill order configured in Settings; empty means declaration order. */
-    val pillOrder: List<FinanceTab> = emptyList(),
+    /**
+     * Pill order and hidden set configured in Settings, resolved by the
+     * mechanism shared with the Inbox and Alerts rows: [PillConfig.visible]
+     * is what the row renders, [PillConfig.showsRow] false removes the row.
+     */
+    val pills: PillConfig<FinanceTab> = PillConfig(FinanceTab.entries.toList()),
     /** Mirrors Settings → Appearance → Show logos and contact photos. */
     val showRichAvatars: Boolean = true,
     /** True when Settings → Privacy → Show balance is OFF (masking active). */
@@ -89,9 +96,26 @@ class FinanceViewModel
          * never rewrites the deliberately chosen default.
          */
         private val tabOverride = MutableStateFlow<FinanceTab?>(null)
-        val selectedTab: StateFlow<FinanceTab> =
-            combine(settingsRepository.defaultFinanceFilter, tabOverride) { default, override ->
-                override ?: default
+
+        /** The Settings-side pill customisation (order + hidden set), resolved for rendering. */
+        private val pillConfig: Flow<PillConfig<FinanceTab>> =
+            combine(settingsRepository.financePillOrder, settingsRepository.financeHiddenPills) { order, hidden ->
+                PillConfig(FinanceTab.entries.toList(), order, hidden)
+            }
+
+        /**
+         * The tab whose section the screen shows, constrained to the VISIBLE
+         * pills by the shared [activePill] guard: a hidden pill can never
+         * stay selected (a default filter pointing at a hidden tab, or hiding
+         * the tab currently open). Unlike the Inbox and Alerts, Finance has
+         * no unfiltered view - the pills are tabs over different sections -
+         * so the fallback is the first visible tab, and null (no section,
+         * month summary only) once every pill is hidden. The raw selection is
+         * kept as chosen, so un-hiding the pill restores it.
+         */
+        val selectedTab: StateFlow<FinanceTab?> =
+            combine(settingsRepository.defaultFinanceFilter, tabOverride, pillConfig) { default, override, config ->
+                activePill(override ?: default, config.visible, fallback = config.visible.firstOrNull())
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.ACCOUNTS)
 
         /** Growing LIMIT for the latest-transactions page. */
@@ -162,7 +186,7 @@ class FinanceViewModel
                     balancesRevealed = showBalance || revealed,
                 )
             }.flowOn(ioDispatcher)
-                .combine(settingsRepository.financePillOrder) { state, order -> state.copy(pillOrder = order) }
+                .combine(pillConfig) { state, pills -> state.copy(pills = pills) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceUiState())
 
         private fun buildState(

@@ -63,9 +63,9 @@ import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.finance.reminderGlyph
+import app.clearsms.ui.navigation.PillConfig
 import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
-import app.clearsms.ui.navigation.orderedPills
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -135,35 +135,10 @@ fun AlertsScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
-            item(key = "chips") {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(orderedPills(state.pillOrder, AlertFilter.entries.toList()), key = { it.name }) { option ->
-                        val label = option.displayName()
-                        val count = state.counts[option] ?: 0
-                        val description =
-                            pluralStringResource(R.plurals.alerts_filter_pill_reminders, count, label, count)
-                        FilterChip(
-                            selected = state.filter == option,
-                            onClick = { viewModel.setFilter(option) },
-                            label = { Text(label) },
-                            trailingIcon =
-                                if (count > 0) {
-                                    { Badge { Text(count.toString()) } }
-                                } else {
-                                    null
-                                },
-                            modifier =
-                                Modifier
-                                    // No explicit height: M3 chips are 32dp tall and already
-                                    // expand their touch target to the 48dp minimum, so forcing
-                                    // a taller height here made this row inconsistent with the
-                                    // Inbox and Finance chip rows.
-                                    .semantics { contentDescription = description },
-                        )
-                    }
+            // Every pill hidden = no pill row at all (shared PillConfig rule).
+            if (state.pills.showsRow) {
+                item(key = "chips") {
+                    AlertsPillRow(state = state, onSelect = viewModel::setFilter)
                 }
             }
             items(state.upcoming, key = { "up_${it.id}" }) { reminder ->
@@ -239,6 +214,46 @@ fun AlertsScreen(
                 }
             },
         )
+    }
+}
+
+/**
+ * The Alerts filter chips: only the VISIBLE pills, in the user's order,
+ * keyed and selected by identity (see [PillConfig]).
+ */
+@Composable
+private fun AlertsPillRow(
+    state: AlertsUiState,
+    onSelect: (AlertFilter) -> Unit,
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(state.pills.visible, key = { it.name }) { option ->
+            val label = option.displayName()
+            val count = state.counts[option] ?: 0
+            val description =
+                pluralStringResource(R.plurals.alerts_filter_pill_reminders, count, label, count)
+            FilterChip(
+                selected = state.filter == option,
+                onClick = { onSelect(option) },
+                label = { Text(label) },
+                trailingIcon =
+                    if (count > 0) {
+                        { Badge { Text(count.toString()) } }
+                    } else {
+                        null
+                    },
+                modifier =
+                    Modifier
+                        // No explicit height: M3 chips are 32dp tall and already
+                        // expand their touch target to the 48dp minimum, so forcing
+                        // a taller height here made this row inconsistent with the
+                        // Inbox and Finance chip rows.
+                        .semantics { contentDescription = description },
+            )
+        }
     }
 }
 

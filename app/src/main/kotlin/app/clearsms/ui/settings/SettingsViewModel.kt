@@ -37,6 +37,7 @@ import app.clearsms.ui.composemsg.ContactSuggestions
 import app.clearsms.ui.composemsg.contactSuggestionFeed
 import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.ui.inbox.InboxPillConfig
+import app.clearsms.ui.navigation.PillConfig
 import app.clearsms.work.BackupWorker
 import app.clearsms.work.RecategorizeWorker
 import app.clearsms.work.ReminderAlarmScheduler
@@ -448,7 +449,11 @@ class SettingsViewModel
 
         fun setFinancePillOrder(value: List<FinanceTab>) = launchIo { settings.setFinancePillOrder(value) }
 
+        fun setFinanceHiddenPills(value: Set<FinanceTab>) = launchIo { settings.setFinanceHiddenPills(value) }
+
         fun setAlertsPillOrder(value: List<AlertFilter>) = launchIo { settings.setAlertsPillOrder(value) }
+
+        fun setAlertsHiddenPills(value: Set<AlertFilter>) = launchIo { settings.setAlertsHiddenPills(value) }
 
         fun resetInboxPillOrder() = setInboxPillOrder(InboxPill.entries.toList())
 
@@ -520,13 +525,20 @@ class SettingsViewModel
             settings.inboxUnreadToggle
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-        val financePillOrder: StateFlow<List<FinanceTab>> =
-            settings.financePillOrder
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinanceTab.entries.toList())
+        /**
+         * Order + hidden set for the Finance and Alerts pills, resolved by
+         * the same [PillConfig] the Inbox uses - the reorder and visibility
+         * dialogs of all three screens read one shape.
+         */
+        val financePills: StateFlow<PillConfig<FinanceTab>> =
+            combine(settings.financePillOrder, settings.financeHiddenPills) { order, hidden ->
+                PillConfig(FinanceTab.entries.toList(), order, hidden)
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PillConfig(FinanceTab.entries.toList()))
 
-        val alertsPillOrder: StateFlow<List<AlertFilter>> =
-            settings.alertsPillOrder
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertFilter.entries.toList())
+        val alertsPills: StateFlow<PillConfig<AlertFilter>> =
+            combine(settings.alertsPillOrder, settings.alertsHiddenPills) { order, hidden ->
+                PillConfig(AlertFilter.entries.toList(), order, hidden)
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PillConfig(AlertFilter.entries.toList()))
 
         fun setOtpAutoCopy(value: Boolean) = launchIo { settings.setOtpAutoCopy(value) }
 

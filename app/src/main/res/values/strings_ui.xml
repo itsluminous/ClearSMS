@@ -21,6 +21,8 @@
     <string name="action_mark_unread">Mark as unread</string>
     <string name="action_block_sender">Block sender</string>
     <string name="action_change_category">Change category</string>
+    <!-- Inbox selection overflow entry for the one-step sender rule; reads like the dialog it opens (sender_rule_title). -->
+    <string name="action_always_sort_as">Always sort as…</string>
     <string name="action_copy_message">Copy message</string>
     <string name="action_copy_otp">Copy OTP</string>
     <string name="action_add_rule">Add rule</string>
@@ -294,6 +296,9 @@
     <string name="settings_inbox_visible_pills_summary_some">%1$d of %2$d shown</string>
     <string name="settings_inbox_visible_pills_summary_none">None - the pill row is hidden</string>
     <string name="settings_inbox_visible_pills_hint">Untick a pill to remove it from the inbox. Hiding all of them removes the row; the Unread switch still works.</string>
+    <!-- Finance / Alerts pill visibility: the same mechanism, per screen -->
+    <string name="settings_finance_visible_pills_hint">Untick a pill to remove it from the Finance screen. Hiding all of them removes the row and leaves the month summary on its own.</string>
+    <string name="settings_alerts_visible_pills_hint">Untick a pill to remove it from the Alerts screen. Hiding all of them removes the row and shows every alert.</string>
     <string name="settings_inbox_pill_labels">Rename pills</string>
     <string name="settings_inbox_pill_labels_summary_default">Built-in names</string>
     <string name="settings_inbox_pill_labels_summary_custom">%1$d renamed</string>

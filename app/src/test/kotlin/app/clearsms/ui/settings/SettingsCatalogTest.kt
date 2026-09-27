@@ -179,10 +179,12 @@ class SettingsCatalogTest {
                 "Swipe dead zone",
                 "Sort inbox again",
             ).inOrder()
+        // Finance and Alerts get the Inbox's pill visibility, right under
+        // the pill order it refines - the same presentation on all three.
         assertThat(bySection["Finance"])
-            .containsExactly("Show Finance tab", "Pill order", "Show balance", "Default Finance filter")
+            .containsExactly("Show Finance tab", "Pill order", "Visible pills", "Show balance", "Default Finance filter")
             .inOrder()
-        assertThat(bySection["Alerts"]).containsExactly("Show Alerts tab", "Pill order").inOrder()
+        assertThat(bySection["Alerts"]).containsExactly("Show Alerts tab", "Pill order", "Visible pills").inOrder()
         assertThat(bySection["Startup"]).containsExactly("Default screen")
         assertThat(bySection["Backup & restore"])
             .containsExactly(
@@ -292,15 +294,18 @@ class SettingsCatalogTest {
                 "Unread switch",
                 // Messages (GitHub #45): sort by sent vs received time.
                 "Sort messages by",
+                // Finance and Alerts: the same pill visibility the Inbox has.
+                "Visible pills",
+                "Visible pills",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 20 additions = 52 rows.
+        // No row lost, none dropped: 32 survivors + 22 additions = 54 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
-        // No duplicates: "Pill order" legitimately appears once per pills
-        // screen (Inbox / Finance / Alerts); every other (section, title)
-        // pair is unique.
+        // No duplicates: "Pill order" and "Visible pills" legitimately appear
+        // once per pills screen (Inbox / Finance / Alerts); every other
+        // (section, title) pair is unique.
         val identity = SettingsItem.entries.map { it.section to title(it) }
         assertThat(identity).containsNoDuplicates()
     }

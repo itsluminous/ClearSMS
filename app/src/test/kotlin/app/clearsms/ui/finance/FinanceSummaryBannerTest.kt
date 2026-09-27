@@ -87,7 +87,7 @@ class FinanceSummaryBannerTest {
         runTest(dispatcher) {
             settings.defaultFinanceFilterFlow.value = FinanceTab.CREDIT_CARDS
             val vm = viewModel()
-            val tabs = mutableListOf<FinanceTab>()
+            val tabs = mutableListOf<FinanceTab?>()
             val job = launch { vm.selectedTab.collect { tabs += it } }
 
             vm.toggleSummaryBreakdown()
@@ -372,9 +372,21 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setFinancePillOrder(value: List<FinanceTab>) = Unit
 
+    override val financeHiddenPills = MutableStateFlow(emptySet<FinanceTab>())
+
+    override suspend fun setFinanceHiddenPills(value: Set<FinanceTab>) {
+        financeHiddenPills.value = value
+    }
+
     override val alertsPillOrder = MutableStateFlow(AlertFilter.entries.toList())
 
     override suspend fun setAlertsPillOrder(value: List<AlertFilter>) = Unit
+
+    override val alertsHiddenPills = MutableStateFlow(emptySet<AlertFilter>())
+
+    override suspend fun setAlertsHiddenPills(value: Set<AlertFilter>) {
+        alertsHiddenPills.value = value
+    }
 
     override val handledOtpMessageId = MutableStateFlow(0L)
 

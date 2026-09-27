@@ -91,7 +91,6 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
-import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.alerts.displayName
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.HighlightTiming
@@ -105,7 +104,7 @@ import app.clearsms.ui.components.otpPreviewFontSp
 import app.clearsms.ui.composemsg.ContactSuggestion
 import app.clearsms.ui.finance.displayName
 import app.clearsms.ui.inbox.InboxPillConfig
-import app.clearsms.ui.navigation.orderedPills
+import app.clearsms.ui.navigation.PillConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -115,7 +114,9 @@ private enum class SettingsDialog {
     INBOX_VISIBLE_PILLS,
     INBOX_PILL_LABELS,
     FINANCE_PILL_ORDER,
+    FINANCE_VISIBLE_PILLS,
     ALERTS_PILL_ORDER,
+    ALERTS_VISIBLE_PILLS,
     LOGO_BACKGROUND,
     NOTIFICATION_ACTIONS,
     SWIPE_START,
@@ -604,10 +605,38 @@ private fun SettingsRowsHost(
         }
         SettingsDialog.INBOX_VISIBLE_PILLS -> {
             val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
-            InboxVisiblePillsDialog(
-                pills = pills,
+            VisiblePillsDialog(
+                pills = pills.pills,
+                hint = stringResource(R.string.settings_inbox_visible_pills_hint),
+                label = { pills.label(it, InboxPill::defaultLabel) },
                 onConfirm = {
                     viewModel.setInboxHiddenPills(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.FINANCE_VISIBLE_PILLS -> {
+            val pills by viewModel.financePills.collectAsStateWithLifecycle()
+            VisiblePillsDialog(
+                pills = pills,
+                hint = stringResource(R.string.settings_finance_visible_pills_hint),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setFinanceHiddenPills(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+        SettingsDialog.ALERTS_VISIBLE_PILLS -> {
+            val pills by viewModel.alertsPills.collectAsStateWithLifecycle()
+            VisiblePillsDialog(
+                pills = pills,
+                hint = stringResource(R.string.settings_alerts_visible_pills_hint),
+                label = { it.displayName() },
+                onConfirm = {
+                    viewModel.setAlertsHiddenPills(it)
                     dialog = null
                 },
                 onDismiss = { dialog = null },
@@ -629,10 +658,12 @@ private fun SettingsRowsHost(
             )
         }
         SettingsDialog.FINANCE_PILL_ORDER -> {
-            val order by viewModel.financePillOrder.collectAsStateWithLifecycle()
+            // Hidden pills are reordered too (order and visibility are
+            // independent preferences), exactly like the Inbox.
+            val pills by viewModel.financePills.collectAsStateWithLifecycle()
             PillOrderDialog(
                 title = stringResource(R.string.settings_pill_order),
-                order = orderedPills(order, FinanceTab.entries.toList()),
+                order = pills.ordered,
                 label = { it.displayName() },
                 onConfirm = {
                     viewModel.setFinancePillOrder(it)
@@ -646,10 +677,10 @@ private fun SettingsRowsHost(
             )
         }
         SettingsDialog.ALERTS_PILL_ORDER -> {
-            val order by viewModel.alertsPillOrder.collectAsStateWithLifecycle()
+            val pills by viewModel.alertsPills.collectAsStateWithLifecycle()
             PillOrderDialog(
                 title = stringResource(R.string.settings_pill_order),
-                order = orderedPills(order, AlertFilter.entries.toList()),
+                order = pills.ordered,
                 label = { it.displayName() },
                 onConfirm = {
                     viewModel.setAlertsPillOrder(it)
@@ -1168,7 +1199,7 @@ private fun settingsRowEntries(
                     }
                 SettingsItem.INBOX_VISIBLE_PILLS -> {
                     val pills by viewModel.inboxPills.collectAsStateWithLifecycle()
-                    row(section, title, visiblePillsSummary(pills)) {
+                    row(section, title, visiblePillsSummary(pills.pills)) {
                         openDialog(SettingsDialog.INBOX_VISIBLE_PILLS)
                     }
                 }
@@ -1280,6 +1311,12 @@ private fun settingsRowEntries(
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.FINANCE_PILL_ORDER)
                     }
+                SettingsItem.FINANCE_VISIBLE_PILLS -> {
+                    val pills by viewModel.financePills.collectAsStateWithLifecycle()
+                    row(section, title, visiblePillsSummary(pills)) {
+                        openDialog(SettingsDialog.FINANCE_VISIBLE_PILLS)
+                    }
+                }
                 // Privacy, not Appearance: hiding balances behind the device lock is
                 // a confidentiality control, not a cosmetic one - living under
                 // Finance also keeps it visually distinct from the extracted-details
@@ -1322,6 +1359,12 @@ private fun settingsRowEntries(
                     row(section, title, stringResource(R.string.settings_pill_order_summary)) {
                         openDialog(SettingsDialog.ALERTS_PILL_ORDER)
                     }
+                SettingsItem.ALERTS_VISIBLE_PILLS -> {
+                    val pills by viewModel.alertsPills.collectAsStateWithLifecycle()
+                    row(section, title, visiblePillsSummary(pills)) {
+                        openDialog(SettingsDialog.ALERTS_VISIBLE_PILLS)
+                    }
+                }
                 SettingsItem.DEFAULT_SCREEN ->
                     // The summary shows the EFFECTIVE start screen: a stored
                     // preference for a disabled section resolves to the first
@@ -1954,9 +1997,9 @@ private fun notificationActionsSummary(actions: Set<NotificationAction>): String
             .joinToString(separator = ", ")
     }
 
-/** "All 6 shown" / "4 of 6 shown" / "None - the pill row is hidden". */
+/** "All 6 shown" / "4 of 6 shown" / "None - the pill row is hidden" - one summary for every screen's pills. */
 @Composable
-private fun visiblePillsSummary(pills: InboxPillConfig): String {
+private fun <T> visiblePillsSummary(pills: PillConfig<T>): String {
     val total = pills.ordered.size
     return when (val shown = pills.visible.size) {
         total -> stringResource(R.string.settings_inbox_visible_pills_summary_all, total)

@@ -31,6 +31,7 @@ import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
+import app.clearsms.ui.navigation.activePill
 import app.clearsms.work.CatchUpSyncScheduler
 import app.clearsms.work.RecategorizeWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -81,14 +82,16 @@ data class InboxFilterState(
      * default inbox filter pointing at a hidden category, or hiding the pill
      * that is currently selected); likewise an unread-only view cannot
      * persist once the Unread switch itself is hidden ([unreadControl]
-     * false). Nothing else changes.
+     * false). Nothing else changes. The pill guard is the shared
+     * [activePill], the same one Finance and Alerts apply; the Inbox's
+     * unfiltered view is "no pill" (null).
      */
     fun constrainedTo(
         visible: Collection<InboxPill>,
         unreadControl: Boolean = true,
     ): InboxFilterState =
         copy(
-            pill = pill?.takeIf { it in visible },
+            pill = activePill(pill, visible, fallback = null),
             unreadOnly = unreadOnly && unreadControl,
         )
 

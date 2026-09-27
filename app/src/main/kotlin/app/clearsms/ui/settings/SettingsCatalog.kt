@@ -98,10 +98,14 @@ enum class SettingsItem(
     SORT_AGAIN(SettingsSection.INBOX, R.string.settings_sort_again),
     SHOW_FINANCE_TAB(SettingsSection.FINANCE, R.string.settings_show_finance_tab),
     FINANCE_PILL_ORDER(SettingsSection.FINANCE, R.string.settings_pill_order),
+
+    // Same pill visibility the Inbox has, right under the order it refines.
+    FINANCE_VISIBLE_PILLS(SettingsSection.FINANCE, R.string.settings_inbox_visible_pills),
     SHOW_BALANCE(SettingsSection.FINANCE, R.string.settings_show_balance),
     DEFAULT_FINANCE_FILTER(SettingsSection.FINANCE, R.string.settings_default_finance_filter),
     SHOW_ALERTS_TAB(SettingsSection.ALERTS, R.string.settings_show_alerts_tab),
     ALERTS_PILL_ORDER(SettingsSection.ALERTS, R.string.settings_pill_order),
+    ALERTS_VISIBLE_PILLS(SettingsSection.ALERTS, R.string.settings_inbox_visible_pills),
     DEFAULT_SCREEN(SettingsSection.STARTUP, R.string.settings_default_screen),
     BACKUP_NOW(SettingsSection.BACKUP, R.string.settings_backup_now),
     RESTORE(SettingsSection.BACKUP, R.string.settings_restore),

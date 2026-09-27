@@ -87,7 +87,9 @@ class SettingsBackupManagerTest {
         repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.OTP to "Codes"))
         repo.setInboxUnreadToggle(false)
         repo.setFinancePillOrder(FinanceTab.entries.reversed())
+        repo.setFinanceHiddenPills(setOf(FinanceTab.RECHARGES))
         repo.setAlertsPillOrder(AlertFilter.entries.reversed())
+        repo.setAlertsHiddenPills(setOf(AlertFilter.DEPOSIT, AlertFilter.TRAVEL))
         repo.setBlockedKeywords(setOf("loan offer", "casino"))
         repo.setBlockedSenders(setOf("JIOPAY", "5551234567"))
     }
@@ -122,7 +124,9 @@ class SettingsBackupManagerTest {
         assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.OTP to "Codes"))
         assertThat(repo.inboxUnreadToggle.first()).isFalse()
         assertThat(repo.financePillOrder.first()).isEqualTo(FinanceTab.entries.reversed())
+        assertThat(repo.financeHiddenPills.first()).isEqualTo(setOf(FinanceTab.RECHARGES))
         assertThat(repo.alertsPillOrder.first()).isEqualTo(AlertFilter.entries.reversed())
+        assertThat(repo.alertsHiddenPills.first()).isEqualTo(setOf(AlertFilter.DEPOSIT, AlertFilter.TRAVEL))
         assertThat(repo.blockedKeywords.first()).isEqualTo(setOf("loan offer", "casino"))
         assertThat(repo.blockedSenders.first()).isEqualTo(setOf("JIOPAY", "5551234567"))
     }
