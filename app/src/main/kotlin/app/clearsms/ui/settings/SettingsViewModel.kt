@@ -19,7 +19,6 @@ import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
-import app.clearsms.domain.model.InboxPillLabels
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
@@ -431,20 +430,6 @@ class SettingsViewModel
 
         fun setInboxHiddenPills(value: Set<InboxPill>) = launchIo { settings.setInboxHiddenPills(value) }
 
-        /**
-         * Stores the pill labels after [InboxPillLabels.sanitize]: a blank
-         * or whitespace-only entry means "back to the built-in label" and
-         * is dropped, so Reset is just "clear the field".
-         */
-        fun setInboxPillLabels(value: Map<InboxPill, String>) =
-            launchIo {
-                settings.setInboxPillLabels(
-                    value.mapNotNull { (pill, raw) -> InboxPillLabels.sanitize(raw)?.let { pill to it } }.toMap(),
-                )
-            }
-
-        fun resetInboxPillLabels() = launchIo { settings.setInboxPillLabels(emptyMap()) }
-
         fun setInboxUnreadToggle(value: Boolean) = launchIo { settings.setInboxUnreadToggle(value) }
 
         fun setFinancePillOrder(value: List<FinanceTab>) = launchIo { settings.setFinancePillOrder(value) }
@@ -516,9 +501,9 @@ class SettingsViewModel
             settings.inboxPillOrder
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxPill.entries.toList())
 
-        /** Order + hidden set + labels together, for the Inbox pill rows and dialogs. */
+        /** Order + hidden set together, for the Inbox pill rows and dialogs. */
         val inboxPills: StateFlow<InboxPillConfig> =
-            combine(settings.inboxPillOrder, settings.inboxHiddenPills, settings.inboxPillLabels, ::InboxPillConfig)
+            combine(settings.inboxPillOrder, settings.inboxHiddenPills, ::InboxPillConfig)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxPillConfig())
 
         val inboxUnreadToggle: StateFlow<Boolean> =

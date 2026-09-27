@@ -135,7 +135,6 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("logo_background"),
             SettingsBackupEntry.StringEntry("inbox_pill_order"),
             SettingsBackupEntry.StringSetEntry("inbox_hidden_pills"),
-            SettingsBackupEntry.StringEntry("inbox_pill_labels"),
             SettingsBackupEntry.BooleanEntry("inbox_unread_toggle"),
             SettingsBackupEntry.StringEntry("finance_pill_order"),
             SettingsBackupEntry.StringSetEntry("finance_hidden_pills"),

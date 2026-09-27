@@ -746,7 +746,7 @@ private fun FilterChipRow(
             FilterChip(
                 selected = filter.pill == pill,
                 onClick = { onSelectPill(pill) },
-                label = { Text(pills.label(pill, InboxPill::defaultLabel)) },
+                label = { Text(pill.defaultLabel()) },
                 trailingIcon =
                     if (count > 0) {
                         { Badge { Text(count.toString()) } }

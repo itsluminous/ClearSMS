@@ -7,20 +7,18 @@ import org.junit.Test
 
 /**
  * Pill customisation (issue #49) as pure logic: which pills the row shows,
- * the no-minimum floor, how visibility and order stay independent, label
- * overrides, and the guard that keeps a hidden pill from staying selected.
+ * the no-minimum floor, how visibility and order stay independent, and the
+ * guard that keeps a hidden pill from staying selected. Pills always carry
+ * their built-in names: renaming was dropped before it ever shipped.
  */
 class InboxPillConfigTest {
     private val all = InboxPill.entries.toList()
 
-    private fun label(config: InboxPillConfig) = config.ordered.map { pill -> config.label(pill) { it.name.lowercase() } }
-
     @Test
-    fun `defaults show every pill in declaration order with built-in labels`() {
+    fun `defaults show every pill in declaration order`() {
         val config = InboxPillConfig()
         assertThat(config.visible).isEqualTo(all)
         assertThat(config.showsRow).isTrue()
-        assertThat(label(config)).isEqualTo(all.map { it.name.lowercase() })
     }
 
     @Test
@@ -90,20 +88,9 @@ class InboxPillConfigTest {
     }
 
     @Test
-    fun `a label override changes the display name only`() {
-        val config = InboxPillConfig(labels = mapOf(InboxPill.IMPORTANT to "Bank"))
-        assertThat(config.label(InboxPill.IMPORTANT) { it.name }).isEqualTo("Bank")
-        assertThat(config.label(InboxPill.OTP) { it.name }).isEqualTo("OTP")
-        // Identity untouched: the renamed pill still filters IMPORTANT.
+    fun `selecting a pill filters its own category`() {
         assertThat(InboxPill.IMPORTANT.category).isEqualTo(Category.IMPORTANT)
         assertThat(InboxFilterState().selectPill(InboxPill.IMPORTANT).category).isEqualTo(Category.IMPORTANT)
-    }
-
-    @Test
-    fun `removing the override resets to the built-in label`() {
-        val renamed = InboxPillConfig(labels = mapOf(InboxPill.SPAM to "Junk"))
-        val reset = renamed.copy(labels = renamed.labels - InboxPill.SPAM)
-        assertThat(reset.label(InboxPill.SPAM) { "Spam" }).isEqualTo("Spam")
     }
 
     @Test

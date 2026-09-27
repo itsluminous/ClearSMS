@@ -16,8 +16,8 @@ import org.junit.Test
 /**
  * Storage contract of the Inbox pill customisation (issue #49): the pill
  * order now spans [InboxPill] and keeps decoding what older installs stored
- * as [Category] names, the hidden set and labels decode leniently, the
- * unread switch defaults on, and every new key is claimed by the backup.
+ * as [Category] names, the hidden set decodes leniently, the unread switch
+ * defaults on, and every new key is claimed by the backup.
  */
 class InboxPillPreferencesTest {
     private val dataStore = InMemoryPreferencesDataStore()
@@ -25,15 +25,19 @@ class InboxPillPreferencesTest {
 
     private val orderKey = stringPreferencesKey("inbox_pill_order")
     private val hiddenKey = stringSetPreferencesKey("inbox_hidden_pills")
-    private val labelsKey = stringPreferencesKey("inbox_pill_labels")
     private val unreadKey = booleanPreferencesKey("inbox_unread_toggle")
 
+    /**
+     * The key an unreleased development build of this branch wrote for the
+     * (since dropped) pill-renaming feature. No code reads it any more.
+     */
+    private val staleLabelsKey = stringPreferencesKey("inbox_pill_labels")
+
     @Test
-    fun `defaults - every pill shown in declaration order, no labels, unread switch on`() =
+    fun `defaults - every pill shown in declaration order, unread switch on`() =
         runBlocking<Unit> {
             assertThat(repo.inboxPillOrder.first()).isEqualTo(InboxPill.entries.toList())
             assertThat(repo.inboxHiddenPills.first()).isEmpty()
-            assertThat(repo.inboxPillLabels.first()).isEmpty()
             assertThat(repo.inboxUnreadToggle.first()).isTrue()
         }
 
@@ -58,30 +62,25 @@ class InboxPillPreferencesTest {
             dataStore.edit {
                 it[orderKey] = "SCAM,IMPORTANT,OTP"
                 it[hiddenKey] = setOf("SCAM", "PROMOTIONAL")
-                it[labelsKey] = "SCAM=Junk\nIMPORTANT=Bank"
             }
             val order = repo.inboxPillOrder.first()
             assertThat(order.take(2)).containsExactly(InboxPill.IMPORTANT, InboxPill.OTP).inOrder()
             assertThat(order).containsExactlyElementsIn(InboxPill.entries)
             assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.PROMOTIONAL)
-            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank"))
         }
 
     @Test
-    fun `a new install's SPAM name round-trips through order, hidden set, labels and default filter`() =
+    fun `a new install's SPAM name round-trips through order, hidden set and default filter`() =
         runBlocking<Unit> {
             repo.setInboxPillOrder(listOf(InboxPill.SPAM) + InboxPill.entries.filterNot { it == InboxPill.SPAM })
             repo.setInboxHiddenPills(setOf(InboxPill.SPAM))
-            repo.setInboxPillLabels(mapOf(InboxPill.SPAM to "Junk"))
             repo.setDefaultInboxFilter(Category.SPAM)
 
             val stored = dataStore.data.first()
             assertThat(stored[orderKey]).startsWith("SPAM,")
             assertThat(stored[hiddenKey]).containsExactly("SPAM")
-            assertThat(stored[labelsKey]).isEqualTo("SPAM=Junk")
             assertThat(repo.inboxPillOrder.first().first()).isEqualTo(InboxPill.SPAM)
             assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.SPAM)
-            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.SPAM to "Junk"))
             assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.SPAM)
         }
 
@@ -109,41 +108,43 @@ class InboxPillPreferencesTest {
         }
 
     @Test
-    fun `hidden set and labels round trip and reset`() =
+    fun `hidden set round trips and resets`() =
         runBlocking<Unit> {
             repo.setInboxHiddenPills(setOf(InboxPill.PROMOTIONAL, InboxPill.SPAM))
-            repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SPAM to "Junk"))
             assertThat(repo.inboxHiddenPills.first()).containsExactly(InboxPill.PROMOTIONAL, InboxPill.SPAM)
-            assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.SPAM to "Junk"))
 
-            // Reset to defaults: everything shown, built-in names.
+            // Reset to defaults: everything shown.
             repo.setInboxHiddenPills(emptySet())
-            repo.setInboxPillLabels(emptyMap())
             assertThat(repo.inboxHiddenPills.first()).isEmpty()
-            assertThat(repo.inboxPillLabels.first()).isEmpty()
         }
 
     @Test
-    fun `renaming a pill never touches the stored order or the default filter`() =
+    fun `hiding a pill never touches the stored order or the default filter`() =
         runBlocking<Unit> {
             repo.setInboxPillOrder(listOf(InboxPill.OTP, InboxPill.IMPORTANT))
             repo.setDefaultInboxFilter(Category.IMPORTANT)
-            repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank"))
+            repo.setInboxHiddenPills(setOf(InboxPill.IMPORTANT))
 
             val stored = dataStore.data.first()
             assertThat(stored[orderKey]).isEqualTo("OTP,IMPORTANT")
-            assertThat(stored[labelsKey]).isEqualTo("IMPORTANT=Bank")
-            // The default filter still decodes by CATEGORY name, so the
-            // renamed pill and the startup filter agree on identity.
             assertThat(repo.defaultInboxFilter.first()).isEqualTo(Category.IMPORTANT)
             assertThat(repo.inboxPillOrder.first().take(2)).containsExactly(InboxPill.OTP, InboxPill.IMPORTANT).inOrder()
         }
 
     @Test
-    fun `a corrupt labels value decodes to no overrides instead of throwing`() =
+    fun `a leftover pill-labels key from a development build is inert`() =
         runBlocking<Unit> {
-            dataStore.edit { it[labelsKey] = "garbage\n\n===\nNOPE=x" }
-            assertThat(repo.inboxPillLabels.first()).isEmpty()
+            // Renaming never shipped, so there is no migration: the key simply
+            // stops being read. It must neither crash nor influence anything.
+            dataStore.edit {
+                it[staleLabelsKey] = "IMPORTANT=Bank\nSPAM=Junk\ngarbage\n==="
+                it[orderKey] = "SPAM,IMPORTANT"
+            }
+            assertThat(repo.inboxPillOrder.first().take(2)).containsExactly(InboxPill.SPAM, InboxPill.IMPORTANT).inOrder()
+            assertThat(repo.inboxHiddenPills.first()).isEmpty()
+            // The stale value is left alone (not exported, see the backup
+            // catalog, and not read), so nothing has to migrate or delete it.
+            assertThat(dataStore.data.first()[staleLabelsKey]).startsWith("IMPORTANT=Bank")
         }
 
     @Test
@@ -157,10 +158,15 @@ class InboxPillPreferencesTest {
         }
 
     @Test
-    fun `every new key is registered for settings backup`() {
+    fun `every pill key is registered for settings backup, the dropped labels key is not`() {
         assertThat(SettingsBackupCatalog.byName.keys)
-            .containsAtLeast("inbox_pill_order", "inbox_hidden_pills", "inbox_pill_labels", "inbox_unread_toggle")
+            .containsAtLeast("inbox_pill_order", "inbox_hidden_pills", "inbox_unread_toggle")
         assertThat(SettingsBackupCatalog.excludedKeys)
-            .containsNoneOf("inbox_hidden_pills", "inbox_pill_labels", "inbox_unread_toggle")
+            .containsNoneOf("inbox_hidden_pills", "inbox_unread_toggle")
+        // Renaming was removed before release: a backup written by a
+        // development build still carries the key, and restore treats it as
+        // any other unknown entry - skipped and counted, never applied.
+        assertThat(SettingsBackupCatalog.byName.keys).doesNotContain("inbox_pill_labels")
+        assertThat(SettingsBackupCatalog.excludedKeys).doesNotContain("inbox_pill_labels")
     }
 }

@@ -360,10 +360,6 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setInboxHiddenPills(value: Set<InboxPill>) = Unit
 
-    override val inboxPillLabels = MutableStateFlow(emptyMap<InboxPill, String>())
-
-    override suspend fun setInboxPillLabels(value: Map<InboxPill, String>) = Unit
-
     override val inboxUnreadToggle = MutableStateFlow(true)
 
     override suspend fun setInboxUnreadToggle(value: Boolean) = Unit

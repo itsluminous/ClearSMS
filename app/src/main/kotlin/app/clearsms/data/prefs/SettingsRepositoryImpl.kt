@@ -13,7 +13,6 @@ import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
-import app.clearsms.domain.model.InboxPillLabels
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.NotificationAction
@@ -263,13 +262,6 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_INBOX_HIDDEN_PILLS] = value.toStoredNames() }
     }
 
-    override val inboxPillLabels: Flow<Map<InboxPill, String>> =
-        dataStore.data.map { InboxPillLabels.decode(it[KEY_INBOX_PILL_LABELS]) }
-
-    override suspend fun setInboxPillLabels(value: Map<InboxPill, String>) {
-        dataStore.edit { it[KEY_INBOX_PILL_LABELS] = InboxPillLabels.encode(value) }
-    }
-
     override val inboxUnreadToggle: Flow<Boolean> =
         dataStore.data.map { it[KEY_INBOX_UNREAD_TOGGLE] ?: true }
 
@@ -394,7 +386,6 @@ class SettingsRepositoryImpl(
         val KEY_SCHEDULE_SEND_TIP_SHOWN = booleanPreferencesKey("schedule_send_tip_shown")
         val KEY_INBOX_PILL_ORDER = stringPreferencesKey("inbox_pill_order")
         val KEY_INBOX_HIDDEN_PILLS = stringSetPreferencesKey("inbox_hidden_pills")
-        val KEY_INBOX_PILL_LABELS = stringPreferencesKey("inbox_pill_labels")
         val KEY_INBOX_UNREAD_TOGGLE = booleanPreferencesKey("inbox_unread_toggle")
         val KEY_FINANCE_PILL_ORDER = stringPreferencesKey("finance_pill_order")
         val KEY_FINANCE_HIDDEN_PILLS = stringSetPreferencesKey("finance_hidden_pills")

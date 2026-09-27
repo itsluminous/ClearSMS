@@ -167,9 +167,8 @@ class SettingsCatalogTest {
                 "Show Inbox tab",
                 "Pill order",
                 // Pill customisation (issue #49), directly under the order
-                // it refines: visibility, names, and the Unread switch.
+                // it refines: visibility and the Unread switch.
                 "Visible pills",
-                "Rename pills",
                 "Unread switch",
                 "Default inbox filter",
                 "Swipe right action",
@@ -287,10 +286,10 @@ class SettingsCatalogTest {
                 // Notifications: action row that opens Android's own
                 // notification settings for the app (per-channel control).
                 "Customise notifications",
-                // Inbox (GitHub #49): which pills show, what they are
-                // called, and whether the Unread switch is rendered.
+                // Inbox (GitHub #49): which pills show and whether the
+                // Unread switch is rendered. (Renaming pills was tried on a
+                // branch and dropped before release.)
                 "Visible pills",
-                "Rename pills",
                 "Unread switch",
                 // Messages (GitHub #45): sort by sent vs received time.
                 "Sort messages by",
@@ -300,7 +299,7 @@ class SettingsCatalogTest {
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 22 additions = 54 rows.
+        // No row lost, none dropped: 32 survivors + 21 additions = 53 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear

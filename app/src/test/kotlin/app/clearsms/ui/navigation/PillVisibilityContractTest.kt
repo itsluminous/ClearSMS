@@ -90,10 +90,9 @@ class PillVisibilityContractTest {
         val dialog = source("ui/settings/InboxPillDialogs.kt")
         assertThat(dialog).contains("fun <T> VisiblePillsDialog(")
         assertThat(dialog).doesNotContain("enabled = ")
-        // Hiding only: renaming stays an Inbox-only affordance (labels are
-        // an InboxPill map; Finance and Alerts chips keep their built-in names).
-        assertThat(settings).doesNotContain("FINANCE_PILL_LABELS")
-        assertThat(settings).doesNotContain("ALERTS_PILL_LABELS")
+        // Hiding and ordering only: renaming pills was dropped before it
+        // shipped, on every screen - all chips keep their built-in names.
+        assertThat(settings).doesNotContain("PILL_LABELS")
     }
 
     @Test

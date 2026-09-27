@@ -22,8 +22,8 @@ class InboxPillContractTest {
         assertThat(inbox).contains("items(pills.visible, key = { it.name })")
         assertThat(inbox).contains("selected = filter.pill == pill,")
         assertThat(inbox).contains("onClick = { onSelectPill(pill) },")
-        // The label is the only thing a rename changes.
-        assertThat(inbox).contains("label = { Text(pills.label(pill, InboxPill::defaultLabel)) },")
+        // Built-in names only: renaming was dropped before it shipped.
+        assertThat(inbox).contains("label = { Text(pill.defaultLabel()) },")
         assertThat(inbox).doesNotContain("Category.entries.toList()")
     }
 
@@ -74,26 +74,27 @@ class InboxPillContractTest {
     }
 
     @Test
-    fun `settings expose visibility, rename and unread-switch rows, and the order dialog uses labels`() {
+    fun `settings expose visibility and unread-switch rows, and no rename row`() {
         val settings = source("ui/settings/SettingsScreen.kt")
         assertThat(settings).contains("SettingsItem.INBOX_VISIBLE_PILLS ->")
-        assertThat(settings).contains("SettingsItem.INBOX_PILL_LABELS ->")
         assertThat(settings).contains("SettingsItem.INBOX_UNREAD_TOGGLE ->")
         assertThat(settings).contains("onToggle = viewModel::setInboxUnreadToggle,")
-        assertThat(settings).contains("label = { pills.label(it, InboxPill::defaultLabel) },")
+        // Both Inbox pill dialogs show the built-in names.
+        assertThat(settings).contains("label = { it.defaultLabel() },")
         val dialogs = source("ui/settings/InboxPillDialogs.kt")
         // No minimum: the visibility dialog never disables a checkbox.
         assertThat(dialogs).doesNotContain("enabled = ")
-        // Renames are keyed by pill identity.
-        assertThat(settings).contains("mutableStateMapOf<InboxPill, String>()")
+        // Renaming pills was dropped before release: no row, no dialog.
+        assertThat(settings).doesNotContain("PILL_LABELS")
+        assertThat(settings).doesNotContain("mutableStateMapOf<InboxPill, String>()")
     }
 
     @Test
-    fun `all four preferences are backed up`() {
+    fun `all three preferences are backed up, the dropped labels key is not`() {
         val catalog = source("data/backup/SettingsBackupManager.kt")
         assertThat(catalog).contains("SettingsBackupEntry.StringEntry(\"inbox_pill_order\"),")
         assertThat(catalog).contains("SettingsBackupEntry.StringSetEntry(\"inbox_hidden_pills\"),")
-        assertThat(catalog).contains("SettingsBackupEntry.StringEntry(\"inbox_pill_labels\"),")
         assertThat(catalog).contains("SettingsBackupEntry.BooleanEntry(\"inbox_unread_toggle\"),")
+        assertThat(catalog).doesNotContain("inbox_pill_labels")
     }
 }

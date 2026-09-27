@@ -288,10 +288,16 @@
     <string name="settings_auto_backup_note">Automatic backups save your messages and settings as unencrypted files in the folder you choose. Anyone with access to that folder can read them.</string>
     <string name="settings_pill_order">Pill order</string>
     <string name="settings_pill_order_summary">Reorder the filter chips on this screen</string>
+    <string name="pill_order_drag_hint">Drag a handle to reorder. Hidden pills keep their place.</string>
+    <!-- Content description of the drag handle: %1$s is the pill's name -->
+    <string name="pill_order_drag_handle">Reorder %1$s</string>
+    <!-- Announced position of a row: %1$d is 1-based, %2$d the row count -->
+    <string name="pill_order_position">Position %1$d of %2$d</string>
+    <!-- Accessibility actions on the handle: the keyboard / screen-reader path -->
     <string name="pill_order_move_up">Move %1$s up</string>
     <string name="pill_order_move_down">Move %1$s down</string>
     <string name="pill_order_reset">Reset</string>
-    <!-- Inbox pill customisation (issue #49): visibility, labels, spam pill, unread switch -->
+    <!-- Inbox pill customisation (issue #49): visibility, spam pill, unread switch -->
     <string name="settings_inbox_visible_pills">Visible pills</string>
     <string name="settings_inbox_visible_pills_summary_all">All %1$d shown</string>
     <string name="settings_inbox_visible_pills_summary_some">%1$d of %2$d shown</string>
@@ -300,11 +306,6 @@
     <!-- Finance / Alerts pill visibility: the same mechanism, per screen -->
     <string name="settings_finance_visible_pills_hint">Untick a pill to remove it from the Finance screen. Hiding all of them removes the row and leaves the month summary on its own.</string>
     <string name="settings_alerts_visible_pills_hint">Untick a pill to remove it from the Alerts screen. Hiding all of them removes the row and shows every alert.</string>
-    <string name="settings_inbox_pill_labels">Rename pills</string>
-    <string name="settings_inbox_pill_labels_summary_default">Built-in names</string>
-    <string name="settings_inbox_pill_labels_summary_custom">%1$d renamed</string>
-    <string name="settings_inbox_pill_labels_hint">A name is only what the pill shows - it still filters the same messages. Clear a field to go back to the built-in name.</string>
-    <string name="settings_inbox_pill_label_field">Name for %1$s</string>
     <string name="settings_inbox_unread_toggle">Unread switch</string>
     <string name="settings_inbox_unread_toggle_on">Shown beside the title while the bar is expanded</string>
     <string name="settings_inbox_unread_toggle_off">Hidden - unread counts and badges are unaffected</string>

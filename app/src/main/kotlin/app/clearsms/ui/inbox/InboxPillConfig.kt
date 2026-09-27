@@ -5,8 +5,9 @@ import app.clearsms.ui.navigation.PillConfig
 
 /**
  * The user's Inbox pill customisation (issue #49), resolved into what the
- * pill row renders: [order] and [hidden] come from Settings, [labels] are
- * the display-name overrides.
+ * pill row renders: [order] and [hidden] both come from Settings. Pills
+ * always show their built-in names (renaming was tried on a branch and
+ * dropped before release - the names are already good).
  *
  * Visibility and order resolve through the shared [PillConfig] - the one
  * mechanism the Inbox, Finance and Alerts rows all use, so the three cannot
@@ -25,7 +26,6 @@ import app.clearsms.ui.navigation.PillConfig
 data class InboxPillConfig(
     val order: List<InboxPill> = emptyList(),
     val hidden: Set<InboxPill> = emptySet(),
-    val labels: Map<InboxPill, String> = emptyMap(),
 ) {
     /** Order and visibility, resolved by the shared mechanism. */
     val pills: PillConfig<InboxPill> = PillConfig(InboxPill.entries.toList(), order, hidden)
@@ -38,10 +38,4 @@ data class InboxPillConfig(
 
     /** False when every pill is hidden: the row is not rendered at all. */
     val showsRow: Boolean get() = pills.showsRow
-
-    /** The label the pill shows: the user's override, else [default]. */
-    fun label(
-        pill: InboxPill,
-        default: (InboxPill) -> String,
-    ): String = labels[pill] ?: default(pill)
 }

@@ -166,7 +166,6 @@ class SettingsBackupManagerTest {
         repo.setLogoBackground(LogoBackground.WHITE)
         repo.setInboxPillOrder(InboxPill.entries.reversed())
         repo.setInboxHiddenPills(setOf(InboxPill.UNKNOWN, InboxPill.SPAM))
-        repo.setInboxPillLabels(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.OTP to "Codes"))
         repo.setInboxUnreadToggle(false)
         repo.setFinancePillOrder(FinanceTab.entries.reversed())
         repo.setFinanceHiddenPills(setOf(FinanceTab.RECHARGES))
@@ -203,7 +202,6 @@ class SettingsBackupManagerTest {
         assertThat(repo.logoBackground.first()).isEqualTo(LogoBackground.WHITE)
         assertThat(repo.inboxPillOrder.first()).isEqualTo(InboxPill.entries.reversed())
         assertThat(repo.inboxHiddenPills.first()).isEqualTo(setOf(InboxPill.UNKNOWN, InboxPill.SPAM))
-        assertThat(repo.inboxPillLabels.first()).isEqualTo(mapOf(InboxPill.IMPORTANT to "Bank", InboxPill.OTP to "Codes"))
         assertThat(repo.inboxUnreadToggle.first()).isFalse()
         assertThat(repo.financePillOrder.first()).isEqualTo(FinanceTab.entries.reversed())
         assertThat(repo.financeHiddenPills.first()).isEqualTo(setOf(FinanceTab.RECHARGES))
@@ -347,6 +345,35 @@ class SettingsBackupManagerTest {
             assertThat(SettingsRepositoryImpl(dataStore).theme.first()).isEqualTo(ThemeMode.DARK)
             assertThat(result.applied).isEqualTo(1)
             assertThat(result.skipped).isEqualTo(1)
+        }
+
+    @Test
+    fun `a backup from a development build carrying the dropped pill-labels key restores everything else`() =
+        runBlocking {
+            // Pill renaming existed only on an unmerged branch and was removed
+            // before release, so there is no catalog entry and no migration:
+            // its key is just another unknown entry - skipped, counted, and
+            // never written to the DataStore.
+            val dataStore = newDataStore("stale-labels")
+            val file =
+                """
+                {"type":"clearsms-settings","formatVersion":1,
+                 "settings":{"theme":"DARK","inbox_pill_order":"SPAM,OTP",
+                             "inbox_pill_labels":"IMPORTANT=Bank\nSPAM=Junk"}}
+                """.trimIndent()
+            val result = manager(dataStore).importFrom(ByteArrayInputStream(file.toByteArray()))
+
+            assertThat(result).isEqualTo(SettingsRestoreResult(applied = 2, skipped = 1, rules = 0))
+            val repo = SettingsRepositoryImpl(dataStore)
+            assertThat(repo.theme.first()).isEqualTo(ThemeMode.DARK)
+            assertThat(repo.inboxPillOrder.first().take(2)).containsExactly(InboxPill.SPAM, InboxPill.OTP).inOrder()
+            assertThat(
+                dataStore.data
+                    .first()
+                    .asMap()
+                    .keys
+                    .map { it.name },
+            ).doesNotContain("inbox_pill_labels")
         }
 
     @Test

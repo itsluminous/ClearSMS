@@ -208,17 +208,6 @@ interface SettingsRepository {
     suspend fun setInboxHiddenPills(value: Set<InboxPill>)
 
     /**
-     * Display-label overrides for the Inbox pills, keyed by pill identity;
-     * a pill absent from the map shows its built-in label. Encoded through
-     * [app.clearsms.domain.model.InboxPillLabels], whose decode drops unknown pill names and blank
-     * labels. Presentation only: no other preference or message field
-     * refers to a pill by its label.
-     */
-    val inboxPillLabels: Flow<Map<InboxPill, String>>
-
-    suspend fun setInboxPillLabels(value: Map<InboxPill, String>)
-
-    /**
      * Whether the "Unread" switch above the Inbox pills is shown (issue
      * #49). Default true. Purely an affordance toggle: unread counts, the
      * per-pill badges and notification behaviour are untouched, and the

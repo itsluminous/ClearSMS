@@ -212,11 +212,7 @@ class InboxViewModel
 
         /** The Settings-side pill customisation, resolved for rendering. */
         private val pillConfig: Flow<InboxPillConfig> =
-            combine(
-                settings.inboxPillOrder,
-                settings.inboxHiddenPills,
-                settings.inboxPillLabels,
-            ) { order, hidden, labels -> InboxPillConfig(order, hidden, labels) }
+            combine(settings.inboxPillOrder, settings.inboxHiddenPills, ::InboxPillConfig)
 
         /**
          * The filter every query and the chip row actually use: the user's
