@@ -175,10 +175,12 @@
             android:name=".receiver.MmsSentReceiver"
             android:exported="false" />
 
-        <!-- Serves filesDir/mms/ only (see @xml/mms_file_paths): the staging
-             file the platform MMS service writes a downloaded PDU into, and
-             stored attachments handed to viewers/share targets via per-URI
-             grants. Not exported; access is grant-based. -->
+        <!-- Serves filesDir/mms/ and filesDir/diagnostics/share/ only (see
+             @xml/mms_file_paths): the staging file the platform MMS service
+             writes a downloaded PDU into, stored attachments handed to
+             viewers/share targets via per-URI grants, and the zipped
+             diagnostic report the user shares. Not exported; access is
+             grant-based. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

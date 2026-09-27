@@ -3,6 +3,9 @@ package app.clearsms.data.backup
 import androidx.room.withTransaction
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.rules.RuleSources
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.domain.model.Category
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -68,6 +71,14 @@ class BackupManager(
                 pins = database.threadPinDao().getAll().map { it.toBackup() },
             )
         json.encodeToStream(BackupDocument.serializer(), document, output)
+        Diag.i(
+            TAG,
+            "backup exported",
+            count("messages", document.messages.size),
+            count("transactions", document.transactions.size),
+            count("rules", document.rules.size),
+            flag("otpCutoff", otpCutoffMs != null),
+        )
     }
 
     /**
@@ -137,6 +148,16 @@ class BackupManager(
             // whatever thread ids the restored messages carry.
             database.threadPinDao().upsertAll(pins)
         }
+        Diag.i(
+            TAG,
+            "backup restored",
+            count("formatVersion", document.formatVersion),
+            count("messages", messages.size),
+            count("transactions", transactions.size),
+            count("rules", rules.size),
+            count("defaulted", issues.defaultedValues),
+            count("skipped", issues.skippedRows),
+        )
         return RestoreResult(
             messages = messages.size,
             accounts = accounts.size,
@@ -146,5 +167,9 @@ class BackupManager(
             defaultedValues = issues.defaultedValues,
             skippedRows = issues.skippedRows,
         )
+    }
+
+    private companion object {
+        const val TAG = "Backup"
     }
 }

@@ -2,7 +2,6 @@ package app.clearsms.work
 
 import android.app.Notification
 import android.content.Context
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.work.HiltWorker
@@ -19,6 +18,9 @@ import androidx.work.WorkerParameters
 import app.clearsms.BuildConfig
 import app.clearsms.R
 import app.clearsms.data.prefs.SettingsRepository
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.notification.CatchUpNotifier
 import app.clearsms.notification.Channels
 import app.clearsms.sms.SystemSmsImporter
@@ -74,6 +76,14 @@ class InitialSyncWorker
                 // summary when many). Old history stays silent, so the
                 // initial onboarding import never reaches this call with a
                 // non-zero count (fresh-install watermark is null).
+                Diag.i(
+                    TAG,
+                    "import finished",
+                    count("inserted", result.inserted),
+                    count("fresh", result.freshCount),
+                    flag("initial", result.initialRun),
+                    count("attempt", runAttemptCount),
+                )
                 catchUpNotifier.notifyFresh(result.freshMessages, result.freshCount)
                 // The INITIAL import classified the whole history with the
                 // current rules - record this version as fully sorted so the
@@ -95,7 +105,7 @@ class InitialSyncWorker
                 }
                 Result.success()
             } catch (e: Exception) {
-                Log.w(TAG, "Import attempt $runAttemptCount failed; will resume from checkpoint", e)
+                Diag.w(TAG, "import attempt failed; will resume from checkpoint", e, count("attempt", runAttemptCount))
                 if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
             } finally {
                 manager.cancel(SYNC_NOTIFICATION_ID)

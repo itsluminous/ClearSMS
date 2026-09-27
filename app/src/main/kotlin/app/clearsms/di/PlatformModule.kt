@@ -1,8 +1,8 @@
 package app.clearsms.di
 
 import android.content.Context
-import android.util.Log
 import androidx.work.WorkManager
+import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.mms.FrameworkMmsGateway
 import app.clearsms.mms.MmsDownloader
@@ -57,7 +57,7 @@ object PlatformModule {
      */
     private fun ingestionExceptionHandler(): CoroutineExceptionHandler =
         CoroutineExceptionHandler { _, throwable ->
-            Log.e("ClearSmsAppScope", "Uncaught exception in application scope", throwable)
+            Diag.e("AppScope", "uncaught exception in application scope", throwable)
         }
 
     @Provides

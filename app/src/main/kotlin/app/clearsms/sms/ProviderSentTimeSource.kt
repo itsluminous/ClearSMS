@@ -2,7 +2,7 @@ package app.clearsms.sms
 
 import android.content.Context
 import android.provider.Telephony
-import android.util.Log
+import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.model.sentTimestampOrNull
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -83,7 +83,7 @@ class SystemProviderSentTimeSource
                         }
                     }.orEmpty()
             } catch (e: Exception) {
-                Log.w(TAG, "Cannot read the system SMS provider; sent-time backfill will retry later", e)
+                Diag.w(TAG, "cannot read the system SMS provider; sent-time backfill will retry later", e)
                 emptyList()
             }
 

@@ -156,6 +156,7 @@ class SettingsNavigation(
     val onPermissions: () -> Unit,
     val onPrivacyPolicy: () -> Unit,
     val onLicenses: () -> Unit,
+    val onShareLogs: () -> Unit,
 )
 
 /**
@@ -567,6 +568,7 @@ private fun SettingsRowsHost(
             onPermissions = navigation.onPermissions,
             onPrivacyPolicy = navigation.onPrivacyPolicy,
             onLicenses = navigation.onLicenses,
+            onShareLogs = navigation.onShareLogs,
             onOpenLink = openLink,
             onSystemNotificationSettings = openSystemNotificationSettings,
         )
@@ -951,6 +953,7 @@ private fun settingsRowEntries(
     onPermissions: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLicenses: () -> Unit,
+    onShareLogs: () -> Unit,
     onOpenLink: (String) -> Unit,
     onSystemNotificationSettings: () -> Unit,
 ): List<SettingsRowEntry> {
@@ -1408,6 +1411,8 @@ private fun settingsRowEntries(
                     val url = stringResource(R.string.url_source_code)
                     row(section, title, stringResource(R.string.settings_source_code_summary)) { onOpenLink(url) }
                 }
+                SettingsItem.SHARE_LOGS ->
+                    row(section, title, stringResource(R.string.settings_share_logs_summary), onShareLogs)
                 SettingsItem.UPI -> {
                     val url = stringResource(R.string.url_donate_upi)
                     row(section, title, stringResource(R.string.settings_donate_upi_summary)) { onOpenLink(url) }

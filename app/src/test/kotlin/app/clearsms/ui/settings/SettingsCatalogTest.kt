@@ -200,10 +200,18 @@ class SettingsCatalogTest {
         assertThat(bySection["Signature"]).containsExactly("SMS signature")
         assertThat(bySection["Donate"]).containsExactly("UPI", "Paypal").inOrder()
         // Permissions, Privacy policy and Licenses moved INSIDE About, after
-        // the two rows that were already there.
+        // the two rows that were already there; the diagnostic-log report
+        // sits between them, next to Source code (the other row about the
+        // app's own build rather than its legal/permission footing).
         assertThat(bySection["About"])
-            .containsExactly("Version", "Source code", "Permissions", "Privacy policy", "Open source licenses")
-            .inOrder()
+            .containsExactly(
+                "Version",
+                "Source code",
+                "Share diagnostic logs",
+                "Permissions",
+                "Privacy policy",
+                "Open source licenses",
+            ).inOrder()
     }
 
     @Test
@@ -296,10 +304,12 @@ class SettingsCatalogTest {
                 // Finance and Alerts: the same pill visibility the Inbox has.
                 "Visible pills",
                 "Visible pills",
+                // About: preview + share the in-app diagnostic log report.
+                "Share diagnostic logs",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 21 additions = 53 rows.
+        // No row lost, none dropped: 32 survivors + 22 additions = 54 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear
@@ -347,8 +357,18 @@ class SettingsCatalogTest {
     }
 
     @Test
+    fun `share diagnostic logs lives on the About sub-screen after Source code and is searchable`() {
+        assertThat(SettingsItem.SHARE_LOGS.section).isEqualTo(SettingsSection.ABOUT)
+        assertThat(SettingsItem.SHARE_LOGS.nested).isTrue()
+        val aboutRows = SettingsSection.ABOUT.items
+        assertThat(aboutRows.indexOf(SettingsItem.SHARE_LOGS)).isEqualTo(aboutRows.indexOf(SettingsItem.SOURCE_CODE) + 1)
+        assertThat(search("diagnostic logs")).containsExactly(SettingsItem.SHARE_LOGS)
+    }
+
+    @Test
     fun `search finds every About row, including the three that moved in`() {
         assertThat(search("source code")).containsExactly(SettingsItem.SOURCE_CODE)
+        assertThat(search("diagnostic")).containsExactly(SettingsItem.SHARE_LOGS)
         assertThat(search("permissions")).contains(SettingsItem.PERMISSIONS)
         assertThat(search("privacy")).contains(SettingsItem.PRIVACY_POLICY)
         assertThat(search("licenses")).contains(SettingsItem.LICENSES)

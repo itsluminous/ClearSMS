@@ -1,10 +1,10 @@
 package app.clearsms.work
 
-import android.util.Log
 import androidx.work.WorkManager
 import app.clearsms.BuildConfig
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.ApplicationScope
+import app.clearsms.diagnostics.Diag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -53,7 +53,7 @@ class AutoResortScheduler
                 } catch (e: Exception) {
                     // Never let a scheduling probe crash startup; the next
                     // cold start retries.
-                    Log.w(TAG, "Auto re-sort check failed", e)
+                    Diag.w(TAG, "auto re-sort check failed", e)
                 }
             }
         }
@@ -65,7 +65,7 @@ class AutoResortScheduler
             val importInfos =
                 workManager.getWorkInfosForUniqueWorkFlow(InitialSyncWorker.WORK_NAME).first()
             if (importInfos.any { !it.state.isFinished }) return
-            Log.i(TAG, "App updated since last full sort; enqueueing automatic re-sort")
+            Diag.i(TAG, "app updated since last full sort; enqueueing automatic re-sort")
             RecategorizeWorker.enqueue(workManager, auto = true)
         }
 

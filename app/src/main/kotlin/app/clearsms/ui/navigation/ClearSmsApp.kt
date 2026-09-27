@@ -60,6 +60,7 @@ import app.clearsms.ui.alerts.AlertsScreen
 import app.clearsms.ui.components.LocalLogoBackground
 import app.clearsms.ui.composemsg.ComposeMessageScreen
 import app.clearsms.ui.conversation.ConversationScreen
+import app.clearsms.ui.diagnostics.DiagnosticsScreen
 import app.clearsms.ui.finance.AccountDetailScreen
 import app.clearsms.ui.finance.FinanceScreen
 import app.clearsms.ui.inbox.ArchivedScreen
@@ -556,6 +557,7 @@ private fun MainScaffold(
                     navigation = settingsNavigation(navController),
                 )
             }
+            composable(Routes.DIAGNOSTICS) { DiagnosticsScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.PRIVACY_POLICY) { PrivacyPolicyScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.LICENSES) { LicensesScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.PERMISSIONS_INFO) { PermissionsInfoScreen(onBack = { navController.popBackStack() }) }
@@ -608,6 +610,7 @@ private fun settingsNavigation(navController: NavHostController) =
         onPermissions = { navController.navigate(Routes.PERMISSIONS_INFO) },
         onPrivacyPolicy = { navController.navigate(Routes.PRIVACY_POLICY) },
         onLicenses = { navController.navigate(Routes.LICENSES) },
+        onShareLogs = { navController.navigate(Routes.DIAGNOSTICS) },
     )
 
 /** The nav route rendering a top-level tab. */

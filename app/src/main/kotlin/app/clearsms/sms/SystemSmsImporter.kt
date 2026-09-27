@@ -2,11 +2,11 @@ package app.clearsms.sms
 
 import android.content.Context
 import android.provider.Telephony
-import android.util.Log
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.ImportedSmsRow
 import app.clearsms.data.repository.MessageRepositoryImpl
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.model.sentTimestampOrNull
 import app.clearsms.work.SyncCheckpointStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -266,7 +266,7 @@ class SystemSmsImporter
                 sortOrder,
             )
         } catch (e: Exception) {
-            Log.w(TAG, "Cannot query the system SMS provider", e)
+            Diag.w(TAG, "cannot query the system SMS provider", e)
             null
         }
 

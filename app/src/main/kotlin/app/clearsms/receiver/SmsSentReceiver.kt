@@ -8,6 +8,11 @@ import android.net.Uri
 import androidx.core.net.toUri
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.code
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.label
 import app.clearsms.notification.MessageNotifier
 import app.clearsms.sms.TelephonyWriter
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,6 +51,17 @@ class SmsSentReceiver : BroadcastReceiver() {
         // when THIS device handled the report broadcast, not when the DB
         // write happened to run and never the carrier's own timestamp.
         val acknowledgedAtMs = System.currentTimeMillis()
+        // Status transition + platform result code, per part: the trace a
+        // "stuck at Sending" / "Not sent" report needs. Destination never.
+        Diag.i(
+            TAG,
+            "radio report",
+            label("status", report.status),
+            code("result", resultCode),
+            count("part", report.partIndex + 1),
+            count("parts", report.partCount),
+            flag("providerRow", report.providerUri != null),
+        )
         val pending = goAsync()
         receiverScope.launch {
             try {
@@ -63,6 +79,7 @@ class SmsSentReceiver : BroadcastReceiver() {
         const val EXTRA_PROVIDER_URI = "provider_uri"
         const val EXTRA_PART_INDEX = "part_index"
         const val EXTRA_PART_COUNT = "part_count"
+        private const val TAG = "SendReport"
 
         private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }

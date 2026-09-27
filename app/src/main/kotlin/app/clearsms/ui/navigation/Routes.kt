@@ -52,6 +52,7 @@ object Routes {
     const val PRIVACY_POLICY = "settings/privacy"
     const val LICENSES = "settings/licenses"
     const val PERMISSIONS_INFO = "settings/permissions"
+    const val DIAGNOSTICS = "settings/diagnostics"
     const val RULES = "rules"
 
     const val CONVERSATION = "conversation/{threadId}?messageId={messageId}"

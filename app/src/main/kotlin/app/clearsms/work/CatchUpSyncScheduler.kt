@@ -2,10 +2,11 @@ package app.clearsms.work
 
 import android.content.Context
 import android.provider.Telephony
-import android.util.Log
 import androidx.work.WorkManager
 import app.clearsms.data.db.MessageDao
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -78,7 +79,7 @@ class CatchUpSyncScheduler
                 val providerMax = providerMaxId() ?: return@withContext
                 val localMax = messageDao.maxSystemSmsId() ?: 0L
                 if (providerMax > localMax) {
-                    Log.i(TAG, "Provider max _id $providerMax exceeds local $localMax; scheduling catch-up import")
+                    Diag.i(TAG, "gap probe scheduling catch-up", count("providerMaxId", providerMax), count("localMaxId", localMax))
                     InitialSyncWorker.enqueue(workManager)
                 }
             }
@@ -96,7 +97,7 @@ class CatchUpSyncScheduler
                         "${Telephony.Sms._ID} DESC LIMIT 1",
                     )?.use { if (it.moveToFirst()) it.getLong(0) else null }
             } catch (e: Exception) {
-                Log.w(TAG, "Cannot probe the system SMS provider", e)
+                Diag.w(TAG, "cannot probe the system SMS provider", e)
                 null
             }
 

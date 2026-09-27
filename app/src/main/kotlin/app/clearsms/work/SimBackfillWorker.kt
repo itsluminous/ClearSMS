@@ -1,7 +1,6 @@
 package app.clearsms.work
 
 import android.content.Context
-import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
@@ -10,6 +9,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -45,13 +46,13 @@ class SimBackfillWorker
             if (importActive()) return Result.retry()
             return try {
                 val filled = simBackfill.runIfNeeded()
-                if (filled > 0) Log.i(TAG, "SIM backfill filled $filled imported rows")
+                if (filled > 0) Diag.i(TAG, "SIM backfill filled rows", count("filled", filled))
                 // Strictly after the SIM pass: one provider walk at a time.
                 val sentFilled = sentTimeBackfill.runIfNeeded()
-                if (sentFilled > 0) Log.i(TAG, "Sent-time backfill filled $sentFilled imported rows")
+                if (sentFilled > 0) Diag.i(TAG, "sent-time backfill filled rows", count("filled", sentFilled))
                 Result.success()
             } catch (e: Exception) {
-                Log.w(TAG, "Provider backfill attempt $runAttemptCount failed; will resume", e)
+                Diag.w(TAG, "provider backfill attempt failed; will resume", e, count("attempt", runAttemptCount))
                 if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
             }
         }
@@ -65,7 +66,7 @@ class SimBackfillWorker
                     .first()
                     .any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
             } catch (e: Exception) {
-                Log.w(TAG, "Cannot read import work state; running backfill anyway", e)
+                Diag.w(TAG, "cannot read import work state; running backfill anyway", e)
                 false
             }
 

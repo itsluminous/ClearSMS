@@ -2,7 +2,6 @@ package app.clearsms.work
 
 import android.app.Notification
 import android.content.Context
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.work.HiltWorker
@@ -20,6 +19,8 @@ import app.clearsms.BuildConfig
 import app.clearsms.R
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
 import app.clearsms.notification.Channels
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -69,6 +70,7 @@ class RecategorizeWorker
                 // the auto re-sort never re-fires for a version whose full
                 // pass already completed.
                 settings.setLastSortedVersionCode(BuildConfig.VERSION_CODE)
+                Diag.i(TAG, "re-sort finished", count("messages", count))
                 Result.success(workDataOf(OUTPUT_COUNT to count))
             } catch (e: CancellationException) {
                 // User-initiated cancel: pages already committed stay valid.
@@ -77,7 +79,7 @@ class RecategorizeWorker
                 // Content-free by convention (no message data in logs). A
                 // failed re-sort is simply re-triggered by the user; no retry
                 // loop over the whole database.
-                Log.e(TAG, "Re-categorization failed", e)
+                Diag.e(TAG, "re-sort failed", e)
                 Result.failure()
             } finally {
                 manager.cancel(NOTIFICATION_ID)

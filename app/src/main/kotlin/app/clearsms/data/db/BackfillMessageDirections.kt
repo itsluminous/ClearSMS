@@ -1,8 +1,9 @@
 package app.clearsms.data.db
 
-import android.util.Log
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
 
 /**
  * Read-only view of the system SMS provider's sent box, abstracted so the
@@ -53,7 +54,7 @@ class BackfillMessageDirections : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
         val sent = sentSmsSource?.sentMessages().orEmpty()
         if (sent.isEmpty()) {
-            Log.i(TAG, "No sent provider rows to reconcile; all rows stay incoming")
+            Diag.i(TAG, "no sent provider rows to reconcile")
             return
         }
         db.execSQL(
@@ -100,11 +101,7 @@ class BackfillMessageDirections : AutoMigrationSpec {
                 """.trimIndent(),
             )
             val matched = countMatched(db)
-            Log.i(
-                TAG,
-                "Reconciled ${sent.size} provider sent rows: $matched messages marked " +
-                    "outgoing; unmatched rows default to incoming",
-            )
+            Diag.i(TAG, "reconciled sent provider rows", count("sentRows", sent.size), count("markedOutgoing", matched))
         } finally {
             db.execSQL("DROP TABLE IF EXISTS backfill_sent")
         }
