@@ -260,6 +260,21 @@ interface SettingsRepository {
     suspend fun setBlockedSenders(value: Set<String>)
 
     /**
+     * The muted-sender list - the "quiet middle" between normal delivery
+     * and blocking. Stored and matched EXACTLY like [blockedSenders]
+     * (normalized through [app.clearsms.data.repository.SenderNormalizer],
+     * so "VM-HDFCBK" and "HDFCBK", or "+91 98765 43210" and "9876543210",
+     * share one entry). A muted sender's messages still arrive, still land
+     * in the inbox unread, still extract transactions and OTPs - they just
+     * never post a notification (scam warnings excepted; see
+     * [app.clearsms.notification.MutedSenderGate]). All writes go through
+     * [app.clearsms.data.repository.SenderMuter].
+     */
+    val mutedSenders: Flow<Set<String>>
+
+    suspend fun setMutedSenders(value: Set<String>)
+
+    /**
      * User-chosen order of the Alerts filter pills; same guarantees as
      * [inboxPillOrder]. Persisted as enum names, so [AlertFilter] staying in
      * the ui layer costs nothing at the storage level.

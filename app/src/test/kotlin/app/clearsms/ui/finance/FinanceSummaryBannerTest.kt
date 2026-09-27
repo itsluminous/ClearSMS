@@ -254,6 +254,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setBlockedSenders(value: Set<String>) = Unit
 
+    override val mutedSenders = MutableStateFlow(emptySet<String>())
+
+    override suspend fun setMutedSenders(value: Set<String>) = Unit
+
     override val lastSortedVersionCode = MutableStateFlow(0)
 
     override suspend fun setLastSortedVersionCode(value: Int) = Unit

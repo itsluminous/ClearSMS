@@ -42,6 +42,7 @@ class OtpNotifier
         private val senderResolver: NotificationSenderResolver,
         private val iconFactory: SenderIconFactory,
         private val sectionGate: NotificationSectionGate,
+        private val mutedSenderGate: MutedSenderGate,
     ) {
         suspend fun notify(
             message: MessageEntity,
@@ -53,6 +54,10 @@ class OtpNotifier
             // notification follows the Inbox flag - the operator's "any
             // incoming message notification" includes OTPs.
             if (!sectionGate.allows(StartDestination.INBOX)) return
+            // A muted sender's OTP is quiet too - "mute means quiet" is the
+            // predictable contract; the code stays visible and copyable
+            // in-app (MutedSenderGate argues the trade-off).
+            if (!mutedSenderGate.allows(message.sender)) return
             Channels.ensureCreated(context)
             try {
                 NotificationManagerCompat

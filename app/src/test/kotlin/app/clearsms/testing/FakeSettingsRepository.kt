@@ -190,6 +190,12 @@ open class FakeSettingsRepository : SettingsRepository {
         blockedSenders.value = value
     }
 
+    override val mutedSenders = MutableStateFlow(emptySet<String>())
+
+    override suspend fun setMutedSenders(value: Set<String>) {
+        mutedSenders.value = value
+    }
+
     override val handledOtpMessageId = MutableStateFlow(0L)
 
     override suspend fun setHandledOtpMessageId(value: Long) {

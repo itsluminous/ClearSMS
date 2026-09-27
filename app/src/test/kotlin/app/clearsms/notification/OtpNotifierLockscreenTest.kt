@@ -51,6 +51,7 @@ class OtpNotifierLockscreenTest {
             rawResolver,
             SenderIconFactory(context),
             NotificationSectionGate(FakeSettingsRepository()),
+            MutedSenderGate(FakeSettingsRepository()),
         ).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
 
     @Test

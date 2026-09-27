@@ -20,6 +20,10 @@
     <string name="action_mark_read">Mark as read</string>
     <string name="action_mark_unread">Mark as unread</string>
     <string name="action_block_sender">Block sender</string>
+    <string name="action_mute_sender">Mute notifications</string>
+    <string name="action_unmute_sender">Unmute notifications</string>
+    <string name="mute_applied">Muted. Messages still arrive here, but nothing will notify - OTPs included. Scam warnings still show.</string>
+    <string name="mute_removed">Unmuted. Notifications are back on for this sender.</string>
     <string name="action_change_category">Change category</string>
     <!-- Inbox selection overflow entry for the one-step sender rule; reads like the dialog it opens (sender_rule_title). -->
     <string name="action_always_sort_as">Always sort as…</string>
@@ -34,6 +38,7 @@
     <string name="inbox_row_actions">Message actions</string>
     <string name="inbox_draft_preview">Draft: %1$s</string>
     <string name="inbox_pinned">Pinned</string>
+    <string name="inbox_muted">Muted - no notifications</string>
     <string name="filter_unread">Unread</string>
     <string name="inbox_unread_toggle_count">Unread · %1$d</string>
     <string name="inbox_contacts_permission">Grant contacts access to see names of people you know</string>
@@ -255,6 +260,16 @@
     <string name="settings_block_add_hint">Sender or number</string>
     <string name="settings_block_add">Block</string>
     <string name="settings_unblock">Unblock</string>
+    <string name="settings_muted_senders">Muted senders</string>
+    <plurals name="settings_muted_senders_summary">
+        <item quantity="one">%1$d muted sender - messages arrive, nothing notifies</item>
+        <item quantity="other">%1$d muted senders - messages arrive, nothing notifies</item>
+    </plurals>
+    <string name="settings_muted_senders_note">Muted senders keep arriving in the inbox as unread, and their transactions and OTPs are still extracted - they just never post a notification, OTPs included. Scam warnings are still shown. Muting is permanent until you unmute here or from the conversation. A blocked sender cannot be muted: it is already silent.</string>
+    <string name="settings_muted_senders_empty">No muted senders. Mute one from a conversation\'s menu, the inbox selection menu, or add it here.</string>
+    <string name="settings_mute_add">Mute</string>
+    <string name="settings_unmute">Unmute</string>
+    <string name="settings_mute_refused_blocked">That sender is blocked - blocked senders are already silent, so there is nothing to mute.</string>
     <string name="settings_section_backup">Backup &amp; restore</string>
     <string name="settings_backup_now">Back up messages</string>
     <string name="settings_backup_now_summary">Save all data to a local file you control</string>

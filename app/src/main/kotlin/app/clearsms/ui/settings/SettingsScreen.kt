@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
@@ -124,6 +125,7 @@ private enum class SettingsDialog {
     CLEAR_OTP,
     SIGNATURE,
     BLOCK_LIST,
+    MUTED_SENDERS,
     BACKUP_FREQUENCY,
     SORT_CONFIRM,
 }
@@ -547,6 +549,8 @@ private fun SettingsRowsHost(
                         resources.getString(R.string.settings_clear_otp_empty)
                     SettingsEvent.LastSectionKept ->
                         resources.getString(R.string.settings_last_section_kept)
+                    SettingsEvent.MuteRefusedBlocked ->
+                        resources.getString(R.string.settings_mute_refused_blocked)
                 },
             )
         }
@@ -833,6 +837,19 @@ private fun SettingsRowsHost(
                     dialog = null
                 },
             )
+        SettingsDialog.MUTED_SENDERS ->
+            MutedSendersDialog(
+                muted = state.mutedSenders,
+                senderSuggestions = senderSuggestions,
+                onSenderQueryChange = viewModel::onSenderQueryChange,
+                onClearSenderSuggestions = viewModel::clearSenderSuggestions,
+                onMute = viewModel::muteSender,
+                onUnmute = viewModel::unmuteSender,
+                onDismiss = {
+                    viewModel.clearSenderSuggestions()
+                    dialog = null
+                },
+            )
         SettingsDialog.BACKUP_FREQUENCY ->
             RadioDialog(
                 title = stringResource(R.string.settings_backup_frequency),
@@ -1031,6 +1048,18 @@ private fun settingsRowEntries(
                         ),
                     ) {
                         openDialog(SettingsDialog.BLOCK_LIST)
+                    }
+                SettingsItem.MUTED_SENDERS ->
+                    row(
+                        section,
+                        title,
+                        pluralStringResource(
+                            R.plurals.settings_muted_senders_summary,
+                            state.mutedSenders.size,
+                            state.mutedSenders.size,
+                        ),
+                    ) {
+                        openDialog(SettingsDialog.MUTED_SENDERS)
                     }
                 SettingsItem.STRIP_ACCENTS ->
                     toggle(
@@ -1936,6 +1965,108 @@ private fun BlockListDialog(
                         Text(text = keyword, modifier = Modifier.weight(1f))
                         TextButton(onClick = { onRemoveKeyword(keyword) }) {
                             Text(stringResource(R.string.settings_block_keyword_remove))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+        },
+    )
+}
+
+/**
+ * The muted-senders manager: the blocked-senders section of [BlockListDialog]
+ * with "mute" in place of "block" - same field, same contact autocomplete,
+ * same one-tap removal - so a user who knows one knows the other. The note
+ * states exactly what a mute covers (OTPs quiet, scam warnings kept), so
+ * the decision is discoverable where the list is managed.
+ */
+@Composable
+private fun MutedSendersDialog(
+    muted: List<String>,
+    senderSuggestions: List<ContactSuggestion>,
+    onSenderQueryChange: (String) -> Unit,
+    onClearSenderSuggestions: () -> Unit,
+    onMute: (String) -> Unit,
+    onUnmute: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var newSender by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_muted_senders)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(R.string.settings_muted_senders_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newSender,
+                        onValueChange = {
+                            newSender = it
+                            onSenderQueryChange(it)
+                        },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.settings_block_add_hint)) },
+                        singleLine = true,
+                    )
+                    TextButton(
+                        onClick = {
+                            if (newSender.isNotBlank()) {
+                                onMute(newSender.trim())
+                                newSender = ""
+                                onClearSenderSuggestions()
+                            }
+                        },
+                    ) { Text(stringResource(R.string.settings_mute_add)) }
+                }
+                // Same contact autocomplete as the block dialog; picking fills
+                // the NUMBER (muting keys on the normalized sender).
+                senderSuggestions.forEach { suggestion ->
+                    ListItem(
+                        modifier =
+                            Modifier.clickable {
+                                newSender = suggestion.number
+                                onClearSenderSuggestions()
+                            },
+                        leadingContent = {
+                            SenderAvatar(
+                                name = suggestion.name,
+                                richAvatars = true,
+                                photoUri = suggestion.photoUri,
+                            )
+                        },
+                        headlineContent = { Text(suggestion.name) },
+                        supportingContent = {
+                            Text(
+                                text = suggestion.number,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    )
+                }
+                if (muted.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_muted_senders_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
+                muted.forEach { sender ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(text = sender, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onUnmute(sender) }) {
+                            Text(stringResource(R.string.settings_unmute))
                         }
                     }
                 }

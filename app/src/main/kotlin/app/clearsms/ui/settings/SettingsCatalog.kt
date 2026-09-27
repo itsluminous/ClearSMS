@@ -55,6 +55,11 @@ enum class SettingsItem(
     ARCHIVED(SettingsSection.MESSAGES, R.string.settings_archived),
     RECYCLE_BIN(SettingsSection.MESSAGES, R.string.settings_recycle_bin),
     BLOCK_LIST(SettingsSection.MESSAGES, R.string.settings_block_list),
+
+    // Muted senders: the quiet middle between normal delivery and blocking
+    // (messages arrive, nothing notifies). Directly under the block list it
+    // is the gentler sibling of.
+    MUTED_SENDERS(SettingsSection.MESSAGES, R.string.settings_muted_senders),
     STRIP_ACCENTS(SettingsSection.MESSAGES, R.string.settings_strip_accents),
 
     // Delayed sending (GitHub #40): the toggle, then the delay it gates -

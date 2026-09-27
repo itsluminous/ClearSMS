@@ -53,14 +53,32 @@ class SelectionBarLayoutTest {
     }
 
     @Test
-    fun `overflow for a single thread adds block and always-sort-as`() {
+    fun `overflow for a single thread adds mute, block and always-sort-as`() {
         assertThat(SelectionBarLayout.overflowActions(allSelectedPinned = false, singleThread = true))
             .containsExactly(
                 SelectionAction.PIN,
                 SelectionAction.SELECT_ALL,
+                SelectionAction.MUTE,
                 SelectionAction.BLOCK,
                 SelectionAction.ALWAYS_SORT_AS,
             ).inOrder()
+    }
+
+    @Test
+    fun `the mute entry is a single toggle - it reads unmute for an already muted thread`() {
+        assertThat(SelectionBarLayout.muteAction(singleThreadMuted = false)).isEqualTo(SelectionAction.MUTE)
+        assertThat(SelectionBarLayout.muteAction(singleThreadMuted = true)).isEqualTo(SelectionAction.UNMUTE)
+        val muted = SelectionBarLayout.overflowActions(allSelectedPinned = false, singleThread = true, singleThreadMuted = true)
+        assertThat(muted).contains(SelectionAction.UNMUTE)
+        assertThat(muted).doesNotContain(SelectionAction.MUTE)
+        // Same slot, same neighbours: only the label flips.
+        assertThat(muted.indexOf(SelectionAction.UNMUTE)).isEqualTo(muted.indexOf(SelectionAction.BLOCK) - 1)
+    }
+
+    @Test
+    fun `mute never appears for a multi-thread selection`() {
+        val multi = SelectionBarLayout.overflowActions(allSelectedPinned = false, singleThread = false, singleThreadMuted = true)
+        assertThat(multi).containsNoneOf(SelectionAction.MUTE, SelectionAction.UNMUTE)
     }
 
     @Test

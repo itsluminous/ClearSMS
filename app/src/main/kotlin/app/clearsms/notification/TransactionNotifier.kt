@@ -73,6 +73,7 @@ class TransactionNotifier
         private val senderResolver: NotificationSenderResolver,
         private val iconFactory: SenderIconFactory,
         private val sectionGate: NotificationSectionGate,
+        private val mutedSenderGate: MutedSenderGate,
     ) {
         /**
          * Posts a parsed-transaction notification for [message].
@@ -91,6 +92,11 @@ class TransactionNotifier
             // falls through to the plain message notification, itself gated
             // by the Inbox flag.
             if (!sectionGate.allows(StartDestination.FINANCE)) return false
+            // A muted sender's transaction is still extracted into Finance;
+            // only the notification is dropped. Returning TRUE (not false)
+            // is deliberate: false would let the router fall through to the
+            // plain message notification, re-notifying a muted sender.
+            if (!mutedSenderGate.allows(message.sender)) return true
             val notification = buildNotification(message, selected) ?: return false
             try {
                 val manager = NotificationManagerCompat.from(context)

@@ -1890,8 +1890,7 @@ class MessageRepositoryImpl(
      * EXISTS-over-rows check evaporated the block when its thread was
      * deleted.
      */
-    private suspend fun isSenderBlocked(normalizedSender: String): Boolean =
-        blockedSenders().any { SenderNormalizer.normalize(it) == normalizedSender }
+    private suspend fun isSenderBlocked(normalizedSender: String): Boolean = SenderNormalizer.matchesAny(blockedSenders(), normalizedSender)
 
     private fun deleteAttachmentFiles(messageIds: List<Long>) {
         val cleaner = attachmentFileCleaner ?: return

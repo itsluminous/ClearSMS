@@ -38,6 +38,7 @@ class TransactionNotifierCustomViewTest {
             },
             SenderIconFactory(context),
             NotificationSectionGate(FakeSettingsRepository()),
+            MutedSenderGate(FakeSettingsRepository()),
         )
 
     private fun message(extracted: String) =

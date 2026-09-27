@@ -10,6 +10,7 @@ import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
@@ -21,6 +22,7 @@ import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.notification.MessageNotifier
+import app.clearsms.notification.MutedSenderGate
 import app.clearsms.notification.NotificationSectionGate
 import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.OtpNotifier
@@ -159,9 +161,29 @@ class ConversationViewModelScheduleTest {
             IncomingMessageRouter(
                 context,
                 FakeSettingsRepository(),
-                OtpNotifier(context, resolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
-                MessageNotifier(context, resolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
-                TransactionNotifier(context, json, resolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+                OtpNotifier(
+                    context,
+                    resolver,
+                    iconFactory,
+                    NotificationSectionGate(FakeSettingsRepository()),
+                    MutedSenderGate(FakeSettingsRepository()),
+                ),
+                MessageNotifier(
+                    context,
+                    resolver,
+                    iconFactory,
+                    NotificationSectionGate(FakeSettingsRepository()),
+                    MutedSenderGate(FakeSettingsRepository()),
+                ),
+                TransactionNotifier(
+                    context,
+                    json,
+                    resolver,
+                    iconFactory,
+                    NotificationSectionGate(FakeSettingsRepository()),
+                    MutedSenderGate(FakeSettingsRepository()),
+                ),
+                MutedSenderGate(FakeSettingsRepository()),
                 CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             )
         val mmsInbound =
@@ -199,6 +221,7 @@ class ConversationViewModelScheduleTest {
             attachmentDao = db.attachmentDao(),
             mmsInbound = mmsInbound,
             settings = FakeSettingsRepository(),
+            senderMuter = SenderMuter(FakeSettingsRepository()),
             json = json,
             appContext = context,
             applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),

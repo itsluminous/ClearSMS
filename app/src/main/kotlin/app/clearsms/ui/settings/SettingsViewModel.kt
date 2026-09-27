@@ -13,6 +13,7 @@ import app.clearsms.data.backup.SettingsRestoreResult
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SenderBlocker
+import app.clearsms.data.repository.SenderMuter
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
@@ -96,6 +97,8 @@ data class SettingsUiState(
     /** Raised by the worker when the chosen directory vanished or its grant was revoked. */
     val backupDirectoryError: Boolean = false,
     val blockedSenders: List<String> = emptyList(),
+    /** Muted senders, normalized and sorted - what the muted-senders dialog lists. */
+    val mutedSenders: List<String> = emptyList(),
     /** Keywords that route matching incoming messages straight to the bin. */
     val blockedKeywords: List<String> = emptyList(),
     /** Non-null while a manual re-sort is enqueued/running (drives the inline progress row). */
@@ -140,6 +143,12 @@ sealed interface SettingsEvent {
     /** Settings restore failed: not a settings backup, or unreadable. */
     data object SettingsRestoreFailed : SettingsEvent
 
+    /**
+     * A mute was refused because the sender is BLOCKED: blocked senders
+     * are already binned and silent, so a mute would be a dead entry.
+     */
+    data object MuteRefusedBlocked : SettingsEvent
+
     /** Manual re-sort finished; [count] messages were re-categorized. */
     data class SortDone(
         val count: Int,
@@ -180,6 +189,7 @@ class SettingsViewModel
         private val uiPrefs: UiPrefs,
         private val messageRepository: MessageRepository,
         private val senderBlocker: SenderBlocker,
+        private val senderMuter: SenderMuter,
         private val contactSuggestions: ContactSuggestions,
         private val backupManager: BackupManager,
         private val settingsBackupManager: SettingsBackupManager,
@@ -331,8 +341,9 @@ class SettingsViewModel
             val blockedSenders: Set<String>,
             val backupDirectoryUri: String?,
             val backupDirectoryError: Boolean,
-            /** Filled by the second combine stage (combine() maxes out at 5 flows). */
+            /** Filled by the later combine stages (combine() maxes out at 5 flows). */
             val blockedKeywords: Set<String> = emptySet(),
+            val mutedSenders: Set<String> = emptySet(),
         )
 
         private val other =
@@ -345,6 +356,8 @@ class SettingsViewModel
                 ::OtherState,
             ).combine(settings.blockedKeywords) { other, keywords ->
                 other.copy(blockedKeywords = keywords)
+            }.combine(settings.mutedSenders) { other, muted ->
+                other.copy(mutedSenders = muted)
             }
 
         val uiState: StateFlow<SettingsUiState> =
@@ -392,6 +405,7 @@ class SettingsViewModel
                     backupDirectoryError = otherState.backupDirectoryError,
                     blockedSenders = otherState.blockedSenders.sorted(),
                     blockedKeywords = otherState.blockedKeywords.sorted(),
+                    mutedSenders = otherState.mutedSenders.sorted(),
                     sortProgress = sortState,
                     busy = isBusy,
                 )
@@ -613,6 +627,19 @@ class SettingsViewModel
         fun blockSender(sender: String) = launchIo { senderBlocker.block(sender) }
 
         fun unblockSender(sender: String) = launchIo { senderBlocker.unblock(sender) }
+
+        /**
+         * Mutes [sender] through [SenderMuter] - the same path the inbox and
+         * conversation overflows use. A blocked sender is refused and the
+         * refusal is said out loud ([SettingsEvent.MuteRefusedBlocked]): a
+         * silently ignored Add press would look like a bug.
+         */
+        fun muteSender(sender: String) =
+            launchIo {
+                if (!senderMuter.mute(sender)) events.emit(SettingsEvent.MuteRefusedBlocked)
+            }
+
+        fun unmuteSender(sender: String) = launchIo { senderMuter.unmute(sender) }
 
         /**
          * Adds a validated keyword (the dialog runs

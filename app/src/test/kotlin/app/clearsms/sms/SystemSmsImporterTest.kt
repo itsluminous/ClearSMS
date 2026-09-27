@@ -17,6 +17,8 @@ import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.model.Category
+import app.clearsms.notification.MutedSenderGate
+import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.work.SyncCheckpointStore
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
@@ -76,7 +78,8 @@ class SystemSmsImporterTest {
                 json = json,
             )
         val checkpoints = SyncCheckpointStore(dataStore)
-        val importer = SystemSmsImporter(context, repository, checkpoints, Dispatchers.IO)
+        val settings = FakeSettingsRepository()
+        val importer = SystemSmsImporter(context, repository, checkpoints, MutedSenderGate(settings), Dispatchers.IO)
     }
 
     @Before
@@ -239,6 +242,32 @@ class SystemSmsImporterTest {
             // result. The shade stays empty here.
             val notificationManager = context.getSystemService(NotificationManager::class.java)
             assertThat(shadowOf(notificationManager).size()).isEqualTo(0)
+        }
+
+    @Test
+    fun `catch-up excludes muted senders from the fresh count that drives the summary`() =
+        runBlocking<Unit> {
+            addMixedRows(1L..8L)
+            val env = Env("catchup-muted")
+            env.importer.importAll()
+            // The user muted the OTP sender. A mute must not smuggle its
+            // messages back into the shade via "N new messages": the summary
+            // never sees a sender, so the count is where the mute applies.
+            env.settings.setMutedSenders(setOf("BOOKMY"))
+
+            addInbox(9, "AX-BOOKMY", otpBody(9))
+            addInbox(10, "VM-HDFCBK", txnBody(10))
+            addInbox(11, "AX-BOOKMY", otpBody(11))
+            val result = env.importer.importAll()
+
+            // Every row is still imported, classified and extracted...
+            assertThat(result.inserted).isEqualTo(3)
+            val messages = env.db.messageDao().getAll()
+            assertThat(messages.single { it.systemSmsId == 9L }.extractedOtp).isEqualTo("1009")
+            assertThat(messages.single { it.systemSmsId == 11L }.isRead).isFalse()
+            // ...but only the unmuted sender's message counts as fresh.
+            assertThat(result.freshCount).isEqualTo(1)
+            assertThat(result.freshMessages.map { it.systemSmsId }).containsExactly(10L)
         }
 
     @Test

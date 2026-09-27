@@ -10,6 +10,7 @@ import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
@@ -22,6 +23,7 @@ import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.notification.IncomingMessageRouter
 import app.clearsms.notification.MessageNotifier
+import app.clearsms.notification.MutedSenderGate
 import app.clearsms.notification.NotificationSectionGate
 import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.OtpNotifier
@@ -170,9 +172,10 @@ class ConversationViewModelDelayedSendTest {
             IncomingMessageRouter(
                 context,
                 settings,
-                OtpNotifier(context, resolver, iconFactory, NotificationSectionGate(settings)),
-                MessageNotifier(context, resolver, iconFactory, NotificationSectionGate(settings)),
-                TransactionNotifier(context, json, resolver, iconFactory, NotificationSectionGate(settings)),
+                OtpNotifier(context, resolver, iconFactory, NotificationSectionGate(settings), MutedSenderGate(settings)),
+                MessageNotifier(context, resolver, iconFactory, NotificationSectionGate(settings), MutedSenderGate(settings)),
+                TransactionNotifier(context, json, resolver, iconFactory, NotificationSectionGate(settings), MutedSenderGate(settings)),
+                MutedSenderGate(settings),
                 CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             )
         val mmsInbound =
@@ -211,6 +214,7 @@ class ConversationViewModelDelayedSendTest {
                 attachmentDao = db.attachmentDao(),
                 mmsInbound = mmsInbound,
                 settings = settings,
+                senderMuter = SenderMuter(settings),
                 json = json,
                 appContext = context,
                 applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),

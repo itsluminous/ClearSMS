@@ -41,12 +41,28 @@ class CatchUpNotifierTest {
             override fun resolve(sender: String) = NotificationSender(name = sender, monogram = "X")
         }
 
+    private val settings = FakeSettingsRepository()
+
     private val router =
         IncomingMessageRouter(
             context = context,
-            settingsRepository = FakeSettingsRepository(),
-            otpNotifier = OtpNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
-            messageNotifier = MessageNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository())),
+            settingsRepository = settings,
+            otpNotifier =
+                OtpNotifier(
+                    context,
+                    rawResolver,
+                    iconFactory,
+                    NotificationSectionGate(FakeSettingsRepository()),
+                    MutedSenderGate(FakeSettingsRepository()),
+                ),
+            messageNotifier =
+                MessageNotifier(
+                    context,
+                    rawResolver,
+                    iconFactory,
+                    NotificationSectionGate(FakeSettingsRepository()),
+                    MutedSenderGate(FakeSettingsRepository()),
+                ),
             transactionNotifier =
                 TransactionNotifier(
                     context,
@@ -54,7 +70,9 @@ class CatchUpNotifierTest {
                     rawResolver,
                     iconFactory,
                     NotificationSectionGate(FakeSettingsRepository()),
+                    MutedSenderGate(FakeSettingsRepository()),
                 ),
+            mutedSenderGate = MutedSenderGate(settings),
             applicationScope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob()),
         )
     private val notifier = CatchUpNotifier(context, router, NotificationSectionGate(FakeSettingsRepository()))
@@ -135,6 +153,22 @@ class CatchUpNotifierTest {
         runBlocking {
             notifier.notifyFresh(listOf(personal(3).copy(isBlockedSender = true)), 1)
             assertThat(shade().size()).isEqualTo(0)
+        }
+
+    @Test
+    fun `a muted sender stays silent even when fresh - the catch-up path cannot smuggle it back`() =
+        runBlocking {
+            settings.setMutedSenders(setOf("HDFCBK", "9876543213"))
+            // Individual routes go through the live router, mute-gated there.
+            notifier.notifyFresh(listOf(personal(3), otpMessage), 2)
+            assertThat(shade().size()).isEqualTo(0)
+            // The unmuted control in the same batch still notifies.
+            notifier.notifyFresh(listOf(personal(3), personal(4)), 2)
+            assertThat(shade().size()).isEqualTo(1)
+            assertThat(shade().getNotification(NotificationIds.messageThread(4L))).isNotNull()
+            // The summary count is computed by SystemSmsImporter with muted
+            // senders already excluded (SystemSmsImporterTest); the notifier
+            // only ever receives a count that muted senders no longer inflate.
         }
 
     @Test

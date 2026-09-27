@@ -39,6 +39,8 @@ import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
@@ -210,6 +212,16 @@ fun ConversationScreen(
 
     // One-step sender rule (issue #38): the conversation already knows the
     // sender, so "Change category" here is a tap, a category, and Save.
+    // Mute confirmation: names what the mute covers (OTPs included, scam
+    // warnings kept) so the quiet that follows is never a mystery.
+    val mutedMessage = stringResource(R.string.mute_applied)
+    val unmutedMessage = stringResource(R.string.mute_removed)
+    LaunchedEffect(Unit) {
+        viewModel.muteEventFlow.collect { event ->
+            snackbarHostState.showSnackbar(if (event.muted) mutedMessage else unmutedMessage)
+        }
+    }
+
     var changeCategoryOpen by remember { mutableStateOf(false) }
     if (changeCategoryOpen && state.address.isNotBlank()) {
         SenderRuleDialog(
@@ -434,6 +446,36 @@ fun ConversationScreen(
                                 onClick = { changeCategoryOpen = true },
                                 icon = Icons.AutoMirrored.Outlined.Label,
                             )
+                            // Overflow: the per-sender notification toggle,
+                            // mirroring the inbox selection overflow. One
+                            // entry whose label reflects the current state.
+                            var menuOpen by remember { mutableStateOf(false) }
+                            TooltipIconButton(
+                                label = stringResource(R.string.action_more_options),
+                                onClick = { menuOpen = true },
+                                icon = Icons.Outlined.MoreVert,
+                            )
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (state.muted) R.string.action_unmute_sender else R.string.action_mute_sender,
+                                            ),
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (state.muted) Icons.Outlined.NotificationsActive else Icons.Outlined.NotificationsOff,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        viewModel.toggleMute()
+                                    },
+                                )
+                            }
                         }
                     },
                 )

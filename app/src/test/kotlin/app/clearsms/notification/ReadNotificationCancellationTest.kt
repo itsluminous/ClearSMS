@@ -63,9 +63,30 @@ class ReadNotificationCancellationTest {
         }
 
     private val transactionNotifier =
-        TransactionNotifier(context, json, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
-    private val messageNotifier = MessageNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
-    private val otpNotifier = OtpNotifier(context, rawResolver, iconFactory, NotificationSectionGate(FakeSettingsRepository()))
+        TransactionNotifier(
+            context,
+            json,
+            rawResolver,
+            iconFactory,
+            NotificationSectionGate(FakeSettingsRepository()),
+            MutedSenderGate(FakeSettingsRepository()),
+        )
+    private val messageNotifier =
+        MessageNotifier(
+            context,
+            rawResolver,
+            iconFactory,
+            NotificationSectionGate(FakeSettingsRepository()),
+            MutedSenderGate(FakeSettingsRepository()),
+        )
+    private val otpNotifier =
+        OtpNotifier(
+            context,
+            rawResolver,
+            iconFactory,
+            NotificationSectionGate(FakeSettingsRepository()),
+            MutedSenderGate(FakeSettingsRepository()),
+        )
 
     private val txMessage1 =
         MessageEntity(

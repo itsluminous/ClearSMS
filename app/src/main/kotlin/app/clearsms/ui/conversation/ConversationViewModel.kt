@@ -16,6 +16,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.ApplicationScope
 import app.clearsms.di.IoDispatcher
@@ -26,6 +27,7 @@ import app.clearsms.mms.MmsInbound
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.mms.StagedAttachment
+import app.clearsms.notification.MutedSenderGate
 import app.clearsms.notification.OtpClipboard
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SenderRepliability
@@ -147,7 +149,17 @@ data class ConversationUiState(
     val repliable: Boolean = false,
     /** Mirrors Settings → Appearance → Show extracted message details. */
     val showTransactionDetails: Boolean = true,
+    /**
+     * Whether this sender is muted (no notifications; messages still
+     * arrive) - drives the overflow's Mute/Unmute toggle label.
+     */
+    val muted: Boolean = false,
     val loaded: Boolean = false,
+)
+
+/** One-shot outcome of the overflow's mute toggle, surfaced as a snackbar. */
+data class MuteToggled(
+    val muted: Boolean,
 )
 
 /** One-shot send outcome consumed by the screen's snackbar. */
@@ -191,6 +203,7 @@ class ConversationViewModel
         private val attachmentDao: AttachmentDao,
         private val mmsInbound: MmsInbound,
         private val settings: SettingsRepository,
+        private val senderMuter: SenderMuter,
         private val json: Json,
         @ApplicationContext private val appContext: Context,
         @ApplicationScope private val applicationScope: CoroutineScope,
@@ -396,12 +409,31 @@ class ConversationViewModel
             viewModelScope.launch(ioDispatcher) { mmsInbound.retry(messageId) }
         }
 
+        /** One-shot mute/unmute confirmations for the overflow toggle. */
+        private val muteEvents = Channel<MuteToggled>(Channel.BUFFERED)
+        val muteEventFlow: Flow<MuteToggled> = muteEvents.receiveAsFlow()
+
+        /**
+         * Flips the mute for this thread's sender through [SenderMuter] -
+         * the same path the inbox and Settings use - and confirms it. A
+         * refused mute (blocked sender) is unreachable from an open
+         * conversation, since blocking bins the thread; it is not announced.
+         */
+        fun toggleMute() {
+            val sender = uiState.value.address
+            if (sender.isBlank()) return
+            viewModelScope.launch(ioDispatcher) {
+                senderMuter.toggle(sender)?.let { muteEvents.send(MuteToggled(muted = it)) }
+            }
+        }
+
         val uiState: StateFlow<ConversationUiState> =
             combine(
                 flow { emit(messageRepository.firstInThread(threadId)) },
                 settings.showRichAvatars,
                 settings.showTransactionDetails,
-            ) { first, richAvatars, showDetails ->
+                settings.mutedSenders,
+            ) { first, richAvatars, showDetails, mutedSenders ->
                 val display = first?.sender?.let { resolveDisplay(it) }
                 ConversationUiState(
                     title = display?.name.orEmpty(),
@@ -413,6 +445,7 @@ class ConversationViewModel
                     richAvatars = richAvatars,
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
                     showTransactionDetails = showDetails,
+                    muted = first?.sender?.let { MutedSenderGate.matches(mutedSenders, it) } ?: false,
                     loaded = first != null,
                 )
             }.flowOn(ioDispatcher)

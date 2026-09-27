@@ -11,6 +11,7 @@ import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.SenderBlocker
+import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
@@ -111,10 +112,12 @@ class InboxViewModelPagerTest {
             object : SettingsRepository by settings {
                 override val messageSortOrder: Flow<MessageSortOrder> = sortOrders
             }
+        val senderMuter = SenderMuter(settings)
         return InboxViewModel(
             messageRepository = repository,
             undoManager = UndoManager(repository, scope, { true }),
-            senderBlocker = SenderBlocker(settings, repository, InMemoryPreferencesDataStore(), scope),
+            senderBlocker = SenderBlocker(settings, repository, senderMuter, InMemoryPreferencesDataStore(), scope),
+            senderMuter = senderMuter,
             senderIdLookup = SenderIdLookup { null },
             contactsSource = ContactsSource(context),
             settings = dataStoreLike,

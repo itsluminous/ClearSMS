@@ -38,6 +38,8 @@ import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MarkEmailRead
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.Badge
@@ -169,6 +171,21 @@ fun InboxScreen(
         }
     }
 
+    // A mute must never be silent about itself: the confirmation names what
+    // it covers (OTPs included, scam warnings kept) so nobody later wonders
+    // why an OTP did not ping - the muted-bell glyph on the row is the
+    // standing reminder.
+    val mutedMessage = stringResource(R.string.mute_applied)
+    val unmutedMessage = stringResource(R.string.mute_removed)
+    LaunchedEffect(Unit) {
+        viewModel.muteEventFlow.collect { event ->
+            snackbarHostState.showSnackbar(
+                message = if (event.muted) mutedMessage else unmutedMessage,
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
+
     // Losing the default-SMS role means new messages silently stop arriving.
     // Re-check on every resume so returning from the system role dialog (or
     // from another SMS app's settings) updates the banner live. Every check
@@ -245,8 +262,17 @@ fun InboxScreen(
                     onToggleRead = viewModel::toggleReadSelected,
                     onTogglePin = viewModel::togglePinSelected,
                     onSelectAll = viewModel::selectAll,
+                    singleItemMuted =
+                        selection.count == 1 &&
+                            items.itemSnapshotList.items
+                                .firstOrNull { it.message.threadId == selection.selected.first() }
+                                ?.let(state::isMuted) == true,
                     onBlock = { sender ->
                         viewModel.block(sender)
+                        viewModel.exitSelection()
+                    },
+                    onToggleMute = { sender ->
+                        viewModel.toggleMute(sender)
                         viewModel.exitSelection()
                     },
                     onAlwaysSortAs = { sender, body ->
@@ -427,6 +453,7 @@ fun InboxScreen(
                                 richAvatars = state.richAvatars,
                                 showCategoryTag = state.filter.showsCategoryTags,
                                 selected = selected,
+                                muted = state.isMuted(item),
                                 onClick = {
                                     if (selection.active) {
                                         viewModel.toggleSelection(threadId)
@@ -468,6 +495,8 @@ private fun InboxSelectionBar(
     selection: SelectionState<Long>,
     allSelectedPinned: Boolean,
     singleItem: InboxItem?,
+    /** Whether [singleItem]'s sender is muted - flips the Mute entry to Unmute. */
+    singleItemMuted: Boolean,
     onClose: () -> Unit,
     onDelete: () -> Unit,
     onArchive: () -> Unit,
@@ -475,6 +504,7 @@ private fun InboxSelectionBar(
     onTogglePin: () -> Unit,
     onSelectAll: () -> Unit,
     onBlock: (sender: String) -> Unit,
+    onToggleMute: (sender: String) -> Unit,
     onAlwaysSortAs: (sender: String, body: String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -525,6 +555,7 @@ private fun InboxSelectionBar(
                     SelectionBarLayout.overflowActions(
                         allSelectedPinned = allSelectedPinned,
                         singleThread = singleItem != null,
+                        singleThreadMuted = singleItemMuted,
                     )
                 overflow.forEach { action ->
                     when (action) {
@@ -555,6 +586,26 @@ private fun InboxSelectionBar(
                                     onSelectAll()
                                 },
                             )
+                        // One toggle, labelled by the current state: a muted
+                        // thread offers Unmute, any other offers Mute.
+                        SelectionAction.MUTE, SelectionAction.UNMUTE -> {
+                            val unmute = action == SelectionAction.UNMUTE
+                            DropdownMenuItem(
+                                text = {
+                                    Text(stringResource(if (unmute) R.string.action_unmute_sender else R.string.action_mute_sender))
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (unmute) Icons.Outlined.NotificationsActive else Icons.Outlined.NotificationsOff,
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    singleItem?.let { onToggleMute(it.message.sender) }
+                                },
+                            )
+                        }
                         SelectionAction.BLOCK ->
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_block_sender)) },
@@ -777,6 +828,8 @@ private fun InboxRow(
     richAvatars: Boolean,
     showCategoryTag: Boolean,
     selected: Boolean,
+    /** Draws the muted-bell glyph: the visible reason this thread never notifies. */
+    muted: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -857,6 +910,18 @@ private fun InboxRow(
         trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (muted) {
+                        // The muted bell is not decoration: a thread that is
+                        // quiet with no visible cause reads as "messages
+                        // lost" (the lesson from the UNKNOWN category).
+                        Icon(
+                            Icons.Outlined.NotificationsOff,
+                            contentDescription = stringResource(R.string.inbox_muted),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
                     if (item.pinned) {
                         Icon(
                             Icons.Outlined.PushPin,

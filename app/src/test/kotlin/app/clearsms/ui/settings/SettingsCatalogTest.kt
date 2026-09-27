@@ -140,6 +140,8 @@ class SettingsCatalogTest {
                 "Archived messages",
                 "Recycle bin",
                 "Block & allow list",
+                // The gentler sibling of the block list, directly under it.
+                "Muted senders",
                 "Strip accents when sending",
                 "Delay before sending",
                 "Sending delay",
@@ -306,10 +308,13 @@ class SettingsCatalogTest {
                 "Visible pills",
                 // About: preview + share the in-app diagnostic log report.
                 "Share diagnostic logs",
+                // Messages: per-sender notification mute (messages arrive,
+                // nothing notifies), managed like the block list.
+                "Muted senders",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 22 additions = 54 rows.
+        // No row lost, none dropped: 32 survivors + 23 additions = 55 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear
@@ -340,6 +345,14 @@ class SettingsCatalogTest {
         assertThat(messagesRows.indexOf(SettingsItem.RECYCLE_BIN))
             .isEqualTo(messagesRows.indexOf(SettingsItem.ARCHIVED) + 1)
         assertThat(search("recycle bin")).containsExactly(SettingsItem.RECYCLE_BIN)
+    }
+
+    @Test
+    fun `muted senders row sits in Messages directly after the block list and is searchable`() {
+        val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
+        assertThat(messagesRows.indexOf(SettingsItem.MUTED_SENDERS))
+            .isEqualTo(messagesRows.indexOf(SettingsItem.BLOCK_LIST) + 1)
+        assertThat(search("muted")).containsExactly(SettingsItem.MUTED_SENDERS)
     }
 
     @Test

@@ -82,7 +82,7 @@ class SenderBlockerTest {
                 blockedSenders = { settings.blockedSenders.first() },
                 recycleBinEnabled = { binEnabled },
             )
-        blocker = SenderBlocker(settings, repository, uiStore, scope)
+        blocker = SenderBlocker(settings, repository, SenderMuter(settings), uiStore, scope)
     }
 
     @After

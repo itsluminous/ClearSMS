@@ -34,6 +34,7 @@ class MessageNotifier
         private val senderResolver: NotificationSenderResolver,
         private val iconFactory: SenderIconFactory,
         private val sectionGate: NotificationSectionGate,
+        private val mutedSenderGate: MutedSenderGate,
     ) {
         /**
          * Posts / updates the notification for [message]'s thread.
@@ -59,6 +60,9 @@ class MessageNotifier
             // A message notification is the Inbox section's voice: silent
             // while the user has switched that whole section off.
             if (!sectionGate.allows(StartDestination.INBOX)) return
+            // ...and silent for a sender the user muted. The router already
+            // decided this; the check here catches any caller around it.
+            if (!mutedSenderGate.allows(message.sender)) return
             Channels.ensureCreated(context)
             post(threadNotificationId(message.threadId), build(message, selected, channelId))
         }
@@ -118,6 +122,10 @@ class MessageNotifier
          * scam warning is still a notification ABOUT an incoming message -
          * an inbox surface - so it follows the Inbox flag like the plain
          * notification (the message itself stays flagged in-app either way).
+         *
+         * Deliberately NOT mute-gated: a muted sender that starts phishing is
+         * exactly when the warning matters, and muting is a request for
+         * quiet, not for being left defenceless (see [MutedSenderGate]).
          */
         suspend fun notifyScam(message: MessageEntity) {
             if (!sectionGate.allows(StartDestination.INBOX)) return

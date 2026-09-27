@@ -8,6 +8,7 @@ import app.clearsms.data.repository.MessageRepositoryImpl
 import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.model.sentTimestampOrNull
+import app.clearsms.notification.MutedSenderGate
 import app.clearsms.work.SyncCheckpointStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -46,6 +47,7 @@ class SystemSmsImporter
         @ApplicationContext private val context: Context,
         private val repository: MessageRepositoryImpl,
         private val checkpointStore: SyncCheckpointStore,
+        private val mutedSenderGate: MutedSenderGate,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         /** One raw row read from the system SMS provider. */
@@ -74,7 +76,10 @@ class SystemSmsImporter
          * @property inserted messages newly inserted by this run.
          * @property freshMessages up to [CatchUpNotifier.MAX_INDIVIDUAL]
          *   inserted INCOMING messages newer than the pre-run watermark -
-         *   messages the user has never been notified about. Empty on a
+         *   messages the user has never been notified about. Blocked, binned
+         *   and MUTED senders are excluded: none of them would have notified
+         *   live, and a muted sender counted here would otherwise resurface
+         *   in the "N new messages" summary the count drives. Empty on a
          *   fresh install (null watermark: all history is "old").
          * @property freshCount total count of such messages (may exceed
          *   [freshMessages]'s capped size).
@@ -162,11 +167,15 @@ class SystemSmsImporter
                     if (watermark != null) {
                         for (entity in insertedEntities) {
                             // deletedAt != null = keyword-binned at import:
-                            // never "fresh", never notified.
+                            // never "fresh", never notified. A muted sender is
+                            // not fresh either: the summary is the one catch-up
+                            // notification that never sees a sender, so the
+                            // mute must be applied where the count is made.
                             if (entity.isOutgoing ||
                                 entity.isBlockedSender ||
                                 entity.deletedAt != null ||
-                                entity.timestamp <= watermark
+                                entity.timestamp <= watermark ||
+                                mutedSenderGate.isMuted(entity.sender)
                             ) {
                                 continue
                             }

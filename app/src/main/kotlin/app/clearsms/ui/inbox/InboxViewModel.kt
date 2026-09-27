@@ -14,6 +14,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SenderBlocker
+import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.categorizer.SenderIdLookup
@@ -24,6 +25,7 @@ import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.sortTimestamp
+import app.clearsms.notification.MutedSenderGate
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -152,6 +154,21 @@ data class InboxUiState(
     val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
     /** Automatic post-update re-sort in flight; null hides the banner. */
     val sortingBanner: SortingBanner? = null,
+    /**
+     * Normalized muted-sender set, so each row can draw its muted-bell
+     * glyph and the selection overflow can label its Mute/Unmute toggle.
+     * Kept OUT of [InboxItem] on purpose: a mute toggle then re-renders the
+     * rows in place instead of rebuilding the pager.
+     */
+    val mutedSenders: Set<String> = emptySet(),
+) {
+    /** Whether [item]'s sender is muted (same normalization as the gate). */
+    fun isMuted(item: InboxItem): Boolean = MutedSenderGate.matches(mutedSenders, item.message.sender)
+}
+
+/** One-shot outcome of a mute toggle, surfaced as a snackbar so the change is never silent. */
+data class MuteUiEvent(
+    val muted: Boolean,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -162,6 +179,7 @@ class InboxViewModel
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
         private val senderBlocker: SenderBlocker,
+        private val senderMuter: SenderMuter,
         private val senderIdLookup: SenderIdLookup,
         private val contactsSource: ContactsSource,
         private val settings: SettingsRepository,
@@ -174,6 +192,10 @@ class InboxViewModel
         /** One-shot undo snackbar requests (delete/archive just staged). */
         private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
         val undoEventFlow: Flow<UndoUiEvent> = undoEvents.receiveAsFlow()
+
+        /** One-shot mute/unmute confirmations (the change must be visible, not just silent). */
+        private val muteEvents = Channel<MuteUiEvent>(Channel.BUFFERED)
+        val muteEventFlow: Flow<MuteUiEvent> = muteEvents.receiveAsFlow()
 
         /**
          * The PagingSource the running pager is currently loading from, so a
@@ -324,6 +346,7 @@ class InboxViewModel
             /** Filled by the later combine stages (combine() maxes out at 5 flows). */
             val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
             val showUnreadToggle: Boolean = true,
+            val mutedSenders: Set<String> = emptySet(),
         )
 
         private val chrome =
@@ -336,6 +359,7 @@ class InboxViewModel
             ) { rich, otpSize, start, end, pills -> Chrome(rich, otpSize, start, end, pills) }
                 .combine(settings.swipeDeadZone) { chrome, zone -> chrome.copy(swipeDeadZone = zone) }
                 .combine(settings.inboxUnreadToggle) { chrome, shown -> chrome.copy(showUnreadToggle = shown) }
+                .combine(settings.mutedSenders) { chrome, muted -> chrome.copy(mutedSenders = muted) }
 
         val uiState: StateFlow<InboxUiState> =
             combine(
@@ -358,6 +382,7 @@ class InboxViewModel
                     pills = chromeState.pills,
                     showUnreadToggle = chromeState.showUnreadToggle,
                     sortingBanner = sorting,
+                    mutedSenders = chromeState.mutedSenders,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState())
 
@@ -431,6 +456,21 @@ class InboxViewModel
          */
         fun block(sender: String) {
             viewModelScope.launch(ioDispatcher) { senderBlocker.block(sender) }
+        }
+
+        /**
+         * Mutes or unmutes [sender] through the SAME path Settings and the
+         * conversation use ([SenderMuter]), then confirms with a snackbar
+         * that also names what a mute covers (OTPs quiet, scam warnings
+         * kept) - a silent mute is exactly the "did my messages vanish?"
+         * confusion the unknown-sender channel taught us to avoid. Blocked
+         * senders never reach the inbox, so a refused mute (null) cannot
+         * happen here; it is simply not announced.
+         */
+        fun toggleMute(sender: String) {
+            viewModelScope.launch(ioDispatcher) {
+                senderMuter.toggle(sender)?.let { muteEvents.send(MuteUiEvent(muted = it)) }
+            }
         }
 
         /**
