@@ -525,6 +525,15 @@ private fun SettingsRowsHost(
                                     event.result.applied,
                                 ),
                             )
+                            if (event.result.rules > 0) {
+                                append(' ')
+                                append(
+                                    resources.getString(
+                                        R.string.settings_restore_settings_rules,
+                                        event.result.rules,
+                                    ),
+                                )
+                            }
                             if (event.result.skipped > 0) {
                                 append(' ')
                                 append(

@@ -3,8 +3,17 @@ package app.clearsms.data.backup
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import app.clearsms.data.db.RuleEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.prefs.SettingsRepositoryImpl
+import app.clearsms.data.rules.RuleAction
+import app.clearsms.data.rules.RuleDefinition
+import app.clearsms.data.rules.RuleDocument
+import app.clearsms.data.rules.RuleImporter
+import app.clearsms.data.rules.RuleMatch
+import app.clearsms.data.rules.RuleSources
+import app.clearsms.data.rules.toDefinition
+import app.clearsms.data.rules.toEntity
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
@@ -27,7 +36,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Rule
@@ -35,6 +46,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 class SettingsBackupManagerTest {
     @get:Rule
@@ -53,7 +65,77 @@ class SettingsBackupManagerTest {
             tmp.newFile("$name.preferences_pb")
         }
 
-    private fun manager(dataStore: DataStore<Preferences>) = SettingsBackupManager(dataStore, json, appVersion = "1.2.3-test")
+    /**
+     * In-memory [UserRuleStore] standing in for the rules table. It holds
+     * BUNDLED rows too (seeded by [seedBundled]) so tests can prove the
+     * backup never reads or writes them; [userRules] filters by source
+     * exactly like the Room query does.
+     */
+    private class FakeUserRuleStore : UserRuleStore {
+        val rows = linkedMapOf<String, RuleEntity>()
+        var upserts = 0
+
+        override suspend fun userRules(): List<RuleEntity> = rows.values.filter { it.source == RuleSources.USER }
+
+        override suspend fun upsertUserRules(rules: List<RuleEntity>) {
+            upserts++
+            rules.forEach { rows[it.id] = it }
+        }
+
+        fun seedBundled(vararg ids: String) {
+            ids.forEach { id ->
+                rows[id] =
+                    RuleEntity(
+                        id = id,
+                        name = "Bundled $id",
+                        priority = 10,
+                        matchJson = """{"sender_pattern":"BUNDLE"}""",
+                        actionJson = """{"category":"important"}""",
+                        isUserDefined = false,
+                        source = RuleSources.BUILTIN,
+                        createdAt = 1L,
+                    )
+            }
+        }
+    }
+
+    private val ruleStore = FakeUserRuleStore()
+
+    private fun manager(
+        dataStore: DataStore<Preferences>,
+        store: UserRuleStore = ruleStore,
+    ) = SettingsBackupManager(dataStore, json, appVersion = "1.2.3-test", userRules = store, ruleImporter = RuleImporter(json))
+
+    /** A synthetic user rule with every RuleDefinition field populated. */
+    private fun userRule(
+        id: String,
+        category: String = "important",
+        senderPattern: String = "^SYNTHBANK$",
+        enabled: Boolean = true,
+    ): RuleEntity =
+        RuleDefinition(
+            id = id,
+            name = "Synthetic $id",
+            priority = 900,
+            match =
+                RuleMatch(
+                    senderPattern = senderPattern,
+                    bodyPattern = "debited by INR ([0-9.,]+) on (\\d{2}-\\d{2}-\\d{4})",
+                    bodyMustContain = listOf("debited"),
+                    bodyMustNotContain = listOf("reversed"),
+                    guardsNone = listOf("promo"),
+                ),
+            action =
+                RuleAction(
+                    category = category,
+                    subCategory = "debit",
+                    extract = mapOf("amount" to "$1", "date" to "$2"),
+                    extractTypes = mapOf("date" to "date"),
+                ),
+            createdAt = "2026-01-02T03:04:05Z",
+        ).toEntity(json, RuleSources.USER).copy(enabled = enabled)
+
+    private fun RuleEntity.definition(): RuleDefinition = checkNotNull(toDefinition(json))
 
     /** Sets every backed-up preference to a value that differs from its default. */
     private suspend fun setAllNonDefaults(repo: SettingsRepositoryImpl) {
@@ -131,10 +213,24 @@ class SettingsBackupManagerTest {
         assertThat(repo.blockedSenders.first()).isEqualTo(setOf("JIOPAY", "5551234567"))
     }
 
-    private fun export(dataStore: DataStore<Preferences>): ByteArray =
+    private fun export(
+        dataStore: DataStore<Preferences>,
+        store: UserRuleStore = ruleStore,
+    ): ByteArray =
         runBlocking {
-            ByteArrayOutputStream().also { manager(dataStore).exportTo(it) }.toByteArray()
+            ByteArrayOutputStream().also { manager(dataStore, store).exportTo(it) }.toByteArray()
         }
+
+    private fun exportedDocument(bytes: ByteArray): JsonObject = json.decodeFromString(JsonObject.serializer(), bytes.decodeToString())
+
+    private fun exportedRules(bytes: ByteArray): RuleDocument =
+        json.decodeFromJsonElement(RuleDocument.serializer(), checkNotNull(exportedDocument(bytes)["rules"]))
+
+    private fun restore(
+        dataStore: DataStore<Preferences>,
+        text: String,
+        store: UserRuleStore = ruleStore,
+    ): SettingsRestoreResult = runBlocking { manager(dataStore, store).importFrom(ByteArrayInputStream(text.toByteArray())) }
 
     private fun exportedSettings(bytes: ByteArray): JsonObject {
         val document = json.decodeFromString(JsonObject.serializer(), bytes.decodeToString())
@@ -352,7 +448,7 @@ class SettingsBackupManagerTest {
             SettingsRepositoryImpl(dataStore).setTheme(ThemeMode.DARK)
             val document = json.decodeFromString(JsonObject.serializer(), export(dataStore).decodeToString())
             assertThat(document["type"]?.toString()).isEqualTo("\"clearsms-settings\"")
-            assertThat(document["formatVersion"]?.toString()).isEqualTo("1")
+            assertThat(document["formatVersion"]?.toString()).isEqualTo("2")
             assertThat(document["appVersion"]?.toString()).isEqualTo("\"1.2.3-test\"")
             assertThat(document.keys).contains("createdAt")
         }
@@ -382,4 +478,337 @@ class SettingsBackupManagerTest {
             assertThat(order.take(2)).isEqualTo(listOf(InboxPill.OTP, InboxPill.PERSONAL))
             assertThat(order).containsExactlyElementsIn(InboxPill.entries)
         }
+
+    // ---- rules section -------------------------------------------------
+
+    @Test
+    fun `user rules and the pill customisation round-trip with the preferences`() =
+        runBlocking {
+            val source = newDataStore("rules-source")
+            setAllNonDefaults(SettingsRepositoryImpl(source))
+            ruleStore.seedBundled("generic-scam-01", "hdfc-debit-01")
+            ruleStore.upsertUserRules(listOf(userRule("user_aaaa1111"), userRule("user_bbbb2222", category = "spam")))
+            val bytes = export(source)
+
+            // The rules section is the standalone rules-document shape and
+            // carries every user rule with its fields intact.
+            val exported = exportedRules(bytes)
+            assertThat(exported.version).isEqualTo(SettingsBackupManager.RULES_SECTION_VERSION)
+            assertThat(exported.rules.map { it.id }).containsExactly("user_aaaa1111", "user_bbbb2222")
+            assertThat(exported.rules.first { it.id == "user_aaaa1111" })
+                .isEqualTo(ruleStore.rows.getValue("user_aaaa1111").definition())
+
+            val target = newDataStore("rules-target")
+            val targetStore = FakeUserRuleStore().apply { seedBundled("generic-scam-01", "hdfc-debit-01") }
+            val result = manager(target, targetStore).importFrom(ByteArrayInputStream(bytes))
+
+            assertAllNonDefaults(SettingsRepositoryImpl(target))
+            assertThat(result.applied).isEqualTo(SettingsBackupCatalog.entries.size)
+            assertThat(result.skipped).isEqualTo(0)
+            assertThat(result.rules).isEqualTo(2)
+            // Fresh device: no user rule had those ids, so they land in the
+            // user namespace, as user rules, with category/pattern/extracts
+            // exactly as exported.
+            val restored = targetStore.userRules().associateBy { it.id }
+            assertThat(restored.keys).containsExactly("user:user_aaaa1111", "user:user_bbbb2222")
+            restored.values.forEach {
+                assertThat(it.source).isEqualTo(RuleSources.USER)
+                assertThat(it.isUserDefined).isTrue()
+                assertThat(it.enabled).isTrue()
+            }
+            val original = ruleStore.rows.getValue("user_aaaa1111").definition()
+            val copy = restored.getValue("user:user_aaaa1111").definition()
+            assertThat(copy.match).isEqualTo(original.match)
+            assertThat(copy.action).isEqualTo(original.action)
+            assertThat(copy.action.category).isEqualTo("important")
+            assertThat(copy.action.extract).containsExactly("amount", "$1", "date", "$2")
+            assertThat(copy.priority).isEqualTo(900)
+            assertThat(copy.name).isEqualTo("Synthetic user_aaaa1111")
+            assertThat(restored.getValue("user:user_aaaa1111").createdAt)
+                .isEqualTo(ruleStore.rows.getValue("user_aaaa1111").createdAt)
+            assertThat(
+                restored
+                    .getValue("user:user_bbbb2222")
+                    .definition()
+                    .action.category,
+            ).isEqualTo("spam")
+            // Bundled rows on the target are byte-for-byte what they were.
+            assertThat(targetStore.rows.getValue("generic-scam-01").source).isEqualTo(RuleSources.BUILTIN)
+            assertThat(targetStore.rows.getValue("hdfc-debit-01").name).isEqualTo("Bundled hdfc-debit-01")
+        }
+
+    @Test
+    fun `bundled rules are never exported - only source=user rows leave the device`() =
+        runBlocking<Unit> {
+            val dataStore = newDataStore("bundled-export")
+            ruleStore.seedBundled("generic-scam-01", "hdfc-debit-01", "meesho-otp-01")
+            ruleStore.upsertUserRules(listOf(userRule("user_cccc3333")))
+            // A community row is not a user row either.
+            ruleStore.rows["community-x-01"] =
+                userRule("community-x-01").copy(isUserDefined = false, source = RuleSources.COMMUNITY)
+
+            val exported = exportedRules(export(dataStore))
+
+            assertThat(exported.rules.map { it.id }).containsExactly("user_cccc3333")
+        }
+
+    @Test
+    fun `no bundled rule id lives in the user namespace, so a namespaced restore can never hit one`() {
+        val asset =
+            listOf(File("src/main/assets/default_rules.json"), File("app/src/main/assets/default_rules.json"))
+                .first { it.exists() }
+        val bundled = json.decodeFromString(RuleDocument.serializer(), asset.readText())
+        assertThat(bundled.rules).isNotEmpty()
+        bundled.rules.forEach { rule ->
+            assertThat(rule.id).doesNotContain(RuleEntity.USER_ID_PREFIX)
+            assertThat(SettingsBackupManager.resolveRestoredRuleId(rule.id, emptySet())).isNotEqualTo(rule.id)
+        }
+    }
+
+    @Test
+    fun `a restored rule whose id is a bundled rule id is namespaced, the bundled row is untouched`() =
+        runBlocking {
+            val dataStore = newDataStore("bundled-collision")
+            ruleStore.seedBundled("generic-scam-01")
+            val bundledBefore = ruleStore.rows.getValue("generic-scam-01")
+            val crafted =
+                """
+                {"type":"clearsms-settings","formatVersion":2,"settings":{},
+                 "rules":{"version":"1.0","rules":[
+                   {"id":"generic-scam-01","priority":999,
+                    "match":{"sender_pattern":"^EVIL$"},"action":{"category":"personal"}}]}}
+                """.trimIndent()
+
+            val result = restore(dataStore, crafted)
+
+            assertThat(result.rules).isEqualTo(1)
+            assertThat(ruleStore.rows.getValue("generic-scam-01")).isEqualTo(bundledBefore)
+            val planted = ruleStore.rows.getValue("user:generic-scam-01")
+            assertThat(planted.source).isEqualTo(RuleSources.USER)
+            assertThat(planted.isUserDefined).isTrue()
+            assertThat(planted.definition().action.category).isEqualTo("personal")
+        }
+
+    @Test
+    fun `restore merges - same-id user rules refresh in place, later rules survive, nothing is deleted`() =
+        runBlocking {
+            val dataStore = newDataStore("merge")
+            ruleStore.seedBundled("hdfc-debit-01")
+            // On the device: an older copy of rule A, plus rule B created
+            // AFTER the backup was taken.
+            ruleStore.upsertUserRules(
+                listOf(
+                    userRule("user_aaaa1111", category = "promotional"),
+                    userRule("user_bbbb2222", category = "personal"),
+                ),
+            )
+            val fileRuleA = userRule("user_aaaa1111", category = "important").definition()
+            val fileRuleC = userRule("user_cccc3333", category = "spam").definition()
+            val file =
+                buildDocument(
+                    RuleDocument(version = "1.0", rules = listOf(fileRuleA, fileRuleC)),
+                    settings = """{"theme":"DARK"}""",
+                )
+
+            val result = restore(dataStore, file)
+
+            assertThat(result.rules).isEqualTo(2)
+            assertThat(result.applied).isEqualTo(1)
+            val user = ruleStore.userRules().associateBy { it.id }
+            // A: existing user id -> updated in place under the SAME id.
+            assertThat(
+                user
+                    .getValue("user_aaaa1111")
+                    .definition()
+                    .action.category,
+            ).isEqualTo("important")
+            assertThat(user.keys).doesNotContain("user:user_aaaa1111")
+            // B: created after the backup -> untouched.
+            assertThat(
+                user
+                    .getValue("user_bbbb2222")
+                    .definition()
+                    .action.category,
+            ).isEqualTo("personal")
+            // C: new to this device -> added in the user namespace.
+            assertThat(
+                user
+                    .getValue("user:user_cccc3333")
+                    .definition()
+                    .action.category,
+            ).isEqualTo("spam")
+            assertThat(user.keys).hasSize(3)
+            assertThat(ruleStore.rows.getValue("hdfc-debit-01").source).isEqualTo(RuleSources.BUILTIN)
+            assertThat(SettingsRepositoryImpl(dataStore).theme.first()).isEqualTo(ThemeMode.DARK)
+        }
+
+    @Test
+    fun `restoring the same file twice is idempotent - no duplicate rules`() =
+        runBlocking<Unit> {
+            val dataStore = newDataStore("idempotent")
+            val file = buildDocument(RuleDocument(version = "1.0", rules = listOf(userRule("user_dddd4444").definition())))
+
+            restore(dataStore, file)
+            val afterFirst = ruleStore.rows.toMap()
+            restore(dataStore, file)
+
+            assertThat(ruleStore.rows).isEqualTo(afterFirst)
+            assertThat(ruleStore.rows.keys).containsExactly("user:user_dddd4444")
+        }
+
+    @Test
+    fun `disabled user rules stay disabled across the round trip`() =
+        runBlocking {
+            val dataStore = newDataStore("disabled")
+            ruleStore.upsertUserRules(listOf(userRule("user_on"), userRule("user_off", enabled = false)))
+            val bytes = export(dataStore)
+            val disabled = exportedDocument(bytes)["disabledRuleIds"] as JsonArray
+            assertThat(disabled.map { (it as JsonPrimitive).content }).containsExactly("user_off")
+
+            val targetStore = FakeUserRuleStore()
+            manager(newDataStore("disabled-target"), targetStore).importFrom(ByteArrayInputStream(bytes))
+
+            assertThat(targetStore.rows.getValue("user:user_on").enabled).isTrue()
+            assertThat(targetStore.rows.getValue("user:user_off").enabled).isFalse()
+        }
+
+    @Test
+    fun `a 0-20-0 preferences-only backup (format 1, no rules) restores cleanly`() =
+        runBlocking {
+            val dataStore = newDataStore("legacy")
+            ruleStore.seedBundled("generic-scam-01")
+            ruleStore.upsertUserRules(listOf(userRule("user_keep")))
+            val before = ruleStore.rows.toMap()
+            val upsertsBefore = ruleStore.upserts
+            val legacy =
+                """
+                {"type":"clearsms-settings","formatVersion":1,"appVersion":"0.20.0","createdAt":1,
+                 "settings":{"theme":"DARK","inbox_pill_order":"OTP,PERSONAL","blocked_senders":["JIOPAY"]}}
+                """.trimIndent()
+
+            val result = restore(dataStore, legacy)
+
+            assertThat(result).isEqualTo(SettingsRestoreResult(applied = 3, skipped = 0, rules = 0))
+            assertThat(SettingsRepositoryImpl(dataStore).theme.first()).isEqualTo(ThemeMode.DARK)
+            assertThat(ruleStore.rows).isEqualTo(before)
+            assertThat(ruleStore.upserts).isEqualTo(upsertsBefore)
+        }
+
+    @Test
+    fun `a corrupt, truncated or unsafe rules section rejects the WHOLE file - no rule and no preference applied`() {
+        val dataStore = newDataStore("bad-rules")
+        runBlocking { SettingsRepositoryImpl(dataStore).setTheme(ThemeMode.LIGHT) }
+        ruleStore.seedBundled("generic-scam-01")
+        runBlocking { ruleStore.upsertUserRules(listOf(userRule("user_keep"))) }
+        val before = ruleStore.rows.toMap()
+        val upsertsBefore = ruleStore.upserts
+        val prefix = """{"type":"clearsms-settings","formatVersion":2,"settings":{"theme":"DARK"},"""
+        val badSections =
+            listOf(
+                // wrong type
+                """"rules":"not a rules document"}""",
+                // rules array holding a non-rule (missing action)
+                """"rules":{"version":"1.0","rules":[{"id":"x"}]}}""",
+                // rule that fails the importer's safety validation (ReDoS wrapper)
+                """"rules":{"version":"1.0","rules":[{"id":"x","match":{"body_pattern":".*loan"},"action":{"category":"spam"}}]}}""",
+                // truncated mid-rule
+                """"rules":{"version":"1.0","rules":[{"id":"x","match":{"body_pat""",
+            )
+        for (section in badSections) {
+            assertThrows(IllegalArgumentException::class.java) { restore(dataStore, prefix + section) }
+        }
+        runBlocking {
+            assertThat(SettingsRepositoryImpl(dataStore).theme.first()).isEqualTo(ThemeMode.LIGHT)
+        }
+        assertThat(ruleStore.rows).isEqualTo(before)
+        assertThat(ruleStore.upserts).isEqualTo(upsertsBefore)
+    }
+
+    @Test
+    fun `the rules section cannot smuggle an excluded preference back in`() =
+        runBlocking {
+            val dataStore = newDataStore("smuggle")
+            val crafted =
+                """
+                {"type":"clearsms-settings","formatVersion":2,
+                 "settings":{"theme":"DARK"},
+                 "rules":{"version":"1.0","show_balance":true,"settings":{"show_balance":true},
+                          "rules":[{"id":"show_balance","match":{"sender_pattern":"^X$"},
+                                    "action":{"category":"important","extract":{"show_balance":"true"}}}]},
+                 "disabledRuleIds":["show_balance", 42, {"show_balance":true}]}
+                """.trimIndent()
+
+            val result = restore(dataStore, crafted)
+
+            val repo = SettingsRepositoryImpl(dataStore)
+            assertThat(repo.showBalance.first()).isFalse()
+            assertThat(repo.theme.first()).isEqualTo(ThemeMode.DARK)
+            assertThat(
+                dataStore.data
+                    .first()
+                    .asMap()
+                    .keys
+                    .map { it.name },
+            ).containsExactly("theme")
+            assertThat(result).isEqualTo(SettingsRestoreResult(applied = 1, skipped = 0, rules = 1))
+            // It only ever became a (disabled) user rule in the user namespace.
+            val planted = ruleStore.rows.getValue("user:show_balance")
+            assertThat(planted.source).isEqualTo(RuleSources.USER)
+            assertThat(planted.enabled).isFalse()
+        }
+
+    @Test
+    fun `a file claiming builtin provenance is still restored as user rules`() =
+        runBlocking {
+            val dataStore = newDataStore("provenance-claim")
+            val crafted =
+                """
+                {"type":"clearsms-settings","formatVersion":2,"settings":{},
+                 "rules":{"version":"1.0","rules":[
+                   {"id":"hdfc-debit-01","source":"builtin","isUserDefined":false,
+                    "match":{"sender_pattern":"^HDFCBK$"},"action":{"category":"important"}}]}}
+                """.trimIndent()
+
+            restore(dataStore, crafted)
+
+            assertThat(ruleStore.rows.keys).containsExactly("user:hdfc-debit-01")
+            assertThat(ruleStore.rows.getValue("user:hdfc-debit-01").source).isEqualTo(RuleSources.USER)
+        }
+
+    /**
+     * Coverage tripwire for the rule payload, the sibling of the preference
+     * one: every column of [RuleEntity] must be either carried by the rules
+     * section (through [RuleDefinition]) or explicitly forced on restore, so
+     * a new column can never be silently dropped from the backup.
+     */
+    @Test
+    fun `every RuleEntity column is either carried in the rules section or explicitly forced on restore`() {
+        val columns =
+            RuleEntity::class
+                .constructors
+                .first()
+                .parameters
+                .map { checkNotNull(it.name) }
+        val carried = setOf("id", "name", "priority", "matchJson", "actionJson", "createdAt", "enabled")
+        val forced = setOf("source", "isUserDefined")
+        assertThat(carried.intersect(forced)).isEmpty()
+        assertThat(carried + forced).containsExactlyElementsIn(columns)
+
+        // And the carried ones really do survive: every field of a fully
+        // populated rule is equal after export -> import on a fresh store.
+        val rule = userRule("user_full", enabled = false)
+        runBlocking { ruleStore.upsertUserRules(listOf(rule)) }
+        val bytes = export(newDataStore("rule-coverage"))
+        val target = FakeUserRuleStore()
+        runBlocking { manager(newDataStore("rule-coverage-target"), target).importFrom(ByteArrayInputStream(bytes)) }
+        val restored = target.rows.getValue("user:user_full")
+        assertThat(restored.copy(id = rule.id)).isEqualTo(rule)
+    }
+
+    private fun buildDocument(
+        rules: RuleDocument,
+        settings: String = "{}",
+    ): String =
+        """{"type":"clearsms-settings","formatVersion":2,"settings":$settings,""" +
+            """"rules":${json.encodeToString(RuleDocument.serializer(), rules)}}"""
 }

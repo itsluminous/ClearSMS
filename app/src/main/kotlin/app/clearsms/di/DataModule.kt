@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import app.clearsms.BuildConfig
 import app.clearsms.data.backup.BackupManager
+import app.clearsms.data.backup.RoomUserRuleStore
 import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.db.AccountDao
 import app.clearsms.data.db.AttachmentDao
@@ -296,7 +297,15 @@ object DataModule {
     fun provideSettingsBackupManager(
         dataStore: DataStore<Preferences>,
         json: Json,
-    ): SettingsBackupManager = SettingsBackupManager(dataStore, json, BuildConfig.VERSION_NAME)
+        database: ClearSmsDatabase,
+    ): SettingsBackupManager =
+        SettingsBackupManager(
+            dataStore,
+            json,
+            BuildConfig.VERSION_NAME,
+            RoomUserRuleStore(database),
+            RuleImporter(json),
+        )
 
     /** Test seam for [hotGate] - the contract is pinned by HotGateTest. */
     @androidx.annotation.VisibleForTesting

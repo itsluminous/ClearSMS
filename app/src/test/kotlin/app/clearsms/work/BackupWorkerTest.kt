@@ -17,10 +17,12 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.data.backup.BackupManager
+import app.clearsms.data.backup.RoomUserRuleStore
 import app.clearsms.data.backup.SettingsBackupManager
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepositoryImpl
+import app.clearsms.data.rules.RuleImporter
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.ui.common.BackupFrequency
@@ -123,7 +125,8 @@ class BackupWorkerTest {
                 encodeDefaults = true
             }
         val manager = BackupManager(db, json)
-        val settingsManager = SettingsBackupManager(settingsDataStore, json, "test")
+        val settingsManager =
+            SettingsBackupManager(settingsDataStore, json, "test", RoomUserRuleStore(db), RuleImporter(json))
         return TestListenableWorkerBuilder<BackupWorker>(context)
             .setWorkerFactory(
                 object : WorkerFactory() {
@@ -170,7 +173,11 @@ class BackupWorkerTest {
             // DB backup carries the schema marker, the settings backup its own
             // document marker.
             assertThat(soleDocument(BackupFileNames.AUTO_MESSAGES_PREFIX)).contains("\"messages\"")
-            assertThat(soleDocument(BackupFileNames.AUTO_SETTINGS_PREFIX)).contains("\"settings\"")
+            val settingsDocument = soleDocument(BackupFileNames.AUTO_SETTINGS_PREFIX)
+            assertThat(settingsDocument).contains("\"settings\"")
+            // The automatic settings backup carries the user's rules too, so
+            // a scheduled backup restores the same setup a manual one does.
+            assertThat(settingsDocument).contains("\"rules\"")
         }
 
     @Test
