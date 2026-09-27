@@ -430,6 +430,11 @@
     <string name="rules_search_hint">Search rules</string>
     <string name="rules_search_clear">Clear rules search</string>
     <string name="rules_search_empty">No rules match \"%1$s\"</string>
+    <string name="rules_row_malformed">This rule can\'t be read - delete it and create it again</string>
+    <plurals name="rules_unreadable_count">
+        <item quantity="one">%d disabled rule could not be read and is not shown</item>
+        <item quantity="other">%d disabled rules could not be read and are not shown</item>
+    </plurals>
     <string name="settings_manage_rules">Manage rules</string>
     <string name="settings_manage_rules_summary">View, create, import, export and share rules</string>
     <string name="settings_section_signature">Signature</string>

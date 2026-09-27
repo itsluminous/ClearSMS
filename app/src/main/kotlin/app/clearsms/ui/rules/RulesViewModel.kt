@@ -2,9 +2,8 @@ package app.clearsms.ui.rules
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.clearsms.data.db.RuleEntity
 import app.clearsms.data.repository.RuleRepository
-import app.clearsms.data.rules.RuleDefinition
+import app.clearsms.data.rules.toDefinition
 import app.clearsms.di.IoDispatcher
 import app.clearsms.ui.common.UiPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -28,9 +28,23 @@ data class RuleItem(
     val name: String,
     val isUserDefined: Boolean,
     val enabled: Boolean,
-    /** For disabled rules: the parked definition JSON needed to re-enable. */
+    /**
+     * Legacy only: a rule disabled by an older version lives in preferences
+     * as a `source|definitionJson` entry rather than as a disabled row. Kept
+     * so such rules still show (and can be deleted) until
+     * [RulesViewModel] has folded them into the table.
+     */
     val parkedEntry: String? = null,
-)
+    /**
+     * The row's stored JSON does not decode. The rule is shown in a
+     * degraded form - name, id, delete - and cannot be opened, because the
+     * only useful thing to do with it is remove it.
+     */
+    val malformed: Boolean = false,
+) {
+    /** Whether tapping the row can show anything: enabled, in the table, and decodable. */
+    val canOpen: Boolean get() = enabled && parkedEntry == null && !malformed
+}
 
 /**
  * Read-only view of a rule's full definition, shown when a BUNDLED rule is
@@ -57,6 +71,8 @@ data class RulesUiState(
     val builtinRules: List<RuleItem> = emptyList(),
     val userRules: List<RuleItem> = emptyList(),
     val loaded: Boolean = false,
+    /** Legacy parked entries that could not be decoded and were skipped. */
+    val unreadable: Int = 0,
 )
 
 /** One-off UI events (export payloads, import outcomes). */
@@ -92,7 +108,10 @@ class RulesViewModel
         val ruleDetail: StateFlow<RuleDetail?> = detail.asStateFlow()
 
         init {
-            viewModelScope.launch(ioDispatcher) { ruleRepository.ensureBundledRulesLoaded() }
+            viewModelScope.launch(ioDispatcher) {
+                ruleRepository.ensureBundledRulesLoaded()
+                migrateParkedRules()
+            }
         }
 
         val uiState: StateFlow<RulesUiState> =
@@ -100,49 +119,73 @@ class RulesViewModel
                 ruleRepository.observeRules(),
                 uiPrefs.disabledRules,
             ) { rules, disabled ->
-                val disabledItems = disabled.mapNotNull(::parkedToItem)
-                val active =
-                    rules.map { rule ->
-                        RuleItem(
-                            id = rule.id,
-                            name = rule.name,
-                            isUserDefined = rule.isUserDefined,
-                            enabled = true,
-                        )
-                    }
-                val all = active + disabledItems
-                RulesUiState(
-                    builtinRules = all.filter { !it.isUserDefined }.sortedBy { it.name },
-                    userRules = all.filter { it.isUserDefined }.sortedBy { it.name },
-                    loaded = true,
-                )
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RulesUiState())
+                RulesUiStateBuilder.build(rules, disabled, json)
+            }.flowOn(ioDispatcher)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RulesUiState())
 
         /**
-         * Disabling removes the rule from the engine's table and parks its
-         * definition in preferences; enabling restores it.
+         * Enabling/disabling flips the row's `enabled` flag in place (the
+         * engine reads only enabled rows). One write to one store: the old
+         * park-in-preferences-and-delete-the-row dance needed two writes to
+         * two stores, and a process death between them left the rule both in
+         * the table and in the parked set - a duplicate list key that
+         * crashed this page on every open (issue #43). It also re-inserted a
+         * re-enabled builtin as a USER rule, which the next reseed clobbered.
          */
         fun setEnabled(
             item: RuleItem,
             enabled: Boolean,
         ) {
             viewModelScope.launch(ioDispatcher) {
-                if (!enabled) {
-                    val definition = findDefinition(item.id) ?: return@launch
-                    val source = if (item.isUserDefined) "user" else "builtin"
-                    uiPrefs.addDisabledRule("$source|" + json.encodeToString(RuleDefinition.serializer(), definition))
-                    ruleRepository.deleteRule(item.id)
-                } else {
-                    val entry = item.parkedEntry ?: return@launch
-                    val definition = json.decodeFromString(RuleDefinition.serializer(), entry.substringAfter('|'))
-                    ruleRepository.addUserRule(definition)
+                val entry = item.parkedEntry
+                if (entry != null) {
+                    // Legacy parked rule not yet folded into the table: fold
+                    // it now with the requested state, then drop the entry.
+                    val (source, definition) = RulesUiStateBuilder.parkedDefinition(entry, json) ?: return@launch
+                    ruleRepository.restoreParkedRule(definition, source, enabled)
                     uiPrefs.removeDisabledRule(entry)
+                } else {
+                    ruleRepository.setRuleEnabled(item.id, enabled)
                 }
             }
         }
 
+        /**
+         * Deletes the row AND any legacy parked copy, so a rule the page
+         * shows can always be removed whichever store it lives in.
+         */
         fun deleteUserRule(id: String) {
-            viewModelScope.launch(ioDispatcher) { ruleRepository.deleteRule(id) }
+            viewModelScope.launch(ioDispatcher) {
+                ruleRepository.deleteRule(id)
+                uiPrefs.disabledRules
+                    .first()
+                    .filter { RulesUiStateBuilder.parkedDefinition(it, json)?.second?.id == id }
+                    .forEach { uiPrefs.removeDisabledRule(it) }
+            }
+        }
+
+        /**
+         * One-shot fold of legacy parked entries into the table as disabled
+         * rows (original source preserved). An entry whose id already has a
+         * row is stale - the row is what the engine sees - and is simply
+         * dropped; an unreadable entry is left alone and counted in the UI.
+         */
+        private suspend fun migrateParkedRules() {
+            val parked = uiPrefs.disabledRules.first()
+            if (parked.isEmpty()) return
+            val existing =
+                ruleRepository
+                    .observeRules()
+                    .first()
+                    .map { it.id }
+                    .toSet()
+            for (entry in parked) {
+                val (source, definition) = RulesUiStateBuilder.parkedDefinition(entry, json) ?: continue
+                if (definition.id !in existing) {
+                    ruleRepository.restoreParkedRule(definition, source, enabled = false)
+                }
+                uiPrefs.removeDisabledRule(entry)
+            }
         }
 
         /** Opens the read-only detail view for the rule with [id]. */
@@ -154,7 +197,7 @@ class RulesViewModel
                         .first()
                         .firstOrNull { it.id == id }
                 detail.value =
-                    entity?.let(::entityToDefinition)?.let { definition ->
+                    entity?.toDefinition(json)?.let { definition ->
                         RuleDetail(
                             id = definition.id,
                             name = definition.name ?: definition.id,
@@ -200,53 +243,6 @@ class RulesViewModel
                     }
                 events.emit(RulesEvent.ImportFinished(success))
             }
-        }
-
-        private suspend fun findDefinition(id: String): RuleDefinition? =
-            ruleRepository
-                .observeRules()
-                .first()
-                .firstOrNull { it.id == id }
-                ?.let(::entityToDefinition)
-
-        private fun entityToDefinition(entity: RuleEntity): RuleDefinition? =
-            try {
-                RuleDefinition(
-                    id = entity.id,
-                    name = entity.name,
-                    priority = entity.priority,
-                    match =
-                        json.decodeFromString(
-                            app.clearsms.data.rules.RuleMatch
-                                .serializer(),
-                            entity.matchJson,
-                        ),
-                    action =
-                        json.decodeFromString(
-                            app.clearsms.data.rules.RuleAction
-                                .serializer(),
-                            entity.actionJson,
-                        ),
-                )
-            } catch (_: Exception) {
-                null
-            }
-
-        private fun parkedToItem(entry: String): RuleItem? {
-            val source = entry.substringBefore('|')
-            val definition =
-                try {
-                    json.decodeFromString(RuleDefinition.serializer(), entry.substringAfter('|'))
-                } catch (_: Exception) {
-                    return null
-                }
-            return RuleItem(
-                id = definition.id,
-                name = definition.name ?: definition.id,
-                isUserDefined = source == "user",
-                enabled = false,
-                parkedEntry = entry,
-            )
         }
     }
 

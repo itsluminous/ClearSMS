@@ -33,6 +33,18 @@ class RuleRepositoryImpl(
 
     override suspend fun deleteRule(id: String) = ruleDao.deleteById(id)
 
+    override suspend fun restoreParkedRule(
+        definition: RuleDefinition,
+        source: String,
+        enabled: Boolean,
+    ) {
+        if (ruleDao.getById(definition.id) != null) return
+        // Only the sources the parking code ever wrote; anything else is a
+        // user rule (never a way to plant a "builtin" row from preferences).
+        val safeSource = if (source == RuleSources.BUILTIN) RuleSources.BUILTIN else RuleSources.USER
+        ruleDao.insert(definition.toEntity(json, safeSource).copy(enabled = enabled))
+    }
+
     override suspend fun setRuleEnabled(
         id: String,
         enabled: Boolean,

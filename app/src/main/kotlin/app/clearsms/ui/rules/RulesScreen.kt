@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -197,6 +198,22 @@ fun RulesScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
             )
+            if (state.unreadable > 0) {
+                // Legacy parked entries that no longer decode: say so rather
+                // than pretend they do not exist (they are skipped, never
+                // allowed to take the page down).
+                Text(
+                    text =
+                        pluralStringResource(
+                            R.plurals.rules_unreadable_count,
+                            state.unreadable,
+                            state.unreadable,
+                        ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                )
+            }
             if (query.isNotBlank() && shownUserRules.isEmpty() && shownBuiltinRules.isEmpty()) {
                 Text(
                     text = stringResource(R.string.rules_search_empty, query),
@@ -221,9 +238,9 @@ fun RulesScreen(
                     items(shownUserRules, key = { "user_${it.id}" }) { rule ->
                         RuleRow(
                             rule = rule,
-                            // A parked (disabled) rule is not in the database, so
-                            // there is nothing for the editor to load.
-                            onClick = if (rule.enabled) ({ onEditRule(rule.id) }) else null,
+                            // A legacy parked rule is not in the database, and a
+                            // malformed row has nothing the editor could load.
+                            onClick = if (rule.canOpen) ({ onEditRule(rule.id) }) else null,
                             onToggle = { viewModel.setEnabled(rule, it) },
                             onDelete = { viewModel.deleteUserRule(rule.id) },
                         )
@@ -242,9 +259,12 @@ fun RulesScreen(
                 items(shownBuiltinRules, key = { "builtin_${it.id}" }) { rule ->
                     RuleRow(
                         rule = rule,
-                        onClick = if (rule.enabled) ({ viewModel.showDetail(rule.id) }) else null,
+                        onClick = if (rule.canOpen) ({ viewModel.showDetail(rule.id) }) else null,
                         onToggle = { viewModel.setEnabled(rule, it) },
-                        onDelete = null,
+                        // A bundled row is normally not deletable (the reseed owns
+                        // it), but a malformed one is useless until the next
+                        // reseed replaces it, and removing it must stay possible.
+                        onDelete = if (rule.malformed) ({ viewModel.deleteUserRule(rule.id) }) else null,
                     )
                 }
             }
@@ -276,11 +296,20 @@ private fun RuleRow(
         modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
         headlineContent = { Text(rule.name) },
         supportingContent = {
-            Text(
-                text = rule.id,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column {
+                Text(
+                    text = rule.id,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (rule.malformed) {
+                    Text(
+                        text = stringResource(R.string.rules_row_malformed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
         },
         trailingContent = {
             androidx.compose.foundation.layout.Row {
