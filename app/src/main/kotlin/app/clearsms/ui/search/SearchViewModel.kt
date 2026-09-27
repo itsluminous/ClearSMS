@@ -166,7 +166,11 @@ class SearchViewModel
                                 PagingConfig(
                                     pageSize = PAGE_SIZE,
                                     initialLoadSize = PAGE_SIZE * 2,
-                                    enablePlaceholders = false,
+                                    // Full index space across Room's anchored
+                                    // refreshes, so the list state restored on
+                                    // return still points at the same result -
+                                    // see InboxViewModel.pagedItems.
+                                    enablePlaceholders = true,
                                 ),
                             pagingSourceFactory = {
                                 messageRepository.pagedSearch(

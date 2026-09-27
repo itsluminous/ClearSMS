@@ -28,11 +28,21 @@ open class FakeMessageRepository : MessageRepository {
 
     override fun observeThread(threadId: Long): Flow<List<MessageEntity>> = inbox
 
+    /** Every pagedInbox invocation: (category, unreadOnly, sortOrder) - one per pager generation. */
+    val pagedInboxCalls = mutableListOf<Triple<Category?, Boolean, MessageSortOrder>>()
+
+    /** The most recently created inbox source; `invalidate()` it to stand in for a Room write. */
+    var lastInboxSource: InboxRowPagingSource? = null
+
     override fun pagedInbox(
         category: Category?,
         unreadOnly: Boolean,
         sortOrder: MessageSortOrder,
-    ): PagingSource<Int, InboxThreadRow> = InboxRowPagingSource(inbox.value.map { InboxThreadRow(it, draftText = drafts[it.threadId]) })
+    ): PagingSource<Int, InboxThreadRow> {
+        pagedInboxCalls += Triple(category, unreadOnly, sortOrder)
+        return InboxRowPagingSource(inbox.value.map { InboxThreadRow(it, draftText = drafts[it.threadId]) })
+            .also { lastInboxSource = it }
+    }
 
     /** In-memory drafts keyed by threadId. */
     val drafts = mutableMapOf<Long, String>()

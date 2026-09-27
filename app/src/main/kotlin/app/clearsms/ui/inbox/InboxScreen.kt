@@ -96,11 +96,13 @@ import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.OtpBanner
+import app.clearsms.ui.components.PagedRowPlaceholder
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.SwipeableMessageItem
 import app.clearsms.ui.components.TooltipIconButton
+import app.clearsms.ui.components.awaitingFirstPage
 import app.clearsms.ui.components.defaultLabel
 import app.clearsms.ui.navigation.ScrollToTopTitle
 import app.clearsms.ui.navigation.SearchSettingsActions
@@ -304,13 +306,16 @@ fun InboxScreen(
         // runs in a WorkManager worker with progress.
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             val emptyLoaded = items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0
+            // See PagedListRestore: a first measure without the threads would
+            // clamp the restored scroll position to the banners and pill row.
+            val awaitingFirstPage = listState.awaitingFirstPage(items)
             if (emptyLoaded && state.filter == InboxFilterState()) {
                 EmptyState(
                     icon = Icons.Outlined.Inbox,
                     title = stringResource(R.string.inbox_empty_title),
                     subtitle = stringResource(R.string.inbox_empty_subtitle),
                 )
-            } else {
+            } else if (!awaitingFirstPage) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     // Top banners in the PINNED precedence order (OTP >
                     // default-SMS > contacts > sorting) - the enum order IS
@@ -392,7 +397,14 @@ fun InboxScreen(
                         count = items.itemCount,
                         key = items.itemKey { it.message.id },
                     ) { index ->
-                        val item = items[index] ?: return@items
+                        // Placeholders are on (see InboxViewModel.pagedItems): a
+                        // row outside the loaded window is null and keeps a
+                        // row's height - see PagedListRestore.
+                        val item = items[index]
+                        if (item == null) {
+                            PagedRowPlaceholder()
+                            return@items
+                        }
                         val threadId = item.message.threadId
                         val selected = selection.isSelected(threadId)
                         SwipeableMessageItem(
