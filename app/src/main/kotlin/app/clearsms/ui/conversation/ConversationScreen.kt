@@ -206,6 +206,7 @@ fun ConversationScreen(
     // Send outcomes surface as snackbars; a failure offers a Retry action.
     val sentMessage = stringResource(R.string.message_sent)
     val notSentMessage = stringResource(R.string.message_not_sent)
+    val mmsInFlightMessage = stringResource(R.string.message_mms_in_flight)
     val retryLabel = stringResource(R.string.action_retry)
     val cancelSendLabel = stringResource(R.string.delayed_send_cancel)
     // Like the undo block below: Resources for a runtime-formatted string
@@ -241,6 +242,7 @@ fun ConversationScreen(
         viewModel.events.collect { event ->
             when (event) {
                 SendEvent.Sent -> snackbarHostState.showSnackbar(sentMessage)
+                SendEvent.MmsInFlight -> snackbarHostState.showSnackbar(mmsInFlightMessage)
                 is SendEvent.Failed -> {
                     val result =
                         snackbarHostState.showSnackbar(

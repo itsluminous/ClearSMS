@@ -187,15 +187,58 @@ class DiagnosticReportTest {
     }
 
     @Test
-    fun `zip round-trips the exact previewed text under the documented entry name`() {
+    fun `zip round-trips the exact previewed text under the timestamped entry name`() {
         val text = DiagnosticReport.build(header, listOf(line(1, "I T e sender=VM-HDFCBK")), ReportWindow.EVERYTHING, true, now)
-        val bytes = DiagnosticReport.zipBytes(text)
+        val bytes = DiagnosticReport.zipBytes(text, now)
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             val entry = zip.nextEntry
-            assertThat(entry.name).isEqualTo("clearsms-diagnostics.txt")
+            assertThat(entry.name).isEqualTo(DiagnosticReport.textName(now))
+            assertThat(entry.name).isEqualTo("clearsms-diagnostics-2027-01-15-080000Z.txt")
             assertThat(zip.readBytes().toString(Charsets.UTF_8)).isEqualTo(text)
             assertThat(zip.nextEntry).isNull()
         }
+    }
+
+    // endregion
+
+    // region file name
+
+    @Test
+    fun `file names are timestamped in UTC, stable for a fixed clock, and share one stem`() {
+        // 2026-09-28T02:43:51.259Z - the operator's report.
+        val at = 1_790_563_431_259L
+        assertThat(DiagnosticReport.fileStem(at)).isEqualTo("clearsms-diagnostics-2026-09-28-024351Z")
+        assertThat(DiagnosticReport.textName(at)).isEqualTo("clearsms-diagnostics-2026-09-28-024351Z.txt")
+        assertThat(DiagnosticReport.zipName(at)).isEqualTo("clearsms-diagnostics-2026-09-28-024351Z.zip")
+        assertThat(DiagnosticReport.fileStem(at)).isEqualTo(DiagnosticReport.fileStem(at))
+        assertThat(DiagnosticReport.zipName(at).removeSuffix(".zip")).isEqualTo(DiagnosticReport.textName(at).removeSuffix(".txt"))
+    }
+
+    @Test
+    fun `file names match the documented pattern and contain nothing unsafe`() {
+        val pattern = Regex("clearsms-diagnostics-\\d{4}-\\d{2}-\\d{2}-\\d{6}Z\\.(txt|zip)")
+        for (at in listOf(0L, now, 1_790_563_431_259L, 4_102_444_799_999L)) {
+            for (name in listOf(DiagnosticReport.textName(at), DiagnosticReport.zipName(at))) {
+                assertThat(name).matches(pattern.pattern)
+                // Filesystem- and mail-safe: no separators, colons, spaces,
+                // offsets or anything outside the pattern's alphabet.
+                assertThat(name).doesNotContainMatch("[^a-z0-9Z.-]")
+                assertThat(name).doesNotContain(":")
+                assertThat(name).doesNotContain(" ")
+                assertThat(name).doesNotContain("+")
+                assertThat(name).doesNotContain("/")
+            }
+        }
+    }
+
+    @Test
+    fun `two reports a minute apart get different names`() {
+        val first = DiagnosticReport.zipName(now)
+        val second = DiagnosticReport.zipName(now + 60_000L)
+        assertThat(first).isNotEqualTo(second)
+        assertThat(DiagnosticReport.textName(now)).isNotEqualTo(DiagnosticReport.textName(now + 60_000L))
+        // And even one second apart.
+        assertThat(DiagnosticReport.zipName(now)).isNotEqualTo(DiagnosticReport.zipName(now + 1_000L))
     }
 
     // endregion

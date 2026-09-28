@@ -2,6 +2,9 @@ package app.clearsms.diagnostics
 
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -15,9 +18,26 @@ object DiagnosticReport {
     /** Hard cap on the shared text; the newest lines win, oldest are dropped. */
     const val MAX_BYTES = 384 * 1024
 
-    /** File name inside the zip and the zip's own stem. */
-    const val TEXT_NAME = "clearsms-diagnostics.txt"
     const val ZIP_MIME = "application/zip"
+
+    /**
+     * Shared stem of the zip and the text inside it, e.g.
+     * `clearsms-diagnostics-2026-09-28-024351Z`. Timestamped so two
+     * reports never overwrite each other in a mail client or download
+     * folder and can be told apart at a glance; to the second so two in one
+     * minute differ too. UTC with a literal `Z`, matching the log lines in
+     * the body (also UTC) so a maintainer can line the name up with them
+     * without a conversion; the header's `timeZone:` gives the user's local
+     * zone. Only `[a-z0-9-]` and `Z`: no colons, spaces or `+`, so it is
+     * safe on every filesystem and in every mail client.
+     */
+    fun fileStem(nowMs: Long): String = "clearsms-diagnostics-" + STEM_TIME.format(Instant.ofEpochMilli(nowMs))
+
+    /** Name of the text entry inside the zip. */
+    fun textName(nowMs: Long): String = fileStem(nowMs) + ".txt"
+
+    /** Name of the shared zip. */
+    fun zipName(nowMs: Long): String = fileStem(nowMs) + ".zip"
 
     fun build(
         header: SystemState,
@@ -67,22 +87,28 @@ object DiagnosticReport {
         }
     }
 
-    /** Writes [text] as [TEXT_NAME] inside a zip on [out]. */
+    /** Writes [text] as [textName] (at [nowMs]) inside a zip on [out]. */
     fun writeZip(
         text: String,
         out: OutputStream,
+        nowMs: Long,
     ) {
         ZipOutputStream(out).use { zip ->
-            zip.putNextEntry(ZipEntry(TEXT_NAME))
+            zip.putNextEntry(ZipEntry(textName(nowMs)))
             zip.write(text.toByteArray())
             zip.closeEntry()
         }
     }
 
     /** [writeZip] into memory - the size the share sheet will carry. */
-    fun zipBytes(text: String): ByteArray = ByteArrayOutputStream().also { writeZip(text, it) }.toByteArray()
+    fun zipBytes(
+        text: String,
+        nowMs: Long,
+    ): ByteArray = ByteArrayOutputStream().also { writeZip(text, it, nowMs) }.toByteArray()
 
     private const val DROP_MARKER_RESERVE = 80
+
+    private val STEM_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss'Z'").withZone(ZoneOffset.UTC)
 }
 
 /** How far back a report reaches. The user picks one on the diagnostics screen. */

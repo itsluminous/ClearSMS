@@ -33,7 +33,11 @@ import javax.inject.Singleton
  *
  * The send lifecycle is the SMS one: SENDING -> SENT (RESULT_OK in
  * [MmsSentReceiver]) or FAILED (any error, or a synchronous dispatch
- * throw). There is deliberately NO DELIVERED state for MMS -
+ * throw) - with one difference: the platform may sit on an MMS for
+ * minutes before reporting, so nothing but that result may move the row
+ * off SENDING (no silent-window promotion; see
+ * [app.clearsms.ui.conversation.OutgoingSendPolicy]). There is
+ * deliberately NO DELIVERED state for MMS -
  * delivery-report support (X-Mms-Delivery-Report) is out of scope this
  * wave, so the bubble honestly caps at Sent. Unlike SMS, no system
  * provider row is written: mirroring an MMS into `content://mms` means
