@@ -7,14 +7,14 @@ person; every name, account tail, PNR, amount and OTP is invented.
 
 ## What the corpus showcases
 
-- **Transactions** — a 6-month HDFC account history (salary credits, UPI
+- **Transactions** - a 6-month HDFC account history (salary credits, UPI
   debits, rent), ICICI card spends & autopay, Axis card, NPS (KFintech)
   contribution, Pluxee wallet, Scapia card.
-- **Bills & reminders** — credit-card bills with minimum due, autopay
+- **Bills & reminders** - credit-card bills with minimum due, autopay
   notices, LIC insurance premium, electricity bill.
-- **Journeys** — an IRCTC train PNR and an IndiGo flight PNR.
-- **Deliveries** — Amazon and Blue Dart with tracking ids.
-- **OTPs** — bank and Amazon OTPs, including back-to-back duplicates.
+- **Journeys** - an IRCTC train PNR and an IndiGo flight PNR.
+- **Deliveries** - Amazon and Blue Dart with tracking ids.
+- **OTPs** - bank and Amazon OTPs, including back-to-back duplicates.
 - **UPI collect request**, **promos** (Myntra, Domino's, Jio, Ajio),
   a **scam** message, and **personal chats** from phone numbers.
 
@@ -43,13 +43,13 @@ the seeded corpus (a catch-up import runs when the app holds the SMS role).
 ## How seeding works
 
 - `--live N` uses `adb emu sms send`, so messages arrive "now", unread,
-  through the app's real SmsReceiver — notifications fire, OTPs get the
+  through the app's real SmsReceiver - notifications fire, OTPs get the
   big copyable treatment.
 - `--backfill` runs `adb root` and inserts rows straight into
   `content://sms` with dates computed from each message's `days_ago`
   (a float, so the corpus stays relatively fresh no matter when you run
   it), preserving read state and direction.
-- Bodies never contain `:` — the `content insert --bind` parser would
+- Bodies never contain `:` - the `content insert --bind` parser would
   mangle them. This is enforced at extraction time; `seed.py` warns and
   skips if one sneaks in.
 
@@ -57,7 +57,7 @@ the seeded corpus (a catch-up import runs when the app holds the SMS role).
 
 `seed.py` **refuses any device whose serial does not start with
 `emulator-`**. Seeding writes to the shared SMS provider, and `--wipe`
-deletes data — pointing this at a real phone must be impossible, which is
+deletes data - pointing this at a real phone must be impossible, which is
 why the check is on the serial itself and not just a default.
 
 Re-running the seeder **duplicates rows** (the SMS provider has no unique
@@ -65,7 +65,7 @@ key). Use `--wipe --yes-i-know` first for a clean slate.
 
 ## Reusing the corpus for rule work
 
-The same JSONL replays through the rule-coverage audit — it only needs the
+The same JSONL replays through the rule-coverage audit - it only needs the
 `sender`/`body` fields and ignores the rest:
 
 ```bash

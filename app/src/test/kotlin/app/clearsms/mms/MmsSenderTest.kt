@@ -9,6 +9,8 @@ import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
+import app.clearsms.sms.SimInfo
+import app.clearsms.sms.SubscriptionSource
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -37,6 +39,17 @@ private class FakeMmsGateway : MmsGateway {
         if (throwOnSend) throw IllegalStateException("radio unavailable")
         sends += Send(subscriptionId, pduFile)
     }
+}
+
+/** Two active SIMs so a subscription resolves to a slot number. */
+private class TwoSimSubscriptionSource : SubscriptionSource {
+    override fun activeSims(): List<SimInfo> =
+        listOf(
+            SimInfo(subscriptionId = 3, slotIndex = 0, displayName = "A"),
+            SimInfo(subscriptionId = 7, slotIndex = 1, displayName = "B"),
+        )
+
+    override fun defaultSmsSubscriptionId(): Int? = 3
 }
 
 /**
@@ -76,6 +89,7 @@ class MmsSenderTest {
                 AttachmentStore(context),
                 stager,
                 gateway,
+                MmsSendConditionsProbe(context, TwoSimSubscriptionSource()),
                 Dispatchers.IO,
             )
     }
@@ -137,6 +151,9 @@ class MmsSenderTest {
             val id = sender.send("+15551234567", "hi", listOf(staged()))
 
             assertThat(messageDao.getById(id)?.deliveryStatus).isEqualTo(DeliveryStatus.FAILED)
+            // The "our side" reason: the message never reached the platform,
+            // so the bubble must not blame the carrier.
+            assertThat(messageDao.getById(id)?.sendFailureReason).isEqualTo(SendFailureReason.DISPATCH_FAILED.name)
         }
 
     @Test

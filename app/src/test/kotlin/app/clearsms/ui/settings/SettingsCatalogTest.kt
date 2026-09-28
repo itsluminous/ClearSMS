@@ -2,12 +2,14 @@ package app.clearsms.ui.settings
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import app.clearsms.R
 import app.clearsms.domain.model.EnabledSections
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
 
 /**
  * The settings layout contract: [SettingsSection] declaration order is the
@@ -53,7 +55,8 @@ class SettingsCatalogTest {
                 "Backup & restore",
                 "Manage rules",
                 "SMS signature",
-                "Donate",
+                // Renamed from "Donate": it now also holds a free way to help.
+                "Support",
                 "About",
             ).inOrder()
     }
@@ -200,7 +203,10 @@ class SettingsCatalogTest {
             ).inOrder()
         assertThat(bySection["Rules"]).containsExactly("Manage rules")
         assertThat(bySection["Signature"]).containsExactly("SMS signature")
-        assertThat(bySection["Donate"]).containsExactly("UPI", "Paypal").inOrder()
+        // The CATALOG keeps all three rows (PayPal is hidden at render time by
+        // PAYPAL_DONATION_ENABLED, see the Support tests below); the free
+        // GitHub star trails the two payment rows.
+        assertThat(bySection["Support"]).containsExactly("UPI", "Paypal", "Star on GitHub").inOrder()
         // Permissions, Privacy policy and Licenses moved INSIDE About, after
         // the two rows that were already there; the diagnostic-log report
         // sits between them, next to Source code (the other row about the
@@ -311,10 +317,12 @@ class SettingsCatalogTest {
                 // Messages: per-sender notification mute (messages arrive,
                 // nothing notifies), managed like the block list.
                 "Muted senders",
+                // Support (ex-Donate): the free way to help, opening the repo.
+                "Star on GitHub",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 23 additions = 55 rows.
+        // No row lost, none dropped: 32 survivors + 24 additions = 56 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear
@@ -364,9 +372,101 @@ class SettingsCatalogTest {
     }
 
     @Test
-    fun `search finds rows in the Donate section`() {
+    fun `search over the catalog finds every Support row`() {
         assertThat(search("paypal")).containsExactly(SettingsItem.PAYPAL)
         assertThat(search("upi")).contains(SettingsItem.UPI)
+        assertThat(search("star github")).containsExactly(SettingsItem.STAR_ON_GITHUB)
+    }
+
+    // ---- Support section (renamed from Donate) ---------------------------
+
+    private fun supportRows(paypalEnabled: Boolean = PAYPAL_DONATION_ENABLED) =
+        visibleSettingsItems(everythingOn, paypalEnabled).filter { it.section == SettingsSection.DONATE }
+
+    @Test
+    fun `the section is labelled Support, keeps the DONATE route identity, and nothing still says Donate`() {
+        assertThat(sectionTitle(SettingsSection.DONATE)).isEqualTo("Support")
+        // The enum name is the sub-screen route segment and the highlight
+        // target; existing deep links must keep working after the rename.
+        assertThat(SettingsSection.DONATE.name).isEqualTo("DONATE")
+        assertThat(SettingsSection.DONATE.subScreen).isTrue()
+        // No user-visible string anywhere still carries the old label.
+        val strings = File(listOf("src/main/res/values", "app/src/main/res/values").first { File(it).isDirectory })
+        val values = strings.listFiles { f -> f.extension == "xml" }!!.map { it.readText() }
+        for (xml in values) {
+            assertThat(xml).doesNotContain(">Donate<")
+        }
+        assertThat(SettingsSection.entries.map(::sectionTitle)).doesNotContain("Donate")
+    }
+
+    @Test
+    fun `Support shows UPI and Star on GitHub and NOT PayPal while the flag is off`() {
+        // The shipped state: the constant is off, so the default argument
+        // hides PayPal without any user-visible explanation.
+        assertThat(PAYPAL_DONATION_ENABLED).isFalse()
+        assertThat(supportRows()).containsExactly(SettingsItem.UPI, SettingsItem.STAR_ON_GITHUB).inOrder()
+        assertThat(supportRows(paypalEnabled = false)).doesNotContain(SettingsItem.PAYPAL)
+        // The section itself still has two rows, so its sub-screen is never empty.
+        assertThat(supportRows()).hasSize(2)
+    }
+
+    @Test
+    fun `flipping the PayPal flag back restores the row between UPI and Star on GitHub`() {
+        // Re-enabling is a one-line change of PAYPAL_DONATION_ENABLED; this
+        // pins that the disabled path has not rotted (row, string, URL intact).
+        assertThat(supportRows(paypalEnabled = true))
+            .containsExactly(SettingsItem.UPI, SettingsItem.PAYPAL, SettingsItem.STAR_ON_GITHUB)
+            .inOrder()
+        assertThat(title(SettingsItem.PAYPAL)).isEqualTo("Paypal")
+        assertThat(context.getString(R.string.url_donate_paypal)).startsWith("https://paypal.me/")
+    }
+
+    @Test
+    fun `the PayPal flag touches nothing outside the Support section`() {
+        val off = visibleSettingsItems(everythingOn, paypalEnabled = false)
+        val on = visibleSettingsItems(everythingOn, paypalEnabled = true)
+        assertThat(on - off).containsExactly(SettingsItem.PAYPAL)
+        assertThat(off.filter { it.section != SettingsSection.DONATE })
+            .isEqualTo(on.filter { it.section != SettingsSection.DONATE })
+    }
+
+    @Test
+    fun `a hidden PayPal row is also absent from search over the rendered rows`() {
+        // The screen searches the rows it renders (visibleSettingsItems), so
+        // a hidden row cannot be surfaced by typing its name either.
+        val rendered = visibleSettingsItems(everythingOn)
+        assertThat(filterSettingsRows(rendered, "paypal", ::title) { "" }).isEmpty()
+        assertThat(filterSettingsRows(rendered, "star on github", ::title) { "" })
+            .containsExactly(SettingsItem.STAR_ON_GITHUB)
+        assertThat(filterSettingsRows(visibleSettingsItems(everythingOn, paypalEnabled = true), "paypal", ::title) { "" })
+            .containsExactly(SettingsItem.PAYPAL)
+    }
+
+    @Test
+    fun `Star on GitHub opens the repository through the SAME url_source_code string as Source code`() {
+        assertThat(SettingsItem.STAR_ON_GITHUB.section).isEqualTo(SettingsSection.DONATE)
+        assertThat(SettingsItem.STAR_ON_GITHUB.nested).isTrue()
+        assertThat(title(SettingsItem.STAR_ON_GITHUB)).isEqualTo("Star on GitHub")
+        // The summary says why starring helps rather than just repeating the title.
+        val summary = context.getString(R.string.settings_star_on_github_summary)
+        assertThat(summary).contains("help")
+        assertThat(summary).isNotEqualTo(title(SettingsItem.STAR_ON_GITHUB))
+        // One URL, shared with About > Source code, so the two can never drift.
+        val screen =
+            File(
+                listOf("src/main/kotlin/app/clearsms", "app/src/main/kotlin/app/clearsms").first { File(it).isDirectory },
+                "ui/settings/SettingsScreen.kt",
+            ).readText()
+        val starBranch = screen.substringAfter("SettingsItem.STAR_ON_GITHUB ->").substringBefore("SettingsItem.PERMISSIONS ->")
+        assertThat(starBranch).contains("R.string.url_source_code")
+        assertThat(starBranch).contains("onOpenLink(url)")
+        assertThat(starBranch).doesNotContain("https://")
+        val sourceBranch = screen.substringAfter("SettingsItem.SOURCE_CODE ->").substringBefore("SettingsItem.SHARE_LOGS ->")
+        assertThat(sourceBranch).contains("R.string.url_source_code")
+        // The resource is the repository, and it resolves through ExternalLinks
+        // like every other link row (snackbar, not crash, when nothing handles it).
+        assertThat(context.getString(R.string.url_source_code)).isEqualTo("https://github.com/itsluminous/ClearSMS")
+        assertThat(context.resources.getIdentifier("url_star_on_github", "string", context.packageName)).isEqualTo(0)
     }
 
     @Test
@@ -395,21 +495,22 @@ class SettingsCatalogTest {
     }
 
     @Test
-    fun `all sections enabled and delayed sending on shows every row`() {
-        assertThat(visibleSettingsItems(everythingOn)).isEqualTo(SettingsItem.entries.toList())
+    fun `all sections enabled and delayed sending on shows every row - bar the flagged-off PayPal`() {
+        assertThat(visibleSettingsItems(everythingOn, paypalEnabled = true)).isEqualTo(SettingsItem.entries.toList())
+        assertThat(visibleSettingsItems(everythingOn)).isEqualTo(SettingsItem.entries - SettingsItem.PAYPAL)
     }
 
     @Test
     fun `the sending-delay row is hidden while delayed sending is off, present when on`() {
         // Meaningless while the toggle is off - same rule as a disabled
         // section's child rows. The toggle itself always stays.
-        val off = visibleSettingsItems(everythingOn.copy(delayedSendEnabled = false))
+        val off = visibleSettingsItems(everythingOn.copy(delayedSendEnabled = false), paypalEnabled = true)
         assertThat(off).doesNotContain(SettingsItem.DELAYED_SEND_DELAY)
         assertThat(off).contains(SettingsItem.DELAYED_SEND)
         // Nothing else is affected by the toggle.
         assertThat(off).isEqualTo(SettingsItem.entries - SettingsItem.DELAYED_SEND_DELAY)
 
-        val on = visibleSettingsItems(everythingOn.copy(delayedSendEnabled = true))
+        val on = visibleSettingsItems(everythingOn.copy(delayedSendEnabled = true), paypalEnabled = true)
         assertThat(on).contains(SettingsItem.DELAYED_SEND_DELAY)
         assertThat(on.indexOf(SettingsItem.DELAYED_SEND_DELAY)).isEqualTo(on.indexOf(SettingsItem.DELAYED_SEND) + 1)
     }
@@ -417,7 +518,10 @@ class SettingsCatalogTest {
     @Test
     fun `a disabled section keeps only its master switch, other sections untouched`() {
         val visible =
-            visibleSettingsItems(everythingOn.copy(sections = EnabledSections(inbox = true, finance = false, alerts = true)))
+            visibleSettingsItems(
+                everythingOn.copy(sections = EnabledSections(inbox = true, finance = false, alerts = true)),
+                paypalEnabled = true,
+            )
         // Finance collapses to the one row that can bring it back - so its
         // sub-screen stays listed and reachable, showing just that toggle.
         assertThat(visible.filter { it.section == SettingsSection.FINANCE })
@@ -432,7 +536,10 @@ class SettingsCatalogTest {
     @Test
     fun `each disabled section hides its own child rows and only those`() {
         val onlyAlerts =
-            visibleSettingsItems(everythingOn.copy(sections = EnabledSections(inbox = false, finance = false, alerts = true)))
+            visibleSettingsItems(
+                everythingOn.copy(sections = EnabledSections(inbox = false, finance = false, alerts = true)),
+                paypalEnabled = true,
+            )
         assertThat(onlyAlerts.filter { it.section == SettingsSection.INBOX })
             .containsExactly(SettingsItem.SHOW_INBOX_TAB)
         assertThat(onlyAlerts.filter { it.section == SettingsSection.FINANCE })

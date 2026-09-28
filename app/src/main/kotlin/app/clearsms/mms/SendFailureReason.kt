@@ -12,6 +12,10 @@ import android.telephony.SmsManager
  * networks (notably in India, where carriers have wound MMS down) NO app
  * can send MMS on such a SIM; the message should say so instead of
  * inviting endless retries.
+ *
+ * The RAW result code is still what a bug report needs (several codes
+ * share one reason here), so the send-report receiver logs both the code
+ * and the reason - see `MmsSentReceiver`.
  */
 enum class SendFailureReason {
     /** The MMS data connection never came up (data off, or carrier MMS dead). */
@@ -25,6 +29,20 @@ enum class SendFailureReason {
 
     /** Radio/IO trouble worth retrying. */
     TRANSIENT,
+
+    /** The platform says the carrier has MMS switched off for this SIM. */
+    CARRIER_DISABLED,
+
+    /** The subscription the message was sent from is gone or inactive. */
+    SIM_UNAVAILABLE,
+
+    /**
+     * The message never reached the platform's MMS service: encoding,
+     * staging or the hand-over itself threw before a result code could
+     * exist. This is the "our side" failure, as opposed to every other
+     * reason, which the platform or carrier reported.
+     */
+    DISPATCH_FAILED,
 
     /** Anything else. */
     UNKNOWN,
@@ -46,7 +64,14 @@ enum class SendFailureReason {
                 SmsManager.MMS_ERROR_RETRY,
                 SmsManager.MMS_ERROR_IO_ERROR,
                 -> TRANSIENT
+                SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER -> CARRIER_DISABLED
+                SmsManager.MMS_ERROR_INVALID_SUBSCRIPTION_ID,
+                SmsManager.MMS_ERROR_INACTIVE_SUBSCRIPTION,
+                -> SIM_UNAVAILABLE
                 else -> UNKNOWN
             }
+
+        /** The persisted name back to a reason; null for null or an unknown name. */
+        fun fromName(name: String?): SendFailureReason? = entries.firstOrNull { it.name == name }
     }
 }

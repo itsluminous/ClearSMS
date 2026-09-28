@@ -2,8 +2,9 @@ package app.clearsms.sms
 
 import android.content.Context
 import android.provider.Telephony
-import android.util.Log
 import app.clearsms.data.db.SentSmsSource
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,7 +47,12 @@ class SystemSentSmsSource
                         }
                     }.orEmpty()
             } catch (e: Exception) {
-                Log.w(TAG, "Cannot read the sent box; direction backfill will keep rows incoming", e)
+                Diag.w(
+                    TAG,
+                    "cannot read the sent box; direction backfill will keep rows incoming",
+                    e,
+                    flag("denied", e is SecurityException),
+                )
                 emptyList()
             }
 

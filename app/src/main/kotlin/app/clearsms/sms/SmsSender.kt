@@ -9,7 +9,11 @@ import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderNormalizer
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.domain.model.Category
+import app.clearsms.mms.SendFailureReason
 import app.clearsms.receiver.SmsSentReceiver
 import app.clearsms.ui.common.UiPrefs
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -180,8 +184,24 @@ class SmsSender
                     sentIntents,
                     deliveredIntents,
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                // The radio never took the message (no SmsManager, a
+                // rejected destination, dividing failed): the "our side"
+                // failure, recorded as such so the bubble can say so and
+                // the report shows the exception class. Destination never.
+                Diag.e(
+                    TAG,
+                    "sms handover failed",
+                    e,
+                    id("message", messageId),
+                    flag("providerRow", providerUri != null),
+                    flag(
+                        "defaultSubscription",
+                        subscriptionId == null,
+                    ),
+                )
                 messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
+                messageDao.setSendFailureReason(messageId, SendFailureReason.DISPATCH_FAILED.name)
             }
         }
 
@@ -234,6 +254,7 @@ class SmsSender
         }
 
         private companion object {
+            const val TAG = "SmsSender"
             val REQUEST_CODE =
                 java.util.concurrent.atomic
                     .AtomicInteger(1000)

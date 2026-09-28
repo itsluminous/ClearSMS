@@ -4,9 +4,14 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import android.telephony.SmsManager
 import app.clearsms.data.db.MessageDao
 import app.clearsms.di.ApplicationScope
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.code
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.mms.MmsInbound
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +24,11 @@ import javax.inject.Inject
  * PendingIntents (and our own start-failure broadcast) may report a result.
  * The outcome is delegated to [MmsInbound]: success parses and stores the
  * retrieved message; failure retries once, then marks the row FAILED.
+ *
+ * Every result is logged through [Diag] with the RAW platform result code
+ * and the HTTP status the platform attaches to an MMSC refusal - the same
+ * treatment the send path gets, since a user who cannot send may not be
+ * able to download either.
  */
 @AndroidEntryPoint
 class MmsDownloadReceiver : BroadcastReceiver() {
@@ -39,7 +49,9 @@ class MmsDownloadReceiver : BroadcastReceiver() {
         val messageId = intent.getLongExtra(EXTRA_MESSAGE_ID, -1L)
         if (messageId < 0) return
         val attempt = intent.getIntExtra(EXTRA_ATTEMPT, 0)
-        val succeeded = resultCode == Activity.RESULT_OK && !intent.getBooleanExtra(EXTRA_START_FAILED, false)
+        val report = MmsDownloadReport.of(intent, resultCode, attempt)
+        report.log(messageId)
+        val succeeded = report.succeeded
         val pendingResult = goAsync()
         applicationScope.launch {
             try {
@@ -52,7 +64,7 @@ class MmsDownloadReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 // Content-free by convention; the row simply stays PENDING
                 // until a retry, rather than crashing the process.
-                Log.e(TAG, "Failed to handle MMS download result", e)
+                Diag.e(TAG, "mms download result handling failed", e, id("message", messageId), count("attempt", attempt))
             } finally {
                 pendingResult.finish()
             }
@@ -60,7 +72,7 @@ class MmsDownloadReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        private const val TAG = "MmsDownloadReceiver"
+        const val TAG = "MmsDownload"
         const val EXTRA_MESSAGE_ID = "app.clearsms.mms.MESSAGE_ID"
         const val EXTRA_ATTEMPT = "app.clearsms.mms.ATTEMPT"
 
@@ -76,5 +88,64 @@ class MmsDownloadReceiver : BroadcastReceiver() {
             Intent(context, MmsDownloadReceiver::class.java)
                 .putExtra(EXTRA_MESSAGE_ID, messageId)
                 .putExtra(EXTRA_ATTEMPT, attempt)
+    }
+}
+
+/**
+ * The loggable shape of one platform MMS download result: the raw code,
+ * which attempt it was, whether the transaction could not even be started
+ * (our own broadcast, no platform code exists), and the MMSC's HTTP status
+ * when the platform attached one. Pure, so the receiver's logging is
+ * unit-testable.
+ */
+data class MmsDownloadReport(
+    val resultCode: Int,
+    val attempt: Int,
+    val startFailed: Boolean,
+    val httpStatus: Int?,
+) {
+    val succeeded: Boolean get() = resultCode == Activity.RESULT_OK && !startFailed
+
+    fun log(messageId: Long) {
+        if (succeeded) {
+            Diag.i(
+                MmsDownloadReceiver.TAG,
+                "mms downloaded",
+                id("message", messageId),
+                code("result", resultCode),
+                count("attempt", attempt),
+            )
+        } else {
+            Diag.w(
+                MmsDownloadReceiver.TAG,
+                "mms download failed",
+                null,
+                id("message", messageId),
+                code("result", resultCode),
+                count("attempt", attempt),
+                flag("startFailed", startFailed),
+                flag("httpStatusPresent", httpStatus != null),
+                code("httpStatus", httpStatus ?: 0),
+            )
+        }
+    }
+
+    companion object {
+        fun of(
+            intent: Intent,
+            resultCode: Int,
+            attempt: Int,
+        ): MmsDownloadReport =
+            MmsDownloadReport(
+                resultCode = resultCode,
+                attempt = attempt,
+                startFailed = intent.getBooleanExtra(MmsDownloadReceiver.EXTRA_START_FAILED, false),
+                httpStatus =
+                    if (intent.hasExtra(SmsManager.EXTRA_MMS_HTTP_STATUS)) {
+                        intent.getIntExtra(SmsManager.EXTRA_MMS_HTTP_STATUS, 0)
+                    } else {
+                        null
+                    },
+            )
     }
 }

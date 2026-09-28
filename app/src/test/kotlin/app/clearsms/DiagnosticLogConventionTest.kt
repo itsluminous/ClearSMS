@@ -43,6 +43,13 @@ class DiagnosticLogConventionTest {
             "merchant",
             "pnr",
             "reference",
+            // An attachment's name, path or URI, and an MMS content location
+            // (a carrier URL that embeds a per-message token), identify the
+            // message as surely as its text does.
+            "filename",
+            "path",
+            "location",
+            "transactionid",
         )
 
     private val callStart = Regex("""\bDiag\.(d|i|w|e)\(""")
@@ -61,14 +68,17 @@ class DiagnosticLogConventionTest {
             .filterNot { it.path.contains("/diagnostics/Diag.kt") }
 
     /** Every `Diag.x(` call with the text between its balanced parentheses. */
-    private fun calls(): List<Call> =
-        sources()
-            .flatMap { file ->
-                val text = file.readText()
-                callStart.findAll(text).map { match ->
-                    val open = match.range.last
-                    Call(file, text.substring(0, open).count { it == '\n' } + 1, argumentsAfter(text, open))
-                }
+    private fun calls(): List<Call> = sources().flatMap { file -> callsIn(file, file.readText()) }.toList()
+
+    private fun callsIn(
+        file: File,
+        text: String,
+    ): List<Call> =
+        callStart
+            .findAll(text)
+            .map { match ->
+                val open = match.range.last
+                Call(file, text.substring(0, open).count { it == '\n' } + 1, argumentsAfter(text, open))
             }.toList()
 
     /** Text from the '(' at [open] to its matching ')', skipping string literals. */
@@ -154,14 +164,32 @@ class DiagnosticLogConventionTest {
         assertThat(calls().size).isAtLeast(20)
     }
 
+    private fun eventViolations(calls: List<Call>): List<String> =
+        calls.mapNotNull { call ->
+            val event = topLevelArgs(call.args).getOrNull(1) ?: return@mapNotNull "${call.file.path}:${call.line} has no event argument"
+            val plain = Regex("""^"[^"$]*"$""").matches(event)
+            if (plain) null else "${call.file.path}:${call.line} event is not a plain literal -> $event"
+        }
+
+    private fun fieldViolations(calls: List<Call>): List<String> =
+        calls.mapNotNull { call ->
+            val scrubbed =
+                call.args
+                    .replace(stringLiteral, "\"\"")
+                    // `x.extractedOtp != null` is a presence flag, not the value.
+                    .replace(nullCheck, "")
+            val leaked =
+                identifier
+                    .findAll(scrubbed)
+                    .map { it.value }
+                    .filter { token -> forbidden.any { token.lowercase().contains(it) } }
+                    .toList()
+            if (leaked.isEmpty()) null else "${call.file.path}:${call.line} passes $leaked -> ${call.args.trim()}"
+        }
+
     @Test
     fun `every Diag event is a plain string literal - no interpolation, no concatenation`() {
-        val violations =
-            calls().mapNotNull { call ->
-                val event = topLevelArgs(call.args).getOrNull(1) ?: return@mapNotNull "${call.file.path}:${call.line} has no event argument"
-                val plain = Regex("""^"[^"$]*"$""").matches(event)
-                if (plain) null else "${call.file.path}:${call.line} event is not a plain literal -> $event"
-            }
+        val violations = eventViolations(calls())
         assertWithMessage(
             "Diag events must be constant phrases; every variable travels as a typed DiagField:\n" +
                 violations.joinToString("\n"),
@@ -170,21 +198,7 @@ class DiagnosticLogConventionTest {
 
     @Test
     fun `no Diag call names a message body, address, OTP, account, VPA, amount or contact`() {
-        val violations =
-            calls().mapNotNull { call ->
-                val scrubbed =
-                    call.args
-                        .replace(stringLiteral, "\"\"")
-                        // `x.extractedOtp != null` is a presence flag, not the value.
-                        .replace(nullCheck, "")
-                val leaked =
-                    identifier
-                        .findAll(scrubbed)
-                        .map { it.value }
-                        .filter { token -> forbidden.any { token.lowercase().contains(it) } }
-                        .toList()
-                if (leaked.isEmpty()) null else "${call.file.path}:${call.line} passes $leaked -> ${call.args.trim()}"
-            }
+        val violations = fieldViolations(calls())
         assertWithMessage(
             "Diag fields may carry counts, flags, ids, codes, enum names, rule ids and sender ids - " +
                 "never message content or anything identifying a person:\n" + violations.joinToString("\n"),
@@ -192,11 +206,51 @@ class DiagnosticLogConventionTest {
     }
 
     @Test
+    fun `the scanner itself catches a planted body, recipient, file name and interpolated event`() {
+        // Self-test: the guard is only worth having if each way the MMS
+        // path could leak is actually reported. Multi-line calls, nested
+        // factories and a null-check presence flag are all exercised.
+        val planted =
+            """
+            Diag.i(TAG, "mms handover", id("message", messageId), count("bytes", part.data.size))
+            Diag.i(TAG, "sent to ${'$'}destination", id("message", messageId))
+            Diag.w(
+                TAG,
+                "attachment staged",
+                null,
+                mime(part.mimeType),
+                count("nameLength", staged.displayName.length),
+                count("len", attachment.fileName.length),
+            )
+            Diag.e(TAG, "failed", e, sender(merged.body), flag("known", notification.contentLocation != null))
+            Diag.d(TAG, "download", flag("hasLocation", location != null), count("n", recipients.size))
+            """.trimIndent()
+        val calls = callsIn(File("planted.kt"), planted)
+        assertThat(calls).hasSize(5)
+        assertThat(eventViolations(calls)).hasSize(1)
+        val leaks = fieldViolations(calls)
+        // Line 1 is clean; line 2 leaks only through its event; lines 3-5
+        // each name something forbidden (a display/file name, a body, the
+        // recipients) - the null-checked contentLocation is a presence
+        // flag and is NOT counted.
+        assertThat(leaks).hasSize(3)
+        val leakedTokens =
+            leaks.flatMap { line ->
+                Regex("""passes \[([^\]]*)\]""").find(line)!!.groupValues[1].split(", ")
+            }
+        assertThat(leakedTokens).containsExactly("displayName", "fileName", "body", "recipients")
+    }
+
+    @Test
     fun `converted paths no longer use android util Log`() {
         // The paths a user bug report needs (ingest, categorisation, import,
-        // backfills, send reports, routing, rules load, backup) log through
-        // Diag so their entries reach the shareable report. UI-noise and
-        // MMS/provider-write sites deliberately stay on logcat.
+        // backfills, send reports, routing, rules load, backup, the whole
+        // MMS pipeline, provider writes, contact/SIM lookups, notification
+        // actions, the sender directory) log through Diag so their entries
+        // reach the shareable report. Deliberately still on logcat: the
+        // Application's own logcat mirror, RuleEngine's free-form rule
+        // authoring warnings (DataModule) and the per-row contact skip in
+        // ContactSuggestions (developer noise).
         val converted =
             listOf(
                 "receiver/SmsReceiver.kt",
@@ -216,6 +270,20 @@ class DiagnosticLogConventionTest {
                 "work/BackupWorker.kt",
                 "work/BackupDocumentStore.kt",
                 "di/PlatformModule.kt",
+                "mms/MmsSender.kt",
+                "mms/MmsInbound.kt",
+                "mms/MmsDownloader.kt",
+                "mms/OutgoingAttachmentStager.kt",
+                "receiver/MmsSentReceiver.kt",
+                "receiver/MmsDownloadReceiver.kt",
+                "receiver/MmsWapPushReceiver.kt",
+                "sms/TelephonyWriter.kt",
+                "sms/SystemSentSmsSource.kt",
+                "sms/ProviderSimSource.kt",
+                "sms/ContactsSource.kt",
+                "sms/SmsSender.kt",
+                "notification/MessageActionReceiver.kt",
+                "data/senderid/SenderIdStore.kt",
             )
         converted.forEach { path ->
             val text = File("src/main/kotlin/app/clearsms", path).readText()

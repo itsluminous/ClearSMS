@@ -15,6 +15,8 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.SenderBlocker
 import app.clearsms.data.repository.SenderMuter
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
@@ -664,7 +666,11 @@ class SettingsViewModel
                 try {
                     context.contentResolver.openOutputStream(uri)?.use { backupManager.exportTo(it) }
                     events.emit(SettingsEvent.BackupDone)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    // BackupManager logs its own progress; a failure to even
+                    // open the chosen document (SAF) would otherwise leave
+                    // only a toast behind.
+                    Diag.e(TAG, "manual backup failed", e, flag("settings", false))
                     events.emit(SettingsEvent.BackupFailed)
                 } finally {
                     busy.value = false
@@ -686,7 +692,8 @@ class SettingsViewModel
                 } catch (e: IllegalArgumentException) {
                     // Validation failures (bad file, newer format) carry a reason.
                     events.emit(SettingsEvent.RestoreFailed(e.message))
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Diag.e(TAG, "restore failed", e, flag("settings", false))
                     events.emit(SettingsEvent.RestoreFailed())
                 } finally {
                     busy.value = false
@@ -701,7 +708,8 @@ class SettingsViewModel
                 try {
                     context.contentResolver.openOutputStream(uri)?.use { settingsBackupManager.exportTo(it) }
                     events.emit(SettingsEvent.SettingsBackupDone)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Diag.e(TAG, "manual backup failed", e, flag("settings", true))
                     events.emit(SettingsEvent.SettingsBackupFailed)
                 } finally {
                     busy.value = false
@@ -725,7 +733,8 @@ class SettingsViewModel
                     } else {
                         events.emit(SettingsEvent.SettingsRestoreFailed)
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Diag.e(TAG, "restore failed", e, flag("settings", true))
                     events.emit(SettingsEvent.SettingsRestoreFailed)
                 } finally {
                     busy.value = false
@@ -786,5 +795,9 @@ class SettingsViewModel
 
         private fun launchIo(block: suspend () -> Unit) {
             viewModelScope.launch(ioDispatcher) { block() }
+        }
+
+        private companion object {
+            const val TAG = "Settings"
         }
     }

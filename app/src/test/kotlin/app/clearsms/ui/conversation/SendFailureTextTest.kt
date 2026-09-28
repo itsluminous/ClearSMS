@@ -1,0 +1,128 @@
+package app.clearsms.ui.conversation
+
+import app.clearsms.R
+import app.clearsms.mms.SendFailureReason
+import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
+import org.junit.Test
+import java.io.File
+
+/**
+ * The user-facing side of a failed send: every reason (and no reason) has
+ * an explanation and a bubble label, the wording says only what the phone
+ * reported, and only genuinely transient trouble is told a retry may work.
+ */
+class SendFailureTextTest {
+    private val strings = File("src/main/res/values/strings_ui.xml").readText()
+
+    private fun string(name: String): String =
+        Regex("""<string name="$name">(.*?)</string>""")
+            .find(strings)
+            ?.groupValues
+            ?.get(1)
+            ?.replace("\\'", "'")
+            ?: error("missing string $name")
+
+    private val resourceName =
+        mapOf(
+            R.string.send_failure_no_mms_network to "send_failure_no_mms_network",
+            R.string.send_failure_apn to "send_failure_apn",
+            R.string.send_failure_http to "send_failure_http",
+            R.string.send_failure_transient to "send_failure_transient",
+            R.string.send_failure_carrier_disabled to "send_failure_carrier_disabled",
+            R.string.send_failure_sim_unavailable to "send_failure_sim_unavailable",
+            R.string.send_failure_dispatch to "send_failure_dispatch",
+            R.string.send_failure_unknown to "send_failure_unknown",
+            R.string.conversation_not_sent to "conversation_not_sent",
+            R.string.conversation_not_sent_no_mms_network to "conversation_not_sent_no_mms_network",
+            R.string.conversation_not_sent_apn to "conversation_not_sent_apn",
+            R.string.conversation_not_sent_http to "conversation_not_sent_http",
+            R.string.conversation_not_sent_transient to "conversation_not_sent_transient",
+            R.string.conversation_not_sent_carrier_disabled to "conversation_not_sent_carrier_disabled",
+            R.string.conversation_not_sent_sim_unavailable to "conversation_not_sent_sim_unavailable",
+            R.string.conversation_not_sent_dispatch to "conversation_not_sent_dispatch",
+        )
+
+    private fun explanation(reason: SendFailureReason?): String = string(resourceName.getValue(SendFailureText.explanationRes(reason)))
+
+    private fun bubble(reason: SendFailureReason?): String = string(resourceName.getValue(SendFailureText.bubbleLabelRes(reason)))
+
+    @Test
+    fun `every reason and the absent reason have a distinct explanation`() {
+        val reasons = SendFailureReason.entries + null
+        val explanations = reasons.map { SendFailureText.explanationRes(it) }
+        // UNKNOWN and null deliberately share one text; all others differ.
+        assertThat(explanations.toSet()).hasSize(SendFailureReason.entries.size)
+        assertThat(SendFailureText.explanationRes(null)).isEqualTo(SendFailureText.explanationRes(SendFailureReason.UNKNOWN))
+    }
+
+    @Test
+    fun `the bubble label always starts with Not sent and adds the reason in a few words`() {
+        (SendFailureReason.entries + null).forEach { reason ->
+            val label = bubble(reason)
+            assertWithMessage("$reason").that(label).startsWith("Not sent")
+            // A status line, not a paragraph.
+            assertWithMessage("$reason").that(label.length).isAtMost(40)
+        }
+        assertThat(bubble(null)).isEqualTo("Not sent")
+        assertThat(bubble(SendFailureReason.UNKNOWN)).isEqualTo("Not sent")
+        assertThat(bubble(SendFailureReason.NO_MMS_NETWORK)).isNotEqualTo("Not sent")
+    }
+
+    @Test
+    fun `structural reasons never promise that a retry will work`() {
+        val retryWords = listOf("retry", "try again", "retrying")
+        SendFailureReason.entries.forEach { reason ->
+            val text = explanation(reason).lowercase()
+            if (SendFailureText.suggestsRetry(reason)) {
+                assertWithMessage("$reason").that(retryWords.any { it in text }).isTrue()
+            } else {
+                assertWithMessage("$reason must not invite a retry: $text").that(retryWords.none { it in text }).isTrue()
+            }
+        }
+        assertThat(SendFailureText.suggestsRetry(SendFailureReason.TRANSIENT)).isTrue()
+        assertThat(SendFailureText.suggestsRetry(SendFailureReason.NO_MMS_NETWORK)).isFalse()
+        assertThat(SendFailureText.suggestsRetry(SendFailureReason.CARRIER_DISABLED)).isFalse()
+        assertThat(SendFailureText.suggestsRetry(null)).isFalse()
+    }
+
+    @Test
+    fun `the wording states what was reported and does not diagnose the carrier`() {
+        // NO_MMS_NETWORK: the connection "did not come up" - the app cannot
+        // know why - and the SIM-wide truth is stated without naming a country.
+        val noNetwork = explanation(SendFailureReason.NO_MMS_NETWORK)
+        assertThat(noNetwork).contains("MMS connection did not come up")
+        assertThat(noNetwork).contains("no app can send one")
+        assertThat(noNetwork).doesNotContain("Indian")
+        // The app's own failure names the hand-over, not the carrier, and is
+        // transport-neutral because the SMS path records it too.
+        val dispatch = explanation(SendFailureReason.DISPATCH_FAILED)
+        assertThat(dispatch).contains("could not be handed to")
+        assertThat(dispatch).doesNotContain("carrier")
+        assertThat(dispatch).doesNotContain("MMS")
+        // Unknown says exactly that.
+        assertThat(explanation(SendFailureReason.UNKNOWN)).contains("without saying why")
+        // Every explanation is short: at most two sentences and under 200 chars.
+        SendFailureReason.entries.forEach { reason ->
+            val text = explanation(reason)
+            assertWithMessage("$reason").that(text.length).isAtMost(200)
+            assertWithMessage("$reason").that(text.count { it == '.' }).isAtMost(3)
+        }
+    }
+
+    @Test
+    fun `the bubble, the Retry dialog and the details row all read from this one mapping`() {
+        fun source(path: String) = File("src/main/kotlin/app/clearsms", path).readText()
+        val screen = source("ui/conversation/ConversationScreen.kt")
+        assertThat(screen).contains("SendFailureText.bubbleLabelRes(")
+        assertThat(screen).contains("SendFailureText.explanationRes(")
+        assertThat(source("ui/conversation/MessageDetailsDialog.kt")).contains("SendFailureText.explanationRes(row.reason)")
+        // No second, drifting when-table over the reasons anywhere in the UI.
+        File("src/main/kotlin/app/clearsms/ui")
+            .walkTopDown()
+            .filter { it.isFile && it.extension == "kt" && it.name != "SendFailureText.kt" }
+            .forEach { file ->
+                assertWithMessage(file.path).that(file.readText()).doesNotContain("R.string.send_failure_")
+            }
+    }
+}

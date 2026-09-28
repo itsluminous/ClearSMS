@@ -3,6 +3,8 @@ package app.clearsms.ui.composemsg
 import android.content.Context
 import android.provider.ContactsContract
 import android.util.Log
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -130,7 +132,9 @@ class ContactSuggestions
             } catch (e: RuntimeException) {
                 // Provider-side failure (SQLite, IllegalArgument, remote death):
                 // suggestions are unavailable for this keystroke, nothing more.
-                Log.w(TAG, "Contact suggestion query failed", e)
+                // Logged to the report: it is the answer to "no names come up
+                // when I type". The typed prefix travels as its length only.
+                Diag.w(TAG, "contact suggestion query failed", e, count("queryChars", query.length))
             }
             return results
         }

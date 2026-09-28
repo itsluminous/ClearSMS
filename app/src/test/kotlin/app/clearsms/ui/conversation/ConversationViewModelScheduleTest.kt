@@ -18,6 +18,7 @@ import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsInbound
+import app.clearsms.mms.MmsSendConditionsProbe
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.notification.IncomingMessageRouter
@@ -152,6 +153,7 @@ class ConversationViewModelScheduleTest {
                 AttachmentStore(context),
                 OutgoingAttachmentStager(context),
                 FakeMmsGateway(),
+                MmsSendConditionsProbe(context, FakeSubscriptionSource()),
                 Dispatchers.Unconfined,
             )
         val json = Json { ignoreUnknownKeys = true }

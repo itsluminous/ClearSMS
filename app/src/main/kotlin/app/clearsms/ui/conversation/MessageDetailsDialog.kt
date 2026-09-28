@@ -19,7 +19,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
-import app.clearsms.mms.SendFailureReason
 
 /**
  * The "More details" dialog for ONE selected message. Rows come from the
@@ -133,16 +132,7 @@ private fun DetailRow(
                             },
                         )
                 }
-            is MessageDetails.Row.Error ->
-                stringResource(
-                    when (row.reason) {
-                        SendFailureReason.NO_MMS_NETWORK -> R.string.send_failure_no_mms_network
-                        SendFailureReason.APN_CONFIGURATION -> R.string.send_failure_apn
-                        SendFailureReason.HTTP_FAILURE -> R.string.send_failure_http
-                        SendFailureReason.TRANSIENT -> R.string.send_failure_transient
-                        SendFailureReason.UNKNOWN, null -> R.string.message_details_error_unknown
-                    },
-                )
+            is MessageDetails.Row.Error -> stringResource(SendFailureText.explanationRes(row.reason))
             is MessageDetails.Row.Sim -> row.label
             MessageDetails.Row.InRecycleBin -> stringResource(R.string.message_details_bin)
         }

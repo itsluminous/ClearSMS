@@ -4,11 +4,13 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.provider.Telephony
-import android.util.Log
 import app.clearsms.data.repository.SqliteChunker
 import app.clearsms.data.repository.SystemSmsDeleter
 import app.clearsms.data.repository.SystemSmsReadWriter
 import app.clearsms.data.repository.SystemSmsReinserter
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -146,11 +148,12 @@ class TelephonyWriter
                             "${Telephony.Sms._ID} IN ($placeholders)",
                             chunk.map(Long::toString).toTypedArray(),
                         )
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Not allowed to delete from the system SMS provider", e)
-                        0
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to delete from the system SMS provider", e)
+                        // SecurityException = not the default app any more;
+                        // the local delete already happened, the provider
+                        // row lingers. Worth a trace when a user reports
+                        // "deleted messages came back".
+                        Diag.w(TAG, "provider delete failed", e, count("rows", chunk.size), flag("denied", e is SecurityException))
                         0
                     }
             }
@@ -182,10 +185,15 @@ class TelephonyWriter
                         "${Telephony.Sms._ID} IN ($placeholders)",
                         chunk.map(Long::toString).toTypedArray(),
                     )
-                } catch (e: SecurityException) {
-                    Log.w(TAG, "Not allowed to update read-state in the system SMS provider", e)
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to update read-state in the system SMS provider", e)
+                    Diag.w(
+                        TAG,
+                        "provider read-state update failed",
+                        e,
+                        count("rows", chunk.size),
+                        flag("read", read),
+                        flag("denied", e is SecurityException),
+                    )
                 }
             }
         }
@@ -198,7 +206,9 @@ class TelephonyWriter
             return try {
                 context.contentResolver.insert(uri, values)
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to write to the system SMS provider", e)
+                // A missing provider row means other SMS apps (and a later
+                // reinstall) never see this message.
+                Diag.w(TAG, "provider insert failed", e, flag("denied", e is SecurityException))
                 null
             }
         }
@@ -211,7 +221,7 @@ class TelephonyWriter
             try {
                 context.contentResolver.update(uri, values, null, null)
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to update the system SMS provider", e)
+                Diag.w(TAG, "provider update failed", e, flag("denied", e is SecurityException))
             }
         }
 

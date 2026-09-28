@@ -3,7 +3,6 @@ package app.clearsms.mms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
@@ -11,6 +10,12 @@ import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderNormalizer
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.diagnostics.DiagField.Companion.id
+import app.clearsms.diagnostics.DiagField.Companion.label
+import app.clearsms.diagnostics.DiagField.Companion.mime
 import app.clearsms.domain.model.Category
 import app.clearsms.receiver.MmsSentReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,6 +39,14 @@ import javax.inject.Singleton
  * provider row is written: mirroring an MMS into `content://mms` means
  * hand-writing pdu/part/addr tables, which is out of scope - the message
  * lives in the app's own store (the same place received MMS live).
+ *
+ * DIAGNOSTICS: every hand-over logs, through [Diag], what the platform is
+ * being asked to send (part count, each attachment's byte size and MIME
+ * type, PDU size) and what the radio looked like ([MmsSendConditions]);
+ * a synchronous failure logs the exception class chain. Together with the
+ * result code `MmsSentReceiver` logs, that tells "this app built a bad
+ * MMS" apart from "the platform or carrier refused". NEVER logged: the
+ * recipient, the text, an attachment's name or bytes.
  */
 @Singleton
 class MmsSender
@@ -45,6 +58,7 @@ class MmsSender
         private val attachmentStore: AttachmentStore,
         private val stager: OutgoingAttachmentStager,
         private val gateway: MmsGateway,
+        private val conditions: MmsSendConditionsProbe,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         /**
@@ -82,7 +96,7 @@ class MmsSender
                     },
                 )
                 attachments.forEach(stager::discard)
-                dispatch(messageId, destination, body, parts, subscriptionId, timestamp)
+                dispatch(messageId, destination, body, parts, subscriptionId, timestamp, resend = false)
                 messageId
             }
 
@@ -96,23 +110,37 @@ class MmsSender
             withContext(ioDispatcher) {
                 val message = messageDao.getById(messageId) ?: return@withContext
                 if (!message.isOutgoing) return@withContext
+                val rows = attachmentDao.forMessage(messageId)
                 val parts =
-                    attachmentDao.forMessage(messageId).mapNotNull { row ->
+                    rows.mapNotNull { row ->
                         val file = attachmentStore.fileFor(messageId, row.fileName)
                         if (!file.exists()) return@mapNotNull null
                         // Stored names carry the collision-proof index
                         // prefix; the wire name is the human part.
                         MmsPart(row.mimeType, row.fileName.substringAfter('-'), file.readBytes())
                     }
+                if (parts.size != rows.size) {
+                    // The retry goes out with fewer attachments than the
+                    // bubble shows - worth knowing when a user reports it.
+                    Diag.w(
+                        TAG,
+                        "resend missing attachment files",
+                        null,
+                        id("message", messageId),
+                        count("attachments", rows.size),
+                        count("present", parts.size),
+                    )
+                }
                 messageDao.resetForResend(messageId, message.systemSmsId)
-                dispatch(messageId, message.sender, message.body, parts, message.subscriptionId, message.timestamp)
+                dispatch(messageId, message.sender, message.body, parts, message.subscriptionId, message.timestamp, resend = true)
             }
         }
 
         /**
          * Encodes and hands the PDU to the platform. A synchronous throw
-         * is recorded as FAILED on the row and swallowed - the persisted
-         * status IS the failure signal callers observe.
+         * is recorded as FAILED on the row (reason [SendFailureReason.DISPATCH_FAILED])
+         * and swallowed - the persisted status IS the failure signal
+         * callers observe.
          */
         private suspend fun dispatch(
             messageId: Long,
@@ -121,7 +149,9 @@ class MmsSender
             parts: List<MmsPart>,
             subscriptionId: Int?,
             timestampMs: Long,
+            resend: Boolean,
         ) {
+            logAttachments(messageId, parts)
             try {
                 val pdu =
                     MmsSendReqEncoder.encode(
@@ -138,12 +168,58 @@ class MmsSender
                 // the file cannot collide.
                 val staged = attachmentStore.stagingFile(messageId)
                 staged.writeBytes(pdu)
+                logHandover(messageId, parts, pdu.size, subscriptionId, resend)
                 gateway.sendMultimediaMessage(subscriptionId, staged, sentIntent(messageId, destination))
             } catch (e: Exception) {
-                // Content-free by convention: no body or address in logs.
-                Log.e(TAG, "Failed to start MMS send", e)
+                // The message never reached the platform: the app's own
+                // failure (or a throwing SmsManager), distinct from every
+                // result-code failure the receiver records.
+                Diag.e(TAG, "mms handover failed", e, id("message", messageId), count("parts", parts.size), flag("resend", resend))
                 messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
+                messageDao.setSendFailureReason(messageId, SendFailureReason.DISPATCH_FAILED.name)
             }
+        }
+
+        /** One line per attachment: what will travel, by size and type - never by name or content. */
+        private fun logAttachments(
+            messageId: Long,
+            parts: List<MmsPart>,
+        ) {
+            parts.forEachIndexed { index, part ->
+                Diag.d(
+                    TAG,
+                    "mms attachment",
+                    id("message", messageId),
+                    count("index", index),
+                    mime(part.mimeType),
+                    count("bytes", part.data.size),
+                )
+            }
+        }
+
+        /** The hand-over itself: payload shape plus the radio conditions at that instant. */
+        private fun logHandover(
+            messageId: Long,
+            parts: List<MmsPart>,
+            pduBytes: Int,
+            subscriptionId: Int?,
+            resend: Boolean,
+        ) {
+            val radio = conditions.probe(subscriptionId)
+            Diag.i(
+                TAG,
+                "mms handover",
+                id("message", messageId),
+                count("parts", parts.size),
+                count("attachmentBytes", parts.sumOf { it.data.size.toLong() }),
+                count("pduBytes", pduBytes),
+                flag("resend", resend),
+                flag("defaultSubscription", subscriptionId == null),
+                count("slot", radio.slot ?: 0),
+                label("network", TriState.of(radio.networkConnected)),
+                label("cellular", TriState.of(radio.cellular)),
+                label("mobileData", TriState.of(radio.mobileDataEnabled)),
+            )
         }
 
         private suspend fun persistToRoom(
@@ -204,3 +280,21 @@ class MmsSender
             const val TAG = "MmsSender"
         }
     }
+
+/** A yes/no the platform may decline to answer, as a loggable label. */
+enum class TriState {
+    YES,
+    NO,
+    UNKNOWN,
+
+    ;
+
+    companion object {
+        fun of(value: Boolean?): TriState =
+            when (value) {
+                true -> YES
+                false -> NO
+                null -> UNKNOWN
+            }
+    }
+}

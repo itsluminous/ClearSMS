@@ -15,7 +15,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 
 /**
- * The Source code and Donate rows delegate their URLs (kept in string
+ * The Source code and Support (UPI, PayPal, Star on GitHub) rows delegate their URLs (kept in string
  * resources, never inline in code) to other apps via ACTION_VIEW - no
  * INTERNET permission involved - and must not crash when nothing on the
  * device can handle the link.

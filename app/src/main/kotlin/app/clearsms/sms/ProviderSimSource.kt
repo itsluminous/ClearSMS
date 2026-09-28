@@ -2,7 +2,8 @@ package app.clearsms.sms
 
 import android.content.Context
 import android.provider.Telephony
-import android.util.Log
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -80,7 +81,7 @@ class SystemProviderSimSource
                         }
                     }.orEmpty()
             } catch (e: Exception) {
-                Log.w(TAG, "Cannot read the system SMS provider; SIM backfill will retry later", e)
+                Diag.w(TAG, "cannot read the system SMS provider; SIM backfill will retry later", e, flag("denied", e is SecurityException))
                 emptyList()
             }
 

@@ -3,12 +3,14 @@ package app.clearsms.notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.ApplicationScope
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.sms.SmsSender
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +76,13 @@ class MessageActionReceiver : BroadcastReceiver() {
                 }
             }
             ACTION_REPLY -> {
-                val destination = intent.getStringExtra(EXTRA_SENDER) ?: return
+                val destination = intent.getStringExtra(EXTRA_SENDER)
+                if (destination == null) {
+                    // Nothing to reply to. (Behaviour unchanged: the action
+                    // is dropped; only the trace is new.)
+                    Diag.w(TAG, "notification reply without a target", null, id("message", messageId))
+                    return
+                }
                 val text =
                     RemoteInput
                         .getResultsFromIntent(intent)
@@ -93,7 +101,10 @@ class MessageActionReceiver : BroadcastReceiver() {
                         // updated; cancelling it is the update.
                         dismiss()
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to send reply", e)
+                        // The reply typed into the shade is lost here; the
+                        // length says whether there was one, the text never.
+                        val replyLength = text.length
+                        Diag.e(TAG, "notification reply failed", e, id("message", messageId), count("chars", replyLength))
                         dismiss()
                     } finally {
                         pendingResult.finish()

@@ -174,11 +174,7 @@ object MessageDetails {
                         )
                     DeliveryStatus.FAILED ->
                         add(
-                            Row.Error(
-                                message.sendFailureReason?.let { name ->
-                                    SendFailureReason.entries.firstOrNull { it.name == name }
-                                },
-                            ),
+                            Row.Error(SendFailureReason.fromName(message.sendFailureReason)),
                         )
                     // Still SENDING or SCHEDULED: nothing has left the phone
                     // yet, so neither a delivery claim nor an error applies.

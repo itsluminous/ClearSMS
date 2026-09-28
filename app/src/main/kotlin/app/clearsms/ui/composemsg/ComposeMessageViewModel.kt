@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.IoDispatcher
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.mms.StagedAttachment
@@ -291,9 +294,21 @@ class ComposeMessageViewModel
                             }
                             else -> smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         // Nothing (new) was persisted: give the text back so
-                        // Retry is a real retry, not a blank no-op.
+                        // Retry is a real retry, not a blank no-op. The
+                        // report gets the exception; the text and recipient
+                        // stay in the composer only.
+                        Diag.e(
+                            TAG,
+                            "compose send failed before a row existed",
+                            e,
+                            count("attachments", attachments.size),
+                            flag(
+                                "mmsRetry",
+                                retryMmsId != null,
+                            ),
+                        )
                         state.value = state.value.copy(body = current.body, sendStatus = SendStatus.FAILED)
                         return@launch
                     }
@@ -347,9 +362,10 @@ class ComposeMessageViewModel
                             subscriptionId = chosenSim.value,
                             scheduledAtMs = scheduledAtMs,
                         )
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         // Nothing was persisted: give the text back so the
                         // user can retry (send now, or long-press again).
+                        Diag.e(TAG, "compose scheduling failed", e)
                         state.value = state.value.copy(body = current.body, sendStatus = SendStatus.FAILED)
                         return@launch
                     }
@@ -379,5 +395,9 @@ class ComposeMessageViewModel
             // ViewModel scope is already cancelled here.
             composerAttachments.consume().forEach { it.file.delete() }
             super.onCleared()
+        }
+
+        private companion object {
+            const val TAG = "Compose"
         }
     }

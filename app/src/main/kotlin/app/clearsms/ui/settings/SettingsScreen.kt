@@ -415,8 +415,9 @@ private fun SettingsRowsHost(
     val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
 
-    // Source code / Donate rows: hand the URL to whatever app claims it; a
-    // missing handler (no browser, no UPI app) surfaces a snackbar, never a crash.
+    // Source code / Support rows (UPI, PayPal, Star on GitHub): hand the URL to
+    // whatever app claims it; a missing handler (no browser, no UPI app)
+    // surfaces a snackbar, never a crash.
     val linkNoHandler = stringResource(R.string.settings_link_no_handler)
     val openLink: (String) -> Unit = { url ->
         if (!ExternalLinks.open(context, url)) {
@@ -1449,6 +1450,12 @@ private fun settingsRowEntries(
                 SettingsItem.PAYPAL -> {
                     val url = stringResource(R.string.url_donate_paypal)
                     row(section, title, stringResource(R.string.settings_donate_paypal_summary)) { onOpenLink(url) }
+                }
+                SettingsItem.STAR_ON_GITHUB -> {
+                    // Deliberately the SAME resource as About's Source code
+                    // row: one URL, so the two can never drift apart.
+                    val url = stringResource(R.string.url_source_code)
+                    row(section, title, stringResource(R.string.settings_star_on_github_summary)) { onOpenLink(url) }
                 }
                 SettingsItem.PERMISSIONS ->
                     row(section, title, stringResource(R.string.settings_permissions_summary), onPermissions)

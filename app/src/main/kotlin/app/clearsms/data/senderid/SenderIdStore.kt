@@ -2,8 +2,8 @@ package app.clearsms.data.senderid
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.util.Log
 import android.util.LruCache
+import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.SenderInfo
@@ -100,8 +100,10 @@ class SenderIdStore(
                     .openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
                     .also { database = it }
             } catch (e: Exception) {
-                // The asset may be absent in stripped builds; degrade to "no directory".
-                Log.w(TAG, "Sender ID database unavailable", e)
+                // The asset may be absent in stripped builds; degrade to "no
+                // directory". Logged once: it explains every "sender shows
+                // as a bare id" report that follows.
+                Diag.w(TAG, "sender id database unavailable", e)
                 openFailed = true
                 null
             }
@@ -154,7 +156,7 @@ class SenderIdStore(
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Sender ID corrections unavailable", e)
+            Diag.w(TAG, "sender id corrections unavailable", e)
             emptyMap()
         }
 

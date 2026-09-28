@@ -6,9 +6,10 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
-import android.util.Log
 import android.util.LruCache
 import androidx.core.content.ContextCompat
+import app.clearsms.diagnostics.Diag
+import app.clearsms.diagnostics.DiagField.Companion.flag
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -102,7 +103,9 @@ class ContactsSource
                         }
                     }
             } catch (e: Exception) {
-                Log.w(TAG, "Contact lookup failed", e)
+                // Explains "names stopped resolving": a denied lookup means
+                // the permission went away; anything else is a provider fault.
+                Diag.w(TAG, "contact lookup failed", e, flag("denied", e is SecurityException))
                 null
             }
         }
