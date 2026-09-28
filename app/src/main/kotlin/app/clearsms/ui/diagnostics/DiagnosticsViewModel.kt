@@ -98,8 +98,10 @@ class DiagnosticsViewModel
                 try {
                     val dir = File(context.filesDir, SHARE_DIR).apply { mkdirs() }
                     dir.listFiles()?.forEach { it.delete() }
-                    val file = File(dir, "clearsms-diagnostics-${System.currentTimeMillis()}.zip")
-                    file.outputStream().use { DiagnosticReport.writeZip(current.preview, it) }
+                    // One clock reading names both the zip and the text inside it.
+                    val nowMs = System.currentTimeMillis()
+                    val file = File(dir, DiagnosticReport.zipName(nowMs))
+                    file.outputStream().use { DiagnosticReport.writeZip(current.preview, it, nowMs) }
                     val uri: Uri = FileProvider.getUriForFile(context, AUTHORITY, file)
                     Diag.i(
                         TAG,
@@ -120,18 +122,19 @@ class DiagnosticsViewModel
         private fun rebuild() {
             val head = header ?: return
             val current = state.value
+            val nowMs = System.currentTimeMillis()
             val text =
                 DiagnosticReport.build(
                     header = head,
                     lines = Diag.buffer.snapshot(),
                     window = current.window,
                     maskSenders = current.maskSenders,
-                    nowMs = System.currentTimeMillis(),
+                    nowMs = nowMs,
                 )
             state.update {
                 it.copy(
                     preview = text,
-                    zipBytes = DiagnosticReport.zipBytes(text).size,
+                    zipBytes = DiagnosticReport.zipBytes(text, nowMs).size,
                     loading = false,
                     shareFailed = false,
                 )
