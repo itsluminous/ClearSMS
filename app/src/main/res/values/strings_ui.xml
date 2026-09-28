@@ -75,6 +75,12 @@
     <string name="send_failure_sim_unavailable">The SIM this message was sent from is not active right now.</string>
     <string name="send_failure_dispatch">The message could not be handed to the phone\'s messaging service.</string>
     <string name="send_failure_unknown">The phone reported that the send failed, without saying why.</string>
+    <!-- Appended to send_failure_no_mms_network / send_failure_apn ONLY when
+         the message went out on a SIM other than the phone's mobile-data
+         SIM. Guidance, not a verdict: on many dual-SIM phones only the data
+         SIM can carry MMS, but not on all. Slot numbers only - never a
+         carrier name. %1$d = the slot it was sent from, %2$d = the data SIM's slot. -->
+    <string name="send_failure_data_sim_hint">This was sent from SIM %1$d, but mobile data is on SIM %2$d. On many phones MMS may only work on the SIM used for mobile data - try sending from SIM %2$d, or make SIM %1$d the mobile-data SIM in your phone\'s settings.</string>
     <!-- The short form under the bubble: the status word, then the reason
          in a few words. -->
     <string name="conversation_not_sent_no_mms_network">Not sent · no MMS connection</string>

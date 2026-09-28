@@ -3,6 +3,7 @@ package app.clearsms.mms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.telephony.SubscriptionManager
 import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
@@ -173,7 +174,7 @@ class MmsSender
                 val staged = attachmentStore.stagingFile(messageId)
                 staged.writeBytes(pdu)
                 logHandover(messageId, parts, pdu.size, subscriptionId, resend)
-                gateway.sendMultimediaMessage(subscriptionId, staged, sentIntent(messageId, destination))
+                gateway.sendMultimediaMessage(subscriptionId, staged, sentIntent(messageId, destination, subscriptionId))
             } catch (e: Exception) {
                 // The message never reached the platform: the app's own
                 // failure (or a throwing SmsManager), distinct from every
@@ -201,7 +202,13 @@ class MmsSender
             }
         }
 
-        /** The hand-over itself: payload shape plus the radio conditions at that instant. */
+        /**
+         * The hand-over itself: payload shape plus the radio conditions at
+         * that instant. `slot`/`dataSlot` are 1-based slots (0 = unknown);
+         * `onDataSim` says whether the sending SIM is the phone's
+         * mobile-data SIM - the one line that answers "did this MMS go out
+         * on a SIM that can carry MMS on this phone?".
+         */
         private fun logHandover(
             messageId: Long,
             parts: List<MmsPart>,
@@ -220,6 +227,8 @@ class MmsSender
                 flag("resend", resend),
                 flag("defaultSubscription", subscriptionId == null),
                 count("slot", radio.slot ?: 0),
+                count("dataSlot", radio.dataSlot ?: 0),
+                label("onDataSim", TriState.of(radio.onDataSim)),
                 label("network", TriState.of(radio.networkConnected)),
                 label("cellular", TriState.of(radio.cellular)),
                 label("mobileData", TriState.of(radio.mobileDataEnabled)),
@@ -264,12 +273,19 @@ class MmsSender
         private fun sentIntent(
             messageId: Long,
             destination: String,
+            subscriptionId: Int?,
         ): PendingIntent {
             val intent =
                 Intent(context, MmsSentReceiver::class.java)
                     .setAction(MmsSentReceiver.ACTION_MMS_SENT)
                     .putExtra(MmsSentReceiver.EXTRA_MESSAGE_ID, messageId)
                     .putExtra(MmsSentReceiver.EXTRA_DESTINATION, destination)
+                    // So the failure report line can say whether the SIM the
+                    // platform sent on was the data SIM, without a DB read.
+                    .putExtra(
+                        MmsSentReceiver.EXTRA_SUBSCRIPTION_ID,
+                        subscriptionId ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                    )
             return PendingIntent.getBroadcast(
                 context,
                 // Unique per message so parallel sends never collide.

@@ -33,6 +33,7 @@ class SendFailureTextTest {
             R.string.send_failure_sim_unavailable to "send_failure_sim_unavailable",
             R.string.send_failure_dispatch to "send_failure_dispatch",
             R.string.send_failure_unknown to "send_failure_unknown",
+            R.string.send_failure_data_sim_hint to "send_failure_data_sim_hint",
             R.string.conversation_not_sent to "conversation_not_sent",
             R.string.conversation_not_sent_no_mms_network to "conversation_not_sent_no_mms_network",
             R.string.conversation_not_sent_apn to "conversation_not_sent_apn",
@@ -124,5 +125,26 @@ class SendFailureTextTest {
             .forEach { file ->
                 assertWithMessage(file.path).that(file.readText()).doesNotContain("R.string.send_failure_")
             }
+    }
+
+    @Test
+    fun `the data-SIM addendum is guidance with slot numbers - not a verdict, not a carrier`() {
+        val hint = string(resourceName.getValue(SendFailureText.dataSimHintRes()))
+        // Placeholders: %1$d = the sending slot, %2$d = the data SIM's slot.
+        assertThat(hint).contains("sent from SIM %1\$d")
+        assertThat(hint).contains("mobile data is on SIM %2\$d")
+        // Hedged: "may only work", never "does not work" / "cannot".
+        assertThat(hint).contains("may only work")
+        assertThat(hint.lowercase()).doesNotContain("cannot")
+        assertThat(hint.lowercase()).doesNotContain("will not")
+        // Actionable both ways: change the sending SIM, or change the data SIM.
+        assertThat(hint).contains("try sending from SIM %2\$d")
+        assertThat(hint).contains("make SIM %1\$d the mobile-data SIM")
+        // Slots only - no carrier, number or id placeholder.
+        assertThat(hint).doesNotContain("%s")
+        assertThat(hint).doesNotContain("%1\$s")
+        assertThat(hint).doesNotContain("%2\$s")
+        // It is an addendum, distinct from every standalone explanation.
+        assertThat(SendFailureReason.entries.map { SendFailureText.explanationRes(it) }).doesNotContain(SendFailureText.dataSimHintRes())
     }
 }

@@ -28,11 +28,13 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import java.io.File
 
 private class DiagFakeMmsGateway : MmsGateway {
     var throwOnSend: Boolean = false
     var sends = 0
+    var lastSentIntent: PendingIntent? = null
 
     override fun sendMultimediaMessage(
         subscriptionId: Int?,
@@ -41,6 +43,7 @@ private class DiagFakeMmsGateway : MmsGateway {
     ) {
         if (throwOnSend) throw IllegalStateException("radio unavailable for +15551234567")
         sends++
+        lastSentIntent = sentIntent
     }
 }
 
@@ -52,6 +55,11 @@ private class DiagFakeSubscriptionSource : SubscriptionSource {
         )
 
     override fun defaultSmsSubscriptionId(): Int? = 3
+
+    // Subscription 3 (slot 1) carries mobile data; a send on 7 is off the data SIM.
+    var dataSub: Int? = 3
+
+    override fun defaultDataSubscriptionId(): Int? = dataSub
 }
 
 /**
@@ -71,6 +79,7 @@ class MmsDiagnosticsTest {
     private lateinit var messageDao: MessageDao
     private lateinit var attachmentDao: AttachmentDao
     private lateinit var gateway: DiagFakeMmsGateway
+    private lateinit var subscriptions: DiagFakeSubscriptionSource
     private lateinit var stager: OutgoingAttachmentStager
     private lateinit var sender: MmsSender
     private var logStart = 0L
@@ -90,6 +99,7 @@ class MmsDiagnosticsTest {
         messageDao = db.messageDao()
         attachmentDao = db.attachmentDao()
         gateway = DiagFakeMmsGateway()
+        subscriptions = DiagFakeSubscriptionSource()
         stager = OutgoingAttachmentStager(context)
         sender =
             MmsSender(
@@ -99,7 +109,7 @@ class MmsDiagnosticsTest {
                 AttachmentStore(context),
                 stager,
                 gateway,
-                MmsSendConditionsProbe(context, DiagFakeSubscriptionSource()),
+                MmsSendConditionsProbe(context, subscriptions),
                 Dispatchers.IO,
             )
         // Only entries recorded by THIS test are inspected: the buffer is a
@@ -128,6 +138,10 @@ class MmsDiagnosticsTest {
         assertWithMessage("file name stem leaked").that(text).doesNotContain("priya")
         assertWithMessage("message text leaked").that(text).doesNotContain(this.text)
         assertWithMessage("message text leaked").that(text).doesNotContain("photo of us")
+        // The SIMs are named after carriers in the fake; only slots may appear.
+        assertWithMessage("carrier name leaked").that(text).doesNotContain("Airtel")
+        assertWithMessage("carrier name leaked").that(text).doesNotContain("Jio")
+        assertWithMessage("subscription id leaked").that(text).doesNotContainMatch("subscription(Id)?=\\d")
     }
 
     @Test
@@ -147,6 +161,9 @@ class MmsDiagnosticsTest {
             // Subscription 7 sits in the second slot; the id itself is not logged.
             assertThat(handover).contains("slot=2")
             assertThat(handover).doesNotContain("subscription=7")
+            // Mobile data rides on subscription 3 (slot 1): this MMS went out
+            // on the OTHER SIM - the one line that says so.
+            assertThat(handover).contains("slot=2 dataSlot=1 onDataSim=NO")
             // Radio facts as YES/NO/UNKNOWN labels, whatever Robolectric answers.
             assertThat(handover).containsMatch("network=(YES|NO|UNKNOWN)")
             assertThat(handover).containsMatch("cellular=(YES|NO|UNKNOWN)")
@@ -190,8 +207,67 @@ class MmsDiagnosticsTest {
             assertThat(log).contains("W MmsSender resend missing attachment files message=$id attachments=1 present=0")
             assertThat(log.lines().last { "mms handover" in it }).contains("parts=0")
             assertThat(log.lines().last { "mms handover" in it }).contains("resend=true defaultSubscription=false slot=1")
+            // Subscription 3 IS the data SIM.
+            assertThat(log.lines().last { "mms handover" in it }).contains("slot=1 dataSlot=1 onDataSim=YES")
             assertNothingPersonal(log)
         }
+
+    @Test
+    fun `an unknown data subscription logs dataSlot=0 and onDataSim=UNKNOWN - never a guess`() =
+        runBlocking {
+            subscriptions.dataSub = null
+
+            val id = sender.send(recipient, text, listOf(staged()), subscriptionId = 7)
+
+            val handover = log().lines().single { "mms handover" in it && "message=$id" in it }
+            assertThat(handover).contains("slot=2 dataSlot=0 onDataSim=UNKNOWN")
+            assertNothingPersonal(handover)
+        }
+
+    @Test
+    fun `a system-default send is judged by the default SMS subscription - what the platform will actually use`() =
+        runBlocking {
+            // Default SMS subscription is 3 in the fake, and 3 is the data SIM.
+            val id = sender.send(recipient, text, listOf(staged()), subscriptionId = null)
+
+            val handover = log().lines().single { "mms handover" in it && "message=$id" in it }
+            assertThat(handover).contains("defaultSubscription=true slot=0 dataSlot=1 onDataSim=YES")
+            assertNothingPersonal(handover)
+        }
+
+    @Test
+    fun `the sent intent carries the subscription so the failure report can say whether it was the data SIM`() =
+        runBlocking {
+            val id = sender.send(recipient, text, listOf(staged()), subscriptionId = 7)
+
+            val sentIntent = shadowOf(gateway.lastSentIntent!!).savedIntent
+            assertThat(sentIntent.getLongExtra(MmsSentReceiver.EXTRA_MESSAGE_ID, -1L)).isEqualTo(id)
+            assertThat(sentIntent.getIntExtra(MmsSentReceiver.EXTRA_SUBSCRIPTION_ID, 0)).isEqualTo(7)
+
+            val code = SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS
+            MmsSendReport.of(sentIntent, code, SendFailureReason.fromMmsResultCode(code), subscriptions).log(id)
+
+            val line = log().lines().single { "mms send failed" in it }
+            assertThat(
+                line,
+            ).contains("message=$id result=$code reason=NO_MMS_NETWORK httpStatusPresent=false httpStatus=0 slot=2 onDataSim=NO")
+            assertNothingPersonal(line)
+        }
+
+    @Test
+    fun `a failure report without a subscription source reads slot and data SIM as unknown`() {
+        val intent =
+            Intent(MmsSentReceiver.ACTION_MMS_SENT)
+                .putExtra(MmsSentReceiver.EXTRA_DESTINATION, recipient)
+                .putExtra(MmsSentReceiver.EXTRA_SUBSCRIPTION_ID, 7)
+        val code = SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS
+
+        MmsSendReport.of(intent, code, SendFailureReason.fromMmsResultCode(code)).log(21L)
+
+        val line = log().lines().single { "mms send failed" in it }
+        assertThat(line).contains("slot=0 onDataSim=UNKNOWN")
+        assertNothingPersonal(line)
+    }
 
     @Test
     fun `the sent-receiver report logs the RAW result code, the mapped reason and the HTTP status`() {

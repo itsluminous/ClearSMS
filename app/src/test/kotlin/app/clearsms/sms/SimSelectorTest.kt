@@ -11,6 +11,8 @@ class FakeSubscriptionSource(
     override fun activeSims(): List<SimInfo> = sims
 
     override fun defaultSmsSubscriptionId(): Int? = defaultSub
+
+    override fun defaultDataSubscriptionId(): Int? = null
 }
 
 class SimSelectorTest {

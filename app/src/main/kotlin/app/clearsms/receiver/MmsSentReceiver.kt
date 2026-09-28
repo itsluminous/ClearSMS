@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.diagnostics.Diag
@@ -14,7 +15,11 @@ import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.diagnostics.DiagField.Companion.label
 import app.clearsms.mms.AttachmentStore
+import app.clearsms.mms.DataSim
 import app.clearsms.mms.SendFailureReason
+import app.clearsms.mms.TriState
+import app.clearsms.sms.SimSelector
+import app.clearsms.sms.SubscriptionSource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,13 +41,18 @@ import javax.inject.Singleton
  * (the mapped [SendFailureReason] folds several codes into one reason, so
  * the code is the datum a bug report needs), the HTTP status the platform
  * attaches to an MMSC refusal, and whether a send-conf PDU came back.
- * The destination extra is read for the failure notification only and
- * never logged.
+ * A failure line also carries the sending SIM's slot and whether it is
+ * the phone's mobile-data SIM (see [app.clearsms.mms.DataSim]) - slots
+ * and yes/no only. The destination extra is read for the failure
+ * notification only and never logged.
  */
 @AndroidEntryPoint
 class MmsSentReceiver : BroadcastReceiver() {
     @Inject
     lateinit var recorder: MmsSendReportRecorder
+
+    @Inject
+    lateinit var subscriptionSource: SubscriptionSource
 
     override fun onReceive(
         context: Context,
@@ -55,7 +65,7 @@ class MmsSentReceiver : BroadcastReceiver() {
         val succeeded = resultCode == Activity.RESULT_OK
         val failureReason =
             if (succeeded) null else SendFailureReason.fromMmsResultCode(resultCode)
-        MmsSendReport.of(intent, resultCode, failureReason).log(messageId)
+        MmsSendReport.of(intent, resultCode, failureReason, subscriptionSource).log(messageId)
         val pending = goAsync()
         receiverScope.launch {
             try {
@@ -70,6 +80,9 @@ class MmsSentReceiver : BroadcastReceiver() {
         const val ACTION_MMS_SENT = "app.clearsms.action.MMS_SENT"
         const val EXTRA_MESSAGE_ID = "message_id"
         const val EXTRA_DESTINATION = "destination"
+
+        /** The subscription the send was handed over with; [SubscriptionManager.INVALID_SUBSCRIPTION_ID] for the system default. */
+        const val EXTRA_SUBSCRIPTION_ID = "subscription_id"
 
         private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
@@ -89,6 +102,10 @@ data class MmsSendReport(
     val reason: SendFailureReason?,
     val httpStatus: Int?,
     val sendConfBytes: Int?,
+    /** 1-based slot of the sending subscription; null when unknown or system default. */
+    val slot: Int? = null,
+    /** Whether the sending subscription is the default data subscription; null when unknown. */
+    val onDataSim: Boolean? = null,
 ) {
     val succeeded: Boolean get() = resultCode == Activity.RESULT_OK
 
@@ -118,6 +135,8 @@ data class MmsSendReport(
                 label("reason", reason),
                 flag("httpStatusPresent", httpStatus != null),
                 code("httpStatus", httpStatus ?: 0),
+                count("slot", slot ?: 0),
+                label("onDataSim", TriState.of(onDataSim)),
             )
         }
     }
@@ -125,12 +144,27 @@ data class MmsSendReport(
     companion object {
         private const val TAG = "MmsSendReport"
 
+        /**
+         * Builds the report from the sent intent. With a [subscriptions]
+         * source the sending SIM (the [MmsSentReceiver.EXTRA_SUBSCRIPTION_ID]
+         * extra, or the default SMS subscription for a system-default send)
+         * is placed in its slot and compared with the default data
+         * subscription; any platform failure there reads as unknown.
+         */
         fun of(
             intent: Intent,
             resultCode: Int,
             reason: SendFailureReason?,
-        ): MmsSendReport =
-            MmsSendReport(
+            subscriptions: SubscriptionSource? = null,
+        ): MmsSendReport {
+            val sending =
+                intent
+                    .getIntExtra(MmsSentReceiver.EXTRA_SUBSCRIPTION_ID, SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                    .takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+            val sims = runCatching { subscriptions?.activeSims() }.getOrNull().orEmpty()
+            val data = runCatching { subscriptions?.defaultDataSubscriptionId() }.getOrNull()
+            val effectiveSending = sending ?: runCatching { subscriptions?.defaultSmsSubscriptionId() }.getOrNull()
+            return MmsSendReport(
                 resultCode = resultCode,
                 reason = reason,
                 httpStatus =
@@ -140,7 +174,10 @@ data class MmsSendReport(
                         null
                     },
                 sendConfBytes = intent.getByteArrayExtra(SmsManager.EXTRA_MMS_DATA)?.size,
+                slot = SimSelector.slotNumberFor(sims, sending),
+                onDataSim = if (subscriptions == null) null else DataSim.sendsOnDataSim(effectiveSending, data),
             )
+        }
     }
 }
 

@@ -2,6 +2,7 @@ package app.clearsms.ui.conversation
 
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
 
 /**
@@ -97,6 +98,12 @@ object MessageDetails {
         /** The send FAILED; [reason] is the recorded cause, null when none was. */
         data class Error(
             val reason: SendFailureReason?,
+            /**
+             * Present only when the failed MMS went out on a SIM other than
+             * the mobile-data SIM (see [app.clearsms.mms.DataSim.hintFor]);
+             * the row then appends the data-SIM guidance to the explanation.
+             */
+            val dataSimHint: DataSimHint? = null,
         ) : Row
 
         /** "SIM 1"/"SIM 2" provenance, when known. */
@@ -116,11 +123,15 @@ object MessageDetails {
     fun transportOf(message: MessageEntity): Transport =
         if (message.mmsStatus != null || message.attachmentKinds != null) Transport.MMS else Transport.SMS
 
-    /** The dialog's rows for [message], top to bottom. */
+    /**
+     * The dialog's rows for [message], top to bottom. [dataSimHint] is the
+     * already-judged data-SIM addendum for a failed MMS (null = none).
+     */
     fun rowsFor(
         message: MessageEntity,
         resolvedName: String?,
         simLabel: String?,
+        dataSimHint: DataSimHint? = null,
     ): List<Row> =
         buildList {
             val transport = transportOf(message)
@@ -174,7 +185,7 @@ object MessageDetails {
                         )
                     DeliveryStatus.FAILED ->
                         add(
-                            Row.Error(SendFailureReason.fromName(message.sendFailureReason)),
+                            Row.Error(SendFailureReason.fromName(message.sendFailureReason), dataSimHint),
                         )
                     // Still SENDING or SCHEDULED: nothing has left the phone
                     // yet, so neither a delivery claim nor an error applies.

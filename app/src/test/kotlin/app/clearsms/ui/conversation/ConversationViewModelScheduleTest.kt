@@ -126,6 +126,8 @@ class ConversationViewModelScheduleTest {
         override fun activeSims(): List<SimInfo> = emptyList()
 
         override fun defaultSmsSubscriptionId(): Int? = null
+
+        override fun defaultDataSubscriptionId(): Int? = null
     }
 
     private class FakeMmsGateway : MmsGateway {

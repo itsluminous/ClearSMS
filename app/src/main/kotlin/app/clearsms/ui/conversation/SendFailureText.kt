@@ -17,6 +17,12 @@ import app.clearsms.mms.SendFailureReason
  * work; only [SendFailureReason.TRANSIENT] gets that hint. A failure
  * recorded without a reason (an SMS failure, or a row from before the
  * column) reads honestly as unexplained.
+ *
+ * One optional addendum exists: when a failed MMS went out on a SIM other
+ * than the phone's mobile-data SIM, [dataSimHintRes] is appended to the
+ * explanation - as guidance ("may only work"), never a verdict. WHETHER it
+ * applies is decided in one place, [app.clearsms.mms.DataSim.hintFor]; the
+ * bubble's short label never carries it.
  */
 object SendFailureText {
     /** Full explanation, one or two sentences: the dialog and details row. */
@@ -52,4 +58,11 @@ object SendFailureText {
 
     /** Whether the explanation for [reason] invites a retry (only genuinely transient trouble does). */
     fun suggestsRetry(reason: SendFailureReason?): Boolean = reason == SendFailureReason.TRANSIENT
+
+    /**
+     * The data-SIM addendum, formatted with the sending slot then the data
+     * slot ([app.clearsms.mms.DataSimHint.sendingSlot], [app.clearsms.mms.DataSimHint.dataSlot]).
+     */
+    @StringRes
+    fun dataSimHintRes(): Int = R.string.send_failure_data_sim_hint
 }

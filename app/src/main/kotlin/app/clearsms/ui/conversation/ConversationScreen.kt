@@ -88,6 +88,7 @@ import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.MmsStatus
+import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
 import app.clearsms.notification.OtpClipboard
 import app.clearsms.ui.common.HighlightTiming
@@ -150,6 +151,7 @@ fun ConversationScreen(
     // if the message is binned underneath the open dialog.
     var detailsMessage by remember { mutableStateOf<MessageEntity?>(null) }
     var detailsSimLabel by remember { mutableStateOf<String?>(null) }
+    var detailsDataSimHint by remember { mutableStateOf<DataSimHint?>(null) }
 
     // The thread's MMS attachments keyed by message id, and the image
     // currently opened in the full-screen viewer.
@@ -379,6 +381,7 @@ fun ConversationScreen(
                     onShowDetails = {
                         detailsMessage = singleSelected?.message
                         detailsSimLabel = singleSelected?.simLabel
+                        detailsDataSimHint = singleSelected?.dataSimHint
                     },
                     onCreateRule = { body ->
                         viewModel.exitSelection()
@@ -614,7 +617,9 @@ fun ConversationScreen(
             onDismiss = {
                 detailsMessage = null
                 detailsSimLabel = null
+                detailsDataSimHint = null
             },
+            dataSimHint = detailsDataSimHint,
         )
     }
 
@@ -626,13 +631,19 @@ fun ConversationScreen(
     failedMessageId?.let { messageId ->
         // The stored SendFailureReason (if any) turns "Not sent" into an
         // explanation - most importantly distinguishing "your carrier's MMS
-        // network never came up" from genuinely retryable trouble.
+        // network never came up" from genuinely retryable trouble. When
+        // that MMS went out on a SIM other than the mobile-data SIM, the
+        // data-SIM guidance follows it: the one actionable next step.
+        val failedItem = items.itemSnapshotList.items.firstOrNull { it.id == messageId }
         val failureDetail =
-            items.itemSnapshotList.items
-                .firstOrNull { it.id == messageId }
+            failedItem
                 ?.message
                 ?.sendFailureReason
                 ?.let { reason -> stringResource(SendFailureText.explanationRes(SendFailureReason.fromName(reason))) }
+        val dataSimHint =
+            failedItem?.dataSimHint?.let { hint ->
+                stringResource(SendFailureText.dataSimHintRes(), hint.sendingSlot, hint.dataSlot)
+            }
         AlertDialog(
             onDismissRequest = { failedMessageId = null },
             title = { Text(stringResource(R.string.conversation_failed_dialog_title)) },
@@ -640,6 +651,7 @@ fun ConversationScreen(
                 Text(
                     listOfNotNull(
                         failureDetail,
+                        dataSimHint,
                         stringResource(R.string.conversation_failed_dialog_message),
                     ).joinToString(separator = "\n\n"),
                 )

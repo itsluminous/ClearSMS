@@ -43,8 +43,11 @@ class MmsDiagnosticsContractTest {
         assertThat(receiver).contains("""label("reason", reason)""")
         assertThat(receiver).contains("SmsManager.EXTRA_MMS_HTTP_STATUS")
         assertThat(receiver).contains("SmsManager.EXTRA_MMS_DATA")
-        // The report is logged in onReceive, before the coroutine hop.
-        assertThat(receiver).contains("MmsSendReport.of(intent, resultCode, failureReason).log(messageId)")
+        // The report is logged in onReceive, before the coroutine hop, and
+        // says whether the sending SIM was the phone's mobile-data SIM.
+        assertThat(receiver).contains("MmsSendReport.of(intent, resultCode, failureReason, subscriptionSource).log(messageId)")
+        assertThat(receiver).contains("""count("slot", slot ?: 0)""")
+        assertThat(receiver).contains("""label("onDataSim", TriState.of(onDataSim))""")
     }
 
     @Test
@@ -64,6 +67,13 @@ class MmsDiagnosticsContractTest {
         assertThat(sender).contains("""count("pduBytes", pduBytes)""")
         assertThat(sender).contains("""mime(part.mimeType)""")
         assertThat(sender).contains("""count("slot", radio.slot ?: 0)""")
+        // The data-SIM datum: which slot carries mobile data, and whether
+        // the sending SIM is it. Existing field names are untouched.
+        assertThat(sender).contains("""count("dataSlot", radio.dataSlot ?: 0)""")
+        assertThat(sender).contains("""label("onDataSim", TriState.of(radio.onDataSim))""")
+        assertThat(sender).contains("""flag("defaultSubscription", subscriptionId == null)""")
+        // The sent intent tells the receiver which subscription sent.
+        assertThat(sender).contains("MmsSentReceiver.EXTRA_SUBSCRIPTION_ID")
         assertThat(sender).contains(""""mms handover failed", e""")
         assertThat(sender).contains("SendFailureReason.DISPATCH_FAILED.name")
         // The destination reaches the encoder and the PendingIntent only.

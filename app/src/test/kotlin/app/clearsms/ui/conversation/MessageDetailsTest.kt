@@ -4,6 +4,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.MmsStatus
 import app.clearsms.domain.model.Category
+import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
 import app.clearsms.ui.conversation.MessageDetails.DeliveryKnowledge
 import app.clearsms.ui.conversation.MessageDetails.Row
@@ -207,6 +208,25 @@ class MessageDetailsTest {
 
         assertThat(rows).contains(Row.Error(SendFailureReason.NO_MMS_NETWORK))
         assertThat(rows.filterIsInstance<Row.Delivered>()).isEmpty()
+    }
+
+    @Test
+    fun `failed outgoing MMS off the data SIM - the error row carries the already-judged data-SIM hint`() {
+        val failed =
+            entity(
+                outgoing = true,
+                status = DeliveryStatus.FAILED,
+                attachmentKinds = "IMAGE",
+                sendFailureReason = SendFailureReason.NO_MMS_NETWORK.name,
+            )
+        val hint = DataSimHint(sendingSlot = 2, dataSlot = 1)
+
+        val rows = MessageDetails.rowsFor(failed, resolvedName = null, simLabel = "SIM 2", dataSimHint = hint)
+
+        assertThat(rows).contains(Row.Error(SendFailureReason.NO_MMS_NETWORK, hint))
+        // The hint rides on the error row only: a non-failed row never gets one.
+        val sent = MessageDetails.rowsFor(entity(outgoing = true, status = DeliveryStatus.SENT), null, null, dataSimHint = hint)
+        assertThat(sent.filterIsInstance<Row.Error>()).isEmpty()
     }
 
     @Test

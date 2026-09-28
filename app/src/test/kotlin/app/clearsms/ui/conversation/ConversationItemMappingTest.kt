@@ -4,6 +4,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.mms.DataSimHint
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -45,6 +46,27 @@ class ConversationItemMappingTest {
 
         assertThat(item.outgoing).isFalse()
         assertThat(item.deliveryStatus).isNull()
+    }
+
+    @Test
+    fun `the data-SIM hint is asked for on a FAILED outgoing row only`() {
+        val hint = DataSimHint(sendingSlot = 2, dataSlot = 1)
+        val asked = mutableListOf<Long>()
+        val hintFor: (MessageEntity) -> DataSimHint? = {
+            asked += it.id
+            hint
+        }
+
+        val failed = entity(outgoing = true, status = DeliveryStatus.FAILED).toConversationItem(json, dataSimHintFor = hintFor)
+        val sent = entity(outgoing = true, status = DeliveryStatus.SENT).toConversationItem(json, dataSimHintFor = hintFor)
+        val incoming = entity(outgoing = false, status = DeliveryStatus.FAILED).toConversationItem(json, dataSimHintFor = hintFor)
+
+        assertThat(failed.dataSimHint).isEqualTo(hint)
+        assertThat(sent.dataSimHint).isNull()
+        assertThat(incoming.dataSimHint).isNull()
+        assertThat(asked).containsExactly(5L)
+        // Default: no hint source, no hint.
+        assertThat(entity(outgoing = true, status = DeliveryStatus.FAILED).toConversationItem(json).dataSimHint).isNull()
     }
 
     @Test

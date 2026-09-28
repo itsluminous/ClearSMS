@@ -50,6 +50,8 @@ private class TwoSimSubscriptionSource : SubscriptionSource {
         )
 
     override fun defaultSmsSubscriptionId(): Int? = 3
+
+    override fun defaultDataSubscriptionId(): Int? = null
 }
 
 /**

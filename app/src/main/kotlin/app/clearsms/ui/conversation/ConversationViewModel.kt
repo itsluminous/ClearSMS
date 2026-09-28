@@ -27,9 +27,12 @@ import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.sortTimestamp
+import app.clearsms.mms.DataSim
+import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.MmsInbound
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
+import app.clearsms.mms.SendFailureReason
 import app.clearsms.mms.StagedAttachment
 import app.clearsms.notification.MutedSenderGate
 import app.clearsms.notification.OtpClipboard
@@ -98,6 +101,13 @@ data class ConversationItem(
     val deliveryStatus: DeliveryStatus? = null,
     /** "SIM 1"/"SIM 2" provenance tag; null when tags are off or unknown. */
     val simLabel: String? = null,
+    /**
+     * For a FAILED outgoing MMS sent from a SIM other than the phone's
+     * mobile-data SIM: the two slots the Retry dialog and details row name
+     * in their hint. Null whenever the hint does not apply (see
+     * [app.clearsms.mms.DataSim.hintFor]).
+     */
+    val dataSimHint: DataSimHint? = null,
 )
 
 /**
@@ -113,6 +123,7 @@ internal fun MessageEntity.toConversationItem(
     json: Json,
     simTagFor: (Int?) -> String? = { null },
     sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
+    dataSimHintFor: (MessageEntity) -> DataSimHint? = { null },
 ): ConversationItem {
     val shownAt = sortOrder.sortTimestamp(timestamp, dateSent)
     return ConversationItem(
@@ -125,6 +136,7 @@ internal fun MessageEntity.toConversationItem(
         timeLabel = RelativeTime.format(shownAt),
         deliveryStatus = if (isOutgoing) deliveryStatus else null,
         simLabel = simTagFor(subscriptionId),
+        dataSimHint = if (isOutgoing && deliveryStatus == DeliveryStatus.FAILED) dataSimHintFor(this) else null,
     )
 }
 
@@ -266,6 +278,10 @@ class ConversationViewModel
         @Volatile
         private var simTagsEnabled: Boolean = false
 
+        /** The phone's default DATA subscription, primed with [activeSims]; null when unknown. */
+        @Volatile
+        private var defaultDataSubscriptionId: Int? = null
+
         /** The recipient address, kept for the per-number SIM memory writes. */
         @Volatile
         private var recipientAddress: String = ""
@@ -290,6 +306,7 @@ class ConversationViewModel
             // the SIM this thread last used, else the system default.
             viewModelScope.launch(ioDispatcher) {
                 activeSims = subscriptionSource.activeSims()
+                defaultDataSubscriptionId = subscriptionSource.defaultDataSubscriptionId()
                 simTagsEnabled =
                     SimSelector.showSimTags(activeSims, messageRepository.distinctSubscriptionIds())
                 recipientAddress = messageRepository.firstInThread(threadId)?.sender.orEmpty()
@@ -339,6 +356,20 @@ class ConversationViewModel
         /** Bubble SIM tag for a stored subscription id (null when tags are off). */
         private fun simTagFor(subscriptionId: Int?): String? =
             if (simTagsEnabled) SimSelector.slotLabelFor(activeSims, subscriptionId) else null
+
+        /**
+         * The "MMS may only work on the mobile-data SIM" hint for a failed
+         * row, judged against the SIMs and data default as they are NOW: if
+         * the user has since made the sending SIM the data SIM, a retry may
+         * well work and the hint rightly disappears.
+         */
+        private fun dataSimHintFor(message: MessageEntity): DataSimHint? =
+            DataSim.hintFor(
+                reason = SendFailureReason.fromName(message.sendFailureReason),
+                sendingSubscriptionId = message.subscriptionId,
+                dataSubscriptionId = defaultDataSubscriptionId,
+                activeSims = activeSims,
+            )
 
         /**
          * Message to scroll to and briefly highlight, from search / Alerts /
@@ -401,7 +432,7 @@ class ConversationViewModel
                         initialKey = position,
                         pagingSourceFactory = { messageRepository.pagedThread(threadId, sortOrder) },
                     ).flow
-                        .map { data -> data.map { it.toConversationItem(json, ::simTagFor, sortOrder) } }
+                        .map { data -> data.map { it.toConversationItem(json, ::simTagFor, sortOrder, ::dataSimHintFor) } }
                 }.flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 

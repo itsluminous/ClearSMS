@@ -31,6 +31,17 @@ interface SubscriptionSource {
 
     /** The system default SMS subscription id, or null when none is set. */
     fun defaultSmsSubscriptionId(): Int?
+
+    /**
+     * The system default DATA subscription id - the SIM mobile data rides
+     * on, which on most dual-SIM phones is also the only SIM that can
+     * bring up the MMS bearer. Null when unknown: below API 24 (no public
+     * query), or when the platform reports
+     * [android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID]
+     * (no data SIM chosen, no telephony). Distinct from
+     * [defaultSmsSubscriptionId]: the two defaults are set independently.
+     */
+    fun defaultDataSubscriptionId(): Int?
 }
 
 /**

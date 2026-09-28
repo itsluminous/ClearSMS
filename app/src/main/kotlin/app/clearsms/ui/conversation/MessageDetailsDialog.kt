@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.mms.DataSimHint
 
 /**
  * The "More details" dialog for ONE selected message. Rows come from the
@@ -47,10 +48,11 @@ internal fun MessageDetailsDialog(
     resolvedName: String?,
     simLabel: String?,
     onDismiss: () -> Unit,
+    dataSimHint: DataSimHint? = null,
 ) {
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
-    val rows = remember(message) { MessageDetails.rowsFor(message, resolvedName, simLabel) }
+    val rows = remember(message, dataSimHint) { MessageDetails.rowsFor(message, resolvedName, simLabel, dataSimHint) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.message_details_title)) },
@@ -132,7 +134,12 @@ private fun DetailRow(
                             },
                         )
                 }
-            is MessageDetails.Row.Error -> stringResource(SendFailureText.explanationRes(row.reason))
+            // The reason, plus the data-SIM guidance when it applies.
+            is MessageDetails.Row.Error ->
+                listOfNotNull(
+                    stringResource(SendFailureText.explanationRes(row.reason)),
+                    row.dataSimHint?.let { stringResource(SendFailureText.dataSimHintRes(), it.sendingSlot, it.dataSlot) },
+                ).joinToString(separator = "\n\n")
             is MessageDetails.Row.Sim -> row.label
             MessageDetails.Row.InRecycleBin -> stringResource(R.string.message_details_bin)
         }

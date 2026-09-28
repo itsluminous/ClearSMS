@@ -69,6 +69,8 @@ class ComposeMessageViewModelTest {
         override fun activeSims(): List<SimInfo> = sims
 
         override fun defaultSmsSubscriptionId(): Int? = defaultSub
+
+        override fun defaultDataSubscriptionId(): Int? = null
     }
 
     /** Polls [condition] (VM work crosses real DataStore/Room IO threads). */

@@ -30,6 +30,20 @@ data class MmsSendConditions(
     val mobileDataEnabled: Boolean?,
     /** 1-based SIM slot the subscription sits in; null when unknown or system default. */
     val slot: Int?,
+    /**
+     * 1-based slot of the phone's default DATA subscription; null when
+     * unknown (pre-API-24, no data SIM chosen, or the SIM list is not
+     * readable so the id cannot be placed in a slot).
+     */
+    val dataSlot: Int? = null,
+    /**
+     * Whether the sending subscription IS the default data subscription -
+     * the datum that separates "this SIM cannot carry MMS on this phone"
+     * from "the carrier has no MMS". Null when either side is unknown.
+     * For a system-default send the sending side is the default SMS
+     * subscription, which is what the platform will actually use.
+     */
+    val onDataSim: Boolean? = null,
 )
 
 /** Reads [MmsSendConditions] from the platform; failures read as "unknown", never throw. */
@@ -42,11 +56,16 @@ class MmsSendConditionsProbe
     ) {
         fun probe(subscriptionId: Int?): MmsSendConditions {
             val network = network()
+            val sims = runCatching { subscriptionSource.activeSims() }.getOrDefault(emptyList())
+            val dataSubscription = runCatching { subscriptionSource.defaultDataSubscriptionId() }.getOrNull()
+            val sending = subscriptionId ?: runCatching { subscriptionSource.defaultSmsSubscriptionId() }.getOrNull()
             return MmsSendConditions(
                 networkConnected = network?.first,
                 cellular = network?.second,
                 mobileDataEnabled = mobileDataEnabled(subscriptionId),
-                slot = runCatching { SimSelector.slotNumberFor(subscriptionSource.activeSims(), subscriptionId) }.getOrNull(),
+                slot = SimSelector.slotNumberFor(sims, subscriptionId),
+                dataSlot = SimSelector.slotNumberFor(sims, dataSubscription),
+                onDataSim = DataSim.sendsOnDataSim(sending, dataSubscription),
             )
         }
 
