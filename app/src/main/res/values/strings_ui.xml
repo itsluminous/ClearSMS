@@ -57,6 +57,7 @@
     <!-- Send feedback -->
     <string name="message_sent">Message sent</string>
     <string name="message_not_sent">Message not sent</string>
+    <string name="message_mms_in_flight">Sending MMS - this can take a few minutes</string>
     <string name="action_retry">Retry</string>
     <string name="conversation_sending">Sending…</string>
     <string name="conversation_sent">Sent</string>

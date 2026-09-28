@@ -167,6 +167,15 @@ sealed interface SendEvent {
     /** The send resolved without a recorded failure - show "Message sent". */
     data object Sent : SendEvent
 
+    /**
+     * An MMS is still in the platform's hands after the result window: the
+     * row is honestly SENDING and the platform may take minutes to report
+     * (see [OutgoingSendPolicy]). The bar says so - it is backed by real
+     * state, not a progress guess - and the real Sent / Not sent follows
+     * when the result lands.
+     */
+    data object MmsInFlight : SendEvent
+
     /** The send failed; [messageId] identifies the row a Retry re-dispatches. */
     data class Failed(
         val messageId: Long,
@@ -638,10 +647,20 @@ class ConversationViewModel
         // endregion
 
         private suspend fun resolve(messageId: Long) {
-            val status = sentMessageWatcher.await(messageId)
-            sendEvents.send(
-                if (status == SendStatus.FAILED) SendEvent.Failed(messageId) else SendEvent.Sent,
-            )
+            when (sentMessageWatcher.await(messageId)) {
+                SendStatus.FAILED -> sendEvents.send(SendEvent.Failed(messageId))
+                SendStatus.SENT -> sendEvents.send(SendEvent.Sent)
+                SendStatus.SENDING -> {
+                    // MMS with no result yet: say so, then keep watching the
+                    // row until the platform's single result arrives and
+                    // report THAT - never a Sent invented by the clock.
+                    sendEvents.send(SendEvent.MmsInFlight)
+                    val result = sentMessageWatcher.awaitResult(messageId)
+                    sendEvents.send(
+                        if (result == SendStatus.FAILED) SendEvent.Failed(messageId) else SendEvent.Sent,
+                    )
+                }
+            }
         }
 
         fun delete(messageId: Long) {

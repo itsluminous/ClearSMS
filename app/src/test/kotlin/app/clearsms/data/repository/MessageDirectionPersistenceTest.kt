@@ -8,11 +8,13 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
+import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
+import app.clearsms.domain.model.Category
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -119,6 +121,59 @@ class MessageDirectionPersistenceTest {
             with(byBody.getValue("sent and delivered")) {
                 assertThat(isOutgoing).isTrue()
                 assertThat(deliveryStatus).isEqualTo(DeliveryStatus.DELIVERED)
+            }
+        }
+
+    @Test
+    fun `an import cannot promote an in-flight outgoing MMS to SENT`() =
+        runBlocking {
+            // Exactly the row MmsSender persists at handover: SENDING, with
+            // attachments and NO provider id (the app writes no MMS provider
+            // row). An outgoing SMS to the same address then arrives through
+            // the importer / catch-up path as the provider reports it: SENT.
+            val mmsId =
+                db.messageDao().insert(
+                    MessageEntity(
+                        threadId = 1L,
+                        sender = "9876543210",
+                        normalizedSender = "9876543210",
+                        body = "photo",
+                        timestamp = 1_000L,
+                        isRead = true,
+                        category = Category.PERSONAL,
+                        isOutgoing = true,
+                        deliveryStatus = DeliveryStatus.SENDING,
+                        attachmentKinds = "IMAGE",
+                    ),
+                )
+
+            repository.persistImportedPage(
+                listOf(
+                    ImportedSmsRow(
+                        systemSmsId = 7,
+                        sender = "9876543210",
+                        body = "photo",
+                        timestampMs = 1_000L,
+                        isRead = true,
+                        enriched = null,
+                    ),
+                ),
+            )
+
+            val rows = db.messageDao().getAll()
+            // The MMS row is untouched: still SENDING, still the only MMS in
+            // the thread, and it did not acquire a provider id.
+            with(rows.single { it.id == mmsId }) {
+                assertThat(deliveryStatus).isEqualTo(DeliveryStatus.SENDING)
+                assertThat(systemSmsId).isNull()
+                assertThat(attachmentKinds).isEqualTo("IMAGE")
+            }
+            assertThat(rows.count { it.attachmentKinds != null }).isEqualTo(1)
+            // The imported SMS is its own row, in the same thread.
+            with(rows.single { it.systemSmsId == 7L }) {
+                assertThat(deliveryStatus).isEqualTo(DeliveryStatus.SENT)
+                assertThat(attachmentKinds).isNull()
+                assertThat(threadId).isEqualTo(rows.single { it.id == mmsId }.threadId)
             }
         }
 

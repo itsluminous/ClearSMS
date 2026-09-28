@@ -12,11 +12,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Resolves the outcome of a dispatched SMS by watching the message's
- * PERSISTED [DeliveryStatus]: [app.clearsms.sms.SmsSender] writes the row at
- * [DeliveryStatus.SENDING] and [app.clearsms.receiver.SmsSentReceiver]
- * records the radio's sent / delivery reports against it, so observing the
- * row is observing the truth (no provider polling).
+ * Resolves the outcome of a dispatched message by watching its PERSISTED
+ * [DeliveryStatus]: [app.clearsms.sms.SmsSender] / [app.clearsms.mms.MmsSender]
+ * write the row at [DeliveryStatus.SENDING] and
+ * [app.clearsms.receiver.SmsSentReceiver] / [app.clearsms.receiver.MmsSentReceiver]
+ * record the platform's reports against it, so observing the row is
+ * observing the truth (no provider polling).
  */
 @Singleton
 class SentMessageWatcher
@@ -26,44 +27,72 @@ class SentMessageWatcher
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         /**
-         * Suspends until the send resolves: [SendStatus.FAILED] as soon as a
-         * failure is recorded, [SendStatus.SENT] on a sent or delivery
-         * report, otherwise [SendStatus.SENT] once [RESULT_WINDOW_MS] passes
-         * without one (the radio reports failures within a couple of
-         * seconds, so a quiet window means the carrier accepted the message
-         * - honesty-by-absence, not proof of delivery; the row is then also
-         * promoted to SENT so the bubble stops saying "Sending").
+         * Suspends until the send resolves or [windowMs] passes:
+         * [SendStatus.FAILED] as soon as a failure is recorded,
+         * [SendStatus.SENT] on a sent or delivery report.
+         *
+         * A silent window is transport-specific ([OutgoingSendPolicy]):
+         * - SMS: the radio reports failures within a couple of seconds, so
+         *   silence means the carrier accepted the message - the row is
+         *   promoted to SENT (compare-and-set, so a report landing right now
+         *   wins) and [SendStatus.SENT] is returned. Honesty-by-absence, not
+         *   proof of delivery.
+         * - MMS: the platform's single result may take minutes, so silence
+         *   proves nothing. The row is left at SENDING - NEVER promoted here -
+         *   and [SendStatus.SENDING] is returned; callers wait for the real
+         *   result with [awaitResult].
          */
         suspend fun await(
             messageId: Long,
             windowMs: Long = RESULT_WINDOW_MS,
         ): SendStatus =
             withContext(ioDispatcher) {
-                val resolved =
-                    withTimeoutOrNull(windowMs) {
-                        messageDao
-                            .observeDeliveryStatus(messageId)
-                            .filterNotNull()
-                            .first { it != DeliveryStatus.SENDING }
-                    }
+                val resolved = withTimeoutOrNull(windowMs) { terminalStatus(messageId) }
                 when (resolved) {
                     DeliveryStatus.FAILED -> SendStatus.FAILED
                     DeliveryStatus.SENT, DeliveryStatus.DELIVERED -> SendStatus.SENT
-                    // Window elapsed with no report recorded: call it sent.
-                    // Compare-and-set so a report landing right now wins.
+                    // Window elapsed with no report recorded.
                     DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED, null -> {
-                        messageDao.promoteDeliveryStatus(messageId, DeliveryStatus.SENDING, DeliveryStatus.SENT)
-                        SendStatus.SENT
+                        val transport =
+                            messageDao.getById(messageId)?.let(MessageDetails::transportOf)
+                                ?: MessageDetails.Transport.SMS
+                        val closeAs =
+                            OutgoingSendPolicy.afterSilentWindow(transport, DeliveryStatus.SENDING, resultRecorded = false)
+                        if (closeAs == DeliveryStatus.SENT) {
+                            messageDao.promoteDeliveryStatus(messageId, DeliveryStatus.SENDING, DeliveryStatus.SENT)
+                            SendStatus.SENT
+                        } else {
+                            SendStatus.SENDING
+                        }
                     }
                 }
             }
 
+        /**
+         * Suspends, with no time limit, until a REAL result is recorded on
+         * the row - the MMS path after [await] reported [SendStatus.SENDING].
+         * Never writes: the receiver is the only thing that ends the wait.
+         */
+        suspend fun awaitResult(messageId: Long): SendStatus =
+            withContext(ioDispatcher) {
+                when (terminalStatus(messageId)) {
+                    DeliveryStatus.FAILED -> SendStatus.FAILED
+                    else -> SendStatus.SENT
+                }
+            }
+
+        private suspend fun terminalStatus(messageId: Long): DeliveryStatus =
+            messageDao
+                .observeDeliveryStatus(messageId)
+                .filterNotNull()
+                .first { it != DeliveryStatus.SENDING }
+
         companion object {
             /**
-             * How long a dispatch is watched for a radio failure report
-             * before the send is called good. Sent reports normally arrive
-             * well under 2 s; the window is generous without stalling the
-             * confirmation unreasonably.
+             * How long a dispatch is watched for a report before the send is
+             * either called good (SMS) or handed to the long MMS wait. Sent
+             * reports normally arrive well under 2 s; the window is generous
+             * without stalling the confirmation unreasonably.
              */
             const val RESULT_WINDOW_MS = 4_000L
         }

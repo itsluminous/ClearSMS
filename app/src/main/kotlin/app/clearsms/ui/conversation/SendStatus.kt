@@ -10,6 +10,8 @@ package app.clearsms.ui.conversation
  * [app.clearsms.receiver.SmsSentReceiver] from the radio's sent / delivery
  * reports - so bubbles keep the truth across restarts. This enum is only the
  * coarse resolution [SentMessageWatcher] hands back for the snackbar:
- * DELIVERED collapses into [SENT] (a delivered message was necessarily sent).
+ * DELIVERED collapses into [SENT] (a delivered message was necessarily sent),
+ * and [SENDING] means an MMS is still awaiting the platform's single result
+ * after the window - the caller keeps watching rather than guessing.
  */
 enum class SendStatus { SENDING, SENT, FAILED }
