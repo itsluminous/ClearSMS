@@ -3,6 +3,7 @@ package app.clearsms.ui.navigation
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,8 +33,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -175,6 +178,13 @@ private fun MainScaffold(
     // the first back transition; refreshed every time the bar is composed.
     var settledBarHeightPx by rememberSaveable { mutableStateOf(0) }
     val settledBarHeight = with(LocalDensity.current) { settledBarHeightPx.toDp() }
+    // The route composed LAST time round - null on the very first frame (and
+    // after recreation), i.e. when nothing is on the glass for the bar's
+    // enter animation to synchronise with. Read before, written after, each
+    // composition; see BottomBarVisibility.animatesEnter (issue #63).
+    var outgoingRoute by remember { mutableStateOf<String?>(null) }
+    val barEnterAnimated = BottomBarVisibility.animatesEnter(outgoingRoute)
+    SideEffect { outgoingRoute = currentRoute }
 
     // A share/compose intent deep-links straight into the compose screen.
     // A shared image rides along as a nav argument; the compose ViewModel
@@ -305,11 +315,18 @@ private fun MainScaffold(
             // impossible by construction. Exit snaps: hiding chrome early
             // overlaps nothing (unchanged forward behaviour). See
             // BottomBarVisibility for the full history.
+            // On a COLD start there is no outgoing content to keep step with,
+            // so the bar's first appearance does not animate at all - it is
+            // in place the frame the start route resolves (issue #63).
             AnimatedVisibility(
                 visible = BottomBarVisibility.isVisible(currentRoute, sections),
                 enter =
-                    fadeIn(BottomBarVisibility.contentTransitionSpec()) +
-                        expandVertically(BottomBarVisibility.contentTransitionSpec()),
+                    if (barEnterAnimated) {
+                        fadeIn(BottomBarVisibility.contentTransitionSpec()) +
+                            expandVertically(BottomBarVisibility.contentTransitionSpec())
+                    } else {
+                        EnterTransition.None
+                    },
                 exit = shrinkVertically(snap()) + fadeOut(snap()),
             ) {
                 // Measured in full even while the slot around it is

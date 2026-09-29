@@ -292,11 +292,18 @@ fun InboxScreen(
                         // with the expanded title as the bar collapses - see
                         // TitleCollapse. The user can hide it in Settings
                         // (issue #49); counts and badges are unaffected.
+                        // Gated on the LOADED state first (issue #63): before the
+                        // first settings read, showUnreadToggle and totalUnread
+                        // are the class defaults, not the user's - a cold start
+                        // used to show a countless switch the user may have
+                        // hidden, then swap it. Until then the title stands alone.
                         ScrollToTopTitle(
                             scrollBehavior = scrollBehavior,
                             listState = listState,
                             expandedTrailing =
-                                if (state.showUnreadToggle) {
+                                if (!state.loaded) {
+                                    null
+                                } else if (state.showUnreadToggle) {
                                     {
                                         UnreadSwitch(
                                             unreadOnly = state.filter.unreadOnly,
@@ -337,7 +344,19 @@ fun InboxScreen(
             // See PagedListRestore: a first measure without the threads would
             // clamp the restored scroll position to the banners and pill row.
             val awaitingFirstPage = listState.awaitingFirstPage(items)
-            if (emptyLoaded && state.filter == InboxFilterState()) {
+            // Issue #63: until the settings have been READ, the whole body is
+            // preference-derived defaults (the built-in pill set, an Unread
+            // switch that may be hidden, swipe actions, the OTP banner's
+            // handled id, avatars) - so nothing below composes. The bar and
+            // the FAB above are stable chrome and stay; the body is simply
+            // blank, NOT a spinner: the settings read completes within a
+            // frame or two, so an indicator would itself flash (the shell
+            // makes the same call while onboardingComplete is unknown). The
+            // settled screen is not delayed - the first real emission was
+            // already the moment the pills became the user's.
+            if (!state.loaded) {
+                // Settings not read yet: the body stays quiet (see above).
+            } else if (emptyLoaded && state.filter == InboxFilterState()) {
                 EmptyState(
                     icon = Icons.Outlined.Inbox,
                     title = stringResource(R.string.inbox_empty_title),

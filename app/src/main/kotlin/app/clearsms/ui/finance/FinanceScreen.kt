@@ -157,6 +157,12 @@ fun FinanceScreen(
             )
         },
     ) { padding ->
+        // Issue #63: the state starts on FinanceUiState's defaults - the
+        // built-in pill set and order, balances unmasked - until the first
+        // settings + data emission sets loaded. Those are not the user's
+        // values, so the body stays blank (title bar only) until they are;
+        // same gate as the Inbox and Alerts, same reason no spinner.
+        if (!state.loaded) return@Scaffold
         val hasAccounts =
             state.bankAccounts.isNotEmpty() ||
                 state.staleBankAccounts.isNotEmpty() ||
