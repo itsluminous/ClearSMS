@@ -48,7 +48,7 @@ class TransactionPurposeTest {
     }
 
     @Test
-    fun `tpt deposit narration keeps the rail code - only the masked reference is dropped`() {
+    fun `tpt deposit narration is trimmed to the human label - reference and rail code dropped`() {
         val result =
             parser.parse(
                 "VM-HDFCBK-S",
@@ -57,10 +57,10 @@ class TransactionPurposeTest {
             )
         assertThat(result).isNotNull()
         assertThat(result!!.type).isEqualTo(TransactionType.CREDIT)
-        // The masked reference is noise and goes; the rest of the descriptor -
-        // rail code, payer-typed label and payer name - is what the user
-        // recognises from their statement, so it survives verbatim.
-        assertThat(result.merchantName).isEqualTo("TPT-MonthlyRentNBill-ROHAN VERMA")
+        // The masked reference and the TPT rail code say HOW, not WHY: the
+        // payer-typed label plus the payer name is the readable purpose (and
+        // the part a sender rule should match on).
+        assertThat(result.merchantName).isEqualTo("MonthlyRentNBill-ROHAN VERMA")
         assertThat(result.balance).isEqualTo(5120.40)
     }
 

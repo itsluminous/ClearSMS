@@ -13,9 +13,13 @@ import org.junit.Test
  * the purpose clause, so every such row was titled "clearing". A "to" led
  * by a CONDITION word ("subject to", "due to", "refer to") introduces a
  * condition, never a payee - the [GuardId.CONDITIONAL_LEAD] guard rejects
- * the candidate. (2) The transfer-rail code (TPT/ACH/NEFT...) hyphenated
- * onto the descriptor is now KEPT: the operator wants the descriptor as
- * the bank wrote it, minus only the leading masked reference.
+ * the candidate. (2) The transfer-rail code hyphenated directly onto the
+ * descriptor ("TPT-<label>-<name>") is DROPPED along with the leading masked
+ * reference: the rail says how the money moved, the label says why, and a
+ * rule should match the label without anyone typing "TPT-". Trimming only
+ * applies when a descriptor follows the rail's own hyphen - a bare "NEFT
+ * transaction" purpose and "ACH C- SAL-<employer>" (rail, "C", hyphen: not
+ * a rail prefix) both stay whole.
  *
  * All tails, amounts and names are synthetic.
  */
@@ -25,7 +29,7 @@ class DepositDescriptorTitleTest {
     private val boilerplate = " Cheque deposits in A/C are subject to clearing"
 
     @Test
-    fun `ach salary deposit is titled by its whole descriptor, not by the clearing boilerplate`() {
+    fun `ach salary deposit stays whole - ACH C- is not a rail prefix - and never titles as clearing`() {
         val result =
             parser.parse(
                 "VM-HDFCBK-S",
@@ -40,7 +44,7 @@ class DepositDescriptorTitleTest {
     }
 
     @Test
-    fun `tpt deposit keeps the rail code, drops only the masked reference, ignores the boilerplate`() {
+    fun `tpt deposit drops the masked reference and the rail code, ignores the boilerplate`() {
         val result =
             parser.parse(
                 "VM-HDFCBK-S",
@@ -49,9 +53,32 @@ class DepositDescriptorTitleTest {
             )
         assertThat(result).isNotNull()
         assertThat(result!!.type).isEqualTo(TransactionType.CREDIT)
-        assertThat(result.merchantName).isEqualTo("TPT-FlatShareRefund-MEERA NAIR")
+        assertThat(result.merchantName).isEqualTo("FlatShareRefund-MEERA NAIR")
         assertThat(result.accountLast4).isEqualTo("3382")
         assertThat(result.balance).isEqualTo(64310.20)
+    }
+
+    @Test
+    fun `the operator's tpt shape - reference and TPT- gone, label and payer name kept`() {
+        val result =
+            parser.parse(
+                "VM-HDFCBK-S",
+                "Update! INR 2,500.00 deposited in HDFC Bank A/c XX4471 on 28-SEP-26 " +
+                    "for XXXXXXXXXX8823-TPT-GiftForBirthday-ROHAN VERMA.Avl bal INR 31,905.10.$boilerplate",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchantName).isEqualTo("GiftForBirthday-ROHAN VERMA")
+    }
+
+    @Test
+    fun `a bare rail purpose survives whole - trimming needs a descriptor after the rail`() {
+        val result =
+            parser.parse(
+                "VM-HDFCBK-S",
+                "Amt Deducted! Rs.41,000.00 from your HDFC Bank A/c XX4522 for NEFT transaction via HDFC Bank Online Banking",
+            )
+        assertThat(result).isNotNull()
+        assertThat(result!!.merchantName).isEqualTo("NEFT transaction")
     }
 
     @Test

@@ -543,12 +543,16 @@ class TransactionParser {
      * anchored to the account phrase - "A/c XX1234 for NEFT transaction via
      * ...", "A/c XX1234 on 05-SEP-26 for XXXX-TPT-<label>-<name>". Consulted
      * only when no merchant exists. The capture is trimmed like a merchant
-     * (trailing "via/on/ref/avl" narration cut) and normalized like an
-     * "Info:" field (leading masked reference stripped). Everything else the
-     * bank wrote survives verbatim - INCLUDING a leading transfer-rail code
-     * ("TPT-<label>-<name>", "ACH C- <label>"): the rail is part of the
-     * descriptor the user recognises from their statement, so the title
-     * shows it rather than a trimmed label.
+     * (trailing "via/on/ref/avl" narration cut), normalized like an "Info:"
+     * field (leading masked reference stripped), and a leading transfer-rail
+     * code (TPT/NEFT/IMPS/...) hyphenated onto a longer descriptor is
+     * dropped - the rail says HOW the money moved; the payer-typed label and
+     * name say WHY, which is the part worth a row title (and the part a
+     * sender rule should match on, so "TPT-" never has to be typed into a
+     * rule). A bare rail purpose ("for NEFT transaction") survives whole: it
+     * is all the message offers. "ACH C- SAL-<employer>" is NOT a bare rail
+     * prefix (the "C" sits between the rail and its hyphen), so that
+     * descriptor stays whole too - see [LEADING_RAIL_CODE_REGEX].
      */
     private fun extractPurpose(body: String): String? {
         var raw =
@@ -565,7 +569,9 @@ class TransactionParser {
                 .trim()
                 .trimEnd('.', ',', ':', ';', '-')
         if (PURPOSE_NOISE_REGEX.containsMatchIn(raw)) return null
-        return normalizeMerchantCandidate(raw)
+        val descriptor = normalizeMerchantCandidate(raw) ?: return null
+        val trimmed = LEADING_RAIL_CODE_REGEX.replace(descriptor, "").trim()
+        return trimmed.takeIf { it.length >= 2 && it.first().isLetter() } ?: descriptor
     }
 
     /**
@@ -837,6 +843,16 @@ class TransactionParser {
         /** A purpose capture that is an amount / account / help phrase - noise. */
         val PURPOSE_NOISE_REGEX =
             Regex("(?i)^(?:rs\\.?|inr|\\u20b9)\\s*\\d|^(?:a/c|acct|account|details?|dispute|help|assistance|quer(?:y|ies))\\b")
+
+        /**
+         * A transfer-rail code hyphenated onto a longer narration
+         * ("TPT-MonthlyRent-<name>") - the rail is channel, not purpose.
+         * Only strips when a descriptor follows, so a bare "NEFT transaction"
+         * purpose survives whole; and only a rail DIRECTLY followed by its
+         * hyphen, so "ACH C- SAL-<employer>" (rail, then a "C", then the
+         * hyphen) is not a rail prefix and stays whole.
+         */
+        val LEADING_RAIL_CODE_REGEX = Regex("(?i)^(?:tpt|neft|imps|rtgs|upi|ach|ecs|nach)\\s*-\\s*(?=[A-Za-z])")
 
         /** DEBIT receiver: "to a/c **0121" - never "to your a/c" (the user's own). */
         val DEBIT_RECEIVER_REGEX =
