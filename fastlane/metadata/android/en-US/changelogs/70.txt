@@ -1,0 +1,28 @@
+Big release: a Spam category, a Settings screen you can navigate, contact muting, and diagnostic logs you can share when something goes wrong.
+
+Added
+- A real Spam category, with its own pill, its own notification setting (silent by default, because spam should be), and selectable when you create a rule. A verification code or a bank message can never be sorted as Spam, even if you tell the app to sort that sender as Spam.
+- Mute a sender. Its messages still arrive and still appear in your inbox, they just never notify - including OTPs. Scam warnings still come through, because muting a sender is not the same as trusting it. A small icon on the conversation and in the inbox shows you which threads are muted, so a quiet thread never looks like a lost one.
+- Choose which filter pills you see, on the Inbox, Finance and Alerts tabs, and drag them into the order you want. The Unread switch can be hidden too, and now sits on the title line rather than taking a row of its own.
+- Tap "Clear SMS" at the top of any tab to jump back to the top of a long list.
+- Settings is now organised into sections instead of one long screen - Messages, Appearance, Notifications, OTP, Inbox, Finance, Alerts, Backup, Support, About - and search still finds settings inside them.
+- Share diagnostic logs, from Settings, About. If something goes wrong you can send a report without knowing what adb is. It only ever contains what the app deliberately records - never your messages, contacts, phone numbers, OTPs or account numbers - you see exactly what will be sent before you send it, and you choose whether sender names like HDFCBK are included or masked.
+- One-step rules. Pick a message, choose "Always sort as", pick a category, done - no regular expressions, and that sender's existing messages move at once. When the full rule editor does reject something, it now tells you which field is wrong and why.
+- Message details for any message: whether it was SMS or MMS, who it was to or from, when it was sent and received, when it was delivered, and why a send failed.
+- The sender's own send time is now stored and shown to the second, and you can sort your messages by it instead of by when your phone received them - useful when several messages arrive together after a spell with no signal.
+- Single and double ticks on messages you send, for sent and delivered.
+- Clear SMS now opens sms:, smsto:, mms: and mmsto: links from other apps, with the recipient and text filled in.
+- Messages from senders the app does not recognise get their own notification category, on by default - they used to arrive silently.
+
+Fixed
+- The rules screen could crash for anyone who had created their own rule, leaving them unable to open Manage rules at all - so they could not even delete the rule that caused it. A rule that cannot be read now shows up as one you can delete, and an app update can no longer overwrite or re-enable your own rules.
+- Cash withdrawals at an ATM were not recorded against your bank account. The rule shipped in 0.20.0 but never reached anyone who updated rather than reinstalling - that is fixed too, and cannot happen again.
+- The contact picker crashed while typing certain names. A contact saved twice, or stored in two accounts, was enough to do it.
+- Your place in the inbox is kept when you come back from a conversation. It used to jump to the top after reading an unread thread, and drift by a page otherwise. Search does the same now.
+- The last message in the inbox is no longer hidden behind the bottom bar after returning from a conversation.
+- After making the compose box full screen, the shrink button did nothing on some phones. It now sits on the box itself, where it always responds, and it only appears once your text runs past one line. Holding the cursor and dragging scrolls the box too.
+- An MMS no longer says "Sent" while it is still being sent. The phone can spend minutes trying, and the app was calling that a success after four seconds; it now says "Sending" until the network actually reports back, and explains why if it failed. (thanks @gavcloud for the report that led here)
+
+Changed
+- "Show extracted message details" is now off by default. If you had switched it on, it stays on.
+- The typing box in a conversation is wider.

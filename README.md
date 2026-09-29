@@ -91,6 +91,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Expand the compose box to fill the screen for long messages (both the standalone composer and a conversation)
 - [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry (a failed MMS says why in the phone's own terms - no MMS connection, carrier MMS settings missing, refused by the carrier - and the diagnostic report records the raw platform result code); a single tick on sent and a double tick on delivered bubbles (never on failed, in-flight, scheduled or MMS-delivered), each announced to screen readers
 - [x] Share & forward selected messages; share text or images from other apps into a new message
+- [x] A single tick on sent and a double tick on delivered messages
 - [x] Per-message details (type, to/from, sent & received time - the Sent row is omitted when the network reported no sent time - delivery time when a real report exists, a plain "Yes" when a report exists but no time was recorded, and failure reason)
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
@@ -101,6 +102,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Call button in a conversation, and tap-the-name to view or create the contact (service senders explain themselves instead of doing nothing)
 - [x] Pinned conversations
 - [x] Blocked senders & blocked keywords (both go straight to the bin, silently; blocking also bins the existing conversation)
+- [x] Mute a sender: messages still arrive and appear, but never notify (scam warnings still do); muted threads are marked in the inbox and conversation
 - [ ] Contact names (instead of bare numbers) in the blocked-senders list
 - [ ] Group-MMS conversation UI (group messages currently attribute to their sender)
 - [ ] MMS delivery reports
@@ -114,7 +116,9 @@ Everything shipped, and what's on the roadmap:
 - [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown / Spam (460+ community rules + 715k sender directory)
 - [x] Automatic full re-sort after an app update ships new rules, with a progress banner in the inbox
 - [x] A rule added from a message applies to that sender's existing messages at once (body-only rules point you at the full re-sort instead)
-- [x] Category filter pills (reorderable) with tags hidden under single-category filters
+- [x] One-step "Always sort as" rules from a message, no regex needed; the full editor explains any rejection
+- [x] Category filter pills: choose which are visible and drag them into the order you want, on the Inbox, Finance and Alerts tabs (tags hidden under single-category filters)
+- [x] Tap the title bar to jump back to the top of a long list
 - [x] Hide whole sections you do not use (Inbox, Finance or Alerts) from Settings - the tab disappears and its notifications stop; at least one stays on
 - [x] Full-text search with category & time filters, matching contact and sender names as well as message text
 - [x] Tapping a search result opens the conversation at that message and highlights it, however old it is
@@ -147,7 +151,9 @@ Everything shipped, and what's on the roadmap:
 **Data & privacy**
 - [x] Fully offline: no INTERNET permission (sole exception: the system's carrier MMS transaction)
 - [x] Local backup & restore for messages AND settings (timestamped files, chosen folder, scheduled)
-- [x] Settings backup with security-sensitive keys excluded by design
+- [x] Settings backup with security-sensitive keys excluded by design, and your own rules travel with it
+- [x] Share diagnostic logs from Settings when reporting a bug - the app records no message text, contacts, numbers, OTPs or account numbers, you preview the exact text first, and you choose whether sender IDs are masked
+- [x] Settings organised into sections, with search that reaches settings inside them
 - [ ] Encrypted backups
 
 ## Privacy Principles
