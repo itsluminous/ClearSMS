@@ -133,6 +133,13 @@
       ]
     },
     {
+      "id": "conditional_lead",
+      "description": "A condition word directly before a would-be merchant preposition ('Cheque deposits in A/C are subject TO clearing', 'credited due TO reversal', 'refer TO the statement', 'in order TO'). The 'to' introduces a condition or reason, never a payee - without this the cheque boilerplate every HDFC deposit ends with titled the row 'clearing'. Consulted against the short window preceding the preposition, hence the trailing anchor.",
+      "patterns": [
+        "(?i)\\b(?:subject|due|owing|refer|prior|pursuant|in\\s+order)\\s*$"
+      ]
+    },
+    {
       "id": "retirement_units_echo",
       "description": "Retirement-scheme units-credited confirmations ('Your contribution of Rs.X has been credited to your NPS Tier-I a/c ... valuation ... is Rs.Y'). The SAME contribution was already announced (and recorded as the credit) by the PRAN-tailed fund-confirmation SMS - a second credit here double-counts the money. The message never yields a transaction; its valuation refreshes the scheme account's balance instead.",
       "patterns": [
