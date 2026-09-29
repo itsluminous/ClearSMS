@@ -200,8 +200,7 @@ class SmsSender
                         subscriptionId == null,
                     ),
                 )
-                messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
-                messageDao.setSendFailureReason(messageId, SendFailureReason.DISPATCH_FAILED.name)
+                messageDao.markFailed(messageId, SendFailureReason.DISPATCH_FAILED.name)
             }
         }
 

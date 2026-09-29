@@ -591,6 +591,19 @@ interface MessageDao {
     )
 
     /**
+     * Marks a send failed AND records why in ONE statement. The status flip
+     * is what [app.clearsms.ui.conversation.SentMessageWatcher] and the
+     * conversation resolve on, so writing the two columns separately let an
+     * observer read a FAILED row whose reason had not landed yet.
+     */
+    @Query("UPDATE messages SET deliveryStatus = :failed, sendFailureReason = :reason WHERE id = :messageId")
+    suspend fun markFailed(
+        messageId: Long,
+        reason: String?,
+        failed: DeliveryStatus = DeliveryStatus.FAILED,
+    )
+
+    /**
      * Rewrites a failed row for re-dispatch: back to SENDING on a fresh
      * provider row, with the part tally, failure reason and any stale
      * acknowledgement time cleared - the new dispatch earns its own.

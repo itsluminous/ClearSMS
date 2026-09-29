@@ -215,8 +215,7 @@ class MmsSendReportRecorder
                     // mark, but a report with no home is worth a trace.
                     Diag.w(TAG, "mms send report for missing message", null, id("message", messageId))
                 } else if (current.deliveryStatus != DeliveryStatus.FAILED) {
-                    messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
-                    messageDao.setSendFailureReason(messageId, failureReason?.name)
+                    messageDao.markFailed(messageId, failureReason?.name)
                     sideEffects.notifyFailure(destination, current.threadId, messageId)
                 }
             }

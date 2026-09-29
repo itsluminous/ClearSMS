@@ -180,8 +180,7 @@ class MmsSender
                 // failure (or a throwing SmsManager), distinct from every
                 // result-code failure the receiver records.
                 Diag.e(TAG, "mms handover failed", e, id("message", messageId), count("parts", parts.size), flag("resend", resend))
-                messageDao.setDeliveryStatus(messageId, DeliveryStatus.FAILED)
-                messageDao.setSendFailureReason(messageId, SendFailureReason.DISPATCH_FAILED.name)
+                messageDao.markFailed(messageId, SendFailureReason.DISPATCH_FAILED.name)
             }
         }
 
