@@ -862,7 +862,19 @@ class TransactionParser {
         /** Digit runs long enough to be a reference, not a description. */
         val LONG_DIGIT_RUN_REGEX = Regex("\\d{5,}")
 
-        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|\\bcard\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
+        /**
+         * The body reads as a CREDIT CARD: "credit card", or a "card" token
+         * followed by a number cue ("card no.", "card ending 1234", "card
+         * **1234"). The "card" token may carry a brand prefix glued onto it -
+         * Indian issuers brand the product as ONE word ("your BOBCARD ending
+         * 1234", "SBICARD **1234", "ONECARD") - the same one-word shape the
+         * reminder evidence table (`rules/tables/reminder_evidence.json`,
+         * CREDIT_CARD row `statement for ... [A-Za-z]{0,10}card`) already
+         * relies on, so no brand list is kept here or there. The number cue
+         * that must follow keeps a bare brand mention ("Apply for BOBCARD
+         * today") from typing a bank-account debit as a card.
+         */
+        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|\\b[A-Za-z]{0,10}card\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
         val WALLET_REGEX = Regex("(?i)\\bwallet\\b")
 
         /** Money moving FROM a wallet, or a wallet that merely fronts a card. */
