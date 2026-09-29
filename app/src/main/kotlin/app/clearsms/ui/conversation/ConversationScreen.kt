@@ -463,14 +463,13 @@ fun ConversationScreen(
                             )
                         }
                         if (state.address.isNotBlank()) {
-                            TooltipIconButton(
-                                label = stringResource(R.string.action_change_category),
-                                onClick = { changeCategoryOpen = true },
-                                icon = Icons.AutoMirrored.Outlined.Label,
-                            )
-                            // Overflow: the per-sender notification toggle,
-                            // mirroring the inbox selection overflow. One
-                            // entry whose label reflects the current state.
+                            // Overflow: the per-sender notification toggle
+                            // (label reflects the current state) followed by
+                            // Change category, mirroring the inbox selection
+                            // overflow where "Always sort as…" sits last. Both
+                            // share this one address gate, so the menu is
+                            // never rendered empty: when it exists it always
+                            // holds at least Mute/Unmute.
                             var menuOpen by remember { mutableStateOf(false) }
                             TooltipIconButton(
                                 label = stringResource(R.string.action_more_options),
@@ -495,6 +494,18 @@ fun ConversationScreen(
                                     onClick = {
                                         menuOpen = false
                                         viewModel.toggleMute()
+                                    },
+                                )
+                                // Same entry point as the old top-bar icon:
+                                // opens the ONE shared SenderRuleDialog above.
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_change_category)) },
+                                    leadingIcon = {
+                                        Icon(Icons.AutoMirrored.Outlined.Label, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        changeCategoryOpen = true
                                     },
                                 )
                             }
