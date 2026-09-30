@@ -27,7 +27,7 @@ import app.clearsms.R
  * the font setting and must stay a small status mark rather than grow into
  * a second avatar at large font scales. Callers pick the size that fits
  * their row ([InboxRowSize] for the inbox metadata line, [TitleBarSize]
- * beside a title-sized name).
+ * beside a title-sized name, where it matches the bar's action icons).
  */
 object MutedIndicator {
     /** The one icon both surfaces draw. */
@@ -36,8 +36,18 @@ object MutedIndicator {
     /** Matches the pinned glyph on the inbox row's metadata line. */
     val InboxRowSize: Dp = 14.dp
 
-    /** Reads at title size in a top bar without competing with the name. */
-    val TitleBarSize: Dp = 18.dp
+    /** Material's default `Icon` size, the size of every action glyph on the bar. */
+    val ActionIconSize: Dp = 24.dp
+
+    /**
+     * The Material default icon size - what the Call and overflow glyphs
+     * beside it in the top bar are drawn at ([androidx.compose.material3.Icon]
+     * with no size modifier). At 18dp the bell read as an afterthought next
+     * to a 24dp phone; matching the neighbours makes it part of the bar. It
+     * stays an indicator: no click target, no ripple, same label.
+     * (Declared after [ActionIconSize]: object initialisers run in order.)
+     */
+    val TitleBarSize: Dp = ActionIconSize
 }
 
 /** Draws the shared muted glyph; see [MutedIndicator]. */
