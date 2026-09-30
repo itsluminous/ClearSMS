@@ -4,6 +4,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderNormalizer
+import app.clearsms.data.repository.ThreadIdentity
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.Category
 import app.clearsms.sms.AccentFold
@@ -58,7 +59,9 @@ class MessageScheduler
                 // show exactly what will go on the wire.
                 val sendBody = if (uiPrefs.stripAccents.first()) AccentFold.foldIfItSaves(body) else body
                 val normalized = SenderNormalizer.normalize(destination)
-                val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+                // No provider row exists until dispatch (SmsSender then
+                // records the provider thread on this row).
+                val threadId = ThreadIdentity.resolve(messageDao, destination, normalized, providerThreadId = null)
                 val messageId =
                     messageDao.insert(
                         MessageEntity(

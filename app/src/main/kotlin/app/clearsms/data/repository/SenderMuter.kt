@@ -48,9 +48,10 @@ class SenderMuter
 
         /** Unmutes [sender]; removes every stored variant that normalizes to it. */
         suspend fun unmute(sender: String) {
-            val normalized = SenderNormalizer.normalize(sender)
             val current = settings.mutedSenders.first()
-            val remaining = current.filterNot { SenderNormalizer.normalize(it) == normalized }.toSet()
+            // Same membership rule as isMuted, so a legacy-keyed entry is
+            // removable (see SenderBlocker.unblock).
+            val remaining = current.filterNot { SenderNormalizer.sameSender(it, sender) }.toSet()
             if (remaining.size != current.size) settings.setMutedSenders(remaining)
         }
 

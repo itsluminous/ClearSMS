@@ -2,6 +2,7 @@ package app.clearsms.data.backup
 
 import androidx.room.withTransaction
 import app.clearsms.data.db.ClearSmsDatabase
+import app.clearsms.data.db.ThreadRekeyer
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
@@ -147,6 +148,13 @@ class BackupManager(
             // Pins are keyed by normalized sender, so they reattach to
             // whatever thread ids the restored messages carry.
             database.threadPinDao().upsertAll(pins)
+            // The file carries the keys and thread ids of the app that WROTE
+            // it - possibly the pre-#42 ten-digit key that split one person
+            // into two threads. Re-key under the current rules so a restore
+            // never brings the split back; pins follow their rows. Provider
+            // thread ids are device-local and not in the file, so this runs
+            // on sender keys alone.
+            ThreadRekeyer.rekey(database.openHelper.writableDatabase)
         }
         Diag.i(
             TAG,

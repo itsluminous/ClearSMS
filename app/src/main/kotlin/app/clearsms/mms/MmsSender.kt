@@ -11,6 +11,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderNormalizer
+import app.clearsms.data.repository.ThreadIdentity
 import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
@@ -301,7 +302,9 @@ class MmsSender
             parts: List<MmsPart>,
         ): Long {
             val normalized = SenderNormalizer.normalize(destination)
-            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+            // No provider row is written for MMS, so no provider thread
+            // exists to anchor to: the sender key decides.
+            val threadId = ThreadIdentity.resolve(messageDao, destination, normalized, providerThreadId = null)
             return messageDao.insert(
                 MessageEntity(
                     threadId = threadId,

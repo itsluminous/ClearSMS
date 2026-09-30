@@ -68,6 +68,12 @@ class SystemSmsImporter
              * the provider's way of saying the network reported none.
              */
             val dateSent: Long?,
+            /**
+             * Provider `thread_id` - the platform's conversation identity
+             * and the app's primary thread anchor (issue #42); null when
+             * the column is missing or the value is not a positive id.
+             */
+            val threadId: Long?,
         )
 
         /**
@@ -158,6 +164,7 @@ class SystemSmsImporter
                                             // timestamp distinct from its own;
                                             // an outgoing row's send time IS date.
                                             dateSentMs = if (raw.incoming) raw.dateSent else null,
+                                            providerThreadId = raw.threadId,
                                         )
                                     }
                                 }.awaitAll()
@@ -222,6 +229,7 @@ class SystemSmsImporter
                 val statusIdx = it.getColumnIndex(Telephony.Sms.STATUS)
                 val subIdx = it.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
                 val dateSentIdx = it.getColumnIndex(Telephony.Sms.DATE_SENT)
+                val threadIdx = it.getColumnIndex(Telephony.Sms.THREAD_ID)
                 buildList {
                     while (it.moveToNext()) {
                         add(
@@ -252,6 +260,14 @@ class SystemSmsImporter
                                 dateSent =
                                     if (dateSentIdx >= 0 && !it.isNull(dateSentIdx)) {
                                         sentTimestampOrNull(it.getLong(dateSentIdx))
+                                    } else {
+                                        null
+                                    },
+                                // Same guard; a provider thread id is a
+                                // positive row id, anything else is unknown.
+                                threadId =
+                                    if (threadIdx >= 0 && !it.isNull(threadIdx)) {
+                                        it.getLong(threadIdx).takeIf { id -> id > 0L }
                                     } else {
                                         null
                                     },
@@ -309,6 +325,9 @@ class SystemSmsImporter
                     Telephony.Sms.SUBSCRIPTION_ID,
                     // The sender's network timestamp (GitHub #45); 0 when absent.
                     Telephony.Sms.DATE_SENT,
+                    // The platform's conversation id - the primary thread
+                    // anchor (GitHub #42: one thread per person).
+                    Telephony.Sms.THREAD_ID,
                 )
         }
     }

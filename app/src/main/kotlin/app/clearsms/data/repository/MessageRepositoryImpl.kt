@@ -12,6 +12,7 @@ import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.MmsStatus
 import app.clearsms.data.db.ReminderEntity
+import app.clearsms.data.db.ThreadAnchor
 import app.clearsms.data.db.ThreadPinEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.db.isSameMessageAs
@@ -557,6 +558,7 @@ class MessageRepositoryImpl(
         timestampMs: Long,
         systemSmsId: Long?,
         dateSentMs: Long?,
+        providerThreadId: Long?,
     ): MessageRepository.IncomingIngest {
         val normalized = SenderNormalizer.normalize(sender)
         // 0/negative from a PDU or provider means "not reported" - unknown.
@@ -565,9 +567,17 @@ class MessageRepositoryImpl(
         // message must never reach the inbox, notifications, or the finance
         // derivations below - it is born soft-deleted (bin on) or dropped
         // (bin off).
-        val senderBlocked = isSenderBlocked(normalized)
+        val senderBlocked = isSenderBlocked(sender)
         if (senderBlocked || BlockedKeywords.matches(body, blockedKeywords())) {
-            return ingestBornDeleted(sender, body, timestampMs, systemSmsId, blockedSender = senderBlocked, dateSent = dateSent)
+            return ingestBornDeleted(
+                sender,
+                body,
+                timestampMs,
+                systemSmsId,
+                blockedSender = senderBlocked,
+                dateSent = dateSent,
+                providerThreadId = providerThreadId,
+            )
         }
         // Classification is pure CPU plus rule reads; only the writes below
         // need atomicity.
@@ -590,7 +600,7 @@ class MessageRepositoryImpl(
         // persistImportedPage, whose unique systemSmsId index makes retries
         // no-ops.
         return database.withTransaction {
-            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+            val threadId = ThreadIdentity.resolve(messageDao, sender, normalized, providerThreadId)
 
             val entity =
                 MessageEntity(
@@ -605,6 +615,7 @@ class MessageRepositoryImpl(
                     extractedOtp = enriched.otpCode,
                     extractedDataJson = encodeExtracted(enriched.extracted),
                     dateSent = dateSent,
+                    providerThreadId = ThreadIdentity.anchorFor(sender, providerThreadId),
                 )
             // IGNORE (not REPLACE) on the unique systemSmsId index: a
             // concurrent catch-up import may have committed this provider row
@@ -649,7 +660,9 @@ class MessageRepositoryImpl(
         // message's place in its thread.
         val normalized = SenderNormalizer.normalize(sender)
         return database.withTransaction {
-            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+            // MMS is never mirrored to the provider (see MmsSender), so no
+            // provider thread exists: the sender key alone decides.
+            val threadId = ThreadIdentity.resolve(messageDao, sender, normalized, providerThreadId = null)
             val entity =
                 MessageEntity(
                     threadId = threadId,
@@ -658,7 +671,7 @@ class MessageRepositoryImpl(
                     body = "",
                     timestamp = timestampMs,
                     category = Category.UNKNOWN,
-                    isBlockedSender = isSenderBlocked(normalized),
+                    isBlockedSender = isSenderBlocked(sender),
                     mmsStatus = MmsStatus.PENDING,
                     mmsTransactionId = transactionId,
                     mmsContentLocation = contentLocation,
@@ -689,15 +702,24 @@ class MessageRepositoryImpl(
         // below. Attachment rows are still written so a bin restore keeps
         // its image. Unlike SMS there is no provider-copy delete here:
         // keyword/sender blocking never touched the MMS provider.
-        val blocked = isSenderBlocked(normalized)
+        val blocked = isSenderBlocked(effectiveSender)
         val completed =
             database.withTransaction {
                 val row = messageDao.getById(messageId) ?: return@withTransaction null
+                // A group MMS (several recipients) is attributed to its
+                // sender's one-to-one thread and anchors nothing - the app
+                // has no group threads, and a group must never absorb one.
                 val threadId =
                     if (normalized == row.normalizedSender) {
                         row.threadId
                     } else {
-                        messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+                        ThreadIdentity.resolve(
+                            messageDao,
+                            effectiveSender,
+                            normalized,
+                            providerThreadId = null,
+                            recipientCount = recipients.size,
+                        )
                     }
                 val updated =
                     row.copy(
@@ -785,6 +807,7 @@ class MessageRepositoryImpl(
         systemSmsId: Long?,
         blockedSender: Boolean,
         dateSent: Long? = null,
+        providerThreadId: Long? = null,
     ): MessageRepository.IncomingIngest {
         // Classification still runs (pure CPU) so a binned message shows an
         // honest category if the user opens the bin - but nothing is derived.
@@ -809,6 +832,7 @@ class MessageRepositoryImpl(
                 deletedAt = timestampMs,
                 providerDeletePending = true,
                 dateSent = dateSent,
+                providerThreadId = ThreadIdentity.anchorFor(sender, providerThreadId),
             )
         if (!binned) {
             // Dropped outright - exactly what a committed delete with the
@@ -818,7 +842,7 @@ class MessageRepositoryImpl(
         }
         val stored =
             database.withTransaction {
-                val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+                val threadId = ThreadIdentity.resolve(messageDao, sender, normalized, providerThreadId)
                 val row = entity.copy(threadId = threadId)
                 val id = messageDao.insertIgnore(row)
                 if (id != -1L) {
@@ -1066,25 +1090,40 @@ class MessageRepositoryImpl(
         // provider copies are removed after the page commits. The blocklist
         // set is read (and normalized) ONCE per page.
         val keywords = blockedKeywords()
-        val blockedSet = blockedSenders().mapTo(HashSet()) { SenderNormalizer.normalize(it) }
-        val binEnabled = if (keywords.isEmpty() && blockedSet.isEmpty()) false else recycleBinEnabled()
+        val blockedEntries = blockedSenders()
+        val isBlocked = SenderNormalizer.matcher(blockedEntries)
+        val binEnabled = if (keywords.isEmpty() && blockedEntries.isEmpty()) false else recycleBinEnabled()
         val droppedSystemIds = mutableListOf<Long>()
         val binnedIds = mutableListOf<Long>()
         val inserted =
             database.withTransaction {
                 var maxThreadId = messageDao.maxThreadId() ?: 0L
+                // Per-page identity caches: rows of one page are not visible
+                // to each other's lookups until the transaction commits, so a
+                // thread opened for one row must be reused by the next row of
+                // the same person - by provider thread AND by sender key.
                 val threadIds = HashMap<String, Long>()
+                val anchoredThreads = HashMap<Long, MutableList<ThreadAnchor>>()
                 val entities =
                     page.map { row ->
                         val normalized = SenderNormalizer.normalize(row.sender)
-                        val threadId =
-                            threadIds.getOrPut(normalized) {
-                                messageDao.threadIdFor(normalized) ?: ++maxThreadId
+                        val anchor = ThreadIdentity.anchorFor(row.sender, row.providerThreadId)
+                        val anchored =
+                            anchor?.let { a ->
+                                anchoredThreads.getOrPut(a) { messageDao.threadsAnchoredTo(a).toMutableList() }
                             }
+                        val threadId =
+                            anchored?.let { ThreadIdentity.threadFromAnchor(normalized, it) }
+                                ?: threadIds.getOrPut(normalized) {
+                                    messageDao.threadIdFor(normalized) ?: ++maxThreadId
+                                }
+                        if (anchored != null && anchored.none { it.threadId == threadId && it.normalizedSender == normalized }) {
+                            anchored += ThreadAnchor(threadId, normalized)
+                        }
                         // Applies to outgoing rows too: blocking bins the
                         // WHOLE conversation, so an import must not leave a
                         // ghost thread of only your own sent messages.
-                        val senderBlocked = normalized in blockedSet
+                        val senderBlocked = isBlocked(row.sender)
                         val enriched = row.enriched
                         if (enriched != null) {
                             val born = senderBlocked || BlockedKeywords.matches(row.body, keywords)
@@ -1105,6 +1144,7 @@ class MessageRepositoryImpl(
                                 providerDeletePending = born,
                                 subscriptionId = row.subscriptionId,
                                 dateSent = row.dateSentMs,
+                                providerThreadId = anchor,
                             )
                         } else {
                             // Outgoing (sent) message: stored as a read personal
@@ -1125,6 +1165,7 @@ class MessageRepositoryImpl(
                                 deliveryStatus =
                                     if (row.delivered) DeliveryStatus.DELIVERED else DeliveryStatus.SENT,
                                 subscriptionId = row.subscriptionId,
+                                providerThreadId = anchor,
                             )
                         }
                     }
@@ -1883,14 +1924,17 @@ class MessageRepositoryImpl(
         ruleDao.getEnabledBySource(source).mapNotNull { it.toDefinition(json) }
 
     /**
-     * Set-authoritative block check: matches [normalizedSender] against the
-     * normalized blocklist. Entries are stored normalized, but each is
-     * re-normalized here so a raw variant (a restored backup, a hand-typed
-     * "VM-JIOPAY") still matches. Never row-derived: the old
+     * Set-authoritative block check: matches the RAW [sender] against the
+     * normalized blocklist under [SenderNormalizer.sameSender]. Entries are
+     * stored normalized, but each is re-normalized here so a raw variant (a
+     * restored backup, a hand-typed "VM-JIOPAY") still matches, and the
+     * membership rule also honours entries stored under the pre-#42 key -
+     * which can only be recomputed from the sender's own digits, hence the
+     * raw sender rather than its current key. Never row-derived: the old
      * EXISTS-over-rows check evaporated the block when its thread was
      * deleted.
      */
-    private suspend fun isSenderBlocked(normalizedSender: String): Boolean = SenderNormalizer.matchesAny(blockedSenders(), normalizedSender)
+    private suspend fun isSenderBlocked(sender: String): Boolean = SenderNormalizer.matchesAny(blockedSenders(), sender)
 
     private fun deleteAttachmentFiles(messageIds: List<Long>) {
         val cleaner = attachmentFileCleaner ?: return
@@ -2152,6 +2196,12 @@ internal data class ImportedSmsRow(
      * (unknown) or the row is outgoing. Never guessed.
      */
     val dateSentMs: Long? = null,
+    /**
+     * The provider's `thread_id` for the row - the platform's conversation
+     * identity, THE primary thread anchor (issue #42). Null when the
+     * provider omitted the column.
+     */
+    val providerThreadId: Long? = null,
 )
 
 /** Page source that is always empty - the unsearchable-query fallback. */

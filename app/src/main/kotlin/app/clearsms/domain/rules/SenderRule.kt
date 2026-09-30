@@ -36,10 +36,21 @@ object SenderRule {
     /**
      * The sender core the rule is about: TRAI route prefix/suffix stripped
      * and upper-cased for alphanumeric ids (`VM-HDFCBK-S` → `HDFCBK`), the
-     * last ten digits for phone numbers (`+91 98765 43210` → `9876543210`).
-     * This is exactly [SenderNormalizer.normalize], i.e. the value the
-     * message table indexes threads by, so the rule's pattern reaches every
-     * route variant of the sender and the immediate re-sort finds them.
+     * region-aware national number for phone numbers (`+91 98765 43210` →
+     * `9876543210`, `+48 601 234 567` → `601234567`). This is exactly
+     * [SenderNormalizer.normalize], i.e. the value the message table
+     * indexes threads by, so the rule's pattern reaches every route
+     * variant of the sender and the immediate re-sort finds them.
+     *
+     * The core is always a trailing run of the sender's own digits, so the
+     * literal pattern built from it matches every dialling variant of the
+     * number as the network delivers it (`+48601234567`, `601234567`) by
+     * containment - and rule
+     * MATCHING itself runs against the RAW sender (see
+     * [app.clearsms.data.rules.RuleEngine]), never against this key. That
+     * is what makes rules immune to key changes: a rule saved before #42
+     * carries the literal it was built with (`8601234567`) and keeps
+     * matching the raw senders it always matched.
      */
     fun senderCore(sender: String): String = SenderNormalizer.normalize(sender)
 

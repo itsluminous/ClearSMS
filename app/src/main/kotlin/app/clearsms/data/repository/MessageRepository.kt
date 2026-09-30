@@ -310,6 +310,14 @@ interface MessageRepository {
          * the received [timestampMs]. Null = unknown; never invented.
          */
         dateSentMs: Long? = null,
+        /**
+         * The provider's `thread_id` for the row the default-app write
+         * produced - the platform's own conversation identity, THE primary
+         * thread anchor (see [app.clearsms.data.repository.ThreadIdentity]).
+         * Null when the provider write failed or the id could not be read
+         * back; the sender key then decides the thread.
+         */
+        providerThreadId: Long? = null,
     ): IncomingIngest = IncomingIngest(insertIncoming(sender, body, timestampMs, systemSmsId), duplicate = false)
 
     // region MMS

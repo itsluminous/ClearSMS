@@ -56,19 +56,23 @@ class SenderBlocker
             // Block supersedes mute: a binned sender is silent by
             // construction, and a leftover "muted" entry would list a sender
             // in Settings that muting can no longer explain (SenderMuter).
-            senderMuter.unmute(normalized)
+            senderMuter.unmute(sender)
             repository.setBlocked(normalized, blocked = true)
             repository.binThreadForSender(normalized)
         }
 
         suspend fun unblock(sender: String) {
             val normalized = SenderNormalizer.normalize(sender)
-            // Remove every entry that normalizes to the target, so a legacy
-            // raw entry ("VM-JIOPAY") goes when the user unblocks "JIOPAY".
+            // Remove every entry that names the target under the SAME rule
+            // membership uses (SenderNormalizer.sameSender), so a legacy raw
+            // entry ("VM-JIOPAY") goes when the user unblocks "JIOPAY", and
+            // an entry stored under the pre-#42 ten-digit key goes when the
+            // user unblocks the number it was created for - otherwise the
+            // sender would stay blocked with nothing left to unblock.
             settings.setBlockedSenders(
                 settings.blockedSenders
                     .first()
-                    .filterNot { SenderNormalizer.normalize(it) == normalized }
+                    .filterNot { SenderNormalizer.sameSender(it, sender) }
                     .toSet(),
             )
             repository.setBlocked(normalized, blocked = false)

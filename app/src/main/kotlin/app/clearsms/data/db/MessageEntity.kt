@@ -25,6 +25,9 @@ import app.clearsms.domain.model.SubCategory
         // Serves the soft-delete filters (deletedAt IS NULL on every read
         // path) and the recycle-bin listing/purge queries.
         Index("deletedAt"),
+        // Serves the thread-identity anchor lookup on every insert (see
+        // [app.clearsms.data.repository.ThreadIdentity]).
+        Index("providerThreadId"),
     ],
 )
 data class MessageEntity(
@@ -157,6 +160,21 @@ data class MessageEntity(
      * when a later part failure demotes the row to FAILED.
      */
     val deliveredAt: Long? = null,
+    /**
+     * The system provider's conversation id for this row
+     * (`Telephony.Sms.THREAD_ID`) - the platform's own, canonical-address-
+     * matched notion of "same person", and the PRIMARY thread-identity
+     * anchor since issue #42 (see [app.clearsms.data.repository.ThreadIdentity]).
+     * Only ever recorded for a ONE-TO-ONE phone-number conversation: null
+     * for alphanumeric ids and short codes (the app's own route-variant
+     * merging is the right rule for those), for an MMS with several
+     * recipients (a group thread must never pull two people into one
+     * one-to-one thread - the app has no group threads), for rows the app
+     * could not write to the provider, for MMS (never mirrored to the
+     * provider) and for pre-#42 rows the v22 backfill found no provider row
+     * for. Device-local: deliberately NOT part of the backup format.
+     */
+    val providerThreadId: Long? = null,
 )
 
 /**
