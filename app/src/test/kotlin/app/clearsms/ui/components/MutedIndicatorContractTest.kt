@@ -1,5 +1,6 @@
 package app.clearsms.ui.components
 
+import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
@@ -99,7 +100,31 @@ class MutedIndicatorContractTest {
     }
 
     @Test
-    fun `a long sender name ellipsises inside the title slot instead of pushing the glyph off the bar`() {
+    fun `the title-bar glyph matches the action icons and the inbox glyph is unchanged`() {
+        // The operator's screenshot: an 18dp bell beside a 24dp phone read
+        // as an afterthought. The bar glyph now matches Material's default
+        // Icon size - the size the Call and overflow glyphs are drawn at.
+        assertThat(MutedIndicator.ActionIconSize).isEqualTo(24.dp)
+        assertThat(MutedIndicator.TitleBarSize).isEqualTo(MutedIndicator.ActionIconSize)
+        // ...and the action icons really are at Material's default: the
+        // shared button wrapper passes no size modifier to its Icon.
+        val button = source("ui/components/TooltipIconButton.kt")
+        assertThat(button).contains("Icon(icon, contentDescription = label, tint = tint ?: LocalContentColor.current)")
+        assertThat(button).doesNotContain(".size(")
+        // The inbox glyph sits beside a timestamp in a text row - a
+        // different context, deliberately NOT touched.
+        assertThat(MutedIndicator.InboxRowSize).isEqualTo(14.dp)
+        // Still an indicator, not a button: no click target, no ripple, and
+        // the one shared label.
+        val component = source("ui/components/MutedIndicator.kt")
+        assertThat(component).doesNotContain("clickable")
+        assertThat(component).doesNotContain("IconButton")
+        assertThat(component).doesNotContain("indication")
+        assertThat(component).contains("modifier = modifier.size(size),")
+    }
+
+    @Test
+    fun `a long sender name wraps to two lines and ellipsises inside the title slot instead of pushing the glyph off the bar`() {
         val conversation = source("ui/conversation/ConversationScreen.kt")
         val titleSlot =
             conversation.substring(
@@ -107,11 +132,14 @@ class MutedIndicatorContractTest {
                 conversation.indexOf("navigationIcon = {"),
             )
         val nameText = titleSlot.substring(titleSlot.indexOf("text = state.title,"), titleSlot.indexOf("if (state.muted) {"))
-        assertThat(nameText).contains("maxLines = 1,")
+        // Two lines, then ellipsis - the line bound comes from the ONE
+        // contract object (ConversationTitleFitTest pins its value).
+        assertThat(nameText).contains("maxLines = ConversationTitleFit.MaxLines,")
+        assertThat(nameText).doesNotContain("maxLines = 1")
         assertThat(nameText).contains("overflow = TextOverflow.Ellipsis,")
         // weight(fill = false): the name takes what is left AFTER the glyph
         // is measured, and a short name does not stretch the row.
-        assertThat(nameText).contains("modifier = Modifier.weight(1f, fill = false),")
+        assertThat(nameText).contains(".weight(1f, fill = false)")
         // The bar's other occupants are untouched: call button, tap-the-name
         // contact action, and the overflow all still there. Change category
         // is NOT a bar icon any more - it lives in the overflow (see

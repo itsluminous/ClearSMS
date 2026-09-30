@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Forward
@@ -50,6 +53,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -426,11 +431,36 @@ fun ConversationScreen(
                             // INSIDE the title slot instead of pushing the
                             // muted glyph off the bar; a short name keeps the
                             // glyph snug beside it.
-                            Text(
+                            //
+                            // BasicText, not Text: Material3 1.3's Text has
+                            // no autoSize yet. Style and colour are the ones
+                            // TopAppBar provides for its title slot, so a
+                            // short name renders exactly as before. A long
+                            // name wraps to two lines, shrinking (in 1sp
+                            // steps) only as far as the sp floor, then
+                            // ellipsises; heightIn(max) caps the layout at
+                            // the bar's fixed height so, at large font
+                            // scales, ellipsis drops the line that would not
+                            // fit instead of the bar clipping or growing.
+                            // See ConversationTitleFit.
+                            val titleStyle = LocalTextStyle.current
+                            val titleColor = LocalContentColor.current
+                            BasicText(
                                 text = state.title,
-                                maxLines = 1,
+                                style = titleStyle,
+                                color = { titleColor },
+                                maxLines = ConversationTitleFit.MaxLines,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false),
+                                autoSize =
+                                    TextAutoSize.StepBased(
+                                        minFontSize = ConversationTitleFit.MinFontSize,
+                                        maxFontSize = ConversationTitleFit.maxFontSize(titleStyle.fontSize),
+                                        stepSize = ConversationTitleFit.StepSize,
+                                    ),
+                                modifier =
+                                    Modifier
+                                        .weight(1f, fill = false)
+                                        .heightIn(max = ConversationTitleFit.MaxHeight),
                             )
                             if (state.muted) {
                                 // The same glyph the inbox row draws (one
