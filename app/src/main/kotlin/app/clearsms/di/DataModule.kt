@@ -19,6 +19,7 @@ import app.clearsms.data.db.RekeyThreads
 import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.RuleDao
 import app.clearsms.data.db.TransactionDao
+import app.clearsms.data.prefs.DeviceCurrency
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.prefs.SettingsRepositoryImpl
 import app.clearsms.data.repository.FinanceRepository
@@ -36,6 +37,8 @@ import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.categorizer.SenderIdLookup
+import app.clearsms.domain.parser.CurrencyContext
+import app.clearsms.domain.parser.TransactionParser
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.notification.NotificationDismisser
 import app.clearsms.receiver.DefaultSendReportSideEffects
@@ -208,9 +211,34 @@ object DataModule {
         @ApplicationContext context: Context,
     ): SenderIdLookup = SenderIdStore(context)
 
+    /**
+     * The ONE transaction parser, wired with the currency context (issue
+     * #65): the SIM/locale currency read once at startup as the fallback,
+     * and the Settings override as a hot state - the parser is synchronous
+     * and runs on every incoming SMS, so it reads a warm cache instead of
+     * suspending on the DataStore (same reasoning as [hotGate]).
+     */
     @Provides
     @Singleton
-    fun provideRuleEngine(): RuleEngine = RuleEngine(log = { Log.w("RuleEngine", it) })
+    fun provideTransactionParser(
+        @ApplicationContext context: Context,
+        @ApplicationScope appScope: CoroutineScope,
+        settingsRepository: SettingsRepository,
+    ): TransactionParser {
+        val deviceCurrency = DeviceCurrency.detect(context)
+        val override = settingsRepository.financeCurrency.stateIn(appScope, SharingStarted.Eagerly, null)
+        return TransactionParser { CurrencyContext(deviceCurrency = deviceCurrency, override = override.value) }
+    }
+
+    @Provides
+    @Singleton
+    fun provideRuleEngine(transactionParser: TransactionParser): RuleEngine =
+        RuleEngine(
+            log = { Log.w("RuleEngine", it) },
+            // Amount extracts are typed under the body's currency, exactly
+            // like the parser's own amounts - one convention per message.
+            currencyOf = transactionParser::currencyOf,
+        )
 
     @Provides
     @Singleton
@@ -228,10 +256,12 @@ object DataModule {
         ruleEngine: RuleEngine,
         senderIdLookup: SenderIdLookup,
         contactLookup: Optional<ContactLookup>,
+        transactionParser: TransactionParser,
     ): MessageCategorizer =
         MessageCategorizer(
             ruleEngine = ruleEngine,
             senderIdLookup = senderIdLookup,
+            transactionParser = transactionParser,
             contactLookup = ContactLookup { address -> contactLookup.map { it.isContact(address) }.orElse(false) },
         )
 
@@ -247,12 +277,14 @@ object DataModule {
         notificationDismisser: NotificationDismisser,
         settingsRepository: SettingsRepository,
         attachmentStore: AttachmentStore,
+        transactionParser: TransactionParser,
     ): MessageRepositoryImpl =
         MessageRepositoryImpl(
             database = database,
             categorizer = categorizer,
             bundledRuleLoader = bundledRuleLoader,
             json = json,
+            transactionParser = transactionParser,
             systemSmsDeleter = telephonyWriter,
             systemSmsReadWriter = telephonyWriter,
             systemSmsReinserter = telephonyWriter,

@@ -1,8 +1,10 @@
 package app.clearsms.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.TransactionType
 
@@ -20,6 +22,16 @@ import app.clearsms.domain.model.TransactionType
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val amount: Double,
+    /**
+     * ISO 4217 code of [amount]. Added in v23 with the default `INR`: every
+     * row stored before then was parsed under the rupee assumption, so the
+     * migration marks it INR and leaves the amount untouched - guessing
+     * another currency for old rows, or rewriting their figures, would
+     * silently change people's recorded history. Totals are only ever
+     * summed within one currency (see [app.clearsms.ui.finance.MonthSummary]).
+     */
+    @ColumnInfo(defaultValue = CurrencyCatalog.INR_CODE)
+    val currency: String = CurrencyCatalog.INR_CODE,
     val type: TransactionType,
     val merchantName: String? = null,
     /** Last 4 digits of the source account or card. */

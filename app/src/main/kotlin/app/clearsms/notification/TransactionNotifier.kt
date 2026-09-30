@@ -17,20 +17,19 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.StartDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.abs
 
 /**
  * Notification for a parsed bank transaction: the essentials up front
@@ -292,11 +291,18 @@ class TransactionNotifier
                 balanceUpdateLabel: String,
                 accountFormat: String,
                 dueDateFormat: String = "Due %s",
-                minDueFormat: String = "Min due \u20b9%s",
+                minDueFormat: String = "Min due %s",
                 requestLabel: String = "Payment request",
             ): Content? {
+                // The details map holds the pipeline's OWN rendering of each
+                // figure (Double.toString(): "1299.0"), never the SMS text, so
+                // a plain decimal parse is exact here. The currency rides
+                // along under "currency"; absent means rupees (the encoding
+                // every pre-v23 row uses).
+                val currency = details["currency"] ?: CurrencyCatalog.INR_CODE
                 val amount = details["amount"]?.replace(",", "")?.toDoubleOrNull()
                 val type = details["type"]?.lowercase()
+                // Balances and bill figures come from rupee-anchored phrases.
                 val balance = details["balance"]?.replace(",", "")?.toDoubleOrNull()
                 val minDue = details["min_due"]?.replace(",", "")?.toDoubleOrNull()
                 // Collect / payment requests: money only ASKED for. Renders
@@ -316,7 +322,7 @@ class TransactionNotifier
                 if (billAmount == null && requested != null) {
                     return Content(
                         kind = Content.Kind.BALANCE,
-                        title = "₹${grouped(requested)}",
+                        title = MoneyFormat.format(requested, CurrencyCatalog.INR_CODE),
                         text =
                             listOfNotNull(
                                 requestLabel,
@@ -337,10 +343,10 @@ class TransactionNotifier
                     }
                 val title =
                     when {
-                        billAmount != null -> "₹${grouped(billAmount)}"
-                        kind == Content.Kind.DEBIT -> "− ₹${grouped(amount!!)}"
-                        kind == Content.Kind.CREDIT -> "+ ₹${grouped(amount!!)}"
-                        else -> "₹${grouped(balance!!)}"
+                        billAmount != null -> MoneyFormat.format(billAmount, CurrencyCatalog.INR_CODE)
+                        kind == Content.Kind.DEBIT -> "\u2212 " + MoneyFormat.format(amount!!, currency)
+                        kind == Content.Kind.CREDIT -> "+ " + MoneyFormat.format(amount!!, currency)
+                        else -> MoneyFormat.format(balance!!, CurrencyCatalog.INR_CODE)
                     }
                 val text =
                     if (billAmount != null) {
@@ -350,7 +356,9 @@ class TransactionNotifier
                             details["account_last4"]?.let { String.format(accountFormat, it) },
                             details["bank"],
                             // Secondary figure only when it differs from the headline.
-                            minDue?.takeIf { it != billAmount }?.let { String.format(minDueFormat, grouped(it)) },
+                            minDue
+                                ?.takeIf { it != billAmount }
+                                ?.let { String.format(minDueFormat, MoneyFormat.format(it, CurrencyCatalog.INR_CODE)) },
                         ).joinToString(" · ")
                     } else {
                         compactText(
@@ -399,34 +407,5 @@ class TransactionNotifier
                     accountLast4?.let { String.format(accountFormat, it) },
                     bank,
                 ).joinToString(" · ")
-
-            /**
-             * Indian digit grouping ("1,299", "12,430", "1,00,000"), two
-             * decimals only when the amount has a fraction. Local copy of the
-             * UI's format so the platform layer does not depend on ui code.
-             */
-            internal fun grouped(value: Double): String {
-                val rounded = BigDecimal(abs(value)).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
-                val plain = rounded.toPlainString()
-                val integerPart = plain.substringBefore('.')
-                val fractionPart = plain.substringAfter('.', missingDelimiterValue = "")
-
-                val groupedInt = StringBuilder()
-                val head = if (integerPart.length > 3) integerPart.dropLast(3) else ""
-                val tail = integerPart.takeLast(3)
-                if (head.isNotEmpty()) {
-                    val pairs = ArrayDeque<String>()
-                    var index = head.length
-                    while (index > 0) {
-                        val start = maxOf(0, index - 2)
-                        pairs.addFirst(head.substring(start, index))
-                        index = start
-                    }
-                    groupedInt.append(pairs.joinToString(","))
-                    groupedInt.append(',')
-                }
-                groupedInt.append(tail)
-                return if (fractionPart.isEmpty()) groupedInt.toString() else "$groupedInt.$fractionPart"
-            }
         }
     }

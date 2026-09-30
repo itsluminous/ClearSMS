@@ -9,6 +9,7 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.rules.RuleSources
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.ReminderType
 import app.clearsms.domain.model.SubCategory
@@ -68,6 +69,8 @@ data class AccountBackup(
     val lastKnownBalance: Double? = null,
     val creditLimit: Double? = null,
     val lastUpdated: Long,
+    /** ISO 4217 code; absent in files written before the currency column existed = rupees. */
+    val currency: String = CurrencyCatalog.INR_CODE,
 )
 
 @Serializable
@@ -84,6 +87,8 @@ data class TransactionBackup(
     val category: String,
     val rawSmsId: Long,
     val note: String? = null,
+    /** ISO 4217 code; absent in files written before the currency column existed = rupees. */
+    val currency: String = CurrencyCatalog.INR_CODE,
 )
 
 @Serializable
@@ -184,7 +189,8 @@ internal fun MessageBackup.toEntity(issues: RestoreIssues) =
         isBlockedSender = isBlockedSender,
     )
 
-internal fun AccountEntity.toBackup() = AccountBackup(id, accountNumber, bankName, type.name, lastKnownBalance, creditLimit, lastUpdated)
+internal fun AccountEntity.toBackup() =
+    AccountBackup(id, accountNumber, bankName, type.name, lastKnownBalance, creditLimit, lastUpdated, currency)
 
 internal fun AccountBackup.toEntity(issues: RestoreIssues) =
     AccountEntity(
@@ -195,6 +201,7 @@ internal fun AccountBackup.toEntity(issues: RestoreIssues) =
         lastKnownBalance = lastKnownBalance,
         creditLimit = creditLimit,
         lastUpdated = lastUpdated,
+        currency = currency,
     )
 
 internal fun TransactionEntity.toBackup() =
@@ -211,6 +218,7 @@ internal fun TransactionEntity.toBackup() =
         category.name,
         rawSmsId,
         note,
+        currency,
     )
 
 /**
@@ -238,6 +246,7 @@ internal fun TransactionBackup.toEntityOrNull(issues: RestoreIssues): Transactio
         category = issues.enumOrDefault(category, MerchantCategory.OTHER),
         rawSmsId = rawSmsId,
         note = note,
+        currency = currency,
     )
 }
 

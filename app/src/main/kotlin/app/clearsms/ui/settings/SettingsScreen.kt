@@ -75,6 +75,7 @@ import app.clearsms.R
 import app.clearsms.data.backup.BackupFileNames
 import app.clearsms.data.prefs.BlockedKeywords
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
@@ -118,6 +119,7 @@ private enum class SettingsDialog {
     DEFAULT_SCREEN,
     DEFAULT_FILTER,
     DEFAULT_FINANCE_FILTER,
+    FINANCE_CURRENCY,
     OTP_DELETE,
     DELAYED_SEND_DELAY,
     MESSAGE_SORT_ORDER,
@@ -763,6 +765,19 @@ private fun SettingsRowsHost(
                 },
                 onDismiss = { dialog = null },
             )
+        SettingsDialog.FINANCE_CURRENCY ->
+            RadioDialog(
+                title = stringResource(R.string.settings_finance_currency),
+                options =
+                    listOf<Pair<String?, String>>(null to stringResource(R.string.settings_finance_currency_auto)) +
+                        CurrencyCatalog.codes.sorted().map { code -> code to currencyOptionLabel(code) },
+                selected = state.financeCurrency,
+                onSelect = {
+                    viewModel.setFinanceCurrency(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
         SettingsDialog.OTP_DELETE ->
             RadioDialog(
                 title = stringResource(R.string.settings_otp_auto_delete),
@@ -1340,6 +1355,14 @@ private fun settingsRowEntries(
                     row(section, title, state.defaultFinanceFilter.displayName()) {
                         openDialog(SettingsDialog.DEFAULT_FINANCE_FILTER)
                     }
+                SettingsItem.FINANCE_CURRENCY ->
+                    row(
+                        section,
+                        title,
+                        state.financeCurrency?.let { code ->
+                            stringResource(R.string.settings_finance_currency_forced_summary, currencyOptionLabel(code))
+                        } ?: stringResource(R.string.settings_finance_currency_auto_summary),
+                    ) { openDialog(SettingsDialog.FINANCE_CURRENCY) }
                 SettingsItem.SHOW_ALERTS_TAB ->
                     toggle(
                         section = section,
@@ -1643,6 +1666,9 @@ private fun NavigableToggleRow(
     )
 }
 
+/** "INR (₹)" - the ISO code first (what a bank SMS prints), its display symbol after. */
+private fun currencyOptionLabel(code: String): String = "$code (${CurrencyCatalog.of(code).symbol.trim()})"
+
 @Composable
 private fun <T> RadioDialog(
     title: String,
@@ -1655,7 +1681,8 @@ private fun <T> RadioDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            // Scrollable: the currency picker lists a few dozen options.
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 options.forEach { (value, label) ->
                     Row(
                         modifier =

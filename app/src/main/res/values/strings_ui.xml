@@ -170,6 +170,14 @@
     <string name="finance_breakdown_received">Money received (%1$d)</string>
     <string name="finance_breakdown_spent">Money spent (%1$d)</string>
     <string name="finance_summary_tx_count">%1$d transactions this month</string>
+    <plurals name="finance_summary_other_currency">
+        <item quantity="one">+ %1$d transaction in another currency (not added up)</item>
+        <item quantity="other">+ %1$d transactions in other currencies (not added up)</item>
+    </plurals>
+    <plurals name="account_month_other_currency">
+        <item quantity="one">%1$d in another currency not added up</item>
+        <item quantity="other">%1$d in other currencies not added up</item>
+    </plurals>
 
     <!-- Account detail -->
     <string name="account_monthly_chart">Monthly activity (last 6 months)</string>
@@ -490,6 +498,10 @@
     <string name="settings_licenses">Open source licenses</string>
     <string name="settings_licenses_summary">Libraries this app is built with</string>
     <string name="settings_default_finance_filter">Default Finance filter</string>
+    <string name="settings_finance_currency">Currency</string>
+    <string name="settings_finance_currency_auto">Automatic</string>
+    <string name="settings_finance_currency_auto_summary">From each message, else your SIM or device region</string>
+    <string name="settings_finance_currency_forced_summary">Amounts without a clear currency are read as %1$s. Use Sort inbox again to re-read older messages.</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_source_code_summary">View the project on GitHub</string>
     <string name="settings_section_support">Support</string>

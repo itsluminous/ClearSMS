@@ -2,9 +2,12 @@ package app.clearsms.data.rules
 
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.CurrencyInfo
 import app.clearsms.domain.model.ExtractedValue
 import app.clearsms.domain.model.SubCategory
 import app.clearsms.domain.model.TransactionType
+import app.clearsms.domain.parser.AmountParser
 import app.clearsms.domain.parser.ReminderParser
 import app.clearsms.domain.parser.RuleGuards
 import app.clearsms.domain.parser.TransactionParser
@@ -61,6 +64,15 @@ class RuleEngine(
     private val guardKnown: (String) -> Boolean = RuleGuards::isKnown,
     /** Whether the named guard matches the body ([RuleGuards.matches]). */
     private val guardMatches: (String, String) -> Boolean = RuleGuards::matches,
+    /**
+     * ISO code of the currency a body's figures are written in
+     * ([TransactionParser.currencyOf]). An `amount` extract is typed under
+     * that currency's separator convention, so a rule capturing `1.000`
+     * from a Chilean peso message yields 1000, not 1.0 - while every rupee
+     * capture reads exactly as before. Defaults to the historic rupee
+     * assumption for callers that wire nothing (tests, previews).
+     */
+    private val currencyOf: (String) -> String = { CurrencyCatalog.INR_CODE },
 ) {
     private val regexCache = ConcurrentHashMap<String, Any>()
 
@@ -137,7 +149,7 @@ class RuleEngine(
         // not apply when any listed guard matches the body.
         if (match.guardsNone.any { guardMatches(it, body) }) return null
 
-        val (raw, typed) = resolveExtracts(rule, bodyMatch, anchor)
+        val (raw, typed) = resolveExtracts(rule, bodyMatch, anchor, body)
         return CategorizationResult(
             category = categoryOf(rule.action.category),
             subCategory = subCategoryOf(rule.action.subCategory),
@@ -157,9 +169,12 @@ class RuleEngine(
         rule: RuleDefinition,
         bodyMatch: MatchResult?,
         anchor: LocalDate,
+        body: String,
     ): Pair<Map<String, String>, Map<String, ExtractedValue>> {
         val extract = rule.action.extract
         if (extract.isEmpty()) return emptyMap<String, String>() to emptyMap()
+        // Resolved once per matched rule, lazily: most rules extract no amount.
+        val currency by lazy { CurrencyCatalog.of(currencyOf(body)) }
         val raw = LinkedHashMap<String, String>(extract.size)
         val typed = LinkedHashMap<String, ExtractedValue>(extract.size)
         for ((key, template) in extract) {
@@ -172,7 +187,7 @@ class RuleEngine(
             val trimmed = value.trim()
             raw[key] = trimmed
             val type = rule.action.extractTypes[key]?.let(ExtractType::fromName) ?: inferredType(key)
-            val typedValue = typeValue(trimmed, type, anchor)
+            val typedValue = typeValue(trimmed, type, anchor) { currency }
             if (typedValue == null) {
                 log("Rule '${rule.id}': extract '$key' does not parse as ${type.jsonName}; typed value dropped")
             } else {
@@ -187,12 +202,12 @@ class RuleEngine(
         trimmed: String,
         type: ExtractType,
         anchor: LocalDate,
+        currency: () -> CurrencyInfo,
     ): ExtractedValue? =
         when (type) {
             ExtractType.AMOUNT ->
-                trimmed
-                    .replace(",", "")
-                    .toDoubleOrNull()
+                AmountParser
+                    .parse(trimmed, currency())
                     ?.let { ExtractedValue.Amount(trimmed, it) }
             ExtractType.DATE -> dateParser(trimmed, anchor)?.let { ExtractedValue.Date(trimmed, it) }
             ExtractType.MERCHANT -> ExtractedValue.Merchant(trimmed, merchantNormalizer(trimmed))

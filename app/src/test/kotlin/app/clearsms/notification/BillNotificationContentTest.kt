@@ -18,7 +18,7 @@ class BillNotificationContentTest {
             balanceUpdateLabel = "Balance update",
             accountFormat = "A/c %1\$s",
             dueDateFormat = "Due %1\$s",
-            minDueFormat = "Min due ₹%1\$s",
+            minDueFormat = "Min due %1\$s",
         )
 
     private val axisBillDetails =

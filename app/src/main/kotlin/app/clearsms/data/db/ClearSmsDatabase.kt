@@ -29,7 +29,7 @@ import java.time.ZoneId
         ThreadPinEntity::class,
         AttachmentEntity::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -133,6 +133,15 @@ import java.time.ZoneId
         // person, two threads" conversations of issue #42 in place with
         // pins, drafts and read/archived state intact - see [RekeyThreads].
         AutoMigration(from = 21, to = 22, spec = RekeyThreads::class),
+        // v22 -> v23: adds transactions.currency and accounts.currency (ISO
+        // 4217, NOT NULL, default 'INR') - issue #65, the app no longer
+        // assumes rupees. Pure addition: every existing row is marked INR
+        // because every amount stored before this version WAS parsed under
+        // the rupee assumption, and no stored amount is rewritten - a
+        // migration that silently changed recorded figures would be worse
+        // than the bug. Rows are re-derived from their SMS text (with the
+        // currency-aware parser) only by the ordinary post-update re-sort.
+        AutoMigration(from = 22, to = 23),
     ],
 )
 @TypeConverters(Converters::class)

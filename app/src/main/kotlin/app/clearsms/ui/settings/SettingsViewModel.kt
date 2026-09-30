@@ -90,6 +90,8 @@ data class SettingsUiState(
     val sections: EnabledSections = EnabledSections(),
     val defaultInboxFilter: Category? = null,
     val defaultFinanceFilter: FinanceTab = FinanceTab.ACCOUNTS,
+    /** Forced parsing currency (ISO code), or null for automatic detection. */
+    val financeCurrency: String? = null,
     val otpAutoCopy: Boolean = true,
     val otpAutoDeletePolicy: OtpAutoDeletePolicy = OtpAutoDeletePolicy.NEVER,
     val otpDisplaySize: OtpDisplaySize = OtpDisplaySize.DEFAULT,
@@ -292,6 +294,8 @@ class SettingsViewModel
             val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
             /** Filled by the third combine stage. */
             val sections: EnabledSections = EnabledSections(),
+            /** Filled by the fourth combine stage. */
+            val financeCurrency: String? = null,
         )
 
         private val appearance =
@@ -334,6 +338,8 @@ class SettingsViewModel
                 gestures.copy(swipeDeadZone = zone)
             }.combine(settings.enabledSections) { gestures, sections ->
                 gestures.copy(sections = sections)
+            }.combine(settings.financeCurrency) { gestures, currency ->
+                gestures.copy(financeCurrency = currency)
             }
         private val otp =
             combine(settings.otpAutoCopy, settings.otpAutoDeletePolicy, settings.otpDisplaySize, ::Triple)
@@ -399,6 +405,7 @@ class SettingsViewModel
                     sections = gestures.sections,
                     defaultInboxFilter = gestures.inboxFilter,
                     defaultFinanceFilter = gestures.financeFilter,
+                    financeCurrency = gestures.financeCurrency,
                     otpAutoCopy = autoCopy,
                     otpAutoDeletePolicy = autoDelete,
                     otpDisplaySize = size,
@@ -504,6 +511,8 @@ class SettingsViewModel
         fun setDefaultInboxFilter(value: Category?) = launchIo { settings.setDefaultInboxFilter(value) }
 
         fun setDefaultFinanceFilter(value: FinanceTab) = launchIo { settings.setDefaultFinanceFilter(value) }
+
+        fun setFinanceCurrency(value: String?) = launchIo { settings.setFinanceCurrency(value) }
 
         fun setDeliveryReports(value: Boolean) = launchIo { uiPrefs.setDeliveryReports(value) }
 

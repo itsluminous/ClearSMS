@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,7 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.data.db.TransactionEntity
-import app.clearsms.ui.common.CurrencyFormat
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.BrandGlyph
@@ -193,14 +194,26 @@ fun AccountDetailScreen(
                         )
                         val amountColors = LocalSemanticAmountColors.current
                         Text(
-                            text = CurrencyFormat.signedRupees(group.credits, positive = true),
+                            text = MoneyFormat.signed(group.credits, positive = true, currencyCode = group.currency),
                             style = MaterialTheme.typography.labelMedium,
                             color = amountColors.credit,
                         )
                         Text(
-                            text = "  " + CurrencyFormat.signedRupees(group.debits, positive = false),
+                            text = "  " + MoneyFormat.signed(group.debits, positive = false, currencyCode = group.currency),
                             style = MaterialTheme.typography.labelMedium,
                             color = amountColors.debit,
+                        )
+                    }
+                    if (group.otherCurrencyCount > 0) {
+                        Text(
+                            text =
+                                pluralStringResource(
+                                    R.plurals.account_month_other_currency,
+                                    group.otherCurrencyCount,
+                                    group.otherCurrencyCount,
+                                ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -278,7 +291,7 @@ private fun TransactionRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                AmountText(amount = tx.amount, type = tx.type)
+                AmountText(amount = tx.amount, currency = tx.currency, type = tx.type)
             }
             tx.note?.let { note ->
                 Text(

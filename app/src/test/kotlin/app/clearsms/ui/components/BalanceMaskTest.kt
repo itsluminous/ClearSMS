@@ -7,10 +7,14 @@ import org.junit.Test
 class BalanceMaskTest {
     @Test
     fun `mask carries no information - no digits, fixed shape`() {
-        assertThat(BalanceMask.MASK).doesNotContainMatch("[0-9]")
-        // Every balance masks to the identical string, so length or shape
-        // can never hint at the hidden magnitude.
-        assertThat(BalanceMask.MASK).isEqualTo("₹\u00A0••••••")
+        assertThat(BalanceMask.mask("INR")).doesNotContainMatch("[0-9]")
+        // Every balance in a currency masks to the identical string, so
+        // length or shape can never hint at the hidden magnitude. Indian
+        // users keep the exact rupee placeholder they always had.
+        assertThat(BalanceMask.mask("INR")).isEqualTo("₹\u00A0••••••")
+        // Other currencies keep their own symbol - never a rupee sign.
+        assertThat(BalanceMask.mask("CLP")).isEqualTo("$\u00A0••••••")
+        assertThat(BalanceMask.mask("USD")).isEqualTo("US$\u00A0••••••")
     }
 
     @Test

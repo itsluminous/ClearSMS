@@ -186,7 +186,7 @@ class SettingsCatalogTest {
         // Finance and Alerts get the Inbox's pill visibility, right under
         // the pill order it refines - the same presentation on all three.
         assertThat(bySection["Finance"])
-            .containsExactly("Show Finance tab", "Pill order", "Visible pills", "Show balance", "Default Finance filter")
+            .containsExactly("Show Finance tab", "Pill order", "Visible pills", "Show balance", "Default Finance filter", "Currency")
             .inOrder()
         assertThat(bySection["Alerts"]).containsExactly("Show Alerts tab", "Pill order", "Visible pills").inOrder()
         assertThat(bySection["Startup"]).containsExactly("Default screen")
@@ -319,10 +319,13 @@ class SettingsCatalogTest {
                 "Muted senders",
                 // Support (ex-Donate): the free way to help, opening the repo.
                 "Star on GitHub",
+                // Finance (issue #65): the manual currency override - the
+                // safety net when detection from the message / SIM is wrong.
+                "Currency",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 24 additions = 56 rows.
+        // No row lost, none dropped: 32 survivors + 25 additions = 57 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear

@@ -99,8 +99,9 @@ Ref 657735305495. Avl Bal Rs.4,120.00
 Points worth copying:
 
 - **`amount` needs no parsing instructions.** The app knows that key means an
-  amount and handles `1,23,456.78` itself. Same for `due_date`, `merchant` and
-  `type`. See *Typed extracts* in CONTRIBUTING.md.
+  amount and handles `1,23,456.78` itself - in the currency the message is
+  written in, so a Chilean `$1.000` is a thousand pesos, not one. Same for
+  `due_date`, `merchant` and `type`. See *Typed extracts* in CONTRIBUTING.md.
 - **`guards_none` beats hand-rolled exclusions.** `["otp_mention"]` is better than
   `body_must_not_contain: ["OTP","otp"]` - the guard is maintained centrally and
   already knows the phrasings. Guard ids come from `rules/guards.json` (the

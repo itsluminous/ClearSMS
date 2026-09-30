@@ -7,6 +7,7 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -34,9 +35,12 @@ enum class TxFilter {
 /** One month group: header totals plus the month's transactions. */
 data class MonthGroup(
     val month: YearMonth,
+    /** Totals in [currency] only; rows in other currencies are listed but counted, never summed. */
     val credits: Double,
     val debits: Double,
     val transactions: List<TransactionEntity>,
+    val currency: String = CurrencyCatalog.INR_CODE,
+    val otherCurrencyCount: Int = 0,
 )
 
 data class AccountDetailUiState(
@@ -139,11 +143,18 @@ class AccountDetailViewModel
                 chart = MonthlyAggregation.lastMonths(allTransactions, months = 6, endMonth = YearMonth.now()),
                 groups =
                     MonthlyAggregation.groupByMonth(filtered).map { (month, txs) ->
+                        // One currency per header - the account's dominant one;
+                        // a foreign-currency spend on the card is listed in its
+                        // own currency and counted, never added into the header.
+                        val currency = MonthSummary.dominantCurrency(allTransactions)
+                        val (inCurrency, other) = txs.partition { it.currency == currency }
                         MonthGroup(
                             month = month,
-                            credits = txs.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
-                            debits = txs.filter { it.type == TransactionType.DEBIT }.sumOf { it.amount },
+                            credits = inCurrency.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
+                            debits = inCurrency.filter { it.type == TransactionType.DEBIT }.sumOf { it.amount },
                             transactions = txs,
+                            currency = currency,
+                            otherCurrencyCount = other.size,
                         )
                     },
                 hasMoreTransactions = TransactionPaging.hasMore(shown = page.size, total = allTransactions.size),

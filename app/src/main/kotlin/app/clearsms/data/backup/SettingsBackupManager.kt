@@ -131,6 +131,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.BooleanEntry("alerts_section_enabled"),
             SettingsBackupEntry.StringEntry("default_inbox_filter"),
             SettingsBackupEntry.StringEntry("default_finance_filter"),
+            SettingsBackupEntry.StringEntry("finance_currency"),
             SettingsBackupEntry.BooleanEntry("transaction_notifications"),
             SettingsBackupEntry.StringEntry("logo_background"),
             SettingsBackupEntry.StringEntry("inbox_pill_order"),

@@ -40,14 +40,15 @@ class TransactionAttributionFixesTest {
         assertThat(result!!.amount).isEqualTo(40.95)
         // "Avl Limit" is credit headroom, never a balance.
         assertThat(result.balance).isNull()
-        assertThat(parser.foreignCurrency(axisUsdSpend)).isEqualTo("USD")
+        assertThat(result.currency).isEqualTo("USD")
+        assertThat(parser.currencyOf(axisUsdSpend)).isEqualTo("USD")
     }
 
     @Test
-    fun `domestic transactions report no foreign currency`() {
-        assertThat(
-            parser.foreignCurrency("Rs.250.00 debited from A/c XX9805 to VPA merchant@okicici on 20-07-26."),
-        ).isNull()
+    fun `domestic transactions are rupees`() {
+        val body = "Rs.250.00 debited from A/c XX9805 to VPA merchant@okicici on 20-07-26."
+        assertThat(parser.currencyOf(body)).isEqualTo("INR")
+        assertThat(parser.parse("HDFCBK", body)!!.currency).isEqualTo("INR")
     }
 
     // endregion

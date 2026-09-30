@@ -8,6 +8,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.FinanceRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.model.AccountType
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.ui.navigation.PillConfig
 import app.clearsms.ui.navigation.activePill
@@ -46,6 +47,10 @@ data class FinanceUiState(
     /** Rows excluded from the totals (self-transfers, card-bill payments). */
     val monthExcludedCount: Int = 0,
     val monthExcludedTotal: Double = 0.0,
+    /** ISO code every month figure is in (the month's dominant currency). */
+    val monthCurrency: String = CurrencyCatalog.INR_CODE,
+    /** Counted rows in other currencies - reported beside the total, never summed into it. */
+    val monthOtherCurrencyCount: Int = 0,
     val bankAccounts: List<AccountEntity> = emptyList(),
     /** Accounts with no update for over a year - behind "Show older". */
     val staleBankAccounts: List<AccountEntity> = emptyList(),
@@ -234,6 +239,8 @@ class FinanceViewModel
                 monthCreditCount = monthTotals.creditCount,
                 monthExcludedCount = monthTotals.excludedCount,
                 monthExcludedTotal = monthTotals.excludedTotal,
+                monthCurrency = monthTotals.currency,
+                monthOtherCurrencyCount = monthTotals.otherCurrencyCount,
                 bankAccounts = accountSplit.active,
                 staleBankAccounts = accountSplit.stale,
                 creditCards = cardSplit.active,

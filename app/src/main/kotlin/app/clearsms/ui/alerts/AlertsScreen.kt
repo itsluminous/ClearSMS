@@ -56,8 +56,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.data.db.ReminderEntity
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.domain.model.ReminderType
-import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
@@ -382,6 +383,8 @@ private fun ReminderCard(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
+                        // Bill figures come from the rupee-anchored reminder
+                        // grammar ("Total due Rs ..."), so they render as rupees.
                         reminder.totalDue?.let {
                             Column {
                                 Text(
@@ -390,7 +393,7 @@ private fun ReminderCard(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    text = CurrencyFormat.rupees(it),
+                                    text = MoneyFormat.format(it, CurrencyCatalog.INR_CODE),
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.SemiBold,
                                 )
@@ -404,7 +407,7 @@ private fun ReminderCard(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    text = CurrencyFormat.rupees(it),
+                                    text = MoneyFormat.format(it, CurrencyCatalog.INR_CODE),
                                     style = MaterialTheme.typography.titleMedium,
                                 )
                             }

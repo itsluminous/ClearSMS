@@ -348,6 +348,10 @@ private class FakeSettingsRepository : SettingsRepository {
         defaultFinanceFilterFlow.value = value
     }
 
+    override val financeCurrency: Flow<String?> = MutableStateFlow(null)
+
+    override suspend fun setFinanceCurrency(value: String?) = Unit
+
     override val transactionNotifications = MutableStateFlow(true)
 
     override suspend fun setTransactionNotifications(value: Boolean) = Unit
