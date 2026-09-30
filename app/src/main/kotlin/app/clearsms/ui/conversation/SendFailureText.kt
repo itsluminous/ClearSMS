@@ -14,7 +14,9 @@ import app.clearsms.mms.SendFailureReason
  * up" is stated as such - never diagnosed as "your data is off" or "the
  * carrier is down". A structural reason ([SendFailureReason.NO_MMS_NETWORK],
  * [SendFailureReason.CARRIER_DISABLED]) is never told that a retry will
- * work; only [SendFailureReason.TRANSIENT] gets that hint. A failure
+ * work; only [SendFailureReason.TRANSIENT] gets that hint - in particular
+ * NOT [SendFailureReason.PDU_REJECTED], which the platform returns within
+ * milliseconds and which a bare retry repeats exactly (issue #51). A failure
  * recorded without a reason (an SMS failure, or a row from before the
  * column) reads honestly as unexplained.
  *
@@ -33,6 +35,8 @@ object SendFailureText {
             SendFailureReason.APN_CONFIGURATION -> R.string.send_failure_apn
             SendFailureReason.HTTP_FAILURE -> R.string.send_failure_http
             SendFailureReason.TRANSIENT -> R.string.send_failure_transient
+            SendFailureReason.PDU_REJECTED -> R.string.send_failure_pdu_rejected
+            SendFailureReason.EXCEEDS_CARRIER_LIMIT -> R.string.send_failure_exceeds_carrier_limit
             SendFailureReason.CARRIER_DISABLED -> R.string.send_failure_carrier_disabled
             SendFailureReason.SIM_UNAVAILABLE -> R.string.send_failure_sim_unavailable
             SendFailureReason.DISPATCH_FAILED -> R.string.send_failure_dispatch
@@ -50,6 +54,8 @@ object SendFailureText {
             SendFailureReason.APN_CONFIGURATION -> R.string.conversation_not_sent_apn
             SendFailureReason.HTTP_FAILURE -> R.string.conversation_not_sent_http
             SendFailureReason.TRANSIENT -> R.string.conversation_not_sent_transient
+            SendFailureReason.PDU_REJECTED -> R.string.conversation_not_sent_pdu_rejected
+            SendFailureReason.EXCEEDS_CARRIER_LIMIT -> R.string.conversation_not_sent_exceeds_carrier_limit
             SendFailureReason.CARRIER_DISABLED -> R.string.conversation_not_sent_carrier_disabled
             SendFailureReason.SIM_UNAVAILABLE -> R.string.conversation_not_sent_sim_unavailable
             SendFailureReason.DISPATCH_FAILED -> R.string.conversation_not_sent_dispatch

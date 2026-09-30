@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.work.WorkManager
 import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.categorizer.ContactLookup
+import app.clearsms.mms.CarrierMmsLimits
+import app.clearsms.mms.FrameworkCarrierMmsLimits
 import app.clearsms.mms.FrameworkMmsGateway
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
@@ -89,4 +91,8 @@ internal interface PlatformBindings {
     /** MMS submission goes through the framework SmsManager seam. */
     @Binds
     fun mmsGateway(impl: FrameworkMmsGateway): MmsGateway
+
+    /** The carrier's MMS size limit, read from the chosen SIM's carrier config. */
+    @Binds
+    fun carrierMmsLimits(impl: FrameworkCarrierMmsLimits): CarrierMmsLimits
 }

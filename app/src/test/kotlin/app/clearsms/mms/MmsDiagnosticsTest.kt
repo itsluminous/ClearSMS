@@ -37,6 +37,7 @@ private class DiagFakeMmsGateway : MmsGateway {
     var lastSentIntent: PendingIntent? = null
 
     override fun sendMultimediaMessage(
+        messageId: Long,
         subscriptionId: Int?,
         pduFile: File,
         sentIntent: PendingIntent,
@@ -100,7 +101,7 @@ class MmsDiagnosticsTest {
         attachmentDao = db.attachmentDao()
         gateway = DiagFakeMmsGateway()
         subscriptions = DiagFakeSubscriptionSource()
-        stager = OutgoingAttachmentStager(context)
+        stager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits())
         sender =
             MmsSender(
                 context,
@@ -110,6 +111,7 @@ class MmsDiagnosticsTest {
                 stager,
                 gateway,
                 MmsSendConditionsProbe(context, subscriptions),
+                FakeCarrierMmsLimits(),
                 Dispatchers.IO,
             )
         // Only entries recorded by THIS test are inspected: the buffer is a
@@ -128,7 +130,7 @@ class MmsDiagnosticsTest {
     private fun staged(bytes: ByteArray = ByteArray(1_234) { it.toByte() }): StagedAttachment {
         val source = File(context.cacheDir, fileName)
         source.writeBytes(bytes)
-        return (stager.stage(Uri.fromFile(source)) as StagingResult.Staged).attachment
+        return (stager.stage(Uri.fromFile(source), stager.budgetFor(null)) as StagingResult.Staged).attachment
     }
 
     private fun assertNothingPersonal(text: String) {
@@ -156,6 +158,13 @@ class MmsDiagnosticsTest {
             assertThat(handover).contains("I MmsSender mms handover message=$id parts=1")
             assertThat(handover).contains("attachmentBytes=${attachment.sizeBytes}")
             assertThat(handover).containsMatch("pduBytes=[1-9][0-9]*")
+            // Issue #51: the staged file's state immediately before hand-over
+            // - present and holding every encoded byte.
+            val pduBytes = Regex("pduBytes=(\\d+)").find(handover)!!.groupValues[1]
+            assertThat(handover).contains("pduBytes=$pduBytes stagedExists=true stagedBytes=$pduBytes")
+            // The fit against the platform's own size check: the carrier
+            // limit (0 = unknown, so the AOSP default stands in) and the verdict.
+            assertThat(handover).contains("stagedBytes=$pduBytes carrierMaxBytes=0 limitBytes=307200 fitsCarrierMax=true")
             assertThat(handover).contains("resend=false")
             assertThat(handover).contains("defaultSubscription=false")
             // Subscription 7 sits in the second slot; the id itself is not logged.
@@ -245,14 +254,50 @@ class MmsDiagnosticsTest {
             assertThat(sentIntent.getIntExtra(MmsSentReceiver.EXTRA_SUBSCRIPTION_ID, 0)).isEqualTo(7)
 
             val code = SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS
-            MmsSendReport.of(sentIntent, code, SendFailureReason.fromMmsResultCode(code), subscriptions).log(id)
+            val handoverAt = sentIntent.getLongExtra(MmsSentReceiver.EXTRA_HANDOVER_ELAPSED_REALTIME_MS, -1L)
+            assertThat(handoverAt).isAtLeast(0L)
+            MmsSendReport
+                .of(sentIntent, code, SendFailureReason.fromMmsResultCode(code), subscriptions, nowElapsedMs = handoverAt + 26)
+                .log(id)
 
             val line = log().lines().single { "mms send failed" in it }
             assertThat(
                 line,
-            ).contains("message=$id result=$code reason=NO_MMS_NETWORK httpStatusPresent=false httpStatus=0 slot=2 onDataSim=NO")
+            ).contains(
+                "message=$id result=$code reason=NO_MMS_NETWORK httpStatusPresent=false httpStatus=0 slot=2 onDataSim=NO elapsedMs=26",
+            )
             assertNothingPersonal(line)
         }
+
+    @Test
+    fun `the reporter's failure now reads as a PDU rejection with the platform's response time - the instant-IO-error tell`() =
+        runBlocking {
+            val id = sender.send(recipient, text, listOf(staged()), subscriptionId = 3)
+            val sentIntent = shadowOf(gateway.lastSentIntent!!).savedIntent
+            val handoverAt = sentIntent.getLongExtra(MmsSentReceiver.EXTRA_HANDOVER_ELAPSED_REALTIME_MS, -1L)
+
+            // result=5 (MMS_ERROR_IO_ERROR) 29 ms after hand-over: the platform never read the PDU.
+            val code = SmsManager.MMS_ERROR_IO_ERROR
+            MmsSendReport
+                .of(sentIntent, code, SendFailureReason.fromMmsResultCode(code), subscriptions, nowElapsedMs = handoverAt + 29)
+                .log(id)
+
+            val line = log().lines().single { "mms send failed" in it }
+            assertThat(
+                line,
+            ).contains("message=$id result=5 reason=PDU_REJECTED httpStatusPresent=false httpStatus=0 slot=1 onDataSim=YES elapsedMs=29")
+            assertNothingPersonal(line)
+        }
+
+    @Test
+    fun `a result for a hand-over that predates the clock extra reads elapsedMs=-1, never a guess`() {
+        val intent =
+            Intent(MmsSentReceiver.ACTION_MMS_SENT)
+                .putExtra(MmsSentReceiver.EXTRA_DESTINATION, recipient)
+        MmsSendReport.of(intent, SmsManager.MMS_ERROR_IO_ERROR, SendFailureReason.PDU_REJECTED).log(3L)
+
+        assertThat(log().lines().single { "mms send failed" in it }).endsWith("elapsedMs=-1")
+    }
 
     @Test
     fun `a failure report without a subscription source reads slot and data SIM as unknown`() {

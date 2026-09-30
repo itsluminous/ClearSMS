@@ -3,6 +3,7 @@ package app.clearsms.mms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 import android.telephony.SubscriptionManager
 import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.AttachmentEntity
@@ -52,6 +53,16 @@ import javax.inject.Singleton
  * result code `MmsSentReceiver` logs, that tells "this app built a bad
  * MMS" apart from "the platform or carrier refused". NEVER logged: the
  * recipient, the text, an attachment's name or bytes.
+ *
+ * SIZE (issue #51): the platform MMS service refuses to read a PDU over
+ * the carrier config `maxMessageSize` and answers `MMS_ERROR_IO_ERROR`
+ * without touching the network. Attachments are compressed to fit that
+ * limit when staged ([MmsSizeBudget]); the encoded PDU is checked against
+ * the SAME limit here, for the SIM actually chosen, and one that still
+ * exceeds it (the SIM was switched to a stricter carrier after attaching,
+ * or an extreme body outgrew the envelope margin) is recorded FAILED as
+ * [SendFailureReason.EXCEEDS_CARRIER_LIMIT] instead of being handed over
+ * to fail at once.
  */
 @Singleton
 class MmsSender
@@ -64,6 +75,7 @@ class MmsSender
         private val stager: OutgoingAttachmentStager,
         private val gateway: MmsGateway,
         private val conditions: MmsSendConditionsProbe,
+        private val carrierLimits: CarrierMmsLimits,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         /**
@@ -173,8 +185,43 @@ class MmsSender
                 // the file cannot collide.
                 val staged = attachmentStore.stagingFile(messageId)
                 staged.writeBytes(pdu)
-                logHandover(messageId, parts, pdu.size, subscriptionId, resend)
-                gateway.sendMultimediaMessage(subscriptionId, staged, sentIntent(messageId, destination, subscriptionId))
+                // Issue #51: an instant platform IO error means the PDU
+                // was never read. Verify our half - the file is there and
+                // complete - and say so, before the platform is asked.
+                val check = StagedPduCheck.of(staged.exists(), staged.length(), pdu.size)
+                val budget = MmsSizeBudget.forCarrier(carrierLimits.maxMessageSizeBytes(subscriptionId))
+                logHandover(messageId, parts, pdu.size, check, budget, subscriptionId, resend)
+                if (!budget.fits(pdu.size.toLong())) {
+                    // The platform would answer IO_ERROR in milliseconds
+                    // without asking the carrier; say why instead.
+                    Diag.w(
+                        TAG,
+                        "pdu exceeds carrier limit before handover",
+                        null,
+                        id("message", messageId),
+                        count("pduBytes", pdu.size),
+                        count("carrierMaxBytes", budget.carrierMaxBytes ?: 0),
+                        flag("limitKnown", budget.limitKnown),
+                        count("limitBytes", budget.limitBytes),
+                    )
+                    staged.delete()
+                    messageDao.markFailed(messageId, SendFailureReason.EXCEEDS_CARRIER_LIMIT.name)
+                    return
+                }
+                if (!check.handoverSafe) {
+                    Diag.e(
+                        TAG,
+                        "staged pdu incomplete before handover",
+                        null,
+                        id("message", messageId),
+                        flag("exists", check.exists),
+                        count("bytes", check.lengthBytes),
+                        count("pduBytes", pdu.size),
+                    )
+                    messageDao.markFailed(messageId, SendFailureReason.DISPATCH_FAILED.name)
+                    return
+                }
+                gateway.sendMultimediaMessage(messageId, subscriptionId, staged, sentIntent(messageId, destination, subscriptionId))
             } catch (e: Exception) {
                 // The message never reached the platform: the app's own
                 // failure (or a throwing SmsManager), distinct from every
@@ -206,12 +253,19 @@ class MmsSender
          * that instant. `slot`/`dataSlot` are 1-based slots (0 = unknown);
          * `onDataSim` says whether the sending SIM is the phone's
          * mobile-data SIM - the one line that answers "did this MMS go out
-         * on a SIM that can carry MMS on this phone?".
+         * on a SIM that can carry MMS on this phone?". `stagedBytes` is the
+         * staged file's length as measured immediately before hand-over
+         * (equal to `pduBytes` when all is well). `carrierMaxBytes` (0 =
+         * unknown), `limitBytes` (what the platform will enforce) and
+         * `fitsCarrierMax` say whether the PDU passes the platform's own
+         * pre-network size check - the datum that decides issue #51.
          */
         private fun logHandover(
             messageId: Long,
             parts: List<MmsPart>,
             pduBytes: Int,
+            staged: StagedPduCheck,
+            budget: MmsSizeBudget,
             subscriptionId: Int?,
             resend: Boolean,
         ) {
@@ -223,6 +277,11 @@ class MmsSender
                 count("parts", parts.size),
                 count("attachmentBytes", parts.sumOf { it.data.size.toLong() }),
                 count("pduBytes", pduBytes),
+                flag("stagedExists", staged.exists),
+                count("stagedBytes", staged.lengthBytes),
+                count("carrierMaxBytes", budget.carrierMaxBytes ?: 0),
+                count("limitBytes", budget.limitBytes),
+                flag("fitsCarrierMax", budget.fits(pduBytes.toLong())),
                 flag("resend", resend),
                 flag("defaultSubscription", subscriptionId == null),
                 count("slot", radio.slot ?: 0),
@@ -285,6 +344,11 @@ class MmsSender
                         MmsSentReceiver.EXTRA_SUBSCRIPTION_ID,
                         subscriptionId ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                     )
+                    // So the failure report can say how long the platform
+                    // took - an instant result means it never tried the
+                    // network (issue #51). Monotonic clock: survives a
+                    // wall-clock change between hand-over and result.
+                    .putExtra(MmsSentReceiver.EXTRA_HANDOVER_ELAPSED_REALTIME_MS, SystemClock.elapsedRealtime())
             return PendingIntent.getBroadcast(
                 context,
                 // Unique per message so parallel sends never collide.

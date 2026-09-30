@@ -42,12 +42,15 @@ sealed interface StagingResult {
     ) : StagingResult
 
     /**
-     * Refused up-front: the content exceeds what staging accepts for its
-     * type ([OutgoingAttachmentStager.stagingCapBytes]) - either by its
-     * declared size before any copy, or mid-copy when the size was
-     * undeclared or lied.
+     * Refused: the content cannot travel within the carrier's MMS limit -
+     * by its declared size before any copy, mid-copy when the size was
+     * undeclared or lied, or after compression walked its whole ladder.
+     * [limitBytes] is the carrier limit the refusal is judged against
+     * ([MmsSizeBudget.limitBytes]), so the inline error can name it.
      */
-    data object TooLarge : StagingResult
+    data class TooLarge(
+        val limitBytes: Long,
+    ) : StagingResult
 
     /** The content could not be read (revoked grant, vanished document). */
     data object Unreadable : StagingResult
@@ -63,29 +66,44 @@ sealed interface StagingResult {
  * buffer - the picked content is never loaded into memory whole (issue
  * #6: a 377 MB pick OOMed the old `readBytes()` staging) - and content
  * whose size exceeds the per-type cap is refused before any copy when
- * the provider declares its size. Staged files belong to the compose
- * session - sending moves their bytes into the message's attachment
- * directory; removal or abandonment deletes them.
+ * the provider declares its size. HOW MANY bytes may travel is the
+ * sending SIM's carrier limit ([MmsSizeBudget], via [CarrierMmsLimits]),
+ * not a fixed budget of our own: images are compressed to FIT it, so the
+ * platform MMS service - which refuses to read a PDU over that limit
+ * without asking the carrier (issue #51) - always gets one it will read.
+ * Staged files belong to the compose session - sending moves their bytes
+ * into the message's attachment directory; removal or abandonment
+ * deletes them.
  */
 @Singleton
 class OutgoingAttachmentStager
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val carrierLimits: CarrierMmsLimits,
     ) {
         private val dir: File get() = File(File(context.filesDir, "mms"), "compose").apply { mkdirs() }
 
+        /** The size budget for a message sent from [subscriptionId] (null = the default SIM), as of now. */
+        fun budgetFor(subscriptionId: Int?): MmsSizeBudget = MmsSizeBudget.forCarrier(carrierLimits.maxMessageSizeBytes(subscriptionId))
+
         /**
-         * Copies [uri]'s content into staging (compressing images) and
-         * returns the outcome: staged, refused as too large, or unreadable.
+         * Copies [uri]'s content into staging (compressing images to what
+         * remains of [budget] after [usedBytes] already staged) and returns
+         * the outcome: staged, refused as too large, or unreadable.
          */
-        fun stage(uri: Uri): StagingResult {
+        fun stage(
+            uri: Uri,
+            budget: MmsSizeBudget,
+            usedBytes: Long = 0L,
+        ): StagingResult {
             val id = UUID.randomUUID().toString()
             val raw = File(dir, "$id.stage")
             return try {
                 val resolver = context.contentResolver
                 val mime = (resolver.getType(uri) ?: guessMime(uri) ?: "application/octet-stream").lowercase()
-                val cap = stagingCapBytes(mime)
+                val remaining = budget.attachmentTargetBytes - usedBytes
+                val cap = stagingCapBytes(mime, remaining)
                 // Refuse absurd picks before copying a single byte, when
                 // the provider is willing to say how big the content is.
                 val declared = declaredSize(uri)
@@ -97,8 +115,9 @@ class OutgoingAttachmentStager
                         mimeField(mime),
                         count("declaredBytes", declared),
                         count("capBytes", cap),
+                        count("carrierMaxBytes", budget.carrierMaxBytes ?: 0),
                     )
-                    return StagingResult.TooLarge
+                    return StagingResult.TooLarge(budget.limitBytes)
                 }
                 val copied =
                     resolver.openInputStream(uri)?.use { input -> copyBounded(input, raw, cap) }
@@ -122,14 +141,14 @@ class OutgoingAttachmentStager
                             ),
                         )
                         raw.delete()
-                        StagingResult.TooLarge
+                        StagingResult.TooLarge(budget.limitBytes)
                     }
                     copied == 0L -> {
                         Diag.w(TAG, "attachment unreadable - empty", null, mimeField(mime), flag("sizeDeclared", declared != null))
                         raw.delete()
                         StagingResult.Unreadable
                     }
-                    else -> finish(raw, mime, id) { shrunkMime -> displayNameFor(uri, shrunkMime) }
+                    else -> finish(raw, mime, id, budget, remaining) { shrunkMime -> displayNameFor(uri, shrunkMime) }
                 }
             } catch (e: Exception) {
                 // The URI, the file name and the bytes stay out of the log:
@@ -151,13 +170,18 @@ class OutgoingAttachmentStager
 
         /**
          * Finalizes a completed camera capture: the written JPEG is
-         * compressed and re-staged like any picked image; the raw capture
-         * file is deleted. Unreadable when the capture is missing or empty.
+         * compressed to what remains of [budget] after [usedBytes] and
+         * re-staged like any picked image; the raw capture file is
+         * deleted. Unreadable when the capture is missing or empty.
          */
-        fun stageCameraResult(file: File): StagingResult {
+        fun stageCameraResult(
+            file: File,
+            budget: MmsSizeBudget,
+            usedBytes: Long = 0L,
+        ): StagingResult {
             return try {
                 if (!file.exists() || file.length() == 0L) return StagingResult.Unreadable
-                finish(file, "image/jpeg", UUID.randomUUID().toString()) { "photo.jpg" }
+                finish(file, "image/jpeg", UUID.randomUUID().toString(), budget, budget.attachmentTargetBytes - usedBytes) { "photo.jpg" }
             } catch (e: Exception) {
                 Diag.e(TAG, "camera capture staging failed", e)
                 StagingResult.Unreadable
@@ -172,31 +196,60 @@ class OutgoingAttachmentStager
         }
 
         /**
-         * How large a source of [mimeType] may be to enter staging.
-         * Recompressible images get [MmsSizeLimits.MAX_STAGED_IMAGE_BYTES]
-         * (compression judges pixels, not bytes - see that constant for
-         * where the number comes from). Everything else - video included,
-         * because the app has NO transcoder (Media3 Transformer is a large,
-         * risky dependency; see README's unchecked list) - travels as-is or
-         * not at all, so it is capped at the carrier message budget
-         * [MmsSizeLimits.TOTAL_BUDGET_BYTES] directly.
+         * How large a source of [mimeType] may be to enter staging when
+         * [targetBytes] of the carrier budget remain. Recompressible images
+         * get [MmsSizeLimits.MAX_STAGED_IMAGE_BYTES] (compression judges
+         * pixels, not bytes - see that constant for where the number comes
+         * from). Everything else - video included, because the app has NO
+         * transcoder (Media3 Transformer is a large, risky dependency; see
+         * README's unchecked list) - travels as-is or not at all, so it is
+         * capped at the remaining carrier budget directly.
          */
-        internal fun stagingCapBytes(mimeType: String): Long =
+        internal fun stagingCapBytes(
+            mimeType: String,
+            targetBytes: Long,
+        ): Long =
             if (ImageShrink.isCompressible(mimeType)) {
                 MmsSizeLimits.MAX_STAGED_IMAGE_BYTES
             } else {
-                MmsSizeLimits.TOTAL_BUDGET_BYTES
+                targetBytes.coerceAtLeast(0L)
             }
 
-        /** Compresses (images), names, and moves [raw] into its final staged file. */
+        /**
+         * Compresses (images) to [targetBytes], names, and moves [raw] into
+         * its final staged file - or refuses it when even the smallest
+         * compression rung leaves it over the carrier budget.
+         */
         private fun finish(
             raw: File,
             mime: String,
             id: String,
+            budget: MmsSizeBudget,
+            targetBytes: Long,
             nameFor: (String) -> String,
         ): StagingResult {
             val rawBytes = raw.length()
-            val shrunk = ImageShrink.shrink(raw, mime, File(dir, "$id.shrunk"))
+            val shrunk = ImageShrink.shrink(raw, mime, File(dir, "$id.shrunk"), maxBytes = targetBytes)
+            val achievedBytes = shrunk.file.length()
+            if (achievedBytes > targetBytes) {
+                // Compressible or not, it will not fit: the platform would
+                // refuse the PDU without asking the carrier. Say so now,
+                // with the limit, the target and how close the ladder got.
+                Diag.w(
+                    TAG,
+                    "attachment refused after compression",
+                    null,
+                    mimeField(shrunk.mimeType),
+                    count("carrierMaxBytes", budget.carrierMaxBytes ?: 0),
+                    flag("limitKnown", budget.limitKnown),
+                    count("targetBytes", targetBytes),
+                    count("sourceBytes", rawBytes),
+                    count("achievedBytes", achievedBytes),
+                )
+                raw.delete()
+                shrunk.file.delete()
+                return StagingResult.TooLarge(budget.limitBytes)
+            }
             val name = nameFor(shrunk.mimeType)
             val final = File(dir, "$id-$name")
             if (!shrunk.file.renameTo(final)) {
@@ -207,8 +260,10 @@ class OutgoingAttachmentStager
                 return StagingResult.Unreadable
             }
             if (shrunk.file != raw) raw.delete()
-            // The payload as it will travel: type and size after
-            // compression, beside what came in - never the name.
+            // The payload as it will travel - type and size after
+            // compression, beside what came in - and the fit it was sized
+            // for: the carrier limit (0 = unknown, AOSP default assumed) and
+            // the target after the envelope margin. Never the name.
             Diag.i(
                 TAG,
                 "attachment staged",
@@ -216,6 +271,9 @@ class OutgoingAttachmentStager
                 count("bytes", final.length()),
                 count("sourceBytes", rawBytes),
                 flag("compressed", shrunk.file != raw),
+                count("carrierMaxBytes", budget.carrierMaxBytes ?: 0),
+                flag("limitKnown", budget.limitKnown),
+                count("targetBytes", targetBytes),
             )
             return StagingResult.Staged(
                 StagedAttachment(

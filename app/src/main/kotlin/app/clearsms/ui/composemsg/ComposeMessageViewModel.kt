@@ -86,9 +86,12 @@ class ComposeMessageViewModel
          * activity - and it is never auto-sent: sending stays a user tap.
          */
         private val composerAttachments =
-            ComposerAttachments(attachmentStager, viewModelScope, ioDispatcher)
+            ComposerAttachments(attachmentStager, viewModelScope, ioDispatcher) { chosenSim.value }
         val attachments: StateFlow<List<StagedAttachment>> = composerAttachments.attachments
         val attachmentError: StateFlow<AttachmentError?> = composerAttachments.error
+
+        /** The chosen SIM's attachment budget (carrier limit minus envelope margin) for the size line. */
+        val attachmentBudgetBytes: StateFlow<Long> = composerAttachments.budgetBytes
 
         /**
          * The MMS row a failed send left behind: Retry re-dispatches it via
@@ -211,6 +214,8 @@ class ComposeMessageViewModel
             val next = SimSelector.next(activeSims, chosenSim.value) ?: return null
             chosenSim.value = next
             refreshSimUi()
+            // The other SIM's carrier may allow a different MMS size.
+            composerAttachments.refreshBudget()
             val address = state.value.recipient.trim()
             if (address.isNotBlank()) {
                 viewModelScope.launch(ioDispatcher) { simChoiceStore.remember(address, next) }

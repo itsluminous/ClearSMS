@@ -255,9 +255,12 @@ class ConversationViewModel
          * staged files.
          */
         private val composerAttachments =
-            ComposerAttachments(attachmentStager, viewModelScope, ioDispatcher)
+            ComposerAttachments(attachmentStager, viewModelScope, ioDispatcher) { chosenSim.value }
         val stagedAttachments: StateFlow<List<StagedAttachment>> = composerAttachments.attachments
         val attachmentError: StateFlow<AttachmentError?> = composerAttachments.error
+
+        /** The chosen SIM's attachment budget (carrier limit minus envelope margin) for the size line. */
+        val attachmentBudgetBytes: StateFlow<Long> = composerAttachments.budgetBytes
 
         /** Adds picked/shared content as staged attachment chips. */
         fun addAttachments(uris: List<Uri>) = composerAttachments.add(uris)
@@ -333,6 +336,8 @@ class ConversationViewModel
             val next = SimSelector.next(activeSims, chosenSim.value) ?: return null
             chosenSim.value = next
             refreshSimUi()
+            // The other SIM's carrier may allow a different MMS size.
+            composerAttachments.refreshBudget()
             val address = recipientAddress
             if (address.isNotBlank()) {
                 viewModelScope.launch(ioDispatcher) { simChoiceStore.remember(address, next) }

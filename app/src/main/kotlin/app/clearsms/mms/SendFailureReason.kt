@@ -27,8 +27,29 @@ enum class SendFailureReason {
     /** The MMSC answered with an HTTP-level failure. */
     HTTP_FAILURE,
 
-    /** Radio/IO trouble worth retrying. */
+    /** The carrier app asked for a retry over its own network - genuinely transient. */
     TRANSIENT,
+
+    /**
+     * The platform's MMS service could not READ the staged PDU and gave up
+     * before touching the network (`MMS_ERROR_IO_ERROR` on a send arises
+     * in AOSP only from `readPduFromContentUri` returning null: no read
+     * grant for the reading uid, an empty file, or a PDU larger than the
+     * carrier config `maxMessageSize`). It returns within milliseconds and
+     * a bare retry repeats it exactly - so, unlike [TRANSIENT], it must
+     * not invite one (issue #51).
+     */
+    PDU_REJECTED,
+
+    /**
+     * The encoded PDU is larger than the sending SIM's carrier
+     * `maxMessageSize`, so the platform would have refused to read it
+     * (see [PDU_REJECTED]) - this app checked first and never handed it
+     * over. Attachments are compressed to fit that limit when staged; this
+     * remains possible when the SIM is switched to a stricter carrier after
+     * attaching, or an extreme body outgrows the envelope margin.
+     */
+    EXCEEDS_CARRIER_LIMIT,
 
     /** The platform says the carrier has MMS switched off for this SIM. */
     CARRIER_DISABLED,
@@ -61,9 +82,8 @@ enum class SendFailureReason {
                 SmsManager.MMS_ERROR_CONFIGURATION_ERROR,
                 -> APN_CONFIGURATION
                 SmsManager.MMS_ERROR_HTTP_FAILURE -> HTTP_FAILURE
-                SmsManager.MMS_ERROR_RETRY,
-                SmsManager.MMS_ERROR_IO_ERROR,
-                -> TRANSIENT
+                SmsManager.MMS_ERROR_RETRY -> TRANSIENT
+                SmsManager.MMS_ERROR_IO_ERROR -> PDU_REJECTED
                 SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER -> CARRIER_DISABLED
                 SmsManager.MMS_ERROR_INVALID_SUBSCRIPTION_ID,
                 SmsManager.MMS_ERROR_INACTIVE_SUBSCRIPTION,
