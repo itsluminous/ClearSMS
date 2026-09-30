@@ -163,6 +163,7 @@ fun MessageComposerBar(
     onAttachClick: (() -> Unit)? = null,
     onRemoveAttachment: (StagedAttachment) -> Unit = {},
     attachmentError: AttachmentError? = null,
+    attachmentBudgetBytes: Long = 0L,
 ) {
     val context = LocalContext.current
     // Expand-to-full-screen: state lives HERE, in the one shared bar, so
@@ -267,7 +268,12 @@ fun MessageComposerBar(
         }
         if (barState.attachmentsRowVisible) {
             if (attachments.isNotEmpty()) {
-                AttachmentChipsRow(attachments = attachments, onRemove = onRemoveAttachment, error = attachmentError)
+                AttachmentChipsRow(
+                    attachments = attachments,
+                    onRemove = onRemoveAttachment,
+                    error = attachmentError,
+                    budgetBytes = attachmentBudgetBytes,
+                )
             } else {
                 // An error can outlive its refused attachment (nothing staged).
                 AttachmentErrorText(attachmentError)

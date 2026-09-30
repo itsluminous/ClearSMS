@@ -6,9 +6,10 @@ import org.junit.Test
 /**
  * The decisions made before an outgoing PDU is handed to the platform
  * (issue #51): who gets the read grant and in what order, what a
- * failing grant or resolver does, when the staged file is safe to hand
- * over, and when the carrier's `maxMessageSize` needs an override so the
- * platform will read the PDU at all. Pure logic, no framework.
+ * failing grant or resolver does, and when the staged file is safe to
+ * hand over. The carrier's `maxMessageSize` is no longer overridden here -
+ * attachments are sized to fit it instead (see MmsSizeBudgetTest). Pure
+ * logic, no framework.
  */
 class PduHandoverTest {
     private fun grant(
@@ -113,20 +114,5 @@ class PduHandoverTest {
         // Truncated or overwritten by a racing attempt.
         assertThat(StagedPduCheck.of(exists = true, lengthBytes = 12L, expectedBytes = 326_369).handoverSafe).isFalse()
         assertThat(StagedPduCheck.of(exists = true, lengthBytes = 326_370L, expectedBytes = 326_369).handoverSafe).isFalse()
-    }
-
-    @Test
-    fun `the size override kicks in only when the PDU exceeds a known carrier maximum`() {
-        // The reporter's numbers: 326 369-byte PDU against the AOSP default 300 KiB.
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = 307_200, pduBytes = 326_369L)).isEqualTo(326_369)
-        // Fits: the carrier value stands, no override travels.
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = 307_200, pduBytes = 307_200L)).isNull()
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = 1_048_576, pduBytes = 326_369L)).isNull()
-        // Unknown or nonsensical carrier value: nothing to override against.
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = null, pduBytes = 326_369L)).isNull()
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = 0, pduBytes = 326_369L)).isNull()
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = -1, pduBytes = 326_369L)).isNull()
-        // A PDU that cannot be expressed as an Int is not our case to fix here.
-        assertThat(MmsSizeOverride.forPdu(carrierMaxBytes = 307_200, pduBytes = Int.MAX_VALUE + 1L)).isNull()
     }
 }

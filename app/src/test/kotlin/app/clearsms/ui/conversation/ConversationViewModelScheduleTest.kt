@@ -15,6 +15,7 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.mms.AttachmentStore
+import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsInbound
@@ -154,9 +155,10 @@ class ConversationViewModelScheduleTest {
                 dao,
                 db.attachmentDao(),
                 AttachmentStore(context),
-                OutgoingAttachmentStager(context),
+                OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
                 FakeMmsGateway(),
                 MmsSendConditionsProbe(context, FakeSubscriptionSource()),
+                FakeCarrierMmsLimits(),
                 Dispatchers.Unconfined,
             )
         val json = Json { ignoreUnknownKeys = true }
@@ -212,7 +214,7 @@ class ConversationViewModelScheduleTest {
             contactsSource = ContactsSource(context),
             smsSender = smsSender,
             mmsSender = mmsSender,
-            attachmentStager = OutgoingAttachmentStager(context),
+            attachmentStager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
             sentMessageWatcher = SentMessageWatcher(dao, Dispatchers.Unconfined),
             subscriptionSource = FakeSubscriptionSource(),
             simChoiceStore =

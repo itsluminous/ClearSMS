@@ -46,7 +46,7 @@ class FrameworkMmsGatewayTest {
                 .let { (it as MutableMap<*, *>).clear() }
         }
         context = ApplicationProvider.getApplicationContext()
-        gateway = FrameworkMmsGateway(context)
+        gateway = FrameworkMmsGateway(context, FrameworkCarrierMmsLimits(context))
         store = AttachmentStore(context)
         logStart = System.currentTimeMillis()
     }
@@ -80,7 +80,9 @@ class FrameworkMmsGatewayTest {
         }
         val staged = log.lines().single { "mms pdu staged" in it }
         assertThat(staged).contains("message=4564 exists=true bytes=2048 readable=true readableBytes=2048")
-        assertThat(staged).containsMatch("carrierMaxBytes=\\d+ sizeOverride=(true|false) grantsAttempted=\\d+ grantsLanded=\\d+")
+        // No size override travels any more: the PDU is sized to fit upstream.
+        assertThat(staged).containsMatch("carrierMaxBytes=\\d+ fitsCarrierMax=(true|false) grantsAttempted=\\d+ grantsLanded=\\d+")
+        assertThat(staged).doesNotContain("sizeOverride")
         // The file name never appears.
         assertThat(log).doesNotContain("4564.pdu")
         assertThat(log).doesNotContain("staging/")
@@ -89,6 +91,8 @@ class FrameworkMmsGatewayTest {
         assertThat(params).isNotNull()
         assertThat(params!!.contentUri.scheme).isEqualTo("content")
         assertThat(params.contentUri.authority).isEqualTo(context.packageName + ".fileprovider")
+        // One mechanism decides the limit: no MMS_CONFIG_MAX_MESSAGE_SIZE override rides along.
+        assertThat(params.configOverrides).isNull()
     }
 
     @Test

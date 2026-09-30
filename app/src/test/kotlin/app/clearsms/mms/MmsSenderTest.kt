@@ -72,6 +72,7 @@ class MmsSenderTest {
     private lateinit var messageDao: MessageDao
     private lateinit var attachmentDao: AttachmentDao
     private lateinit var gateway: FakeMmsGateway
+    private lateinit var carrier: FakeCarrierMmsLimits
     private lateinit var stager: OutgoingAttachmentStager
     private lateinit var sender: MmsSender
 
@@ -86,7 +87,9 @@ class MmsSenderTest {
         messageDao = db.messageDao()
         attachmentDao = db.attachmentDao()
         gateway = FakeMmsGateway()
-        stager = OutgoingAttachmentStager(context)
+        // The reporter's carrier: the AOSP default 300 KiB.
+        carrier = FakeCarrierMmsLimits(307_200)
+        stager = OutgoingAttachmentStager(context, carrier)
         sender =
             MmsSender(
                 context,
@@ -96,6 +99,7 @@ class MmsSenderTest {
                 stager,
                 gateway,
                 MmsSendConditionsProbe(context, TwoSimSubscriptionSource()),
+                carrier,
                 Dispatchers.IO,
             )
     }
@@ -114,7 +118,20 @@ class MmsSenderTest {
         val source = File(context.cacheDir, name)
         source.writeBytes(bytes)
         val uri = Uri.fromFile(source)
-        return (stager.stage(uri) as StagingResult.Staged).attachment
+        return (stager.stage(uri, stager.budgetFor(null)) as StagingResult.Staged).attachment
+    }
+
+    /** A large per-pixel-noise JPEG - several MB at 2048 px, so it must be compressed to fit. */
+    private fun bigNoisyImage(name: String = "noise.jpg"): File {
+        val random = java.util.Random(11)
+        val width = 3000
+        val height = 2000
+        val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+        bitmap.setPixels(IntArray(width * height) { random.nextInt() or 0xFF000000.toInt() }, 0, width, 0, 0, width, height)
+        val file = File(context.cacheDir, name)
+        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
+        bitmap.recycle()
+        return file
     }
 
     @Test
@@ -198,6 +215,44 @@ class MmsSenderTest {
             assertThat(gateway.sends[1].subscriptionId).isEqualTo(3)
             // Still exactly one row for this thread - no duplicate bubble.
             assertThat(messageDao.getById(id)?.subscriptionId).isEqualTo(3)
+        }
+
+    @Test
+    fun `a synthetic large image yields a PDU under the carrier limit - the platform will read it`() =
+        runBlocking {
+            val photo = staged("photo.jpg", "image/jpeg", bigNoisyImage().readBytes())
+            assertThat(photo.sizeBytes).isAtMost(299_008L)
+
+            val id = sender.send("+15551234567", "a long enough caption to matter", listOf(photo), subscriptionId = 3)
+
+            val send = gateway.sends.single()
+            assertThat(send.messageId).isEqualTo(id)
+            // The reporter's PDU was 326 369 bytes against this very limit; ours fits.
+            assertThat(send.pduFile.length()).isAtMost(307_200L)
+            assertThat(send.pduFile.length()).isGreaterThan(photo.sizeBytes)
+            assertThat(messageDao.getById(id)!!.deliveryStatus).isEqualTo(DeliveryStatus.SENDING)
+            // The limit was read for the chosen SIM at hand-over.
+            assertThat(carrier.asked).contains(3)
+        }
+
+    @Test
+    fun `a PDU over the chosen SIM's carrier limit is refused before hand-over, never handed to the platform`() =
+        runBlocking {
+            // Staged while a generous SIM was chosen...
+            carrier.maxMessageSizeBytes = 1_048_576
+            val big = staged("big.bin", "application/octet-stream", ByteArray(400_000) { 1 })
+            assertThat(big.sizeBytes).isEqualTo(400_000L)
+            // ...then sent from a SIM whose carrier allows only 300 KiB.
+            carrier.maxMessageSizeBytes = 307_200
+
+            val id = sender.send("+15551234567", "hi", listOf(big), subscriptionId = 7)
+
+            assertThat(gateway.sends).isEmpty()
+            val row = messageDao.getById(id)!!
+            assertThat(row.deliveryStatus).isEqualTo(DeliveryStatus.FAILED)
+            assertThat(row.sendFailureReason).isEqualTo(SendFailureReason.EXCEEDS_CARRIER_LIMIT.name)
+            // Nothing is left staged for the platform to stumble on.
+            assertThat(AttachmentStore(context).stagingFile(id).exists()).isFalse()
         }
 
     @Test

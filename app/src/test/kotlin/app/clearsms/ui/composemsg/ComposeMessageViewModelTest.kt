@@ -12,6 +12,7 @@ import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.mms.AttachmentStore
+import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsSendConditionsProbe
 import app.clearsms.mms.MmsSender
@@ -151,16 +152,17 @@ class ComposeMessageViewModelTest {
                 dao,
                 db.attachmentDao(),
                 AttachmentStore(context),
-                OutgoingAttachmentStager(context),
+                OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
                 FakeMmsGateway(),
                 MmsSendConditionsProbe(context, FakeSubscriptionSource()),
+                FakeCarrierMmsLimits(),
                 Dispatchers.Unconfined,
             )
         return ComposeMessageViewModel(
             savedStateHandle = savedStateHandle,
             smsSender = smsSender,
             mmsSender = mmsSender,
-            attachmentStager = OutgoingAttachmentStager(context),
+            attachmentStager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
             messageDao = dao,
             settings = FakeSettingsRepository(),
             contactSuggestions = ContactSuggestions(context),

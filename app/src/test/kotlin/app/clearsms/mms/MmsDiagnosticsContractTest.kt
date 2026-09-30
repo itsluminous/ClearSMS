@@ -72,7 +72,12 @@ class MmsDiagnosticsContractTest {
         assertThat(gateway).contains("""count("bytes", lengthBytes)""")
         assertThat(gateway).contains("""flag("readable", readableBytes != null)""")
         assertThat(gateway).contains("""count("carrierMaxBytes", carrierMax ?: 0)""")
-        assertThat(gateway).contains("SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE")
+        assertThat(gateway).contains("""flag("fitsCarrierMax", MmsSizeBudget.forCarrier(carrierMax).fits(lengthBytes))""")
+        // The carrier limit is read in ONE place and never overridden on the hand-over.
+        assertThat(source("mms/MmsSizeBudget.kt")).contains("SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE")
+        assertThat(gateway).doesNotContain("MMS_CONFIG_MAX_MESSAGE_SIZE")
+        assertThat(gateway).doesNotContain("MmsSizeOverride")
+        assertThat(gateway).contains("manager.sendMultimediaMessage(context, contentUri, null, null, sentIntent)")
         // We read the URI the way the platform will, and refuse to hand over what we cannot read.
         assertThat(gateway).contains("""openFileDescriptor(uri, "r")""")
         assertThat(gateway).contains("throw StagedPduUnreadableException()")
@@ -95,6 +100,25 @@ class MmsDiagnosticsContractTest {
         assertThat(sender).contains("""count("stagedBytes", staged.lengthBytes)""")
         assertThat(sender).contains(""""staged pdu incomplete before handover"""")
         assertThat(sender).contains("if (!check.handoverSafe)")
+    }
+
+    @Test
+    fun `the fit is logged end to end - carrier limit and target at staging, PDU size against the limit at hand-over`() {
+        val stager = source("mms/OutgoingAttachmentStager.kt")
+        assertThat(stager).contains(""""attachment staged"""")
+        assertThat(stager).contains("""count("carrierMaxBytes", budget.carrierMaxBytes ?: 0)""")
+        assertThat(stager).contains("""flag("limitKnown", budget.limitKnown)""")
+        assertThat(stager).contains("""count("targetBytes", targetBytes)""")
+        assertThat(stager).contains(""""attachment refused after compression"""")
+        assertThat(stager).contains("""count("achievedBytes", achievedBytes)""")
+        val sender = source("mms/MmsSender.kt")
+        assertThat(sender).contains("""count("carrierMaxBytes", budget.carrierMaxBytes ?: 0)""")
+        assertThat(sender).contains("""count("limitBytes", budget.limitBytes)""")
+        assertThat(sender).contains("""flag("fitsCarrierMax", budget.fits(pduBytes.toLong()))""")
+        // A PDU over the limit is refused with its own reason, never handed over to fail at once.
+        assertThat(sender).contains(""""pdu exceeds carrier limit before handover"""")
+        assertThat(sender).contains("SendFailureReason.EXCEEDS_CARRIER_LIMIT.name")
+        assertThat(sender).contains("if (!budget.fits(pdu.size.toLong()))")
     }
 
     @Test

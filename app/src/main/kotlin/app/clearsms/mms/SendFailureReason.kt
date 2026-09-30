@@ -41,6 +41,16 @@ enum class SendFailureReason {
      */
     PDU_REJECTED,
 
+    /**
+     * The encoded PDU is larger than the sending SIM's carrier
+     * `maxMessageSize`, so the platform would have refused to read it
+     * (see [PDU_REJECTED]) - this app checked first and never handed it
+     * over. Attachments are compressed to fit that limit when staged; this
+     * remains possible when the SIM is switched to a stricter carrier after
+     * attaching, or an extreme body outgrows the envelope margin.
+     */
+    EXCEEDS_CARRIER_LIMIT,
+
     /** The platform says the carrier has MMS switched off for this SIM. */
     CARRIER_DISABLED,
 

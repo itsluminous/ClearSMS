@@ -165,6 +165,7 @@ fun ConversationScreen(
     // persist in drafts this wave (text does): no rememberSaveable.
     val stagedAttachments by viewModel.stagedAttachments.collectAsStateWithLifecycle()
     val attachmentError by viewModel.attachmentError.collectAsStateWithLifecycle()
+    val attachmentBudgetBytes by viewModel.attachmentBudgetBytes.collectAsStateWithLifecycle()
     var showAttachmentSheet by remember { mutableStateOf(false) }
     val attachmentLaunchers =
         rememberAttachmentLaunchers(
@@ -533,6 +534,7 @@ fun ConversationScreen(
                         onAttachClick = { showAttachmentSheet = true },
                         onRemoveAttachment = viewModel::removeAttachment,
                         attachmentError = attachmentError,
+                        attachmentBudgetBytes = attachmentBudgetBytes,
                     )
                 else -> NotRepliableBar()
             }

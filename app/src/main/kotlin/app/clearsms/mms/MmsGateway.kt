@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
 import android.os.Process
 import android.service.carrier.CarrierMessagingService
 import android.telephony.SmsManager
@@ -58,10 +56,11 @@ interface MmsGateway {
  * whether it landed, then one `mms pdu staged` line with the file's
  * existence and byte length, whether OUR read of the FileProvider URI
  * succeeded and how many bytes it saw, the carrier's `maxMessageSize`
- * and whether a size override travels with the hand-over. Package names
- * are software identifiers, never personal; the file NAME is never logged.
- * See [PduReadGrant], [StagedPduCheck] and [MmsSizeOverride] for the
- * decisions.
+ * and whether the PDU fits under it (the platform's own pre-network size
+ * check). The PDU is sized to fit upstream ([MmsSizeBudget]) - no config
+ * override travels: one mechanism decides the limit. Package names are
+ * software identifiers, never personal; the file NAME is never logged.
+ * See [PduReadGrant] and [StagedPduCheck] for the decisions.
  *
  * PRIVACY NOTE: like MMS retrieval, submission is a transaction the
  * Android system's MMS service performs with the carrier's MMSC over the
@@ -74,6 +73,7 @@ class FrameworkMmsGateway
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val carrierLimits: CarrierMmsLimits,
     ) : MmsGateway {
         override fun sendMultimediaMessage(
             messageId: Long,
@@ -96,7 +96,6 @@ class FrameworkMmsGateway
                         lengthBytes,
                         readableBytes = null,
                         carrierMax = null,
-                        override = null,
                         grants = emptyList(),
                     )
                     throw StagedPduUnreadableException(e)
@@ -112,29 +111,25 @@ class FrameworkMmsGateway
                     flag("granted", outcome.granted),
                 )
             }
-            val manager = smsManagerFor(subscriptionId)
+            val manager = smsManagerFor(context, subscriptionId)
             val readableBytes = readableLength(contentUri)
-            val carrierMax = carrierMaxMessageSize(manager)
-            val override = MmsSizeOverride.forPdu(carrierMax, lengthBytes)
-            logStaged(messageId, exists, lengthBytes, readableBytes, carrierMax, override, grants)
+            val carrierMax = carrierLimits.maxMessageSizeBytes(subscriptionId)
+            logStaged(messageId, exists, lengthBytes, readableBytes, carrierMax, grants)
             if (readableBytes == null || readableBytes <= 0L) {
                 // We cannot read our own staged file through the provider:
                 // the platform certainly cannot either. Fail before it does.
                 throw StagedPduUnreadableException()
             }
-            manager.sendMultimediaMessage(
-                context,
-                contentUri,
-                null,
-                override?.let { Bundle().apply { putInt(SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE, it) } },
-                sentIntent,
-            )
+            manager.sendMultimediaMessage(context, contentUri, null, null, sentIntent)
         }
 
         /**
          * The staged file as the platform is about to see it: on disk, and
          * through the provider. `readable=false` with `exists=true` is a
          * provider fault on our side; `exists=false` a lost file.
+         * `fitsCarrierMax` is the platform's own size check, applied here
+         * in advance (false with a known limit should never happen - the
+         * sender refuses such a PDU before this point).
          */
         private fun logStaged(
             messageId: Long,
@@ -142,7 +137,6 @@ class FrameworkMmsGateway
             lengthBytes: Long,
             readableBytes: Long?,
             carrierMax: Int?,
-            override: Int?,
             grants: List<PduReadGrant.Outcome>,
         ) {
             Diag.i(
@@ -154,7 +148,7 @@ class FrameworkMmsGateway
                 flag("readable", readableBytes != null),
                 count("readableBytes", readableBytes ?: 0L),
                 count("carrierMaxBytes", carrierMax ?: 0),
-                flag("sizeOverride", override != null),
+                flag("fitsCarrierMax", MmsSizeBudget.forCarrier(carrierMax).fits(lengthBytes)),
                 count("grantsAttempted", grants.size),
                 count("grantsLanded", grants.count { it.granted }),
             )
@@ -196,26 +190,6 @@ class FrameworkMmsGateway
                 context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
             } catch (_: Exception) {
                 null
-            }
-
-        /** The carrier config `maxMessageSize` for the sending SIM, or null when the platform will not say. */
-        private fun carrierMaxMessageSize(manager: SmsManager): Int? =
-            runCatching { manager.carrierConfigValues?.getInt(SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE, 0) }
-                .getOrNull()
-                ?.takeIf { it > 0 }
-
-        /** The [SmsManager] for the chosen SIM, per API level - as the SMS path does. */
-        private fun smsManagerFor(subscriptionId: Int?): SmsManager =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val default = requireNotNull(context.getSystemService(SmsManager::class.java))
-                if (subscriptionId != null) default.createForSubscriptionId(subscriptionId) else default
-            } else {
-                @Suppress("DEPRECATION")
-                if (subscriptionId != null) {
-                    SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
-                } else {
-                    SmsManager.getDefault()
-                }
             }
 
         private companion object {

@@ -40,7 +40,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
-import app.clearsms.mms.MmsSizeLimits
 import app.clearsms.mms.StagedAttachment
 import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.conversation.humanSize
@@ -135,13 +134,14 @@ private fun SheetOption(
 /**
  * Staged attachments above the compose field: removable thumbnails for
  * images, name chips for files, plus the running size indicator against
- * the carrier budget.
+ * the sending SIM's carrier budget ([budgetBytes]).
  */
 @Composable
 fun AttachmentChipsRow(
     attachments: List<StagedAttachment>,
     onRemove: (StagedAttachment) -> Unit,
     error: AttachmentError?,
+    budgetBytes: Long,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -155,7 +155,7 @@ fun AttachmentChipsRow(
                 stringResource(
                     R.string.compose_attachment_size,
                     humanSize(total),
-                    humanSize(MmsSizeLimits.TOTAL_BUDGET_BYTES),
+                    humanSize(budgetBytes),
                 ),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -172,9 +172,9 @@ fun AttachmentErrorText(error: AttachmentError?) {
     Text(
         text =
             when (error) {
-                AttachmentError.TOO_LARGE ->
-                    stringResource(R.string.compose_attachment_too_large, humanSize(MmsSizeLimits.TOTAL_BUDGET_BYTES))
-                AttachmentError.UNREADABLE -> stringResource(R.string.compose_attachment_unreadable)
+                is AttachmentError.TooLarge ->
+                    stringResource(R.string.compose_attachment_too_large, humanSize(error.limitBytes))
+                AttachmentError.Unreadable -> stringResource(R.string.compose_attachment_unreadable)
             },
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.error,

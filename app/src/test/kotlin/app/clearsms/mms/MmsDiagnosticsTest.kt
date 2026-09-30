@@ -101,7 +101,7 @@ class MmsDiagnosticsTest {
         attachmentDao = db.attachmentDao()
         gateway = DiagFakeMmsGateway()
         subscriptions = DiagFakeSubscriptionSource()
-        stager = OutgoingAttachmentStager(context)
+        stager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits())
         sender =
             MmsSender(
                 context,
@@ -111,6 +111,7 @@ class MmsDiagnosticsTest {
                 stager,
                 gateway,
                 MmsSendConditionsProbe(context, subscriptions),
+                FakeCarrierMmsLimits(),
                 Dispatchers.IO,
             )
         // Only entries recorded by THIS test are inspected: the buffer is a
@@ -129,7 +130,7 @@ class MmsDiagnosticsTest {
     private fun staged(bytes: ByteArray = ByteArray(1_234) { it.toByte() }): StagedAttachment {
         val source = File(context.cacheDir, fileName)
         source.writeBytes(bytes)
-        return (stager.stage(Uri.fromFile(source)) as StagingResult.Staged).attachment
+        return (stager.stage(Uri.fromFile(source), stager.budgetFor(null)) as StagingResult.Staged).attachment
     }
 
     private fun assertNothingPersonal(text: String) {
@@ -161,6 +162,9 @@ class MmsDiagnosticsTest {
             // - present and holding every encoded byte.
             val pduBytes = Regex("pduBytes=(\\d+)").find(handover)!!.groupValues[1]
             assertThat(handover).contains("pduBytes=$pduBytes stagedExists=true stagedBytes=$pduBytes")
+            // The fit against the platform's own size check: the carrier
+            // limit (0 = unknown, so the AOSP default stands in) and the verdict.
+            assertThat(handover).contains("stagedBytes=$pduBytes carrierMaxBytes=0 limitBytes=307200 fitsCarrierMax=true")
             assertThat(handover).contains("resend=false")
             assertThat(handover).contains("defaultSubscription=false")
             // Subscription 7 sits in the second slot; the id itself is not logged.

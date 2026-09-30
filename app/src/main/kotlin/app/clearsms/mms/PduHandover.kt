@@ -15,8 +15,16 @@ package app.clearsms.mms
  *     read grant on our FileProvider URI ([PduReadGrant]);
  *  2. the file was empty ([StagedPduCheck]);
  *  3. the PDU is larger than the carrier config `maxMessageSize`
- *     (AOSP default 300 KiB = 307 200 bytes) - "PDU read is too large"
- *     ([MmsSizeOverride]).
+ *     (AOSP default 300 KiB = 307 200 bytes) - "PDU read is too large".
+ *     The reporter's PDU was 326 369 bytes: over that default. This one is
+ *     not handled here at all but PREVENTED upstream - attachments are
+ *     compressed to fit the carrier's limit when they are staged
+ *     ([MmsSizeBudget], [OutgoingAttachmentStager]) and [MmsSender]
+ *     refuses to hand over a PDU that still exceeds it. An earlier
+ *     revision passed an `MMS_CONFIG_MAX_MESSAGE_SIZE` override instead;
+ *     it was dropped so that exactly ONE mechanism decides the limit - an
+ *     override that let the platform read what the compressor should have
+ *     shrunk would only move the failure to the MMSC.
  *
  * All three are instant and indistinguishable from the result code alone;
  * the gateway therefore logs the outcome of each so the next report is
@@ -103,35 +111,6 @@ data class StagedPduCheck(
             lengthBytes: Long,
             expectedBytes: Int,
         ): StagedPduCheck = StagedPduCheck(exists, if (exists) lengthBytes else 0L, expectedBytes)
-    }
-}
-
-/**
- * The platform MMS service refuses to READ a PDU larger than the carrier
- * config `maxMessageSize` (`SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE`) and
- * reports `MMS_ERROR_IO_ERROR` at once - without asking the carrier. On
- * many SIMs that value is not the carrier's limit at all but the AOSP
- * default of 300 KiB, because no carrier config entry exists. This app
- * sizes attachments to [MmsSizeLimits.TOTAL_BUDGET_BYTES] (the
- * interoperable modern budget), and the widely used third-party MMS
- * stacks override the same key for the same reason - so when the staged
- * PDU is larger than the configured value, the hand-over carries an
- * override just big enough to let the platform read it. The carrier's
- * MMSC keeps the final word: a refusal comes back as an honest HTTP
- * failure instead of a phantom IO error.
- */
-object MmsSizeOverride {
-    /**
-     * The `maxMessageSize` to pass as a config override, or null when the
-     * carrier value is unknown (unparseable, zero) or already large enough.
-     */
-    fun forPdu(
-        carrierMaxBytes: Int?,
-        pduBytes: Long,
-    ): Int? {
-        if (carrierMaxBytes == null || carrierMaxBytes <= 0) return null
-        if (pduBytes <= carrierMaxBytes || pduBytes > Int.MAX_VALUE) return null
-        return pduBytes.toInt()
     }
 }
 
