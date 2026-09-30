@@ -110,6 +110,7 @@ class ComposeMessageViewModelTest {
         var sends = 0
 
         override fun sendMultimediaMessage(
+            messageId: Long,
             subscriptionId: Int?,
             pduFile: File,
             sentIntent: android.app.PendingIntent,

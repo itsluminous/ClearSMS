@@ -22,14 +22,18 @@ class DiagFieldRedactionTest {
             DiagField.Companion::class
                 .declaredFunctions
                 .filter { it.visibility == KVisibility.PUBLIC }
-        assertThat(factories.map { it.name }).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender", "mime")
+        assertThat(
+            factories.map {
+                it.name
+            },
+        ).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender", "mime", "packageName")
         factories.forEach { factory ->
             // Skip the receiver (Companion) parameter.
             val params = factory.parameters.drop(1)
             val stringParams = params.filter { it.type.jvmErasure == String::class }
             when (factory.name) {
-                // The three validated string inputs take exactly one String: the value itself.
-                "sender", "ruleId", "mime" -> assertThat(params).hasSize(1)
+                // The four validated string inputs take exactly one String: the value itself.
+                "sender", "ruleId", "mime", "packageName" -> assertThat(params).hasSize(1)
                 else -> {
                     // Every other factory's only String is the field NAME; the
                     // value is Int / Long / Boolean / Enum.
@@ -128,6 +132,31 @@ class DiagFieldRedactionTest {
             "",
         ).forEach {
             assertWithMessage(it).that(render(DiagField.mime(it))).contains("mime=[dropped]")
+        }
+    }
+
+    @Test
+    fun `package names keep a dotted identifier and drop everything else`() {
+        assertThat(render(DiagField.packageName("com.android.phone"))).contains("package=com.android.phone")
+        assertThat(render(DiagField.packageName("com.android.mms.service"))).contains("package=com.android.mms.service")
+        assertThat(render(DiagField.packageName("com.example.carrier_msg.Svc2"))).contains("package=com.example.carrier_msg.Svc2")
+        assertThat(render(DiagField.packageName(null))).contains("package=null")
+        // A file name, a body, a number, an email or a single segment is not
+        // a package name and never travels.
+        listOf(
+            "holiday-with-priya.jpg",
+            "Your OTP is 4321",
+            "9876543210",
+            "alice@example.com",
+            "phone",
+            "com..android",
+            ".com.android",
+            "com.1android",
+            "com.android.phone ",
+            "",
+            "a." + "b".repeat(260),
+        ).forEach {
+            assertWithMessage(it).that(render(DiagField.packageName(it))).contains("package=[dropped]")
         }
     }
 

@@ -24,20 +24,24 @@ import java.io.File
 /** Captures dispatches instead of touching the radio. */
 private class FakeMmsGateway : MmsGateway {
     data class Send(
+        val messageId: Long,
         val subscriptionId: Int?,
         val pduFile: File,
     )
 
     val sends = mutableListOf<Send>()
     var throwOnSend: Boolean = false
+    var unreadableOnSend: Boolean = false
 
     override fun sendMultimediaMessage(
+        messageId: Long,
         subscriptionId: Int?,
         pduFile: File,
         sentIntent: PendingIntent,
     ) {
         if (throwOnSend) throw IllegalStateException("radio unavailable")
-        sends += Send(subscriptionId, pduFile)
+        if (unreadableOnSend) throw StagedPduUnreadableException()
+        sends += Send(messageId, subscriptionId, pduFile)
     }
 }
 
@@ -156,6 +160,28 @@ class MmsSenderTest {
             // The "our side" reason: the message never reached the platform,
             // so the bubble must not blame the carrier.
             assertThat(messageDao.getById(id)?.sendFailureReason).isEqualTo(SendFailureReason.DISPATCH_FAILED.name)
+        }
+
+    @Test
+    fun `the gateway refusing an unreadable staged PDU marks the row FAILED on our side - never SENDING forever`() =
+        runBlocking {
+            gateway.unreadableOnSend = true
+
+            val id = sender.send("+15551234567", "hi", listOf(staged()))
+
+            assertThat(messageDao.getById(id)?.deliveryStatus).isEqualTo(DeliveryStatus.FAILED)
+            assertThat(messageDao.getById(id)?.sendFailureReason).isEqualTo(SendFailureReason.DISPATCH_FAILED.name)
+        }
+
+    @Test
+    fun `the gateway receives the row id with the staged file, and the file holds the PDU at hand-over`() =
+        runBlocking {
+            val id = sender.send("+15551234567", "hi", listOf(staged()))
+
+            val send = gateway.sends.single()
+            assertThat(send.messageId).isEqualTo(id)
+            assertThat(send.pduFile.exists()).isTrue()
+            assertThat(send.pduFile.length()).isGreaterThan(0L)
         }
 
     @Test

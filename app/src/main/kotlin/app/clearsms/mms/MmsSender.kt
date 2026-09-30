@@ -3,6 +3,7 @@ package app.clearsms.mms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 import android.telephony.SubscriptionManager
 import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.AttachmentEntity
@@ -173,8 +174,25 @@ class MmsSender
                 // the file cannot collide.
                 val staged = attachmentStore.stagingFile(messageId)
                 staged.writeBytes(pdu)
-                logHandover(messageId, parts, pdu.size, subscriptionId, resend)
-                gateway.sendMultimediaMessage(subscriptionId, staged, sentIntent(messageId, destination, subscriptionId))
+                // Issue #51: an instant platform IO error means the PDU
+                // was never read. Verify our half - the file is there and
+                // complete - and say so, before the platform is asked.
+                val check = StagedPduCheck.of(staged.exists(), staged.length(), pdu.size)
+                logHandover(messageId, parts, pdu.size, check, subscriptionId, resend)
+                if (!check.handoverSafe) {
+                    Diag.e(
+                        TAG,
+                        "staged pdu incomplete before handover",
+                        null,
+                        id("message", messageId),
+                        flag("exists", check.exists),
+                        count("bytes", check.lengthBytes),
+                        count("pduBytes", pdu.size),
+                    )
+                    messageDao.markFailed(messageId, SendFailureReason.DISPATCH_FAILED.name)
+                    return
+                }
+                gateway.sendMultimediaMessage(messageId, subscriptionId, staged, sentIntent(messageId, destination, subscriptionId))
             } catch (e: Exception) {
                 // The message never reached the platform: the app's own
                 // failure (or a throwing SmsManager), distinct from every
@@ -206,12 +224,15 @@ class MmsSender
          * that instant. `slot`/`dataSlot` are 1-based slots (0 = unknown);
          * `onDataSim` says whether the sending SIM is the phone's
          * mobile-data SIM - the one line that answers "did this MMS go out
-         * on a SIM that can carry MMS on this phone?".
+         * on a SIM that can carry MMS on this phone?". `stagedBytes` is the
+         * staged file's length as measured immediately before hand-over
+         * (equal to `pduBytes` when all is well).
          */
         private fun logHandover(
             messageId: Long,
             parts: List<MmsPart>,
             pduBytes: Int,
+            staged: StagedPduCheck,
             subscriptionId: Int?,
             resend: Boolean,
         ) {
@@ -223,6 +244,8 @@ class MmsSender
                 count("parts", parts.size),
                 count("attachmentBytes", parts.sumOf { it.data.size.toLong() }),
                 count("pduBytes", pduBytes),
+                flag("stagedExists", staged.exists),
+                count("stagedBytes", staged.lengthBytes),
                 flag("resend", resend),
                 flag("defaultSubscription", subscriptionId == null),
                 count("slot", radio.slot ?: 0),
@@ -285,6 +308,11 @@ class MmsSender
                         MmsSentReceiver.EXTRA_SUBSCRIPTION_ID,
                         subscriptionId ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                     )
+                    // So the failure report can say how long the platform
+                    // took - an instant result means it never tried the
+                    // network (issue #51). Monotonic clock: survives a
+                    // wall-clock change between hand-over and result.
+                    .putExtra(MmsSentReceiver.EXTRA_HANDOVER_ELAPSED_REALTIME_MS, SystemClock.elapsedRealtime())
             return PendingIntent.getBroadcast(
                 context,
                 // Unique per message so parallel sends never collide.

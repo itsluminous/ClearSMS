@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
 import app.clearsms.data.db.DeliveryStatus
@@ -84,6 +85,9 @@ class MmsSentReceiver : BroadcastReceiver() {
         /** The subscription the send was handed over with; [SubscriptionManager.INVALID_SUBSCRIPTION_ID] for the system default. */
         const val EXTRA_SUBSCRIPTION_ID = "subscription_id"
 
+        /** [SystemClock.elapsedRealtime] at hand-over, so the report can say how long the platform took. */
+        const val EXTRA_HANDOVER_ELAPSED_REALTIME_MS = "handover_elapsed_realtime_ms"
+
         private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 }
@@ -106,6 +110,12 @@ data class MmsSendReport(
     val slot: Int? = null,
     /** Whether the sending subscription is the default data subscription; null when unknown. */
     val onDataSim: Boolean? = null,
+    /**
+     * Milliseconds between hand-over and this result; null when the intent
+     * predates the extra. Issue #51: a result within a few tens of ms means
+     * the platform never attempted the network - it rejected the PDU.
+     */
+    val elapsedMs: Long? = null,
 ) {
     val succeeded: Boolean get() = resultCode == Activity.RESULT_OK
 
@@ -124,6 +134,7 @@ data class MmsSendReport(
                 code("result", resultCode),
                 flag("sendConf", sendConfBytes != null),
                 count("sendConfBytes", sendConfBytes ?: 0),
+                count("elapsedMs", elapsedMs ?: -1L),
             )
         } else {
             Diag.w(
@@ -137,6 +148,7 @@ data class MmsSendReport(
                 code("httpStatus", httpStatus ?: 0),
                 count("slot", slot ?: 0),
                 label("onDataSim", TriState.of(onDataSim)),
+                count("elapsedMs", elapsedMs ?: -1L),
             )
         }
     }
@@ -150,13 +162,16 @@ data class MmsSendReport(
          * extra, or the default SMS subscription for a system-default send)
          * is placed in its slot and compared with the default data
          * subscription; any platform failure there reads as unknown.
+         * [nowElapsedMs] is the monotonic clock at receipt (injectable).
          */
         fun of(
             intent: Intent,
             resultCode: Int,
             reason: SendFailureReason?,
             subscriptions: SubscriptionSource? = null,
+            nowElapsedMs: Long = SystemClock.elapsedRealtime(),
         ): MmsSendReport {
+            val handoverAt = intent.getLongExtra(MmsSentReceiver.EXTRA_HANDOVER_ELAPSED_REALTIME_MS, -1L)
             val sending =
                 intent
                     .getIntExtra(MmsSentReceiver.EXTRA_SUBSCRIPTION_ID, SubscriptionManager.INVALID_SUBSCRIPTION_ID)
@@ -176,6 +191,7 @@ data class MmsSendReport(
                 sendConfBytes = intent.getByteArrayExtra(SmsManager.EXTRA_MMS_DATA)?.size,
                 slot = SimSelector.slotNumberFor(sims, sending),
                 onDataSim = if (subscriptions == null) null else DataSim.sendsOnDataSim(effectiveSending, data),
+                elapsedMs = if (handoverAt < 0) null else (nowElapsedMs - handoverAt).coerceAtLeast(0L),
             )
         }
     }

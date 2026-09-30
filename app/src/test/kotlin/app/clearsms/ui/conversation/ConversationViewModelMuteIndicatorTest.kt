@@ -135,6 +135,7 @@ class ConversationViewModelMuteIndicatorTest {
 
     private class FakeMmsGateway : MmsGateway {
         override fun sendMultimediaMessage(
+            messageId: Long,
             subscriptionId: Int?,
             pduFile: File,
             sentIntent: android.app.PendingIntent,

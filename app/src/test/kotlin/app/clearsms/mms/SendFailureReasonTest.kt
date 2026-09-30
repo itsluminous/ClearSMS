@@ -51,7 +51,7 @@ class SendFailureReasonTest {
                 SmsManager.MMS_ERROR_INVALID_APN to SendFailureReason.APN_CONFIGURATION,
                 SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS to SendFailureReason.NO_MMS_NETWORK,
                 SmsManager.MMS_ERROR_HTTP_FAILURE to SendFailureReason.HTTP_FAILURE,
-                SmsManager.MMS_ERROR_IO_ERROR to SendFailureReason.TRANSIENT,
+                SmsManager.MMS_ERROR_IO_ERROR to SendFailureReason.PDU_REJECTED,
                 SmsManager.MMS_ERROR_RETRY to SendFailureReason.TRANSIENT,
                 SmsManager.MMS_ERROR_CONFIGURATION_ERROR to SendFailureReason.APN_CONFIGURATION,
                 SmsManager.MMS_ERROR_NO_DATA_NETWORK to SendFailureReason.NO_MMS_NETWORK,
@@ -85,11 +85,13 @@ class SendFailureReasonTest {
     }
 
     @Test
-    fun `retryable io maps to TRANSIENT and everything else to UNKNOWN`() {
+    fun `carrier-app RETRY is TRANSIENT, an IO error is a PDU rejection, and everything else is UNKNOWN`() {
         assertThat(SendFailureReason.fromMmsResultCode(SmsManager.MMS_ERROR_RETRY))
             .isEqualTo(SendFailureReason.TRANSIENT)
+        // Issue #51: on a send, AOSP returns MMS_ERROR_IO_ERROR only when it
+        // could not read the PDU - before any network attempt. Not transient.
         assertThat(SendFailureReason.fromMmsResultCode(SmsManager.MMS_ERROR_IO_ERROR))
-            .isEqualTo(SendFailureReason.TRANSIENT)
+            .isEqualTo(SendFailureReason.PDU_REJECTED)
         assertThat(SendFailureReason.fromMmsResultCode(-42)).isEqualTo(SendFailureReason.UNKNOWN)
         assertThat(SendFailureReason.fromMmsResultCode(SmsManager.MMS_ERROR_UNSPECIFIED))
             .isEqualTo(SendFailureReason.UNKNOWN)

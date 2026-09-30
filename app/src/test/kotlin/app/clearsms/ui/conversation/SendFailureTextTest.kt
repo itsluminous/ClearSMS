@@ -29,6 +29,7 @@ class SendFailureTextTest {
             R.string.send_failure_apn to "send_failure_apn",
             R.string.send_failure_http to "send_failure_http",
             R.string.send_failure_transient to "send_failure_transient",
+            R.string.send_failure_pdu_rejected to "send_failure_pdu_rejected",
             R.string.send_failure_carrier_disabled to "send_failure_carrier_disabled",
             R.string.send_failure_sim_unavailable to "send_failure_sim_unavailable",
             R.string.send_failure_dispatch to "send_failure_dispatch",
@@ -38,6 +39,7 @@ class SendFailureTextTest {
             R.string.conversation_not_sent_no_mms_network to "conversation_not_sent_no_mms_network",
             R.string.conversation_not_sent_apn to "conversation_not_sent_apn",
             R.string.conversation_not_sent_http to "conversation_not_sent_http",
+            R.string.conversation_not_sent_pdu_rejected to "conversation_not_sent_pdu_rejected",
             R.string.conversation_not_sent_transient to "conversation_not_sent_transient",
             R.string.conversation_not_sent_carrier_disabled to "conversation_not_sent_carrier_disabled",
             R.string.conversation_not_sent_sim_unavailable to "conversation_not_sent_sim_unavailable",
@@ -82,6 +84,10 @@ class SendFailureTextTest {
             }
         }
         assertThat(SendFailureText.suggestsRetry(SendFailureReason.TRANSIENT)).isTrue()
+        // Issue #51: four manual retries in four seconds, each answered in
+        // ~25 ms - the platform rejects the PDU identically every time, so
+        // the dialog must not say "retrying may work".
+        assertThat(SendFailureText.suggestsRetry(SendFailureReason.PDU_REJECTED)).isFalse()
         assertThat(SendFailureText.suggestsRetry(SendFailureReason.NO_MMS_NETWORK)).isFalse()
         assertThat(SendFailureText.suggestsRetry(SendFailureReason.CARRIER_DISABLED)).isFalse()
         assertThat(SendFailureText.suggestsRetry(null)).isFalse()

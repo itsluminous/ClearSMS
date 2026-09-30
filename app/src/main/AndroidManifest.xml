@@ -24,6 +24,17 @@
     <!-- Optional: exact alarms for bill payment reminders -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!-- Package visibility (Android 11+): lets FrameworkMmsGateway ask the
+         platform WHICH package will read a staged outgoing MMS PDU (the
+         carrier/OEM CarrierMessagingService) so the read grant lands on the
+         right component instead of a guessed package name (issue #51).
+         This queries nothing about the user; it names a system interface. -->
+    <queries>
+        <intent>
+            <action android:name="android.service.carrier.CarrierMessagingService" />
+        </intent>
+    </queries>
+
     <!-- allowBackup is deliberately FALSE: the database holds the user's
          entire SMS history, so Android auto-backup / device-to-device
          transfer would be an exfiltration path. Backups are explicit,

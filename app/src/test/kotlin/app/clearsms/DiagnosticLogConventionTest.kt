@@ -271,6 +271,7 @@ class DiagnosticLogConventionTest {
                 "work/BackupDocumentStore.kt",
                 "di/PlatformModule.kt",
                 "mms/MmsSender.kt",
+                "mms/MmsGateway.kt",
                 "mms/MmsInbound.kt",
                 "mms/MmsDownloader.kt",
                 "mms/OutgoingAttachmentStager.kt",

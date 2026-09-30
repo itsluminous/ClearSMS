@@ -113,7 +113,26 @@ class DiagField private constructor(
                 },
             )
 
+        /**
+         * An Android package name (`com.android.phone`). Package names are
+         * public identifiers of software, not of a person, and an MMS bug
+         * report needs to know WHICH platform component was granted access
+         * to the staged PDU. The value must be two or more dotted Java
+         * identifiers, so a body, a number or a file name can never fit.
+         */
+        fun packageName(value: String?): DiagField =
+            DiagField(
+                "package",
+                when {
+                    value == null -> "null"
+                    PACKAGE_NAME.matches(value) && value.length <= MAX_PACKAGE_NAME_LENGTH -> value
+                    else -> DROPPED
+                },
+            )
+
         private val RULE_ID = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+        private val PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
+        private const val MAX_PACKAGE_NAME_LENGTH = 255
         private val MIME = Regex("^[a-z]{1,11}/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$")
         private val MIME_TOP_LEVEL =
             setOf("application", "audio", "font", "image", "message", "model", "multipart", "text", "video")
