@@ -556,4 +556,124 @@ class SettingsCatalogTest {
             SettingsItem.SHOW_ALERTS_TAB,
         )
     }
+
+    // ---- Top-level icons ---------------------------------------------------
+
+    private val sourceRoot =
+        File(listOf("src/main/kotlin/app/clearsms", "app/src/main/kotlin/app/clearsms").first { File(it).isDirectory })
+
+    @Test
+    fun `every top-level entry leads with a simple, relevant Material outlined icon - pinned per row`() {
+        // The icon is catalog data on the section (a non-null constructor
+        // argument, so a new section cannot compile without one), and the
+        // top-level entry exposes its section's icon - both the sub-screen
+        // openers and the three direct rows.
+        val byTitle =
+            settingsTopLevelEntries().associate { entry ->
+                val label =
+                    when (entry) {
+                        is SettingsTopLevelEntry.SubScreen -> sectionTitle(entry.section)
+                        is SettingsTopLevelEntry.Direct -> title(entry.item)
+                    }
+                assertThat(entry.icon).isEqualTo(entry.section.icon)
+                label to entry.icon.name
+            }
+        assertThat(byTitle)
+            .containsExactly(
+                "Messages",
+                "AutoMirrored.Outlined.Chat",
+                "Appearance",
+                "Outlined.Palette",
+                "Notifications",
+                "Outlined.Notifications",
+                // The PIN-code glyph, not a push pin.
+                "OTP",
+                "Outlined.Pin",
+                "Inbox",
+                "Outlined.Inbox",
+                // Matches the Finance tab in the bottom bar.
+                "Finance",
+                "Outlined.AccountBalanceWallet",
+                // Alerts are bill due dates: a calendar, not a second bell.
+                "Alerts",
+                "Outlined.Event",
+                "Default screen",
+                "Outlined.Home",
+                // Local SAF backups, so the restore arrow rather than a cloud.
+                "Backup & restore",
+                "Outlined.SettingsBackupRestore",
+                "Manage rules",
+                "AutoMirrored.Outlined.Rule",
+                "SMS signature",
+                "Outlined.Draw",
+                "Support",
+                "Outlined.FavoriteBorder",
+                "About",
+                "Outlined.Info",
+            )
+        assertThat(byTitle).hasSize(13)
+    }
+
+    @Test
+    fun `top-level icons are distinct and all from the outlined set`() {
+        val icons = SettingsSection.entries.map { it.icon }
+        // Two rows sharing a glyph would look like a copy-paste mistake.
+        assertThat(icons).containsNoDuplicates()
+        assertThat(icons.map { it.name }).containsNoDuplicates()
+        // One visual weight across the screen: outlined only (plain or
+        // auto-mirrored), never a filled/rounded/sharp variant.
+        for (icon in icons) {
+            assertWithMessage("${icon.name} must be an outlined Material icon")
+                .that(icon.name)
+                .matches("^(AutoMirrored\\.)?Outlined\\.[A-Za-z]+$")
+        }
+    }
+
+    @Test
+    fun `sub-screen rows carry no icon - the request was for the main settings page only`() {
+        // SettingsItem (the rows inside sub-screens) has no icon property at
+        // all, so no sub-screen row can grow one by accident.
+        assertThat(SettingsItem::class.java.methods.map { it.name }).doesNotContain("getIcon")
+        assertThat(SettingsSection::class.java.methods.map { it.name }).contains("getIcon")
+        val catalog = File(sourceRoot, "ui/settings/SettingsCatalog.kt").readText()
+        val itemEnum = catalog.substringAfter("enum class SettingsItem(").substringBefore("data class SettingsVisibility")
+        assertThat(itemEnum).doesNotContain("ImageVector")
+        assertThat(itemEnum).doesNotContain("Icons.")
+    }
+
+    @Test
+    fun `the screen takes every top-level icon from the catalog and renders it decoratively`() {
+        val screen = File(sourceRoot, "ui/settings/SettingsScreen.kt").readText()
+        val catalog = File(sourceRoot, "ui/settings/SettingsCatalog.kt").readText()
+
+        // The screen never names a section icon itself: none of the glyphs
+        // the catalog imports for its sections appear in the screen source,
+        // and there is no per-section `when` choosing an icon.
+        val sectionIconImports =
+            Regex("^import androidx\\.compose\\.material\\.icons\\.(?:automirrored\\.)?outlined\\.(\\w+)$", RegexOption.MULTILINE)
+                .findAll(catalog)
+                .map { it.groupValues[1] }
+                .toList()
+        assertThat(sectionIconImports).hasSize(SettingsSection.entries.size)
+        for (glyph in sectionIconImports) {
+            assertWithMessage("SettingsScreen must not hardcode Icons.*.Outlined.$glyph - the catalog owns it")
+                .that(screen)
+                .doesNotContainMatch("Icons\\.(AutoMirrored\\.)?Outlined\\.$glyph\\b")
+        }
+        assertThat(screen).doesNotContainMatch("when \\(\\w+\\.section\\)\\s*\\{[^}]*Icons\\.")
+
+        // Instead the root list reads the icon off the catalog, once, and the
+        // two other surfaces (sub-screens, search results) opt out.
+        assertThat(Regex("leadingIcon = \\{ it\\.section\\.icon \\}").findAll(screen).count()).isEqualTo(1)
+        assertThat(Regex("leadingIcon = \\{ null \\}").findAll(screen).count()).isEqualTo(2)
+
+        // Decorative: the shared glyph composable passes a null content
+        // description, so TalkBack announces the row's label once.
+        val decorative = screen.substringAfter("private fun DecorativeRowIcon(").substringBefore("\n}\n")
+        assertThat(decorative).contains("contentDescription = null")
+        assertThat(decorative).contains("MaterialTheme.colorScheme.primary")
+        // ...and every row-level leading slot goes through it, so no row can
+        // sneak in a described (double-announcing) icon.
+        assertThat(screen).doesNotContainMatch("leadingContent = \\{ Icon\\(")
+    }
 }
