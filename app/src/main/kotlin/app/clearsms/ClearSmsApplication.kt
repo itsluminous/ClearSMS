@@ -10,6 +10,7 @@ import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagCrashHandler
 import app.clearsms.diagnostics.DiagFileSink
 import app.clearsms.diagnostics.DiagLevel
+import app.clearsms.sms.SenderRegion
 import app.clearsms.work.AutoResortScheduler
 import app.clearsms.work.SimBackfillWorker
 import dagger.hilt.android.HiltAndroidApp
@@ -41,6 +42,9 @@ class ClearSmsApplication :
     override fun onCreate() {
         super.onCreate()
         installDiagnostics()
+        // The region every sender key is computed under (issue #42): from
+        // the SIM, before anything normalizes a sender.
+        SenderRegion.install(this)
         // Commits any deferred provider deletion that survived process death
         // (a deleted message must never resurrect in other SMS apps) and
         // purges recycle-bin rows past their 30-day retention.

@@ -15,6 +15,7 @@ import app.clearsms.data.db.AttachmentDao
 import app.clearsms.data.db.BackfillMessageDirections
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageDao
+import app.clearsms.data.db.RekeyThreads
 import app.clearsms.data.db.ReminderDao
 import app.clearsms.data.db.RuleDao
 import app.clearsms.data.db.TransactionDao
@@ -41,8 +42,10 @@ import app.clearsms.receiver.DefaultSendReportSideEffects
 import app.clearsms.receiver.SendReportSideEffects
 import app.clearsms.sms.ProviderSentTimeSource
 import app.clearsms.sms.ProviderSimSource
+import app.clearsms.sms.SenderRegion
 import app.clearsms.sms.SystemProviderSentTimeSource
 import app.clearsms.sms.SystemProviderSimSource
+import app.clearsms.sms.SystemProviderThreadSource
 import app.clearsms.sms.SystemSentSmsSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.work.BackupDocumentStore
@@ -147,6 +150,11 @@ object DataModule {
         // The v6→v7 direction backfill reads the system SMS provider's sent
         // box; hand it the source before the database can open and migrate.
         BackfillMessageDirections.sentSmsSource = SystemSentSmsSource(context)
+        // The v21→v22 thread re-key reads the provider's thread ids and
+        // keys senders under the SIM's region: both installed before the
+        // database opens so the migration and every later insert agree.
+        RekeyThreads.providerThreadSource = SystemProviderThreadSource(context)
+        SenderRegion.install(context)
         return Room
             .databaseBuilder(context, ClearSmsDatabase::class.java, ClearSmsDatabase.NAME)
             .build()

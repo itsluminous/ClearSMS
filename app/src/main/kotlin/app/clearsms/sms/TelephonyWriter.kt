@@ -108,6 +108,32 @@ class TelephonyWriter
         /** Row id from a provider insert uri (`content://sms/<id>`), or null. */
         private fun Uri.rowId(): Long? = lastPathSegment?.toLongOrNull()
 
+        /**
+         * The provider's `thread_id` for a row this app just inserted - the
+         * platform's canonical conversation identity, read back rather than
+         * computed (see [app.clearsms.data.repository.ThreadIdentity]). Null
+         * when the row cannot be read (no longer the default app, provider
+         * omitted the column): the caller falls back to the sender key.
+         */
+        fun threadIdOf(messageUri: Uri): Long? {
+            if (!DefaultSmsAppHelper.isDefaultSmsApp(context)) return null
+            return try {
+                context.contentResolver
+                    .query(messageUri, arrayOf(Telephony.Sms.THREAD_ID), null, null, null)
+                    ?.use { cursor ->
+                        val index = cursor.getColumnIndex(Telephony.Sms.THREAD_ID)
+                        if (index >= 0 && cursor.moveToFirst() && !cursor.isNull(index)) {
+                            cursor.getLong(index).takeIf { it > 0L }
+                        } else {
+                            null
+                        }
+                    }
+            } catch (e: Exception) {
+                Diag.w(TAG, "provider thread id read failed", e, flag("denied", e is SecurityException))
+                null
+            }
+        }
+
         /** Marks a previously written outgoing message as failed. */
         fun markFailed(messageUri: Uri) {
             update(

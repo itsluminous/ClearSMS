@@ -8,6 +8,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.SenderNormalizer
+import app.clearsms.data.repository.ThreadIdentity
 import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.flag
@@ -76,7 +77,8 @@ class SmsSender
                 val timestamp = System.currentTimeMillis()
                 val providerUri = telephonyWriter.writeSent(destination, sendBody, timestamp)
                 val systemSmsId = providerUri?.lastPathSegment?.toLongOrNull()
-                val messageId = persistToRoom(destination, sendBody, timestamp, systemSmsId, subscriptionId)
+                val providerThreadId = providerUri?.let(telephonyWriter::threadIdOf)
+                val messageId = persistToRoom(destination, sendBody, timestamp, systemSmsId, subscriptionId, providerThreadId)
                 dispatch(messageId, destination, sendBody, providerUri?.toString(), subscriptionId)
                 messageId
             }
@@ -125,6 +127,12 @@ class SmsSender
                     systemSmsId?.let { telephonyWriter.deleteBySystemIds(listOf(it)) }
                     return@withContext false
                 }
+                // The row was threaded by sender key when scheduled (no
+                // provider row existed); record the platform's thread now so
+                // later messages of this person can anchor to it.
+                ThreadIdentity
+                    .anchorFor(message.sender, providerUri?.let(telephonyWriter::threadIdOf))
+                    ?.let { messageDao.setProviderThreadId(messageId, it) }
                 dispatch(messageId, message.sender, message.body, providerUri?.toString(), message.subscriptionId)
                 true
             }
@@ -210,9 +218,10 @@ class SmsSender
             timestampMs: Long,
             systemSmsId: Long?,
             subscriptionId: Int?,
+            providerThreadId: Long?,
         ): Long {
             val normalized = SenderNormalizer.normalize(destination)
-            val threadId = messageDao.threadIdFor(normalized) ?: ((messageDao.maxThreadId() ?: 0L) + 1L)
+            val threadId = ThreadIdentity.resolve(messageDao, destination, normalized, providerThreadId)
             return messageDao.insert(
                 MessageEntity(
                     threadId = threadId,
@@ -226,6 +235,7 @@ class SmsSender
                     isOutgoing = true,
                     deliveryStatus = DeliveryStatus.SENDING,
                     subscriptionId = subscriptionId,
+                    providerThreadId = ThreadIdentity.anchorFor(destination, providerThreadId),
                 ),
             )
         }

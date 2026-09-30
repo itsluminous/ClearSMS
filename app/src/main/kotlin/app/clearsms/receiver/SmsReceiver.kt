@@ -89,11 +89,11 @@ class SmsReceiver : BroadcastReceiver() {
         // remove the provider copy, resurrecting the message in other apps.
         // A failed provider write (null) degrades to a Room-only row - the
         // message MUST stay visible in the app either way.
-        val systemSmsId =
-            telephonyWriter
-                .writeInbox(merged.sender, merged.body, merged.timestampMs, merged.sentAtMs)
-                ?.lastPathSegment
-                ?.toLongOrNull()
+        val providerUri = telephonyWriter.writeInbox(merged.sender, merged.body, merged.timestampMs, merged.sentAtMs)
+        val systemSmsId = providerUri?.lastPathSegment?.toLongOrNull()
+        // The platform's conversation id for the row - the primary thread
+        // anchor (issue #42); null degrades to the sender key.
+        val providerThreadId = providerUri?.let(telephonyWriter::threadIdOf)
         val ingest =
             messageRepository.ingestIncoming(
                 merged.sender,
@@ -101,6 +101,7 @@ class SmsReceiver : BroadcastReceiver() {
                 merged.timestampMs,
                 systemSmsId,
                 dateSentMs = merged.sentAtMs,
+                providerThreadId = providerThreadId,
             )
         val entity = ingest.entity
         // Provenance for dual-SIM users: which SIM received the message.
@@ -119,6 +120,7 @@ class SmsReceiver : BroadcastReceiver() {
             label("category", entity.category),
             label("sub", entity.subCategory),
             flag("providerRow", systemSmsId != null),
+            flag("providerThread", providerThreadId != null),
             flag("duplicate", ingest.duplicate),
             flag("sim", subscriptionId != null),
         )

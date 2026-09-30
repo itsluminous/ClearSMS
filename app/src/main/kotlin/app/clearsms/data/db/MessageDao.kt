@@ -379,17 +379,41 @@ interface MessageDao {
     /**
      * LIVE messages whose sender contains [core] - the shape a rule built from
      * a message carries ("(?i)HDFCBK" matches "VM-HDFCBK"), so this is the set
-     * such a rule can possibly affect. Binned rows are excluded: a blocked or
-     * keyword-binned message must not gain derived finance rows from a re-sort.
+     * such a rule can possibly affect. Matched on the sender key AND on the
+     * raw sender: the rule engine matches the RAW sender, so a rule saved
+     * before #42 with the old ten-digit core (`8601234567` for `+48601234567`)
+     * still finds its rows after the key moved to `601234567`. Binned rows
+     * are excluded: a blocked or keyword-binned message must not gain
+     * derived finance rows from a re-sort.
      */
     @Query(
-        "SELECT * FROM messages WHERE normalizedSender LIKE '%' || :core || '%' " +
+        "SELECT * FROM messages WHERE (normalizedSender LIKE '%' || :core || '%' " +
+            "OR UPPER(sender) LIKE '%' || UPPER(:core) || '%') " +
             "AND deletedAt IS NULL ORDER BY id ASC",
     )
     suspend fun liveMessagesBySenderCore(core: String): List<MessageEntity>
 
     @Query("SELECT threadId FROM messages WHERE normalizedSender = :normalizedSender LIMIT 1")
     suspend fun threadIdFor(normalizedSender: String): Long?
+
+    /**
+     * The app threads (with their sender keys) already anchored to a system
+     * provider thread - the input to
+     * [app.clearsms.data.repository.ThreadIdentity.resolve]. Several rows
+     * only when the provider thread turned out to hold more than one person.
+     */
+    @Query("SELECT DISTINCT threadId, normalizedSender FROM messages WHERE providerThreadId = :providerThreadId")
+    suspend fun threadsAnchoredTo(providerThreadId: Long): List<ThreadAnchor>
+
+    /**
+     * Records the provider thread a row belongs to once it is known - a
+     * scheduled message only gets its provider row (and thread) at dispatch.
+     */
+    @Query("UPDATE messages SET providerThreadId = :providerThreadId WHERE id = :id")
+    suspend fun setProviderThreadId(
+        id: Long,
+        providerThreadId: Long,
+    )
 
     // region SIM subscription bookkeeping
 

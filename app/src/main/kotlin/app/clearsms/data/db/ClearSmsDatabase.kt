@@ -29,7 +29,7 @@ import java.time.ZoneId
         ThreadPinEntity::class,
         AttachmentEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -126,6 +126,13 @@ import java.time.ZoneId
         // DELIVERED rows read as confirmed-without-a-time, never backfilled
         // with an invented instant.
         AutoMigration(from = 20, to = 21),
+        // v21 -> v22: adds messages.providerThreadId (nullable, indexed) -
+        // the system provider's conversation id, the primary thread anchor
+        // - then backfills it from the provider and re-keys every thread
+        // under the region-aware sender key, merging the split "same
+        // person, two threads" conversations of issue #42 in place with
+        // pins, drafts and read/archived state intact - see [RekeyThreads].
+        AutoMigration(from = 21, to = 22, spec = RekeyThreads::class),
     ],
 )
 @TypeConverters(Converters::class)
