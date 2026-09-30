@@ -58,7 +58,8 @@ class TransactionPurposeTest {
         assertThat(result).isNotNull()
         assertThat(result!!.type).isEqualTo(TransactionType.CREDIT)
         // The masked reference and the TPT rail code say HOW, not WHY: the
-        // payer-typed label plus the payer name is the readable purpose.
+        // payer-typed label plus the payer name is the readable purpose (and
+        // the part a sender rule should match on).
         assertThat(result.merchantName).isEqualTo("MonthlyRentNBill-ROHAN VERMA")
         assertThat(result.balance).isEqualTo(5120.40)
     }

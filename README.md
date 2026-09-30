@@ -4,7 +4,6 @@
 [![Latest release](https://img.shields.io/github/v/release/itsluminous/ClearSMS?sort=semver)](https://github.com/itsluminous/ClearSMS/releases/latest)
 [![F-Droid](https://img.shields.io/f-droid/v/app.clearsms?logo=f-droid&color=1976d2)](https://f-droid.org/packages/app.clearsms/)
 [![Downloads](https://img.shields.io/github/downloads/itsluminous/ClearSMS/total?logo=github&label=downloads&color=success)](https://github.com/itsluminous/ClearSMS/releases)
-[![License](https://img.shields.io/github/license/itsluminous/ClearSMS)](LICENSE)
 [![Rules](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fitsluminous%2FClearSMS%2Fmain%2Fapp%2Fsrc%2Fmain%2Fassets%2Fdefault_rules.json&query=%24.rules.length&label=rules&color=teal)](rules/)
 [![Stars](https://img.shields.io/github/stars/itsluminous/ClearSMS?style=flat&color=gold)](https://github.com/itsluminous/ClearSMS/stargazers)
 [![Forks](https://img.shields.io/github/forks/itsluminous/ClearSMS?style=flat&color=blue)](https://github.com/itsluminous/ClearSMS/forks)
@@ -14,8 +13,6 @@ organizes your inbox. It categorizes messages (Important / Promotional / Persona
 extracts transactions into a personal finance dashboard, surfaces bill reminders, and
 handles OTPs intelligently - all completely offline, on your device.
 
-## Download
-
 <a href="https://github.com/itsluminous/ClearSMS/releases/latest">
   <img alt="Get it on GitHub" height="80"
        src="docs/badges/get-it-on-github.png" />
@@ -24,18 +21,6 @@ handles OTPs intelligently - all completely offline, on your device.
   <img alt="Get it on F-Droid" height="80"
        src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />
 </a>
-
-- **GitHub**: a signed `ClearSMS.apk` is attached to every
-  [release](https://github.com/itsluminous/ClearSMS/releases/latest). It runs on
-  any device: Clear SMS itself contains no native code, and the one APK
-  carries every ABI variant of the two small native helpers AndroidX brings
-  in (DataStore's shared counter and Compose's path parser, ~60 KB in
-  total), so a single universal APK covers every CPU.
-- **F-Droid**: available at
-  [f-droid.org/packages/app.clearsms](https://f-droid.org/packages/app.clearsms/).
-  The F-Droid build is [reproducible](docs/publishing-fdroid.md) and carries the
-  same signature as the GitHub APK, so you can install from one source and
-  update from the other.
 
 ## Screenshots
 

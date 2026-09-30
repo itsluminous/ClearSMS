@@ -396,6 +396,13 @@ class TransactionParser {
             // and a candidate that starts with an instruction verb.
             val precedingWindow = body.substring(maxOf(0, match.range.first - URL_LOOKBEHIND), match.range.first)
             if (PRECEDING_URL_REGEX.containsMatchIn(precedingWindow)) continue
+            // "Cheque deposits in A/C are subject to clearing": a "to" led by
+            // a condition word ("subject to", "due to", "refer to") opens a
+            // condition or reason, never a payee. Without this the cheque
+            // boilerplate HDFC appends to every deposit alert captured
+            // "clearing" as the merchant - and a merchant beats the real
+            // "for <descriptor>" purpose clause in the title order.
+            if (GuardLibrary.matches(GuardId.CONDITIONAL_LEAD, precedingWindow)) continue
             if (GuardLibrary.matches(GuardId.INSTRUCTION_START, candidate)) continue
             candidate = candidate.removePrefix("VPA ").removePrefix("vpa ").trim()
             // A capture cut short by a "/" ended inside an "A/c"-shaped
@@ -540,8 +547,12 @@ class TransactionParser {
      * field (leading masked reference stripped), and a leading transfer-rail
      * code (TPT/NEFT/IMPS/...) hyphenated onto a longer descriptor is
      * dropped - the rail says HOW the money moved; the payer-typed label and
-     * name say WHY, which is the part worth a row title. A bare rail purpose
-     * ("for NEFT transaction") survives whole: it is all the message offers.
+     * name say WHY, which is the part worth a row title (and the part a
+     * sender rule should match on, so "TPT-" never has to be typed into a
+     * rule). A bare rail purpose ("for NEFT transaction") survives whole: it
+     * is all the message offers. "ACH C- SAL-<employer>" is NOT a bare rail
+     * prefix (the "C" sits between the rail and its hyphen), so that
+     * descriptor stays whole too - see [LEADING_RAIL_CODE_REGEX].
      */
     private fun extractPurpose(body: String): String? {
         var raw =
@@ -837,7 +848,9 @@ class TransactionParser {
          * A transfer-rail code hyphenated onto a longer narration
          * ("TPT-MonthlyRent-<name>") - the rail is channel, not purpose.
          * Only strips when a descriptor follows, so a bare "NEFT transaction"
-         * purpose survives whole.
+         * purpose survives whole; and only a rail DIRECTLY followed by its
+         * hyphen, so "ACH C- SAL-<employer>" (rail, then a "C", then the
+         * hyphen) is not a rail prefix and stays whole.
          */
         val LEADING_RAIL_CODE_REGEX = Regex("(?i)^(?:tpt|neft|imps|rtgs|upi|ach|ecs|nach)\\s*-\\s*(?=[A-Za-z])")
 
@@ -865,7 +878,19 @@ class TransactionParser {
         /** Digit runs long enough to be a reference, not a description. */
         val LONG_DIGIT_RUN_REGEX = Regex("\\d{5,}")
 
-        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|\\bcard\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
+        /**
+         * The body reads as a CREDIT CARD: "credit card", or a "card" token
+         * followed by a number cue ("card no.", "card ending 1234", "card
+         * **1234"). The "card" token may carry a brand prefix glued onto it -
+         * Indian issuers brand the product as ONE word ("your BOBCARD ending
+         * 1234", "SBICARD **1234", "ONECARD") - the same one-word shape the
+         * reminder evidence table (`rules/tables/reminder_evidence.json`,
+         * CREDIT_CARD row `statement for ... [A-Za-z]{0,10}card`) already
+         * relies on, so no brand list is kept here or there. The number cue
+         * that must follow keeps a bare brand mention ("Apply for BOBCARD
+         * today") from typing a bank-account debit as a card.
+         */
+        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|\\b[A-Za-z]{0,10}card\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
         val WALLET_REGEX = Regex("(?i)\\bwallet\\b")
 
         /** Money moving FROM a wallet, or a wallet that merely fronts a card. */

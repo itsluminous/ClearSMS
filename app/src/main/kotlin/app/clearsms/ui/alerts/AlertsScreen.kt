@@ -121,7 +121,12 @@ fun AlertsScreen(
             )
         },
     ) { padding ->
-        if (state.loaded && state.upcoming.isEmpty() && state.past.isEmpty() && state.filter == AlertFilter.ALL) {
+        // Issue #63: the state starts on AlertsUiState's defaults - the
+        // built-in pill set and order - until the first settings + data
+        // emission sets loaded. Those are not the user's values, so the body
+        // stays blank (title bar only) until they are; same gate as the Inbox.
+        if (!state.loaded) return@Scaffold
+        if (state.upcoming.isEmpty() && state.past.isEmpty() && state.filter == AlertFilter.ALL) {
             EmptyState(
                 icon = Icons.Outlined.NotificationsNone,
                 title = stringResource(R.string.alerts_empty_title),

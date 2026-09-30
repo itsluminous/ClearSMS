@@ -145,6 +145,47 @@ class BottomBarVisibilityTest {
         assertThat(shell).doesNotContain("visibleEntries")
     }
 
+    // ------------------------------------------------------------------
+    // COLD START (issue #63): the enter animation synchronises the bar with
+    // an incoming tab over an OUTGOING screen. With nothing outgoing there
+    // is nothing to synchronise with, so the first appearance does not
+    // animate - the reporter's frame 2 "bar fading in" is gone - while
+    // every navigation keeps the #39/#47 behaviour above untouched.
+    // ------------------------------------------------------------------
+
+    @Test
+    fun `first appearance with nothing on the glass does not animate`() {
+        // The very first frame has no route (see above), the next has the
+        // start tab: the bar appears with it, in place, no fade.
+        assertThat(BottomBarVisibility.animatesEnter(outgoingRoute = null)).isFalse()
+    }
+
+    @Test
+    fun `every navigation still animates the bar in - back from any non-tab screen`() {
+        listOf(Routes.CONVERSATION, Routes.SETTINGS, Routes.SEARCH, Routes.COMPOSE, Routes.ACCOUNT_DETAIL).forEach { outgoing ->
+            assertThat(BottomBarVisibility.animatesEnter(outgoingRoute = outgoing)).isTrue()
+        }
+        // A tab as the outgoing route is a tab-to-tab switch (bar never
+        // hidden) or a recomposition on a settled tab: animating is the
+        // harmless answer, and it never fires because visibility never flips.
+        tabs.forEach { tab -> assertThat(BottomBarVisibility.animatesEnter(outgoingRoute = tab)).isTrue() }
+    }
+
+    @Test
+    fun `the shell picks the enter transition from the outgoing route - none on a cold start`() {
+        // The decision is the pure function, fed the route composed last time.
+        assertThat(shell).contains("BottomBarVisibility.animatesEnter(outgoingRoute)")
+        assertThat(shell).contains("SideEffect { outgoingRoute = currentRoute }")
+        assertThat(shell).contains("remember { mutableStateOf<String?>(null) }")
+        // Both branches, in this order: the animated enter (pinned above) and
+        // the no-op for the cold start.
+        val animated = shell.indexOf("if (barEnterAnimated) {")
+        val none = shell.indexOf("EnterTransition.None")
+        assertThat(animated).isGreaterThan(-1)
+        assertThat(none).isGreaterThan(animated)
+        assertThat(shell.indexOf("fadeIn(BottomBarVisibility.contentTransitionSpec()) +")).isGreaterThan(animated)
+    }
+
     @Test
     fun `no timers or ad-hoc durations - the only clock is the named shared spec`() {
         // The bar must not be "tuned" into sync: no delay() and no literal

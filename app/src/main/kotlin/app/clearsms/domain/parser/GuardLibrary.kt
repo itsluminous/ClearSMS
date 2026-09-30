@@ -65,6 +65,9 @@ enum class GuardId(
 
     /** Instruction verbs starting a would-be merchant capture. */
     INSTRUCTION_START("instruction_start"),
+
+    /** Condition word ("subject", "due") right before a merchant preposition. */
+    CONDITIONAL_LEAD("conditional_lead"),
 }
 
 /**

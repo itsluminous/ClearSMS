@@ -164,6 +164,21 @@ class GuardLibraryTest {
         assertThat(matches(GuardId.INSTRUCTION_START, "Amazon Pay India")).isFalse()
     }
 
+    @Test
+    fun `conditional lead guard fires only when a condition word ends the inspected window`() {
+        // The window is the text right before the "to"/"at" of a would-be
+        // merchant capture, so the condition word must sit at its end.
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "Cheque deposits in A/C are subject ")).isTrue()
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "credited due")).isTrue()
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "please refer ")).isTrue()
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "in order ")).isTrue()
+        // A payment verb before the preposition is a real payee lead-in.
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "Rs.500.00 paid ")).isFalse()
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "Sent Rs.500.00 From HDFC Bank A/C x1234 ")).isFalse()
+        // The word must END the window - "subject" earlier in the sentence never counts.
+        assertThat(matches(GuardId.CONDITIONAL_LEAD, "subject line: payment sent ")).isFalse()
+    }
+
     // endregion
 
     // region degradation: malformed data must never crash
@@ -299,6 +314,7 @@ class GuardLibraryTest {
             GuardId.TIER_PREMIUM -> listOf("LIV Premium subscription active")
             GuardId.FUTURE_TENSE -> listOf("amount will be ")
             GuardId.INSTRUCTION_START -> listOf("know the transaction status")
+            GuardId.CONDITIONAL_LEAD -> listOf("are subject ")
             GuardId.PAYOUT_IN_FLIGHT ->
                 listOf("Refund of Rs.1,240.50 towards credit balance has been initiated")
             GuardId.FINANCIAL_EVIDENCE ->

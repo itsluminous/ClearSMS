@@ -1,6 +1,6 @@
 # Demo corpus & emulator seeding
 
-A fully **synthetic** SMS corpus (`messages.jsonl`, 75 messages) that
+A fully **synthetic** SMS corpus (`messages.jsonl`, 84 messages) that
 exercises nearly every ClearSMS feature, plus a seeding tool (`seed.py`)
 that replays it into an Android emulator. No message here belongs to a real
 person; every name, account tail, PNR, amount and OTP is invented.
@@ -8,8 +8,9 @@ person; every name, account tail, PNR, amount and OTP is invented.
 ## What the corpus showcases
 
 - **Transactions** - a 6-month HDFC account history (salary credits, UPI
-  debits, rent), ICICI card spends & autopay, Axis card, NPS (KFintech)
-  contribution, Pluxee wallet, Scapia card.
+  debits, rent, a TPT deposit with the cheque-clearing boilerplate), ICICI
+  card spends & autopay, Axis card, a BOBCARD credit card (spend, statement,
+  payment), NPS (KFintech) contribution, Pluxee wallet, Scapia card.
 - **Bills & reminders** - credit-card bills with minimum due, autopay
   notices, LIC insurance premium, electricity bill.
 - **Journeys** - an IRCTC train PNR and an IndiGo flight PNR.

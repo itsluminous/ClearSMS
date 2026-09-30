@@ -65,6 +65,26 @@ object BottomBarVisibility {
     ): Boolean = sections.showBottomBar && currentRoute in Routes.topLevel
 
     /**
+     * Whether the bar's ENTER should animate this time (issue #63, the
+     * cold-start half). The enter animation exists for ONE reason: to keep
+     * the arriving bar in step with the crossfade of an incoming tab over
+     * an OUTGOING screen. On a cold start there is no outgoing screen - the
+     * first frame has no route yet (no bar), the next has the start tab -
+     * so a fade/expand there synchronises with nothing and reads as the
+     * bar sliding into a screen that was already settled: pure churn. The
+     * bar is therefore simply THERE in the frame the route resolves
+     * whenever nothing was on the glass before ([outgoingRoute] null:
+     * first composition, or an activity recreated straight onto a tab),
+     * and animates in every other case - a pop from a conversation
+     * (outgoing = the conversation) keeps the #39/#47 behaviour exactly.
+     *
+     * [outgoingRoute] is the route the shell composed LAST time round; the
+     * shell records it after each composition, so at the moment visibility
+     * flips it is the route being left.
+     */
+    fun animatesEnter(outgoingRoute: String?): Boolean = outgoingRoute != null
+
+    /**
      * The bottom inset a TOP-LEVEL TAB screen lays out with - the bar's
      * SETTLED height whenever the section toggles produce a bar at all,
      * regardless of what the bar's slot is doing this frame (issue #47).

@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
@@ -137,6 +138,16 @@ data class LatestOtp(
     val threadId: Long,
 )
 
+/**
+ * The inbox screen's state. [loaded] is the "settings read" flag (issue
+ * #63): the screen's StateFlow has to start SOMEWHERE, and it starts on this
+ * class's DEFAULTS - the built-in pill set, the Unread switch on, no counts.
+ * Those are not the user's values, only Kotlin's, so until the first real
+ * emission ([loaded] true) the screen must not render anything derived from
+ * them - the same shape [app.clearsms.ui.conversation.ConversationUiState]
+ * uses for its own not-yet-read state. Everything preference-derived below
+ * is only meaningful once [loaded] is true.
+ */
 data class InboxUiState(
     val filter: InboxFilterState = InboxFilterState(),
     val unreadCounts: Map<Category, Int> = emptyMap(),
@@ -161,6 +172,14 @@ data class InboxUiState(
      * rows in place instead of rebuilding the pager.
      */
     val mutedSenders: Set<String> = emptySet(),
+    /**
+     * False only for the placeholder the StateFlow starts on, before the
+     * first settings + counts emission; true on every real state. The
+     * screen gates the pill row, the Unread switch and the list on it so a
+     * cold start never shows a pill set or unread state the user did not
+     * configure (issue #63).
+     */
+    val loaded: Boolean = false,
 ) {
     /** Whether [item]'s sender is muted (same normalization as the gate). */
     fun isMuted(item: InboxItem): Boolean = MutedSenderGate.matches(mutedSenders, item.message.sender)
@@ -187,7 +206,15 @@ class InboxViewModel
         workManager: WorkManager,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
-        private val filter = MutableStateFlow(InboxFilterState())
+        /**
+         * The session's filter selection. Null until the default inbox filter
+         * (a preference) has been READ: seeding it with `InboxFilterState()`
+         * made the very first query and chip row an unfiltered "All" that
+         * flipped to the configured default a moment later - the same
+         * default-before-preference flash as the pills (issue #63). Nothing
+         * downstream sees a filter until the real start value is in.
+         */
+        private val filter = MutableStateFlow<InboxFilterState?>(null)
 
         /** One-shot undo snackbar requests (delete/archive just staged). */
         private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
@@ -233,10 +260,11 @@ class InboxViewModel
 
         init {
             // Honor the configured default filter on the first open of the
-            // session; a user selection made in the meantime is never clobbered.
+            // session; a user selection made in the meantime is never clobbered
+            // (only the not-yet-read null is replaced).
             viewModelScope.launch(ioDispatcher) {
                 val startCategory = settings.defaultInboxFilter.first()
-                filter.compareAndSet(InboxFilterState(), InboxFilterState(pill = startCategory?.let(InboxPill::of)))
+                filter.compareAndSet(null, InboxFilterState(pill = startCategory?.let(InboxPill::of)))
             }
         }
 
@@ -252,7 +280,7 @@ class InboxViewModel
          * as chosen, so un-hiding the pill restores the selection.
          */
         private val effectiveFilter: Flow<InboxFilterState> =
-            combine(filter, pillConfig, settings.inboxUnreadToggle) { current, config, unreadShown ->
+            combine(filter.filterNotNull(), pillConfig, settings.inboxUnreadToggle) { current, config, unreadShown ->
                 current.constrainedTo(config.visible, unreadControl = unreadShown)
             }.distinctUntilChanged()
 
@@ -383,11 +411,16 @@ class InboxViewModel
                     showUnreadToggle = chromeState.showUnreadToggle,
                     sortingBanner = sorting,
                     mutedSenders = chromeState.mutedSenders,
+                    // Every input above has emitted at least once, so these
+                    // are the user's values, not the defaults (issue #63).
+                    loaded = true,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState())
 
         fun selectPill(pill: InboxPill) {
-            filter.update { it.selectPill(pill) }
+            // The chips are gated on the loaded state, so this cannot run on
+            // the null placeholder; the fallback only keeps the type honest.
+            filter.update { (it ?: InboxFilterState()).selectPill(pill) }
         }
 
         /**
@@ -399,7 +432,7 @@ class InboxViewModel
         }
 
         fun toggleUnread() {
-            filter.update { it.toggleUnread() }
+            filter.update { (it ?: InboxFilterState()).toggleUnread() }
         }
 
         /**
