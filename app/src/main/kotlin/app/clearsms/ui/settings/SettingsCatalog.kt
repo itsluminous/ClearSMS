@@ -1,6 +1,21 @@
 package app.clearsms.ui.settings
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.automirrored.outlined.Rule
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Draw
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Pin
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
+import androidx.compose.ui.graphics.vector.ImageVector
 import app.clearsms.R
 import app.clearsms.domain.model.EnabledSections
 
@@ -16,30 +31,48 @@ import app.clearsms.domain.model.EnabledSections
  * picker there, "Manage rules" goes straight to the rules screen, "SMS
  * signature" opens its editor; a one-row sub-screen would be a pointless
  * extra tap).
+ *
+ * [icon] leads the section's entry on the TOP-LEVEL screen only (the rows
+ * inside a sub-screen stay plain). It is catalog data, not a `when` in the
+ * screen, so the top-level rows share one render path and a new section
+ * cannot compile without choosing its icon. All are Material outlined
+ * glyphs already shipped with the app, so no new drawable is added; they
+ * are decorative beside the row's label and rendered without a content
+ * description (see SettingsScreen), so a screen reader announces the row
+ * once. Finance reuses the bottom bar's wallet so the two surfaces agree.
  */
 enum class SettingsSection(
     @StringRes val titleRes: Int,
+    val icon: ImageVector,
     val subScreen: Boolean = true,
 ) {
-    MESSAGES(R.string.settings_section_messages),
-    APPEARANCE(R.string.settings_section_appearance),
-    NOTIFICATIONS(R.string.settings_section_notification),
-    OTP(R.string.settings_section_otp),
-    INBOX(R.string.settings_section_inbox),
-    FINANCE(R.string.settings_section_finance),
-    ALERTS(R.string.settings_section_alerts),
-    STARTUP(R.string.settings_section_startup, subScreen = false),
-    BACKUP(R.string.settings_section_backup),
-    RULES(R.string.settings_section_rules, subScreen = false),
-    SIGNATURE(R.string.settings_section_signature, subScreen = false),
+    MESSAGES(R.string.settings_section_messages, Icons.AutoMirrored.Outlined.Chat),
+    APPEARANCE(R.string.settings_section_appearance, Icons.Outlined.Palette),
+    NOTIFICATIONS(R.string.settings_section_notification, Icons.Outlined.Notifications),
+
+    // The PIN-code glyph (a dotted code box), not a push pin.
+    OTP(R.string.settings_section_otp, Icons.Outlined.Pin),
+    INBOX(R.string.settings_section_inbox, Icons.Outlined.Inbox),
+    FINANCE(R.string.settings_section_finance, Icons.Outlined.AccountBalanceWallet),
+
+    // Alerts are bill reminders and due dates, so a calendar - not a second
+    // bell, which would read as a duplicate of Notifications.
+    ALERTS(R.string.settings_section_alerts, Icons.Outlined.Event),
+    STARTUP(R.string.settings_section_startup, Icons.Outlined.Home, subScreen = false),
+
+    // The restore-arrow glyph rather than a cloud: backups land in a local
+    // SAF folder, never in a cloud.
+    BACKUP(R.string.settings_section_backup, Icons.Outlined.SettingsBackupRestore),
+    RULES(R.string.settings_section_rules, Icons.AutoMirrored.Outlined.Rule, subScreen = false),
+    SIGNATURE(R.string.settings_section_signature, Icons.Outlined.Draw, subScreen = false),
 
     // Shown as "Support": ways to help the project, paid (UPI, PayPal) and
     // free (a GitHub star). The enum name stays DONATE because it IS the
     // sub-screen route segment ("settings/section/DONATE") and the search /
     // highlight target - renaming it would break every existing deep link
     // for a label change.
-    DONATE(R.string.settings_section_support),
-    ABOUT(R.string.settings_section_about),
+    DONATE(R.string.settings_section_support, Icons.Outlined.FavoriteBorder),
+    ABOUT(R.string.settings_section_about, Icons.Outlined.Info),
     ;
 
     /** The rows this section hosts, in display order. */
@@ -219,6 +252,10 @@ fun visibleSettingsItems(
  */
 sealed interface SettingsTopLevelEntry {
     val section: SettingsSection
+
+    /** The decorative leading icon of this entry - the section's, by construction. */
+    val icon: ImageVector
+        get() = section.icon
 
     /** Opens the section's sub-screen. */
     data class SubScreen(

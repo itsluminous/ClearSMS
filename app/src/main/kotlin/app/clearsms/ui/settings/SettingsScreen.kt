@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.res.pluralStringResource
@@ -140,13 +141,18 @@ private enum class SettingsDialog {
  * progress) with its behaviour unchanged. [item] is the catalog entry the
  * row renders - the handle a highlight targets - and is null only for the
  * top-level screen's "open this sub-screen" entries.
+ *
+ * [content] receives the decorative leading icon the SURFACE wants shown
+ * (see [SettingsRowList]): the top-level screen passes the section's
+ * catalog icon, a sub-screen and the search results pass null. The same
+ * row therefore renders with or without its icon through one code path.
  */
 internal class SettingsRowEntry(
     val section: SettingsSection,
     val title: String,
     val summary: String,
     val item: SettingsItem? = null,
-    val content: @Composable () -> Unit,
+    val content: @Composable (leadingIcon: ImageVector?) -> Unit,
 )
 
 /**
@@ -261,6 +267,9 @@ fun SettingsScreen(
             if (effectiveQuery.isBlank()) {
                 // The section list. A sub-screen entry's summary names the rows
                 // it holds, so what lives behind it is visible without a tap.
+                // Every entry leads with its section's catalog icon (see
+                // SettingsSection.icon) - a direct row reuses the very control
+                // the search renders, only decorated here.
                 val entries =
                     settingsTopLevelEntries().map { entry ->
                         when (entry) {
@@ -268,12 +277,13 @@ fun SettingsScreen(
                             is SettingsTopLevelEntry.SubScreen -> {
                                 val sectionTitle = stringResource(entry.section.titleRes)
                                 val heldRows = rows.filter { it.section == entry.section }.joinToString { it.title }
-                                SettingsRowEntry(entry.section, sectionTitle, heldRows) {
+                                SettingsRowEntry(entry.section, sectionTitle, heldRows) { leadingIcon ->
                                     SettingRow(
                                         title = sectionTitle,
                                         subtitle = heldRows,
                                         singleLineSubtitle = true,
                                         onClick = { onOpenSection(entry.section, null) },
+                                        leadingIcon = leadingIcon,
                                     )
                                 }
                             }
@@ -283,6 +293,7 @@ fun SettingsScreen(
                     rows = entries,
                     busy = busy,
                     showHeaders = false,
+                    leadingIcon = { it.section.icon },
                     // A nested target flashes its section's entry: the row
                     // itself is on the sub-screen a deep link pushes next.
                     isHighlightTarget = { row ->
@@ -296,6 +307,9 @@ fun SettingsScreen(
                 // section header for context; a nested hit renders as a
                 // navigation row that opens its sub-screen with the row
                 // flashed, a top-level hit renders its real control in place.
+                // No leading icons here: the header already names the
+                // section, and icons on only the few top-level hits among
+                // plain nested ones would read as an inconsistency.
                 val matches = searchSettingsRows(rows, effectiveQuery)
                 if (matches.isEmpty()) {
                     Text(
@@ -324,6 +338,7 @@ fun SettingsScreen(
                         rows = results,
                         busy = busy,
                         showHeaders = true,
+                        leadingIcon = { null },
                         isHighlightTarget = { false },
                         highlightKey = null,
                         modifier = Modifier.fillMaxSize().padding(padding),
@@ -368,6 +383,8 @@ fun SettingsSectionScreen(
                 rows = rows.filter { it.section == section },
                 busy = busy,
                 showHeaders = false,
+                // Sub-screen rows stay plain: only the root screen carries icons.
+                leadingIcon = { null },
                 isHighlightTarget = { row -> highlight != null && row.item == highlight },
                 highlightKey = highlight,
                 modifier = Modifier.fillMaxSize().padding(padding),
@@ -923,6 +940,13 @@ private fun SettingsRowList(
     rows: List<SettingsRowEntry>,
     busy: Boolean,
     showHeaders: Boolean,
+    /**
+     * The decorative leading icon to render for a row, or null for none. The
+     * root screen answers with the section's catalog icon; a sub-screen and
+     * the search results answer null. One place decides, so no row can
+     * differ from its neighbours by accident.
+     */
+    leadingIcon: (SettingsRowEntry) -> ImageVector?,
     isHighlightTarget: (SettingsRowEntry) -> Boolean,
     highlightKey: Any?,
     modifier: Modifier = Modifier,
@@ -950,14 +974,15 @@ private fun SettingsRowList(
                 lastSection = row.section
                 SectionHeader(stringResource(row.section.titleRes))
             }
+            val icon = leadingIcon(row)
             if (isHighlightTarget(row)) {
                 HighlightedRow(
                     active = highlighted,
                     onPositioned = { y -> if (highlightOffset == null) highlightOffset = y },
-                    content = row.content,
+                    content = { row.content(icon) },
                 )
             } else {
-                row.content()
+                row.content(icon)
             }
         }
     }
@@ -990,13 +1015,16 @@ private fun settingsRowEntries(
     onOpenLink: (String) -> Unit,
     onSystemNotificationSettings: () -> Unit,
 ): List<SettingsRowEntry> {
+    // Both helpers forward the surface's leading icon, so a direct-entry
+    // row (Default screen, Manage rules, Signature) shows its section icon
+    // on the root screen and stays plain in the search results.
     fun row(
         section: SettingsSection,
         title: String,
         summary: String,
         onClick: () -> Unit,
-    ) = SettingsRowEntry(section, title, summary) {
-        SettingRow(title = title, subtitle = summary, onClick = onClick)
+    ) = SettingsRowEntry(section, title, summary) { leadingIcon ->
+        SettingRow(title = title, subtitle = summary, onClick = onClick, leadingIcon = leadingIcon)
     }
 
     fun toggle(
@@ -1005,8 +1033,8 @@ private fun settingsRowEntries(
         summary: String,
         checked: Boolean,
         onToggle: (Boolean) -> Unit,
-    ) = SettingsRowEntry(section, title, summary) {
-        ToggleRow(title = title, subtitle = summary, checked = checked, onToggle = onToggle)
+    ) = SettingsRowEntry(section, title, summary) { leadingIcon ->
+        ToggleRow(title = title, subtitle = summary, checked = checked, onToggle = onToggle, leadingIcon = leadingIcon)
     }
 
     // A disabled section contributes only its "Show … tab" toggle (the
@@ -1487,7 +1515,7 @@ private fun settingsRowEntries(
                 SettingsItem.LICENSES ->
                     row(section, title, stringResource(R.string.settings_licenses_summary), onLicenses)
             }
-        SettingsRowEntry(entry.section, entry.title, entry.summary, item, entry.content)
+        SettingsRowEntry(entry.section, entry.title, entry.summary, item, content = entry.content)
     }
 }
 
@@ -1507,14 +1535,14 @@ private fun SectionHeader(title: String) {
  */
 @Composable
 private fun ActionRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        leadingContent = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        leadingContent = { DecorativeRowIcon(icon) },
         headlineContent = { Text(title) },
         supportingContent = {
             Text(
@@ -1590,6 +1618,15 @@ private fun clearOtpRangeLabel(range: ClearOtpRange): String =
         ClearOtpRange.OLDER_THAN_1_MONTH -> stringResource(R.string.clear_otp_1_month)
     }
 
+/**
+ * A plain navigation/picker row. [leadingIcon], when given, is DECORATIVE:
+ * it sits beside the label that already names the row, so it is rendered
+ * with a null content description and TalkBack reads the row once. Tinted
+ * with the theme's primary like the app's other row icons, so it follows
+ * light/dark and dynamic colour; ListItem keeps its own min height, so a
+ * row with an icon is as tall as one without and text still wraps freely
+ * at large font scales.
+ */
 @Composable
 private fun SettingRow(
     title: String,
@@ -1597,9 +1634,11 @@ private fun SettingRow(
     onClick: () -> Unit,
     /** Sub-screen entries list the rows they hold: one ellipsised line, not a paragraph. */
     singleLineSubtitle: Boolean = false,
+    leadingIcon: ImageVector? = null,
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
+        leadingContent = leadingIcon?.let { { DecorativeRowIcon(it) } },
         headlineContent = { Text(title) },
         supportingContent = {
             Text(
@@ -1613,15 +1652,27 @@ private fun SettingRow(
     )
 }
 
+/**
+ * The one way a settings row draws a leading glyph: no content description
+ * (the row's headline is the accessible name; announcing the icon too would
+ * read the row twice) and the primary tint every row icon in Settings uses.
+ */
+@Composable
+private fun DecorativeRowIcon(icon: ImageVector) {
+    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+}
+
 @Composable
 private fun ToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
     onToggle: (Boolean) -> Unit,
+    leadingIcon: ImageVector? = null,
 ) {
     ListItem(
         modifier = Modifier.clickable { onToggle(!checked) },
+        leadingContent = leadingIcon?.let { { DecorativeRowIcon(it) } },
         headlineContent = { Text(title) },
         supportingContent = {
             Text(
@@ -1646,14 +1697,11 @@ private fun NavigableToggleRow(
     checked: Boolean,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    icon: ImageVector? = null,
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        leadingContent =
-            icon?.let {
-                { Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-            },
+        leadingContent = icon?.let { { DecorativeRowIcon(it) } },
         headlineContent = { Text(title) },
         supportingContent = {
             Text(
