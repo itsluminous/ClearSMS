@@ -116,7 +116,7 @@ object TransactionDeduplication {
         val refA = normalizedReference(a.referenceNumber) ?: return false
         val refB = normalizedReference(b.referenceNumber) ?: return false
         if (refA != refB) return false
-        if (a.amount != b.amount || a.type != b.type) return false
+        if (a.amount != b.amount || a.currency != b.currency || a.type != b.type) return false
         if (a.accountNumber.isEmpty() || a.accountNumber != b.accountNumber) return false
         if (a.bankName.isEmpty() || b.bankName.isEmpty() || a.bankName == b.bankName) return false
         return abs(a.timestamp - b.timestamp) <= CROSS_BANK_REF_WINDOW_MS
@@ -140,7 +140,7 @@ object TransactionDeduplication {
         val refB = normalizedReference(b.referenceNumber)
         // Two valid references either agree (tier 1b) or prove two payments.
         if (refA != null && refB != null) return false
-        if (a.amount != b.amount || a.type != b.type) return false
+        if (a.amount != b.amount || a.currency != b.currency || a.type != b.type) return false
         if (a.accountNumber.isEmpty() || a.accountNumber != b.accountNumber) return false
         if (a.bankName.isEmpty() || b.bankName.isEmpty() || a.bankName == b.bankName) return false
         if (linkedToDifferentAccounts(a, b)) return false
@@ -201,7 +201,7 @@ object TransactionDeduplication {
         val refA = normalizedReference(a.referenceNumber) ?: return false
         val refB = normalizedReference(b.referenceNumber) ?: return false
         if (refA != refB) return false
-        if (a.amount != b.amount || a.type != b.type) return false
+        if (a.amount != b.amount || a.currency != b.currency || a.type != b.type) return false
         if (a.accountNumber != b.accountNumber) return false
         if (linkedToDifferentAccounts(a, b)) return false
         return banksCompatible(a.bankName, b.bankName)
@@ -216,7 +216,7 @@ object TransactionDeduplication {
         val refB = normalizedReference(b.referenceNumber)
         // Two valid references either agree (tier 1) or prove two payments.
         if (refA != null && refB != null) return false
-        if (a.amount != b.amount || a.type != b.type) return false
+        if (a.amount != b.amount || a.currency != b.currency || a.type != b.type) return false
         if (a.accountNumber != b.accountNumber || a.bankName != b.bankName) return false
         if (linkedToDifferentAccounts(a, b)) return false
         if (abs(a.timestamp - b.timestamp) > NEAR_DUPLICATE_WINDOW_MS) return false

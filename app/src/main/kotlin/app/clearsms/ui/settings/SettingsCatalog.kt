@@ -113,6 +113,11 @@ enum class SettingsItem(
     FINANCE_VISIBLE_PILLS(SettingsSection.FINANCE, R.string.settings_inbox_visible_pills),
     SHOW_BALANCE(SettingsSection.FINANCE, R.string.settings_show_balance),
     DEFAULT_FINANCE_FILTER(SettingsSection.FINANCE, R.string.settings_default_finance_filter),
+
+    // Currency override (issue #65): the safety net when detection from the
+    // message / SIM is unreliable. Sits last in Finance - a rarely-touched
+    // correction, not a daily control.
+    FINANCE_CURRENCY(SettingsSection.FINANCE, R.string.settings_finance_currency),
     SHOW_ALERTS_TAB(SettingsSection.ALERTS, R.string.settings_show_alerts_tab),
     ALERTS_PILL_ORDER(SettingsSection.ALERTS, R.string.settings_pill_order),
     ALERTS_VISIBLE_PILLS(SettingsSection.ALERTS, R.string.settings_inbox_visible_pills),

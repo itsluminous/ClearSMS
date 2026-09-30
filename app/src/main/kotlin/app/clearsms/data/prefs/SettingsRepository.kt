@@ -162,6 +162,20 @@ interface SettingsRepository {
 
     suspend fun setDefaultFinanceFilter(value: FinanceTab)
 
+    /**
+     * Manual currency override for amount parsing (issue #65): the ISO 4217
+     * code every amount is read in when the message itself names no
+     * unambiguous currency, or null for automatic detection (the message's
+     * own marker, else the SIM / device locale). The honest safety net for
+     * when detection is unreliable: with `CLP` forced, a bare `$1.000` is a
+     * thousand pesos even on a device whose locale says otherwise. It only
+     * applies to messages sorted AFTER it changes; "Sort inbox again"
+     * re-derives the rest. Never rewrites a stored amount by itself.
+     */
+    val financeCurrency: Flow<String?>
+
+    suspend fun setFinanceCurrency(value: String?)
+
     /** Show a parsed amount in transaction notifications instead of the raw message. */
     val transactionNotifications: Flow<Boolean>
 

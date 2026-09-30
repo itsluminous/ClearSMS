@@ -1,6 +1,7 @@
 package app.clearsms.notification
 
 import app.clearsms.R
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.notification.TransactionNotifier.Content
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -88,10 +89,31 @@ class TransactionContentTest {
 
     @Test
     fun `amounts use indian digit grouping and drop whole-number decimals`() {
-        assertThat(TransactionNotifier.grouped(1299.0)).isEqualTo("1,299")
-        assertThat(TransactionNotifier.grouped(100000.0)).isEqualTo("1,00,000")
-        assertThat(TransactionNotifier.grouped(1234567.89)).isEqualTo("12,34,567.89")
-        assertThat(TransactionNotifier.grouped(430.0)).isEqualTo("430")
+        // The notifier now shares the one formatter with the UI; rupee
+        // rendering is byte-identical to the local copy it used to carry.
+        assertThat(MoneyFormat.format(1299.0, "INR")).isEqualTo("₹1,299")
+        assertThat(MoneyFormat.format(100000.0, "INR")).isEqualTo("₹1,00,000")
+        assertThat(MoneyFormat.format(1234567.89, "INR")).isEqualTo("₹12,34,567.89")
+        assertThat(MoneyFormat.format(430.0, "INR")).isEqualTo("₹430")
+    }
+
+    @Test
+    fun `a non-rupee transaction renders in its own currency`() {
+        val content =
+            TransactionNotifier.buildContent(
+                mapOf("amount" to "1000.0", "type" to "debit", "currency" to "CLP", "merchant" to "Lider"),
+                balanceUpdateLabel = BALANCE_LABEL,
+                accountFormat = ACCOUNT_FORMAT,
+            )!!
+        // Chilean pesos: `.` groups, no minor unit - never "₹1,000".
+        assertThat(content.title).isEqualTo("− $1.000")
+        val usd =
+            TransactionNotifier.buildContent(
+                mapOf("amount" to "40.95", "type" to "debit", "currency" to "USD"),
+                balanceUpdateLabel = BALANCE_LABEL,
+                accountFormat = ACCOUNT_FORMAT,
+            )!!
+        assertThat(usd.title).isEqualTo("− US$40.95")
     }
 
     private companion object {

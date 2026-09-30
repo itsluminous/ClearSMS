@@ -112,7 +112,7 @@ no annotations:
 
 | Extract key | Inferred type |
 |---|---|
-| `amount`, `balance`, `available_limit`, `total_due`, `min_due`, `total_limit` | `amount` - comma-grouped digits, e.g. `1,23,456.78` |
+| `amount`, `balance`, `available_limit`, `total_due`, `min_due`, `total_limit` | `amount` - a written figure read under the message's currency convention: `1,23,456.78` (INR), `1.000` = one thousand for CLP, `1.000,50` for EUR. The currency comes from the marker in the message (`Rs`/`INR`/`₹`, an ISO code, `$`, `€`...), else the SIM/locale or the Settings override - see `AmountParser` / `CurrencyDetector` |
 | `due_date` | `date` - `DD-MM-YY(YY)`, `DD-MMM-YY(YY)` or `YYYY-MM-DD` |
 | `merchant` | `merchant` - cleaned of reference digits and trailing month/year noise |
 | `type` | `transaction_type` - `debit` or `credit` |

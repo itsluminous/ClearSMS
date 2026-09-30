@@ -23,7 +23,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.data.db.TransactionEntity
-import app.clearsms.ui.common.CurrencyFormat
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.ui.components.BalanceMask
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 
@@ -109,7 +110,16 @@ fun TransactionExpansionDetails(
             // the row header stays visible.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val balanceText =
-                    if (content.balanceMasked) BalanceMask.MASK else CurrencyFormat.rupees(balance)
+                    // "Balance after" comes from a rupee-anchored phrase ("Avl
+                    // Bal: Rs ..."), so it is a rupee figure whatever the
+                    // transaction's own currency is.
+                    if (content.balanceMasked) {
+                        BalanceMask.mask(
+                            CurrencyCatalog.INR_CODE,
+                        )
+                    } else {
+                        MoneyFormat.format(balance, CurrencyCatalog.INR_CODE)
+                    }
                 val line = stringResource(R.string.account_balance_after, balanceText)
                 val balanceColor = LocalSemanticAmountColors.current.balance
                 val hiddenDescription = stringResource(R.string.balance_hidden)

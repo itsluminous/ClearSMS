@@ -27,6 +27,7 @@ import app.clearsms.domain.categorizer.MessageCategorizer
 import app.clearsms.domain.model.AccountType
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.ExtractedValue
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.MessageSortOrder
@@ -1352,10 +1353,11 @@ class MessageRepositoryImpl(
             tx.balance?.let { merged["balance"] = it.toString() }
             tx.availableLimit?.let { merged["available_limit"] = it.toString() }
             tx.referenceNumber?.let { merged["reference"] = it }
-            // A USD/EUR/... spend keeps its currency on record so the amount
-            // is never silently read as INR (the entity itself has no
-            // currency column yet - this is the audit trail until it does).
-            transactionParser.foreignCurrency(evalBody)?.let { merged["currency"] = it }
+            // A non-rupee amount carries its currency in the details too, so
+            // the parsed notification and the conversation card render the
+            // right symbol; INR is implied when the key is absent (the
+            // encoding every pre-v23 row already uses).
+            if (tx.currency != CurrencyCatalog.INR_CODE) merged["currency"] = tx.currency
         }
         // Balance-only details feed the same "balance"/"account_last4"/"bank"
         // keys the UI and the parsed notification already render blue.
@@ -1462,6 +1464,7 @@ class MessageRepositoryImpl(
             val unlinked =
                 TransactionEntity(
                     amount = tx.amount,
+                    currency = tx.currency,
                     type = tx.type,
                     merchantName = tx.merchantName,
                     accountNumber = accountNumber,
@@ -1698,6 +1701,7 @@ class MessageRepositoryImpl(
                     accountType = tx.accountType,
                     balance = winner.balance,
                     timestampMs = timestampMs,
+                    currency = if (winner.balance != null) CurrencyCatalog.INR_CODE else winner.currency,
                 )
         transactionDao.update(
             TransactionDeduplication
@@ -1723,7 +1727,20 @@ class MessageRepositoryImpl(
         accountNumber: String,
         bankName: String,
         timestampMs: Long,
-    ): Long = upsertAccountBalance(accountNumber, bankName, tx.accountType, tx.balance, timestampMs, tx.availableLimit)
+    ): Long =
+        upsertAccountBalance(
+            accountNumber,
+            bankName,
+            tx.accountType,
+            tx.balance,
+            timestampMs,
+            tx.availableLimit,
+            // Balance / limit phrases are rupee-anchored, so when the message
+            // carries one the account's figures are INR whatever the spend
+            // was in (a USD spend on an Indian card quotes an INR limit);
+            // otherwise the account is denominated like its transaction.
+            currency = if (tx.balance != null || tx.availableLimit != null) CurrencyCatalog.INR_CODE else tx.currency,
+        )
 
     /**
      * The account a bank-less transaction may attach to: exactly ONE named
@@ -1840,7 +1857,16 @@ class MessageRepositoryImpl(
         availableLimit: Double? = null,
         /** Issuer-confirmed TOTAL credit limit; follows the same ordering rules as [balance]. */
         totalLimit: Double? = null,
+        /**
+         * ISO code the written figures are in. Stamped on a NEW account, and
+         * on an existing one whenever this message actually carries a
+         * figure (balance / limit) and is not older than what the row holds
+         * - a figure-less older echo never changes a denomination. Balance
+         * and limit statements are rupee-anchored, so callers pass INR there.
+         */
+        currency: String = CurrencyCatalog.INR_CODE,
     ): Long {
+        val carriesFigure = balance != null || availableLimit != null || totalLimit != null
         val existing = accountDao.find(accountNumber, bankName)
         if (existing == null) {
             // A pre-resolution row of the same account carries a blank bank
@@ -1868,6 +1894,7 @@ class MessageRepositoryImpl(
                             } else {
                                 blank.creditLimit
                             },
+                        currency = if (timestampMs >= blank.lastUpdated && carriesFigure) currency else blank.currency,
                         lastUpdated = maxOf(timestampMs, blank.lastUpdated),
                     ),
                 )
@@ -1878,6 +1905,7 @@ class MessageRepositoryImpl(
                     accountNumber = accountNumber,
                     bankName = bankName,
                     type = accountType,
+                    currency = currency,
                     lastKnownBalance = balance,
                     availableLimit = availableLimit,
                     creditLimit = totalLimit,
@@ -1891,6 +1919,7 @@ class MessageRepositoryImpl(
                     lastKnownBalance = balance ?: existing.lastKnownBalance,
                     availableLimit = availableLimit ?: existing.availableLimit,
                     creditLimit = totalLimit ?: existing.creditLimit,
+                    currency = if (carriesFigure) currency else existing.currency,
                     lastUpdated = timestampMs,
                 ),
             )
@@ -1956,6 +1985,9 @@ class MessageRepositoryImpl(
         typed: Map<String, ExtractedValue>,
         subCategory: SubCategory?,
     ): ParsedTransaction =
+        // The currency stays the parser's: the rule engine typed its amount
+        // extract under that same currency (see RuleEngine.currencyOf), so
+        // the merged figure and its currency agree.
         parsed.copy(
             amount = typed.amount("amount") ?: parsed.amount,
             type = typed.transactionType("type") ?: parsed.type,
@@ -1984,6 +2016,9 @@ class MessageRepositoryImpl(
         val type = typed.transactionType("type") ?: return null
         return ParsedTransaction(
             amount = amount,
+            // The currency the body names (or the device/override fallback) -
+            // the same one the engine read the amount extract under.
+            currency = transactionParser.currencyOf(body),
             type = type,
             // A recharge / bill payment / top-up has no third-party merchant -
             // the biller IS the sender - so the title falls back to the resolved

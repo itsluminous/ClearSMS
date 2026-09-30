@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.clearsms.domain.model.Category
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.FinanceTab
@@ -225,6 +226,21 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_DEFAULT_FINANCE_FILTER] = value.name }
     }
 
+    override val financeCurrency: Flow<String?> =
+        dataStore.data.map { prefs ->
+            // Stored as the ISO code, or AUTO_CURRENCY for automatic detection.
+            // Only codes the catalog knows are honoured; anything else (a
+            // hand-edited backup) heals to automatic rather than forcing a
+            // currency the formatter cannot describe.
+            prefs[KEY_FINANCE_CURRENCY]
+                ?.takeIf { it != AUTO_CURRENCY && CurrencyCatalog.isKnown(it) }
+                ?.uppercase()
+        }
+
+    override suspend fun setFinanceCurrency(value: String?) {
+        dataStore.edit { it[KEY_FINANCE_CURRENCY] = value?.uppercase() ?: AUTO_CURRENCY }
+    }
+
     override val transactionNotifications: Flow<Boolean> =
         dataStore.data.map { it[KEY_TRANSACTION_NOTIFICATIONS] ?: true }
 
@@ -392,6 +408,10 @@ class SettingsRepositoryImpl(
         val KEY_ALERTS_SECTION_ENABLED = booleanPreferencesKey("alerts_section_enabled")
         val KEY_DEFAULT_INBOX_FILTER = stringPreferencesKey("default_inbox_filter")
         val KEY_DEFAULT_FINANCE_FILTER = stringPreferencesKey("default_finance_filter")
+        val KEY_FINANCE_CURRENCY = stringPreferencesKey("finance_currency")
+
+        /** Stored value of [KEY_FINANCE_CURRENCY] meaning "detect automatically". */
+        const val AUTO_CURRENCY = "AUTO"
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
         val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")

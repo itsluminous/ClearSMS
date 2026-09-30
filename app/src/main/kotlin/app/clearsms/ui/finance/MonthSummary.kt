@@ -3,21 +3,39 @@ package app.clearsms.ui.finance
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.AccountType
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.TransactionType
 
-/** Headline totals for the month-summary card, after the exclusion rules. */
+/**
+ * Headline totals for the month-summary card, after the exclusion rules -
+ * always in ONE currency ([currency]). Money in different currencies is
+ * never added together: a rupee and a peso do not sum to anything.
+ */
 data class MonthTotals(
     val net: Double,
     val debits: Double,
     val credits: Double,
-    /** Counted transactions (all / debit / credit) after exclusions. */
+    /** Counted transactions (all / debit / credit) after exclusions, in [currency]. */
     val txCount: Int,
     val debitCount: Int,
     val creditCount: Int,
-    /** Rows left out of the totals (still visible in the transaction list). */
+    /** Rows left out of the totals by the double-counting rules (still visible in the list). */
     val excludedCount: Int,
     val excludedTotal: Double,
+    /**
+     * ISO code every figure above is in: the month's DOMINANT currency (the
+     * one with the most counted rows; the most recent row breaks a tie), so
+     * the card speaks the user's home currency. INR when the month is empty.
+     */
+    val currency: String = CurrencyCatalog.INR_CODE,
+    /**
+     * Counted rows in OTHER currencies, deliberately left out of every
+     * figure above. Shown as a count so nothing is hidden silently, never
+     * converted or summed - the app has no exchange rates and a converted
+     * total would be a guess presented as a fact.
+     */
+    val otherCurrencyCount: Int = 0,
 )
 
 /**
@@ -46,6 +64,11 @@ data class MonthTotals(
  * Deliberately still counted: investment contributions (SIP/RD/NPS) as
  * "out" - money genuinely left the account this month even if it bought an
  * asset - and ordinary card spends (real expenditure at a merchant).
+ *
+ * 4. Rows in a currency OTHER than the month's dominant one (issue #65).
+ *    Not an exclusion rule so much as arithmetic honesty: the app has no
+ *    exchange rates, so a USD card spend can only be REPORTED next to the
+ *    rupee total ("+ 2 in other currencies"), never folded into it.
  */
 object MonthSummary {
     /**
@@ -90,16 +113,40 @@ object MonthSummary {
         }
     }
 
-    /** Totals over [monthTransactions] with the exclusion rules applied. */
+    /**
+     * The currency the month is summarised in: the one most of the counted
+     * rows are in, the most recent row's currency on a tie, INR for an
+     * empty month (the app's historic default - and what every pre-v23 row
+     * is marked).
+     */
+    fun dominantCurrency(transactions: List<TransactionEntity>): String {
+        if (transactions.isEmpty()) return CurrencyCatalog.INR_CODE
+        val newestByCurrency = transactions.groupBy { it.currency }.mapValues { (_, rows) -> rows.maxOf { it.timestamp } }
+        return transactions
+            .groupingBy { it.currency }
+            .eachCount()
+            .entries
+            .maxWith(compareBy<Map.Entry<String, Int>> { it.value }.thenBy { newestByCurrency.getValue(it.key) })
+            .key
+    }
+
+    /**
+     * Totals over [monthTransactions] with the exclusion rules applied, in
+     * the month's dominant currency; rows in any other currency are counted
+     * in [MonthTotals.otherCurrencyCount] and summed nowhere.
+     */
     fun compute(
         monthTransactions: List<TransactionEntity>,
         cards: CardIdentity,
     ): MonthTotals {
-        val (excluded, counted) = monthTransactions.partition { isExcluded(it, cards) }
+        val (excluded, countedAll) = monthTransactions.partition { isExcluded(it, cards) }
+        val currency = dominantCurrency(countedAll)
+        val (counted, otherCurrency) = countedAll.partition { it.currency == currency }
         val debits = counted.filter { it.type == TransactionType.DEBIT }
         val credits = counted.filter { it.type == TransactionType.CREDIT }
         val debitTotal = debits.sumOf { it.amount }
         val creditTotal = credits.sumOf { it.amount }
+        val excludedInCurrency = excluded.filter { it.currency == currency }
         return MonthTotals(
             net = creditTotal - debitTotal,
             debits = debitTotal,
@@ -108,7 +155,9 @@ object MonthSummary {
             debitCount = debits.size,
             creditCount = credits.size,
             excludedCount = excluded.size,
-            excludedTotal = excluded.sumOf { it.amount },
+            excludedTotal = excludedInCurrency.sumOf { it.amount },
+            currency = currency,
+            otherCurrencyCount = otherCurrency.size,
         )
     }
 }

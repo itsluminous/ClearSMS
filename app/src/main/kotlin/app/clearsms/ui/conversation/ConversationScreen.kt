@@ -93,6 +93,7 @@ import app.clearsms.data.db.AttachmentEntity
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.MmsStatus
+import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
 import app.clearsms.notification.OtpClipboard
@@ -1390,6 +1391,10 @@ private fun ParsedDetailCard(details: Map<String, String>) {
                     if (kind != null && amount != null) {
                         AmountText(
                             amount = amount,
+                            // Balances and requested figures come from
+                            // rupee-anchored phrases; the transaction amount
+                            // carries its own currency (absent = rupees).
+                            currency = if (key == "amount") details["currency"] ?: CurrencyCatalog.INR_CODE else CurrencyCatalog.INR_CODE,
                             kind = kind,
                             style = MaterialTheme.typography.bodyMedium,
                         )

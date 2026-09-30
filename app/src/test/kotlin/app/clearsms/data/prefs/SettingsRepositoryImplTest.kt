@@ -127,6 +127,25 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
+    fun `finance currency override defaults to automatic and only honours known codes`() =
+        runBlocking {
+            val repo = repository()
+            val key = stringPreferencesKey("finance_currency")
+            // Fresh install: automatic detection (null).
+            assertThat(repo.financeCurrency.first()).isNull()
+            repo.setFinanceCurrency("clp")
+            assertThat(dataStore.data.first()[key]).isEqualTo("CLP")
+            assertThat(repo.financeCurrency.first()).isEqualTo("CLP")
+            // Back to automatic is an explicit stored marker, not a deletion.
+            repo.setFinanceCurrency(null)
+            assertThat(dataStore.data.first()[key]).isEqualTo("AUTO")
+            assertThat(repo.financeCurrency.first()).isNull()
+            // A code the catalog cannot describe (hand-edited backup) heals to automatic.
+            dataStore.edit { it[key] = "XYZ" }
+            assertThat(repo.financeCurrency.first()).isNull()
+        }
+
+    @Test
     fun `notificationActions round trips including empty set`() =
         runBlocking {
             val repo = repository()

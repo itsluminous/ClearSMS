@@ -1,6 +1,8 @@
 package app.clearsms.domain.parser
 
 import app.clearsms.domain.model.AccountType
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.CurrencyInfo
 import app.clearsms.domain.model.MerchantCategory
 import app.clearsms.domain.model.ParsedTransaction
 import app.clearsms.domain.model.TransactionType
@@ -9,10 +11,19 @@ import app.clearsms.domain.model.TransactionType
  * Extracts debit/credit transactions from bank SMS bodies.
  *
  * A message is treated as a transaction only when it contains BOTH a currency
- * amount (₹ / Rs / INR) and a debit or credit keyword; this keeps OTPs and
- * promotional messages ("50% off up to Rs.100") from producing transactions.
+ * amount (₹ / Rs / INR, an ISO code, or a currency symbol) and a debit or
+ * credit keyword; this keeps OTPs and promotional messages ("50% off up to
+ * Rs.100") from producing transactions.
+ *
+ * Amounts are read in the CURRENCY the message is denominated in (see
+ * [CurrencyDetector] and [AmountParser]), never under a fixed "`,` groups,
+ * `.` is the decimal" assumption: a Chilean `$1.000` is one thousand pesos.
+ * [currencyContext] supplies the device/SIM fallback and the Settings
+ * override for messages that name no currency.
  */
-class TransactionParser {
+class TransactionParser(
+    private val currencyContext: () -> CurrencyContext = { CurrencyContext.INDIA },
+) {
     fun parse(
         sender: String,
         body: String,
@@ -63,8 +74,10 @@ class TransactionParser {
         if (GuardLibrary.matches(GuardId.BILL_DUE_NOTICE, effectiveBody)) return null
         val type = detectType(effectiveBody) ?: return null
 
+        // Balance and limit phrases are INR-anchored ("Avl Bal: Rs ..."), so
+        // their figures are read under the rupee convention.
         val balanceMatch = BALANCE_REGEX.find(effectiveBody)
-        val balance = balanceMatch?.groupValues?.get(1)?.toAmount()
+        val balance = balanceMatch?.groupValues?.get(1)?.toAmount(CurrencyCatalog.INR)
 
         // Amounts inside the balance or an "Avl Limit/Lmt" phrase are state,
         // not the transaction; excluding them keeps "Avl Limit: INR 286368.5"
@@ -75,18 +88,32 @@ class TransactionParser {
                 .firstOrNull()
                 ?.groupValues
                 ?.get(1)
-                ?.toAmount()
+                ?.toAmount(CurrencyCatalog.INR)
         val excluded =
             listOfNotNull(balanceMatch?.range) + availableLimitMatch.map { it.range }
-        val domesticAmount =
-            AMOUNT_REGEX
-                .findAll(effectiveBody)
-                .firstOrNull { match -> excluded.none { match.range.first in it } }
-                ?.groupValues
-                ?.get(1)
-                ?.toAmount()
-        val foreign = if (domesticAmount == null) FOREIGN_AMOUNT_REGEX.find(effectiveBody) else null
-        val amount = domesticAmount ?: foreign?.groupValues?.get(2)?.toAmount() ?: return null
+        // Three tiers, first hit wins: (1) the rupee-marked amount, (2) a
+        // verb-anchored foreign spend ("Spent USD 40.95"), (3) any other
+        // currency-MARKED amount (a `$`, `€`, ISO code...). Every tier
+        // requires a currency marker - a bare number is never an amount, so
+        // reference numbers, card tails and dates cannot become one. The
+        // figure is read under the currency ITS OWN marker names (a "Rs"
+        // amount is rupees even when the body mentions "USD 10" earlier),
+        // and that currency is what gets stored with it.
+        val context = currencyContext()
+        val notExcluded: (MatchResult) -> Boolean = { match -> excluded.none { match.range.first in it } }
+        val figure =
+            AMOUNT_REGEX.findAll(effectiveBody).firstOrNull(notExcluded)?.let { match ->
+                markedFigure(match.value, match.groupValues[1], context)
+            }
+                ?: FOREIGN_AMOUNT_REGEX.find(effectiveBody)?.let { match ->
+                    Figure.of(match.groupValues[2], CurrencyCatalog.of(match.groupValues[1]))
+                }
+                ?: MARKED_AMOUNT_REGEX.findAll(effectiveBody).firstOrNull(notExcluded)?.let { match ->
+                    markedFigure(match.value, match.groupValues[1].ifEmpty { match.groupValues[2] }, context)
+                }
+                ?: return null
+        val amount = figure.amount
+        val currency = figure.currency.code
 
         val merchant = extractMerchant(effectiveBody)
         val resolvedBank = SenderNameResolver.bankNameFor(sender, body)
@@ -108,6 +135,7 @@ class TransactionParser {
                 ?: extractCounterparty(effectiveBody, type)
         return ParsedTransaction(
             amount = amount,
+            currency = currency,
             type = type,
             merchantName = title,
             accountLast4 = extractAccountLast4(effectiveBody),
@@ -142,7 +170,7 @@ class TransactionParser {
                 .find(body)
                 ?.groupValues
                 ?.get(1)
-                ?.toAmount() ?: return null
+                ?.toAmount(CurrencyCatalog.INR) ?: return null
         val resolvedBank = SenderNameResolver.bankNameFor(sender, body)
         return BalanceStatement(
             balance = balance,
@@ -182,7 +210,7 @@ class TransactionParser {
                     .find(body)
                     ?.groupValues
                     ?.get(1)
-        val amount = limit?.toAmount() ?: return null
+        val amount = limit?.toAmount(CurrencyCatalog.INR) ?: return null
         if (amount <= 0.0) return null
         val resolvedBank = SenderNameResolver.bankNameFor(sender, body)
         return TotalLimitStatement(
@@ -273,33 +301,19 @@ class TransactionParser {
             .find(body)
             ?.groupValues
             ?.get(1)
-            ?.toAmount()
+            ?.toAmount(CurrencyCatalog.INR)
     }
 
     /**
-     * ISO currency code when the transaction amount is denominated in a
-     * foreign currency ("Spent USD 40.95"); null for INR/₹/Rs bodies.
-     * Callers persist this alongside the amount so a USD spend is never
-     * silently summed as INR.
+     * ISO code of the currency the amounts in [body] are written in - the
+     * currency the message NAMES (a `₹`/`Rs`/`INR`, an ISO code, a symbol),
+     * else the device/SIM or Settings-override fallback from
+     * [currencyContext]. Callers persist this alongside the amount so a USD
+     * spend is never silently summed as INR, and the rule engine types its
+     * amount extracts with it so a rule-captured "1.000" reads as a thousand
+     * pesos for a Chilean user. See [CurrencyDetector] for the precedence.
      */
-    fun foreignCurrency(body: String): String? {
-        val effectiveBody =
-            GuardLibrary.scrub(
-                GuardId.HYPOTHETICAL_AMOUNT,
-                GuardLibrary.scrub(GuardId.STATEMENT_NOTICE, body),
-            )
-        val balanceMatch = BALANCE_REGEX.find(effectiveBody)
-        val excluded =
-            listOfNotNull(balanceMatch?.range) + AVAILABLE_LIMIT_REGEX.findAll(effectiveBody).map { it.range }
-        val hasDomestic =
-            AMOUNT_REGEX.findAll(effectiveBody).any { match -> excluded.none { match.range.first in it } }
-        if (hasDomestic) return null
-        return FOREIGN_AMOUNT_REGEX
-            .find(effectiveBody)
-            ?.groupValues
-            ?.get(1)
-            ?.uppercase()
-    }
+    fun currencyOf(body: String): String = CurrencyDetector.detect(body, currencyContext())
 
     /**
      * Picks the earlier of the first debit / first credit keyword occurrence.
@@ -616,7 +630,34 @@ class TransactionParser {
         return if (looksLikeP2p) MerchantCategory.TRANSFER else MerchantCategory.OTHER
     }
 
-    private fun String.toAmount(): Double? = replace(",", "").toDoubleOrNull()
+    /** Reads a captured figure under [currency]'s separator convention (see [AmountParser]). */
+    private fun String.toAmount(currency: CurrencyInfo): Double? = AmountParser.parse(this, currency)
+
+    /** A transaction figure together with the currency it was read in. */
+    private data class Figure(
+        val amount: Double,
+        val currency: CurrencyInfo,
+    ) {
+        companion object {
+            fun of(
+                raw: String,
+                currency: CurrencyInfo,
+            ): Figure? = AmountParser.parse(raw, currency)?.let { Figure(it, currency) }
+        }
+    }
+
+    /**
+     * A currency-marked capture ("Rs.830.00", "$1.000", "EUR 1.000,50", "1.000
+     * CLP") read under the currency its OWN marker names - resolved through
+     * [CurrencyDetector] on the marked span alone, so a "Rs" amount is rupees
+     * even when the body mentions "USD 10" earlier, and a bare `$` still
+     * defers to the device / override fallback.
+     */
+    private fun markedFigure(
+        markedSpan: String,
+        raw: String,
+        context: CurrencyContext,
+    ): Figure? = Figure.of(raw, CurrencyCatalog.of(CurrencyDetector.detect(markedSpan, context)))
 
     private companion object {
         val AMOUNT_REGEX = Regex("(?i)(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)")
@@ -628,6 +669,28 @@ class TransactionParser {
          */
         val FOREIGN_AMOUNT_REGEX =
             Regex("(?i)\\b(?:spent|paid|debited)\\s+(USD|EUR|GBP|AED|SGD|AUD|CAD|CHF|JPY|NZD|HKD)\\s*([\\d,]+(?:\\.\\d{1,2})?)")
+
+        /**
+         * Third-tier amount: a figure carrying ANY catalog currency marker -
+         * a symbol (`$1.000`, `€1.000,50`, `£40`) or an upper-case ISO code
+         * on either side (`CLP 1.000`, `1.000 CLP`, `USD40.95`). The figure
+         * itself may use either separator in any arrangement; [AmountParser]
+         * decides what they mean from the currency. A marker is REQUIRED on
+         * every tier: a bare digit run (a reference number, a card tail, a
+         * date) can never become an amount, and the rupee regexes above are
+         * untouched, so the Indian corpus reads exactly as before.
+         */
+        val MARKED_AMOUNT_REGEX: Regex =
+            run {
+                val codes = CurrencyCatalog.codes.sorted().joinToString("|")
+                val symbols =
+                    "(?:US|CLP|CL|NZ|HK|MX|AR|COL|[ARCS])?\\$|\\u20ac|\\u00a3|\\u00a5|\\u20a9|\\u20ba|\\u20bd|\\u20a6|\\u20b1|\\u0e3f"
+                val figure = "\\d(?:[\\d.,]*\\d)?"
+                Regex(
+                    "(?:(?<![A-Za-z])(?:$symbols)|(?<![A-Za-z])(?:$codes)(?![A-Za-z]))\\s*($figure)(?![\\d.,]*\\d)" +
+                        "|(?<![\\d.,])($figure)\\s*(?<![A-Za-z])(?:$codes)(?![A-Za-z])",
+                )
+            }
 
         /**
          * "Avl Limit: INR 286368.5" / "Avl Lmt INR 98,701.00" / "Available

@@ -43,7 +43,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.clearsms.R
-import app.clearsms.ui.common.CurrencyFormat
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 
 private val CHART_HEIGHT = 160.dp
@@ -76,6 +77,8 @@ fun MonthlyBarChart(
     )
 
     var selectedIndex by rememberSaveable(data.size) { mutableIntStateOf(-1) }
+    // Every bar shares the aggregation's currency (one axis, one currency).
+    val currency = data.firstOrNull()?.currency ?: CurrencyCatalog.INR_CODE
 
     fun toggleSelection(index: Int) {
         selectedIndex = if (selectedIndex == index) -1 else index
@@ -93,7 +96,7 @@ fun MonthlyBarChart(
     Column(modifier = modifier.fillMaxWidth()) {
         SelectionDetailsRow(selected = data.getOrNull(selectedIndex))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            AxisLabels(maxValue = maxValue)
+            AxisLabels(maxValue = maxValue, currency = currency)
             Box(
                 modifier =
                     Modifier
@@ -169,8 +172,8 @@ fun MonthlyBarChart(
                             stringResource(
                                 R.string.chart_bar_description,
                                 month.fullLabel,
-                                CurrencyFormat.rupees(month.debits),
-                                CurrencyFormat.rupees(month.credits),
+                                MoneyFormat.format(month.debits, month.currency),
+                                MoneyFormat.format(month.credits, month.currency),
                             )
                         Box(
                             modifier =
@@ -208,7 +211,10 @@ fun MonthlyBarChart(
 }
 
 @Composable
-private fun AxisLabels(maxValue: Double) {
+private fun AxisLabels(
+    maxValue: Double,
+    currency: String,
+) {
     Column(
         modifier = Modifier.width(AXIS_WIDTH).height(CHART_HEIGHT),
         verticalArrangement = Arrangement.SpaceBetween,
@@ -216,7 +222,7 @@ private fun AxisLabels(maxValue: Double) {
     ) {
         for (line in GRID_STEPS downTo 0) {
             Text(
-                text = CompactInr.format(maxValue * line / GRID_STEPS),
+                text = MoneyFormat.compact(maxValue * line / GRID_STEPS, currency),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(end = 8.dp),
@@ -242,8 +248,8 @@ private fun SelectionDetailsRow(selected: MonthlyTotals?) {
                         stringResource(
                             R.string.chart_selection_details,
                             month.fullLabel,
-                            CurrencyFormat.rupees(month.debits),
-                            CurrencyFormat.rupees(month.credits),
+                            MoneyFormat.format(month.debits, month.currency),
+                            MoneyFormat.format(month.credits, month.currency),
                         ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,

@@ -7,8 +7,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import app.clearsms.domain.model.CurrencyCatalog
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.domain.model.TransactionType
-import app.clearsms.ui.common.CurrencyFormat
 import app.clearsms.ui.theme.ClearSmsTheme
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 
@@ -17,11 +18,16 @@ import app.clearsms.ui.theme.LocalSemanticAmountColors
  * credits, blue for balance-only amounts - from
  * [app.clearsms.ui.theme.SemanticAmountColors], deliberately NOT the
  * Material `colorScheme` roles (which shift with the wallpaper on
- * Android 12+). Balances carry no +/− sign because no money moved.
+ * Android 12+). Balances carry no +/− sign because no money moved. The
+ * text comes from [MoneyFormat] driven by the row's stored [currency] -
+ * `₹1,23,456` for rupees, `$1.000` for Chilean pesos, `US$40.95` for a
+ * foreign card spend - never a hardcoded rupee sign.
  */
 @Composable
 fun AmountText(
     amount: Double,
+    /** ISO 4217 code the amount is denominated in - the stored currency, never assumed. */
+    currency: String,
     kind: AmountKind,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleMedium,
@@ -35,9 +41,9 @@ fun AmountText(
         }
     val text =
         when (kind) {
-            AmountKind.DEBIT -> CurrencyFormat.signedRupees(amount, positive = false)
-            AmountKind.CREDIT -> CurrencyFormat.signedRupees(amount, positive = true)
-            AmountKind.BALANCE -> CurrencyFormat.rupees(amount)
+            AmountKind.DEBIT -> MoneyFormat.signed(amount, positive = false, currencyCode = currency)
+            AmountKind.CREDIT -> MoneyFormat.signed(amount, positive = true, currencyCode = currency)
+            AmountKind.BALANCE -> MoneyFormat.format(amount, currency)
         }
     Text(
         text = text,
@@ -52,12 +58,14 @@ fun AmountText(
 @Composable
 fun AmountText(
     amount: Double,
+    currency: String,
     type: TransactionType,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleMedium,
 ) {
     AmountText(
         amount = amount,
+        currency = currency,
         kind = if (type == TransactionType.DEBIT) AmountKind.DEBIT else AmountKind.CREDIT,
         modifier = modifier,
         style = style,
@@ -68,6 +76,6 @@ fun AmountText(
 @Composable
 private fun AmountTextPreview() {
     ClearSmsTheme {
-        AmountText(amount = 1234.5, kind = AmountKind.BALANCE)
+        AmountText(amount = 1234.5, currency = CurrencyCatalog.INR_CODE, kind = AmountKind.BALANCE)
     }
 }

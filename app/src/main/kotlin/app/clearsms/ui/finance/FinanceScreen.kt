@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -73,7 +74,7 @@ import app.clearsms.R
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.FinanceTab
-import app.clearsms.ui.common.CurrencyFormat
+import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
@@ -193,6 +194,8 @@ fun FinanceScreen(
                     creditCount = state.monthCreditCount,
                     excludedCount = state.monthExcludedCount,
                     excludedTotal = state.monthExcludedTotal,
+                    currency = state.monthCurrency,
+                    otherCurrencyCount = state.monthOtherCurrencyCount,
                     expanded = summaryExpanded,
                     onToggle = viewModel::toggleSummaryBreakdown,
                     gated = state.balanceGated,
@@ -410,6 +413,7 @@ private fun BankAccountCard(
             account.lastKnownBalance?.let { balance ->
                 MaskedAmountText(
                     amount = balance,
+                    currency = account.currency,
                     kind = AmountKind.BALANCE,
                     gated = gated,
                     revealed = revealed,
@@ -642,7 +646,7 @@ private fun TransactionRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            trailingContent = { AmountText(amount = tx.amount, type = tx.type) },
+            trailingContent = { AmountText(amount = tx.amount, currency = tx.currency, type = tx.type) },
         )
         AnimatedVisibility(visible = expanded) {
             Column(Modifier.padding(horizontal = 16.dp)) {
@@ -754,6 +758,9 @@ private fun MonthSummaryCard(
     creditCount: Int,
     excludedCount: Int,
     excludedTotal: Double,
+    /** The currency every figure is in; rows in others are only counted. */
+    currency: String,
+    otherCurrencyCount: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
     gated: Boolean,
@@ -765,15 +772,15 @@ private fun MonthSummaryCard(
     // it (and its in/out breakdown) along with account balances. Transaction
     // counts stay visible - they carry no amounts.
     val masked = BalanceMask.isMasked(gated, revealed)
-    val creditsText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(credits)
-    val debitsText = if (masked) BalanceMask.MASK else CurrencyFormat.rupees(debits)
+    val creditsText = if (masked) BalanceMask.mask(currency) else MoneyFormat.format(credits, currency)
+    val debitsText = if (masked) BalanceMask.mask(currency) else MoneyFormat.format(debits, currency)
     val valueDescription =
         if (masked) {
             stringResource(R.string.balance_hidden)
         } else {
             stringResource(
                 R.string.finance_summary_value_desc,
-                CurrencyFormat.rupees(net),
+                MoneyFormat.format(net, currency),
                 creditsText,
                 debitsText,
                 txCount,
@@ -812,7 +819,7 @@ private fun MonthSummaryCard(
             }
             if (masked) {
                 Text(
-                    text = BalanceMask.MASK,
+                    text = BalanceMask.mask(currency),
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -821,6 +828,7 @@ private fun MonthSummaryCard(
                 // Fixed semantic color: net outflow red, net inflow green.
                 AmountText(
                     amount = net,
+                    currency = currency,
                     kind = if (net < 0) AmountKind.DEBIT else AmountKind.CREDIT,
                     style = MaterialTheme.typography.displaySmall,
                 )
@@ -872,6 +880,17 @@ private fun MonthSummaryCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
+                    // Money in another currency is never added to these
+                    // figures (no exchange rates, so a converted total would
+                    // be a guess); it is reported as a count instead, so a
+                    // foreign card spend is never silently missing either.
+                    if (otherCurrencyCount > 0) {
+                        Text(
+                            text = pluralStringResource(R.plurals.finance_summary_other_currency, otherCurrencyCount, otherCurrencyCount),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
                 }
             }
         }
@@ -970,6 +989,7 @@ private fun CreditCardCard(
                             )
                             MaskedAmountText(
                                 amount = headline.amount,
+                                currency = card.account.currency,
                                 kind = AmountKind.BALANCE,
                                 gated = gated,
                                 revealed = revealed,
@@ -983,6 +1003,7 @@ private fun CreditCardCard(
                             )
                             MaskedAmountText(
                                 amount = headline.amount,
+                                currency = card.account.currency,
                                 kind = AmountKind.BALANCE,
                                 gated = gated,
                                 revealed = revealed,
@@ -1010,6 +1031,7 @@ private fun CreditCardCard(
                     )
                     MaskedAmountText(
                         amount = figures.outstanding,
+                        currency = card.account.currency,
                         kind = AmountKind.BALANCE,
                         gated = gated,
                         revealed = revealed,
