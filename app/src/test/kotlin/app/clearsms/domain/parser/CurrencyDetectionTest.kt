@@ -107,6 +107,16 @@ class CurrencyDetectionTest {
     }
 
     @Test
+    fun `a trailing ISO code beats the ambiguous dollar sign in front of the same figure`() {
+        // A US-locale device, no override: the bare `$` alone would fall back
+        // to USD, but the bank wrote the code next to the figure.
+        val usDevice = TransactionParser { CurrencyContext(deviceCurrency = "USD") }
+        val tx = usDevice.parse("BANCO", "Transferencia de $1.000.500 CLP received en cuenta terminada en 4321")
+        assertThat(tx!!.amount).isEqualTo(1_000_500.0)
+        assertThat(tx.currency).isEqualTo("CLP")
+    }
+
+    @Test
     fun `an INR amount parses exactly as before`() {
         val tx = indiaParser.parse("HDFCBK", "Rs.1,000.50 debited from A/c XX9805 to VPA merchant@okicici on 20-07-26.")
         assertThat(tx!!.amount).isEqualTo(1000.5)

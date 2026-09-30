@@ -686,8 +686,12 @@ class TransactionParser(
                 val symbols =
                     "(?:US|CLP|CL|NZ|HK|MX|AR|COL|[ARCS])?\\$|\\u20ac|\\u00a3|\\u00a5|\\u20a9|\\u20ba|\\u20bd|\\u20a6|\\u20b1|\\u0e3f"
                 val figure = "\\d(?:[\\d.,]*\\d)?"
+                // A symbol-prefixed figure keeps a trailing ISO code inside its
+                // marked span ("$1.000.500 CLP"), so the unambiguous code -
+                // not the family `$` - names the currency it is read under.
                 Regex(
                     "(?:(?<![A-Za-z])(?:$symbols)|(?<![A-Za-z])(?:$codes)(?![A-Za-z]))\\s*($figure)(?![\\d.,]*\\d)" +
+                        "(?:\\s*(?<![A-Za-z])(?:$codes)(?![A-Za-z]))?" +
                         "|(?<![\\d.,])($figure)\\s*(?<![A-Za-z])(?:$codes)(?![A-Za-z])",
                 )
             }
