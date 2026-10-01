@@ -8,7 +8,8 @@ import java.io.File
  * Source-level contracts for the pill-order dialog, in the repo's convention
  * (no Compose UI harness). Three things must never quietly regress:
  *
- * 1. ONE dialog: Inbox, Finance and Alerts all open the shared
+ * 1. ONE dialog: Inbox, Finance and Alerts - and the conversation
+ *    selection-bar actions (issue #61) - all open the shared
  *    [PillOrderDialog]; nobody forks a copy.
  * 2. The gesture is a thin shell over the pure, unit-tested reorder logic
  *    ([PillDragState] / [movedPill]); the order is persisted from the
@@ -25,15 +26,18 @@ class PillOrderDialogContractTest {
     private val settings = source("ui/settings/SettingsScreen.kt")
 
     @Test
-    fun `all three tabs open the one shared dialog, with no fork`() {
+    fun `all three tabs and the message action order open the one shared dialog, with no fork`() {
         assertThat(dialog).contains("fun <T> PillOrderDialog(")
-        assertThat(settings.split("PillOrderDialog(").size - 1).isEqualTo(3)
+        // Three pill rows + the conversation selection-bar actions (issue #61).
+        assertThat(settings.split("PillOrderDialog(").size - 1).isEqualTo(4)
         for (screen in listOf("INBOX", "FINANCE", "ALERTS")) {
             assertThat(settings).contains("SettingsDialog.${screen}_PILL_ORDER -> {")
         }
+        assertThat(settings).contains("SettingsDialog.SELECTION_ACTION_ORDER -> {")
         assertThat(settings).contains("onOrderChange = viewModel::setInboxPillOrder,")
         assertThat(settings).contains("onOrderChange = viewModel::setFinancePillOrder,")
         assertThat(settings).contains("onOrderChange = viewModel::setAlertsPillOrder,")
+        assertThat(settings).contains("onOrderChange = viewModel::setSelectionActionOrder,")
         // The only composable that declares a reorder handle or its gesture.
         val ui = File("src/main/kotlin/app/clearsms/ui").walk().filter { it.extension == "kt" }.toList()
         val handles = ui.filter { "Icons.Default.DragIndicator" in it.readText() }.map { it.name }

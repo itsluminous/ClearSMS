@@ -170,6 +170,12 @@ data class ConversationUiState(
      * arrive) - drives the overflow's Mute/Unmute toggle label.
      */
     val muted: Boolean = false,
+    /**
+     * The user's order of the selection-bar actions (Settings > Messages >
+     * Message action order); [ConversationSelectionBarLayout] splits it
+     * into inline and overflow for the current selection.
+     */
+    val selectionActionOrder: List<MessageSelectionAction> = ConversationSelectionBarLayout.defaultOrder,
     val loaded: Boolean = false,
 )
 
@@ -482,7 +488,8 @@ class ConversationViewModel
                 settings.showRichAvatars,
                 settings.showTransactionDetails,
                 settings.mutedSenders,
-            ) { first, richAvatars, showDetails, mutedSenders ->
+                settings.messageSelectionActionOrder,
+            ) { first, richAvatars, showDetails, mutedSenders, actionOrder ->
                 val display = first?.sender?.let { resolveDisplay(it) }
                 ConversationUiState(
                     title = display?.name.orEmpty(),
@@ -495,6 +502,7 @@ class ConversationViewModel
                     repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
                     showTransactionDetails = showDetails,
                     muted = first?.sender?.let { MutedSenderGate.matches(mutedSenders, it) } ?: false,
+                    selectionActionOrder = actionOrder,
                     loaded = first != null,
                 )
             }.flowOn(ioDispatcher)

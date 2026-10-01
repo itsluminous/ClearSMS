@@ -16,6 +16,7 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
+import app.clearsms.ui.conversation.MessageSelectionAction
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** In-memory [SettingsRepository] for view-model tests. */
@@ -182,6 +183,12 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setAlertsHiddenPills(value: Set<AlertFilter>) {
         alertsHiddenPills.value = value
+    }
+
+    override val messageSelectionActionOrder = MutableStateFlow(MessageSelectionAction.entries.toList())
+
+    override suspend fun setMessageSelectionActionOrder(value: List<MessageSelectionAction>) {
+        messageSelectionActionOrder.value = value
     }
 
     override val blockedKeywords = MutableStateFlow(emptySet<String>())

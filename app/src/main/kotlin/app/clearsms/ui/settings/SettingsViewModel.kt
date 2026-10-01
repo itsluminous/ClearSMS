@@ -37,6 +37,8 @@ import app.clearsms.ui.common.UiPrefs
 import app.clearsms.ui.composemsg.ContactSuggestion
 import app.clearsms.ui.composemsg.ContactSuggestions
 import app.clearsms.ui.composemsg.contactSuggestionFeed
+import app.clearsms.ui.conversation.ConversationSelectionBarLayout
+import app.clearsms.ui.conversation.MessageSelectionAction
 import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.ui.inbox.InboxPillConfig
 import app.clearsms.ui.navigation.PillConfig
@@ -470,6 +472,10 @@ class SettingsViewModel
 
         fun resetAlertsPillOrder() = setAlertsPillOrder(AlertFilter.entries.toList())
 
+        fun setSelectionActionOrder(value: List<MessageSelectionAction>) = launchIo { settings.setMessageSelectionActionOrder(value) }
+
+        fun resetSelectionActionOrder() = setSelectionActionOrder(ConversationSelectionBarLayout.defaultOrder)
+
         fun setSwipeActionStart(value: SwipeAction) = launchIo { settings.setSwipeActionStart(value) }
 
         fun setSwipeActionEnd(value: SwipeAction) = launchIo { settings.setSwipeActionEnd(value) }
@@ -550,6 +556,20 @@ class SettingsViewModel
             combine(settings.alertsPillOrder, settings.alertsHiddenPills) { order, hidden ->
                 PillConfig(AlertFilter.entries.toList(), order, hidden)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PillConfig(AlertFilter.entries.toList()))
+
+        /**
+         * The conversation selection-bar actions in the user's order (issue
+         * #61), resolved by the same [PillConfig] as the pills - order only,
+         * the hidden set is always empty, every action stays reachable.
+         */
+        val selectionActions: StateFlow<PillConfig<MessageSelectionAction>> =
+            settings.messageSelectionActionOrder
+                .map { order -> PillConfig(MessageSelectionAction.entries.toList(), order) }
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(5_000),
+                    PillConfig(MessageSelectionAction.entries.toList()),
+                )
 
         fun setOtpAutoCopy(value: Boolean) = launchIo { settings.setOtpAutoCopy(value) }
 

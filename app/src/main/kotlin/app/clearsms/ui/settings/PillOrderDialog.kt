@@ -45,7 +45,9 @@ import app.clearsms.R
 
 /**
  * Reorders a screen's filter pills - THE order dialog the Inbox, Finance and
- * Alerts settings all open, so the three cannot drift apart.
+ * Alerts settings all open, so the three cannot drift apart - and, since
+ * issue #61, the conversation selection-bar actions too: one ordering
+ * mechanism for everything the user can rearrange.
  *
  * Each row carries a dotted drag handle on the left; dragging it moves the
  * row, which lifts and follows the finger while its neighbours step aside.
@@ -71,6 +73,8 @@ fun <T> PillOrderDialog(
     onOrderChange: (List<T>) -> Unit,
     onReset: () -> Unit,
     onDismiss: () -> Unit,
+    /** The one-line explanation above the rows; the pill wording by default. */
+    hint: String = stringResource(R.string.pill_order_drag_hint),
 ) {
     // ONE state holder for the dialog's whole life - never re-keyed on
     // [order]. The drag-gesture coroutines below capture whatever
@@ -97,7 +101,7 @@ fun <T> PillOrderDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = stringResource(R.string.pill_order_drag_hint),
+                    text = hint,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp),

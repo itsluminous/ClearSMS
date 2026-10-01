@@ -3,6 +3,7 @@ package app.clearsms.ui.settings
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -99,6 +100,8 @@ import app.clearsms.ui.components.defaultLabel
 import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.otpPreviewFontSp
 import app.clearsms.ui.composemsg.ContactSuggestion
+import app.clearsms.ui.conversation.ConversationSelectionBarLayout
+import app.clearsms.ui.conversation.MessageSelectionAction
 import app.clearsms.ui.finance.displayName
 import app.clearsms.ui.navigation.PillConfig
 import kotlinx.coroutines.delay
@@ -124,6 +127,7 @@ private enum class SettingsDialog {
     OTP_DELETE,
     DELAYED_SEND_DELAY,
     MESSAGE_SORT_ORDER,
+    SELECTION_ACTION_ORDER,
     OTP_SIZE,
     CLEAR_OTP,
     SIGNATURE,
@@ -696,6 +700,24 @@ private fun SettingsRowsHost(
                 onDismiss = { dialog = null },
             )
         }
+        SettingsDialog.SELECTION_ACTION_ORDER -> {
+            // The conversation selection bar's actions (issue #61), ordered
+            // by the SAME dialog as the pills: order only, nothing hidden,
+            // the first INLINE_SLOTS sit inline and the rest overflow.
+            val actions by viewModel.selectionActions.collectAsStateWithLifecycle()
+            PillOrderDialog(
+                title = stringResource(R.string.settings_selection_action_order),
+                order = actions.ordered,
+                label = { stringResource(it.labelRes()) },
+                onOrderChange = viewModel::setSelectionActionOrder,
+                onReset = {
+                    viewModel.resetSelectionActionOrder()
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+                hint = stringResource(R.string.selection_action_order_drag_hint),
+            )
+        }
         SettingsDialog.LOGO_BACKGROUND ->
             RadioDialog(
                 title = stringResource(R.string.settings_logo_background),
@@ -1137,6 +1159,12 @@ private fun settingsRowEntries(
                     row(section, title, messageSortOrderLabel(state.messageSortOrder)) {
                         openDialog(SettingsDialog.MESSAGE_SORT_ORDER)
                     }
+                SettingsItem.SELECTION_ACTION_ORDER -> {
+                    val actions by viewModel.selectionActions.collectAsStateWithLifecycle()
+                    row(section, title, selectionActionOrderSummary(actions.ordered)) {
+                        openDialog(SettingsDialog.SELECTION_ACTION_ORDER)
+                    }
+                }
                 SettingsItem.THEME ->
                     row(section, title, themeLabel(state.theme)) { openDialog(SettingsDialog.THEME) }
                 SettingsItem.DYNAMIC_COLOR ->
@@ -2216,6 +2244,31 @@ private fun messageSortOrderLabel(order: MessageSortOrder): String =
         MessageSortOrder.RECEIVED -> stringResource(R.string.settings_message_sort_received)
         MessageSortOrder.SENT -> stringResource(R.string.settings_message_sort_sent)
     }
+
+/**
+ * The user-facing name of a selection-bar action - the SAME strings the bar
+ * itself uses (its tooltips and menu entries), so the Settings list and
+ * the bar can never disagree about what an action is called.
+ */
+@StringRes
+fun MessageSelectionAction.labelRes(): Int =
+    when (this) {
+        MessageSelectionAction.COPY -> R.string.action_copy_message
+        MessageSelectionAction.DELETE -> R.string.ui_action_delete
+        MessageSelectionAction.MORE_DETAILS -> R.string.action_message_details
+        MessageSelectionAction.FORWARD -> R.string.action_forward_message
+        MessageSelectionAction.SHARE -> R.string.action_share_message
+        MessageSelectionAction.SELECT_ALL -> R.string.action_select_all
+        MessageSelectionAction.COPY_OTP -> R.string.action_copy_otp
+        MessageSelectionAction.ADD_RULE -> R.string.action_add_rule
+    }
+
+/** Row summary: the actions that sit in the bar, in order ("Copy message, Delete, More details"). */
+@Composable
+private fun selectionActionOrderSummary(ordered: List<MessageSelectionAction>): String {
+    val inline = ordered.take(ConversationSelectionBarLayout.INLINE_SLOTS).map { stringResource(it.labelRes()) }
+    return inline.joinToString(", ")
+}
 
 @Composable
 private fun destinationLabel(destination: StartDestination): String =

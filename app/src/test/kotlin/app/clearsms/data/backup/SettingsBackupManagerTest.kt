@@ -28,6 +28,7 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
+import app.clearsms.ui.conversation.MessageSelectionAction
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -172,6 +173,7 @@ class SettingsBackupManagerTest {
         repo.setFinanceHiddenPills(setOf(FinanceTab.RECHARGES))
         repo.setAlertsPillOrder(AlertFilter.entries.reversed())
         repo.setAlertsHiddenPills(setOf(AlertFilter.DEPOSIT, AlertFilter.TRAVEL))
+        repo.setMessageSelectionActionOrder(MessageSelectionAction.entries.reversed())
         repo.setBlockedKeywords(setOf("loan offer", "casino"))
         repo.setBlockedSenders(setOf("JIOPAY", "5551234567"))
         repo.setMutedSenders(setOf("PROMOCO", "5559876543"))
@@ -210,6 +212,7 @@ class SettingsBackupManagerTest {
         assertThat(repo.financeHiddenPills.first()).isEqualTo(setOf(FinanceTab.RECHARGES))
         assertThat(repo.alertsPillOrder.first()).isEqualTo(AlertFilter.entries.reversed())
         assertThat(repo.alertsHiddenPills.first()).isEqualTo(setOf(AlertFilter.DEPOSIT, AlertFilter.TRAVEL))
+        assertThat(repo.messageSelectionActionOrder.first()).isEqualTo(MessageSelectionAction.entries.reversed())
         assertThat(repo.blockedKeywords.first()).isEqualTo(setOf("loan offer", "casino"))
         assertThat(repo.blockedSenders.first()).isEqualTo(setOf("JIOPAY", "5551234567"))
         assertThat(repo.mutedSenders.first()).isEqualTo(setOf("PROMOCO", "5559876543"))

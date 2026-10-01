@@ -15,6 +15,7 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
+import app.clearsms.ui.conversation.MessageSelectionAction
 import kotlinx.coroutines.flow.Flow
 
 /** User settings backed by Preferences DataStore. */
@@ -306,6 +307,20 @@ interface SettingsRepository {
     val alertsHiddenPills: Flow<Set<AlertFilter>>
 
     suspend fun setAlertsHiddenPills(value: Set<AlertFilter>)
+
+    /**
+     * User-chosen order of the conversation selection-bar actions (issue
+     * #61); the first few in the order sit inline, the rest overflow - see
+     * [app.clearsms.ui.conversation.ConversationSelectionBarLayout]. Same
+     * guarantees as [inboxPillOrder]: persisted as enum NAMES, unknown
+     * names dropped, missing actions appended in declaration order, so an
+     * action added later appears without a migration and a stale backup
+     * can never lose one. Order only - there is no hidden set, every action
+     * stays reachable. Default is the enum's declaration order.
+     */
+    val messageSelectionActionOrder: Flow<List<MessageSelectionAction>>
+
+    suspend fun setMessageSelectionActionOrder(value: List<MessageSelectionAction>)
 
     /**
      * App versionCode whose rules/parsers last fully sorted the database -
