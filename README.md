@@ -21,6 +21,10 @@ handles OTPs intelligently - all completely offline, on your device.
   <img alt="Get it on F-Droid" height="80"
        src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />
 </a>
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22app.clearsms%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fitsluminous%2FClearSMS%22%2C%22author%22%3A%22itsluminous%22%2C%22name%22%3A%22Clear%20SMS%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%7D%22%7D">
+  <img alt="Get it on Obtainium" height="80"
+       src="docs/badges/get-it-on-obtainium.png" />
+</a>
 
 ## Screenshots
 
