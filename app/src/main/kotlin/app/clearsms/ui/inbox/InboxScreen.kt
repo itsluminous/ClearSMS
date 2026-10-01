@@ -92,6 +92,7 @@ import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.mms.MmsSnippet
 import app.clearsms.sms.DefaultSmsAppHelper
+import app.clearsms.ui.common.DeleteConfirmationText
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
@@ -499,7 +500,11 @@ fun InboxScreen(
     if (confirmDelete) {
         DeleteConfirmationDialog(
             title = stringResource(R.string.selection_delete_threads_title),
-            text = stringResource(R.string.selection_delete_threads_message, selection.count),
+            text =
+                stringResource(
+                    DeleteConfirmationText.bodyRes(DeleteConfirmationText.Target.CONVERSATIONS, state.recycleBinEnabled),
+                    selection.count,
+                ),
             onConfirm = {
                 confirmDelete = false
                 viewModel.deleteSelected()

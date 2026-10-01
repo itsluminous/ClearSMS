@@ -173,6 +173,13 @@ data class InboxUiState(
      */
     val mutedSenders: Set<String> = emptySet(),
     /**
+     * Mirrors Settings -> Messages -> Recycle bin (default ON). Drives the
+     * delete dialog's wording through [app.clearsms.ui.common.DeleteConfirmationText]:
+     * with the bin on a delete is restorable, so the dialog must not call it
+     * permanent.
+     */
+    val recycleBinEnabled: Boolean = true,
+    /**
      * False only for the placeholder the StateFlow starts on, before the
      * first settings + counts emission; true on every real state. The
      * screen gates the pill row, the Unread switch and the list on it so a
@@ -375,6 +382,7 @@ class InboxViewModel
             val swipeDeadZone: SwipeDeadZone = SwipeDeadZone.DEFAULT,
             val showUnreadToggle: Boolean = true,
             val mutedSenders: Set<String> = emptySet(),
+            val recycleBinEnabled: Boolean = true,
         )
 
         private val chrome =
@@ -388,6 +396,7 @@ class InboxViewModel
                 .combine(settings.swipeDeadZone) { chrome, zone -> chrome.copy(swipeDeadZone = zone) }
                 .combine(settings.inboxUnreadToggle) { chrome, shown -> chrome.copy(showUnreadToggle = shown) }
                 .combine(settings.mutedSenders) { chrome, muted -> chrome.copy(mutedSenders = muted) }
+                .combine(settings.recycleBinEnabled) { chrome, bin -> chrome.copy(recycleBinEnabled = bin) }
 
         val uiState: StateFlow<InboxUiState> =
             combine(
@@ -411,6 +420,7 @@ class InboxViewModel
                     showUnreadToggle = chromeState.showUnreadToggle,
                     sortingBanner = sorting,
                     mutedSenders = chromeState.mutedSenders,
+                    recycleBinEnabled = chromeState.recycleBinEnabled,
                     // Every input above has emitted at least once, so these
                     // are the user's values, not the defaults (issue #63).
                     loaded = true,

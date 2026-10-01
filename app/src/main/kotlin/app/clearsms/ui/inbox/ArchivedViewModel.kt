@@ -35,6 +35,8 @@ import javax.inject.Inject
 data class ArchivedUiState(
     val items: List<InboxItem> = emptyList(),
     val richAvatars: Boolean = true,
+    /** Mirrors Settings -> Messages -> Recycle bin; picks the delete dialog's wording. */
+    val recycleBinEnabled: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -64,10 +66,12 @@ class ArchivedViewModel
             combine(
                 messageRepository.observeArchived(),
                 settings.showRichAvatars,
-            ) { messages, richAvatars ->
+                settings.recycleBinEnabled,
+            ) { messages, richAvatars, recycleBin ->
                 ArchivedUiState(
                     items = messages.map { it.toInboxItem() },
                     richAvatars = richAvatars,
+                    recycleBinEnabled = recycleBin,
                     loaded = true,
                 )
             }.flowOn(ioDispatcher)

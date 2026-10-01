@@ -176,6 +176,11 @@ data class ConversationUiState(
      * into inline and overflow for the current selection.
      */
     val selectionActionOrder: List<MessageSelectionAction> = ConversationSelectionBarLayout.defaultOrder,
+    /**
+     * Mirrors Settings -> Messages -> Recycle bin (default ON); picks the
+     * delete dialog's wording via [app.clearsms.ui.common.DeleteConfirmationText].
+     */
+    val recycleBinEnabled: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -505,7 +510,11 @@ class ConversationViewModel
                     selectionActionOrder = actionOrder,
                     loaded = first != null,
                 )
-            }.flowOn(ioDispatcher)
+            }
+                // combine() maxes out at five flows; the bin setting rides a
+                // second stage, like InboxViewModel's chrome chain.
+                .combine(settings.recycleBinEnabled) { state, bin -> state.copy(recycleBinEnabled = bin) }
+                .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
         /**

@@ -12,12 +12,19 @@
     <string name="action_unpin">Unpin</string>
     <string name="selection_selected">Selected</string>
 
-    <!-- Bulk delete confirmations (deletion also removes messages from the
-         system SMS store, so it cannot be undone) -->
+    <!-- Bulk delete confirmations. Which body shows is decided in ONE place,
+         ui/common/DeleteConfirmationText, from the recycle-bin setting:
+         with the bin on (the default) the rows rest in the bin for 30 days
+         and can be restored, so the "permanent" wording would be false;
+         with the bin off they are deleted outright, including from the
+         system SMS store. The "30 days" here must match
+         UndoManager.BIN_RETENTION_MS (DeleteConfirmationTextTest). -->
     <string name="selection_delete_threads_title">Delete conversations?</string>
     <string name="selection_delete_threads_message">%1$d conversation(s) will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
+    <string name="selection_delete_threads_to_bin_message">%1$d conversation(s) will move to the recycle bin. You can restore them for 30 days; until then they are also gone from the phone\'s SMS store.</string>
     <string name="selection_delete_messages_title">Delete messages?</string>
     <string name="selection_delete_messages_message">%1$d message(s) will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
+    <string name="selection_delete_messages_to_bin_message">%1$d message(s) will move to the recycle bin. You can restore them for 30 days; until then they are also gone from the phone\'s SMS store.</string>
 
     <!-- Reply availability -->
     <string name="conversation_not_repliable">This sender doesn\'t accept replies</string>
