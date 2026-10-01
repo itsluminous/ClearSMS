@@ -98,6 +98,7 @@ import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
 import app.clearsms.notification.OtpClipboard
+import app.clearsms.ui.common.DeleteConfirmationText
 import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -839,7 +840,14 @@ fun ConversationScreen(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text(stringResource(R.string.selection_delete_messages_title)) },
-            text = { Text(stringResource(R.string.selection_delete_messages_message, count)) },
+            text = {
+                Text(
+                    stringResource(
+                        DeleteConfirmationText.bodyRes(DeleteConfirmationText.Target.MESSAGES, state.recycleBinEnabled),
+                        count,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {

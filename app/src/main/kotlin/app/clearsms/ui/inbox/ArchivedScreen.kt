@@ -1,6 +1,7 @@
 package app.clearsms.ui.inbox
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.ui.common.DeleteConfirmationText
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
@@ -184,7 +186,7 @@ fun ArchivedScreen(
     if (confirmDelete) {
         DeleteConfirmationDialog(
             title = stringResource(R.string.selection_delete_threads_title),
-            text = stringResource(R.string.selection_delete_threads_message, selection.count),
+            text = stringResource(deleteBodyRes(state), selection.count),
             onConfirm = {
                 confirmDelete = false
                 viewModel.deleteSelected()
@@ -195,7 +197,7 @@ fun ArchivedScreen(
     confirmDeleteRow?.let { item ->
         DeleteConfirmationDialog(
             title = stringResource(R.string.selection_delete_threads_title),
-            text = stringResource(R.string.selection_delete_threads_message, 1),
+            text = stringResource(deleteBodyRes(state), 1),
             onConfirm = {
                 confirmDeleteRow = null
                 viewModel.delete(item.message.threadId)
@@ -204,6 +206,11 @@ fun ArchivedScreen(
         )
     }
 }
+
+/** Both archived delete dialogs (selection and per-row) share one wording decision. */
+@StringRes
+private fun deleteBodyRes(state: ArchivedUiState): Int =
+    DeleteConfirmationText.bodyRes(DeleteConfirmationText.Target.CONVERSATIONS, state.recycleBinEnabled)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

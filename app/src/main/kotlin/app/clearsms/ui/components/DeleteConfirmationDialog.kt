@@ -10,8 +10,9 @@ import app.clearsms.R
 /**
  * The one delete-confirmation dialog: used by both the bulk selection
  * delete and swipe-to-delete so the wording and style stay consistent.
- * Deleting also removes messages from the system SMS provider, so every
- * delete path confirms through this dialog.
+ * Every delete path confirms through this dialog; what the body promises
+ * (recycle bin vs. permanent) is decided by
+ * [app.clearsms.ui.common.DeleteConfirmationText], not by the caller.
  */
 @Composable
 fun DeleteConfirmationDialog(
