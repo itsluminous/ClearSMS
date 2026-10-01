@@ -26,16 +26,13 @@ interface MessageDao {
     /**
      * Latest message per thread for the inbox list, newest first.
      * Optional [category] filter and [unreadOnly] flag; archived threads are excluded.
+     * "Latest" is [LatestPerThreadSql]'s newest-message row - the same row
+     * the conversation shows at the bottom - never the newest row id.
      */
     @Query(
         """
         SELECT m.* FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(timestamp) AS maxTs, MAX(id) AS maxId
-            FROM messages
-            WHERE deletedAt IS NULL
-            GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
@@ -64,12 +61,7 @@ interface MessageDao {
     @Query(
         """
         SELECT m.*, d.text AS draftText, p.pinnedAt AS pinnedAt FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(timestamp) AS maxTs, MAX(id) AS maxId
-            FROM messages
-            WHERE deletedAt IS NULL
-            GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
         LEFT JOIN drafts d ON d.threadId = m.threadId
         LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
         WHERE m.isArchived = 0
@@ -84,22 +76,23 @@ interface MessageDao {
     ): PagingSource<Int, InboxThreadRow>
 
     /**
-     * [pagingInbox] under the SENT-time ordering: each thread is still
-     * represented by its latest-inserted message, but threads are ranked by
-     * that message's `COALESCE(dateSent, timestamp)` - a conversation whose
-     * newest message was sent earlier than another's sorts below it even
-     * if it arrived later. Same pin precedence, filters and `id` tie-break
-     * as the received variant, so paging is stable under both.
+     * [pagingInbox] under the SENT-time ordering: each thread is represented
+     * by the message [pagingThreadBySent] shows at the bottom - its newest
+     * by `COALESCE(dateSent, timestamp)`, `id` as tie-break
+     * ([LatestPerThreadSql.JOIN_BY_SENT]) - and threads are ranked by that
+     * message's sent time, so a conversation whose newest message was sent
+     * earlier than another's sorts below it even if it arrived later. The
+     * preview follows the setting deliberately: two messages that arrived
+     * together in the wrong send order have a DIFFERENT newest message under
+     * each setting, and the preview must be the one the user sees at the
+     * bottom of the thread under the setting they chose. Same pin
+     * precedence, filters and `id` tie-break as the received variant, so
+     * paging is stable under both.
      */
     @Query(
         """
         SELECT m.*, d.text AS draftText, p.pinnedAt AS pinnedAt FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId
-            FROM messages
-            WHERE deletedAt IS NULL
-            GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_SENT}
         LEFT JOIN drafts d ON d.threadId = m.threadId
         LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
         WHERE m.isArchived = 0
@@ -152,9 +145,7 @@ interface MessageDao {
     @Query(
         """
         SELECT m.threadId FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId FROM messages WHERE deletedAt IS NULL GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
         WHERE m.isArchived = 0
           AND (:category IS NULL OR m.category = :category)
           AND (:unreadOnly = 0 OR m.isRead = 0)
@@ -228,12 +219,19 @@ interface MessageDao {
     @Query("SELECT COUNT(*) FROM messages WHERE threadId IN (:threadIds) AND isRead = 0 AND deletedAt IS NULL")
     suspend fun unreadCountInThreads(threadIds: List<Long>): Int
 
+    /**
+     * Unread CONVERSATIONS per category - see [CategoryUnreadCount]. The
+     * representative is [LatestPerThreadSql]'s canonical (received-key)
+     * newest message, as for [inboxThreadIds], [observeArchived] and the
+     * other non-paged helpers: none of them renders a preview, and the
+     * received key is the indexed default. Only the two inbox PAGERS follow
+     * the sort setting, because they are what must agree with the bottom
+     * of the thread.
+     */
     @Query(
         """
         SELECT m.category AS category, COUNT(*) AS count FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId FROM messages WHERE deletedAt IS NULL GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
         WHERE m.isRead = 0 AND m.isArchived = 0
         GROUP BY m.category
         """,
@@ -307,12 +305,7 @@ interface MessageDao {
     @Query(
         """
         SELECT m.* FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId
-            FROM messages
-            WHERE deletedAt IS NULL
-            GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
         WHERE m.isArchived = 1
         ORDER BY m.timestamp DESC
         """,
@@ -323,9 +316,7 @@ interface MessageDao {
     @Query(
         """
         SELECT m.threadId FROM messages m
-        INNER JOIN (
-            SELECT threadId, MAX(id) AS maxId FROM messages WHERE deletedAt IS NULL GROUP BY threadId
-        ) latest ON m.threadId = latest.threadId AND m.id = latest.maxId
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
         WHERE m.isArchived = 1
         ORDER BY m.timestamp DESC
         """,
