@@ -141,6 +141,7 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringSetEntry("finance_hidden_pills"),
             SettingsBackupEntry.StringEntry("alerts_pill_order"),
             SettingsBackupEntry.StringSetEntry("alerts_hidden_pills"),
+            SettingsBackupEntry.StringEntry("message_selection_action_order"),
             SettingsBackupEntry.StringSetEntry("blocked_keywords"),
             SettingsBackupEntry.StringSetEntry("blocked_senders"),
             SettingsBackupEntry.StringSetEntry("muted_senders"),

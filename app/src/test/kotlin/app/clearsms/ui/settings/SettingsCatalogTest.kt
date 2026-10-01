@@ -150,6 +150,7 @@ class SettingsCatalogTest {
                 "Sending delay",
                 "Show extracted message details",
                 "Sort messages by",
+                "Message action order",
             ).inOrder()
         assertThat(bySection["Appearance"])
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
@@ -309,6 +310,8 @@ class SettingsCatalogTest {
                 "Unread switch",
                 // Messages (GitHub #45): sort by sent vs received time.
                 "Sort messages by",
+                // Messages (GitHub #61): order of the selection-bar actions.
+                "Message action order",
                 // Finance and Alerts: the same pill visibility the Inbox has.
                 "Visible pills",
                 "Visible pills",
@@ -364,6 +367,19 @@ class SettingsCatalogTest {
         assertThat(messagesRows.indexOf(SettingsItem.MUTED_SENDERS))
             .isEqualTo(messagesRows.indexOf(SettingsItem.BLOCK_LIST) + 1)
         assertThat(search("muted")).containsExactly(SettingsItem.MUTED_SENDERS)
+    }
+
+    @Test
+    fun `message action order row trails Messages after Sort messages by and is searchable`() {
+        // Issue #61: ordering the conversation selection-bar actions is a
+        // conversation-view preference, so it sits with "Show extracted
+        // message details" and "Sort messages by", not in Inbox.
+        val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
+        assertThat(messagesRows.indexOf(SettingsItem.SELECTION_ACTION_ORDER))
+            .isEqualTo(messagesRows.indexOf(SettingsItem.MESSAGE_SORT_ORDER) + 1)
+        assertThat(messagesRows.last()).isEqualTo(SettingsItem.SELECTION_ACTION_ORDER)
+        assertThat(search("message action order")).containsExactly(SettingsItem.SELECTION_ACTION_ORDER)
+        assertThat(search("action order")).contains(SettingsItem.SELECTION_ACTION_ORDER)
     }
 
     @Test

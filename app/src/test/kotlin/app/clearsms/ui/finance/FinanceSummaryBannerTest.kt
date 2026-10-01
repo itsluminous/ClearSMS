@@ -23,6 +23,7 @@ import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.domain.model.TransactionType
 import app.clearsms.ui.alerts.AlertFilter
+import app.clearsms.ui.conversation.MessageSelectionAction
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -390,6 +391,12 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setAlertsHiddenPills(value: Set<AlertFilter>) {
         alertsHiddenPills.value = value
+    }
+
+    override val messageSelectionActionOrder = MutableStateFlow(MessageSelectionAction.entries.toList())
+
+    override suspend fun setMessageSelectionActionOrder(value: List<MessageSelectionAction>) {
+        messageSelectionActionOrder.value = value
     }
 
     override val handledOtpMessageId = MutableStateFlow(0L)

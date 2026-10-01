@@ -24,6 +24,7 @@ import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
 import app.clearsms.ui.alerts.AlertFilter
+import app.clearsms.ui.conversation.MessageSelectionAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -339,6 +340,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_ALERTS_HIDDEN_PILLS] = value.toStoredNames() }
     }
 
+    override val messageSelectionActionOrder: Flow<List<MessageSelectionAction>> =
+        dataStore.data.map { it[KEY_MESSAGE_SELECTION_ACTION_ORDER].toEnumOrder() }
+
+    override suspend fun setMessageSelectionActionOrder(value: List<MessageSelectionAction>) {
+        dataStore.edit { it[KEY_MESSAGE_SELECTION_ACTION_ORDER] = value.toStoredOrder() }
+    }
+
     override val lastSortedVersionCode: Flow<Int> =
         dataStore.data.map { it[KEY_LAST_SORTED_VERSION_CODE] ?: 0 }
 
@@ -423,6 +431,7 @@ class SettingsRepositoryImpl(
         val KEY_FINANCE_HIDDEN_PILLS = stringSetPreferencesKey("finance_hidden_pills")
         val KEY_ALERTS_PILL_ORDER = stringPreferencesKey("alerts_pill_order")
         val KEY_ALERTS_HIDDEN_PILLS = stringSetPreferencesKey("alerts_hidden_pills")
+        val KEY_MESSAGE_SELECTION_ACTION_ORDER = stringPreferencesKey("message_selection_action_order")
         val KEY_BLOCKED_KEYWORDS = stringSetPreferencesKey("blocked_keywords")
         val KEY_BLOCKED_SENDERS = stringSetPreferencesKey("blocked_senders")
         val KEY_MUTED_SENDERS = stringSetPreferencesKey("muted_senders")

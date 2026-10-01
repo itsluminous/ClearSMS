@@ -111,6 +111,14 @@ enum class SettingsItem(
     // Sort by sent vs received time (GitHub #45): a radio row like the
     // other ordering choices; defaults to received so nothing reshuffles.
     MESSAGE_SORT_ORDER(SettingsSection.MESSAGES, R.string.settings_message_sort_order),
+
+    // Order of the conversation selection-bar actions (GitHub #61): which
+    // of Copy / Delete / More details / Forward / ... sit inline. In
+    // Messages with the other conversation-view rows (extracted details,
+    // sort order), right after them: it is about reading messages, not
+    // about the Inbox list. Order only - no hiding, every action stays
+    // reachable (ConversationSelectionBarLayout).
+    SELECTION_ACTION_ORDER(SettingsSection.MESSAGES, R.string.settings_selection_action_order),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),
     SHOW_RICH_AVATARS(SettingsSection.APPEARANCE, R.string.settings_show_rich_avatars),
