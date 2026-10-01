@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.mms.DataSimHint
+import app.clearsms.sms.SimInfo
 
 /**
  * The "More details" dialog for ONE selected message. Rows come from the
@@ -40,19 +41,26 @@ import app.clearsms.mms.DataSimHint
  *   was never recorded, "Unknown" when no report came back, and for MMS (no
  *   delivery reports supported) it never claims delivery.
  * - Each row's label and value are merged into ONE accessibility node, so a
- *   screen reader hears "Delivered, Yes" - never a bare "Yes".
+ *   screen reader hears "Delivered, Yes" - never a bare "Yes" (and
+ *   "SIM, SIM 1 - Airtel" for the SIM row).
+ * - [activeSims] is the ViewModel's current subscription list, carried in
+ *   the UI state - the dialog reads no system service itself; the SIM row
+ *   names slot and carrier through the same formatter as the compose bar.
  */
 @Composable
 internal fun MessageDetailsDialog(
     message: MessageEntity,
     resolvedName: String?,
-    simLabel: String?,
+    activeSims: List<SimInfo>,
     onDismiss: () -> Unit,
     dataSimHint: DataSimHint? = null,
 ) {
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
-    val rows = remember(message, dataSimHint) { MessageDetails.rowsFor(message, resolvedName, simLabel, dataSimHint) }
+    val rows =
+        remember(message, resolvedName, activeSims, dataSimHint) {
+            MessageDetails.rowsFor(message, resolvedName, activeSims, dataSimHint)
+        }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.message_details_title)) },

@@ -4,15 +4,17 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
+import app.clearsms.sms.SimInfo
+import app.clearsms.sms.SimLabel
 
 /**
  * Pure mapping from a message row (plus its already-resolved display name
- * and SIM tag) to the rows the "More details" dialog shows. Everything comes
+ * and the device's current SIM list) to the rows the "More details" dialog shows. Everything comes
  * from the persisted state the app already maintains - no parallel source of
  * truth: [DeliveryStatus] for the send lifecycle, [MessageEntity.sendFailureReason]
- * for failures, [MessageEntity.subscriptionId] (via the precomputed SIM tag)
- * for provenance, and the screen's contact → sender-directory → raw-address
- * resolution for the name.
+ * for failures, [MessageEntity.subscriptionId] (resolved against the active
+ * subscriptions, slot and carrier) for provenance, and the screen's contact →
+ * sender-directory → raw-address resolution for the name.
  *
  * Honesty rules, matching the bubble status line ([deliveryStatusLabelRes]):
  * no time is EVER invented, and nothing is said about a time nobody knows.
@@ -106,10 +108,25 @@ object MessageDetails {
             val dataSimHint: DataSimHint? = null,
         ) : Row
 
-        /** "SIM 1"/"SIM 2" provenance, when known. */
+        /**
+         * Which SIM carried the message - slot FIRST, carrier second
+         * ("SIM 1 - Airtel"), through the shared [SimLabel] formatter the
+         * compose bar's hint uses, so the two surfaces cannot drift. Present
+         * ONLY when the message's [MessageEntity.subscriptionId] is a SIM
+         * that is on the device NOW: that is the only source of a slot and
+         * a name this phone can vouch for. A SIM removed or swapped since
+         * the message arrived has no row (see [rowsFor]) rather than a
+         * stale or - after a swap - WRONG carrier.
+         */
         data class Sim(
-            val label: String,
-        ) : Row
+            /** 1-based physical slot. */
+            val slot: Int,
+            /** Carrier / user nickname; blank degrades to the bare slot. */
+            val operatorName: String,
+        ) : Row {
+            /** The row's text, from the ONE shared formatter. */
+            val label: String get() = SimLabel.slotFirst(slot, operatorName)
+        }
 
         /** The row is soft-deleted - shown so a binned message never lies. */
         data object InRecycleBin : Row
@@ -124,13 +141,30 @@ object MessageDetails {
         if (message.mmsStatus != null || message.attachmentKinds != null) Transport.MMS else Transport.SMS
 
     /**
-     * The dialog's rows for [message], top to bottom. [dataSimHint] is the
-     * already-judged data-SIM addendum for a failed MMS (null = none).
+     * The dialog's rows for [message], top to bottom. [activeSims] is the
+     * device's CURRENT subscription list (ViewModel -> UiState, like the
+     * compose bar's indicator); [dataSimHint] is the already-judged
+     * data-SIM addendum for a failed MMS (null = none).
+     *
+     * The SIM row and its honest unknowns:
+     * - subscription active, name known -> "SIM 1 - Airtel" (two SIMs on
+     *   the same carrier stay distinguishable by the slot);
+     * - subscription active, name blank -> "SIM 1";
+     * - single-SIM device -> still "SIM 1 - Airtel": the fact is known and
+     *   the dialog is the verbose place for it (the bubble TAG is what is
+     *   hidden on single-SIM phones, to keep every bubble from repeating it);
+     * - [MessageEntity.subscriptionId] null (older imported rows, before
+     *   the SIM-import fix) -> no row: nothing was recorded, nothing is said;
+     * - subscription NOT on the device (SIM removed or swapped since) ->
+     *   no row. The row stores only the subscription id; the slot and name
+     *   lived on the SIM that is gone, and naming the slot's CURRENT
+     *   occupant would attribute the message to a different carrier.
+     *   Omitting beats guessing - the same rule the bubble tag follows.
      */
     fun rowsFor(
         message: MessageEntity,
         resolvedName: String?,
-        simLabel: String?,
+        activeSims: List<SimInfo>,
         dataSimHint: DataSimHint? = null,
     ): List<Row> =
         buildList {
@@ -192,7 +226,23 @@ object MessageDetails {
                     DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED, null -> Unit
                 }
             }
-            simLabel?.let { add(Row.Sim(it)) }
+            simRowFor(activeSims, message.subscriptionId)?.let { add(it) }
             if (message.deletedAt != null) add(Row.InRecycleBin)
         }
+
+    /**
+     * The SIM row for a stored subscription id, or null when this phone
+     * cannot vouch for it: null id (never recorded) or a subscription no
+     * longer among [activeSims] (removed / swapped). Matched by subscription
+     * id - the platform mints a new one for every inserted SIM, so a match
+     * is THAT SIM, never the slot's new occupant.
+     */
+    fun simRowFor(
+        activeSims: List<SimInfo>,
+        subscriptionId: Int?,
+    ): Row.Sim? {
+        if (subscriptionId == null) return null
+        val sim = activeSims.firstOrNull { it.subscriptionId == subscriptionId } ?: return null
+        return Row.Sim(slot = sim.slotIndex + 1, operatorName = sim.displayName)
+    }
 }

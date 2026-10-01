@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.clearsms.R
 import app.clearsms.mms.StagedAttachment
+import app.clearsms.sms.SimLabel
 import app.clearsms.ui.common.AttachmentError
 import kotlinx.coroutines.flow.drop
 
@@ -110,15 +111,17 @@ data class SimUiState(
      * Airtel"). Built here, not as a resource, so the mapping stays
      * unit-testable and consistent with the tap toast.
      */
-    val contentDescription: String get() = "SIM $slot of $simCount$nameSuffix"
+    val contentDescription: String get() = "SIM $slot of $simCount${SimLabel.nameSuffix(operatorName)}"
 
     /**
      * Tap-toast label, slot FIRST ("SIM 1 - Airtel"): with the same carrier
      * on both SIMs the operator name alone is ambiguous, the slot never is.
      * The name (the platform's SubscriptionInfo display name, which is the
      * user's nickname when one is set) stays for users who rely on it.
+     * Formatted by the shared [SimLabel], the same formatter the "More
+     * details" dialog's SIM row uses, so the two can never drift.
      */
-    val tapLabel: String get() = "SIM $slot$nameSuffix"
+    val tapLabel: String get() = SimLabel.slotFirst(slot, operatorName)
 
     /**
      * Long-press identity hint, "Sends with SIM 1 - Airtel" (GitHub #7,
@@ -128,9 +131,7 @@ data class SimUiState(
      * the same reason as [tapLabel]: with the same carrier on both SIMs the
      * name alone is ambiguous, the slot never is.
      */
-    val hintLabel: String get() = "Sends with SIM $slot$nameSuffix"
-
-    private val nameSuffix: String get() = if (operatorName.isBlank()) "" else " - $operatorName"
+    val hintLabel: String get() = "Sends with ${SimLabel.slotFirst(slot, operatorName)}"
 }
 
 /**

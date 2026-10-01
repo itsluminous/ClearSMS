@@ -6,6 +6,7 @@ import app.clearsms.data.db.MmsStatus
 import app.clearsms.domain.model.Category
 import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
+import app.clearsms.sms.SimInfo
 import app.clearsms.ui.conversation.MessageDetails.DeliveryKnowledge
 import app.clearsms.ui.conversation.MessageDetails.Row
 import app.clearsms.ui.conversation.MessageDetails.TimeKind
@@ -31,6 +32,7 @@ class MessageDetailsTest {
         sendFailureReason: String? = null,
         deletedAt: Long? = null,
         dateSent: Long? = null,
+        subscriptionId: Int? = null,
     ) = MessageEntity(
         id = 7,
         threadId = 1,
@@ -46,13 +48,26 @@ class MessageDetailsTest {
         sendFailureReason = sendFailureReason,
         deletedAt = deletedAt,
         dateSent = dateSent,
+        subscriptionId = subscriptionId,
     )
+
+    // Synthetic dual-SIM device: two subscriptions, two carriers.
+    private val dualSims =
+        listOf(
+            SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Carrier A"),
+            SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Carrier B"),
+        )
 
     private fun rows(
         message: MessageEntity,
         name: String? = null,
-        sim: String? = null,
-    ) = MessageDetails.rowsFor(message, resolvedName = name, simLabel = sim)
+        sims: List<SimInfo> = emptyList(),
+    ) = MessageDetails.rowsFor(message, resolvedName = name, activeSims = sims)
+
+    private fun simRow(
+        message: MessageEntity,
+        sims: List<SimInfo>,
+    ): Row.Sim? = rows(message, sims = sims).filterIsInstance<Row.Sim>().singleOrNull()
 
     @Test
     fun `incoming SMS - type, From with resolved name, received time, no delivery or error rows`() {
@@ -221,11 +236,17 @@ class MessageDetailsTest {
             )
         val hint = DataSimHint(sendingSlot = 2, dataSlot = 1)
 
-        val rows = MessageDetails.rowsFor(failed, resolvedName = null, simLabel = "SIM 2", dataSimHint = hint)
+        val rows = MessageDetails.rowsFor(failed, resolvedName = null, activeSims = dualSims, dataSimHint = hint)
 
         assertThat(rows).contains(Row.Error(SendFailureReason.NO_MMS_NETWORK, hint))
         // The hint rides on the error row only: a non-failed row never gets one.
-        val sent = MessageDetails.rowsFor(entity(outgoing = true, status = DeliveryStatus.SENT), null, null, dataSimHint = hint)
+        val sent =
+            MessageDetails.rowsFor(
+                entity(outgoing = true, status = DeliveryStatus.SENT),
+                null,
+                dualSims,
+                dataSimHint = hint,
+            )
         assertThat(sent.filterIsInstance<Row.Error>()).isEmpty()
     }
 
@@ -262,10 +283,102 @@ class MessageDetailsTest {
         assertThat(scheduled).contains(Row.Timestamp(TimeKind.SCHEDULED, 1_700_000_000_000))
     }
 
+    // --- SIM row: slot first, carrier second, and the honest unknowns -------
+
     @Test
-    fun `sim tag surfaces as a row only when known`() {
-        assertThat(rows(entity(outgoing = true), sim = "SIM 2")).contains(Row.Sim("SIM 2"))
-        assertThat(rows(entity(outgoing = true)).filterIsInstance<Row.Sim>()).isEmpty()
+    fun `sim row names slot AND carrier when the subscription is on the device`() {
+        val row = simRow(entity(outgoing = true, subscriptionId = 20), dualSims)
+
+        assertThat(row).isEqualTo(Row.Sim(slot = 2, operatorName = "Carrier B"))
+        assertThat(row!!.label).isEqualTo("SIM 2 - Carrier B")
+    }
+
+    @Test
+    fun `sim row degrades to the bare slot when the name is blank`() {
+        val nameless =
+            listOf(
+                SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Carrier A"),
+                SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "  "),
+            )
+
+        val row = simRow(entity(outgoing = false, subscriptionId = 20), nameless)
+
+        assertThat(row!!.label).isEqualTo("SIM 2")
+        // Never a dangling separator.
+        assertThat(row.label).doesNotContain("-")
+    }
+
+    @Test
+    fun `two SIMs on the SAME carrier stay distinguishable - the slot leads`() {
+        // GitHub #7's setup: the name alone would be identical on both rows.
+        val sameCarrier =
+            listOf(
+                SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Carrier A"),
+                SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Carrier A"),
+            )
+
+        val first = simRow(entity(outgoing = false, subscriptionId = 10), sameCarrier)!!
+        val second = simRow(entity(outgoing = false, subscriptionId = 20), sameCarrier)!!
+
+        assertThat(first.label).isEqualTo("SIM 1 - Carrier A")
+        assertThat(second.label).isEqualTo("SIM 2 - Carrier A")
+        assertThat(first.label).isNotEqualTo(second.label)
+        assertThat(first.label).startsWith("SIM 1")
+        assertThat(second.label).startsWith("SIM 2")
+    }
+
+    @Test
+    fun `a subscription no longer on the device gets NO row - never a stale or swapped carrier`() {
+        // The message came in on subscription 30, since removed; slot 2 now
+        // holds a different SIM (20, Carrier B). Naming slot 2's current
+        // occupant would attribute the message to the wrong carrier, and
+        // the removed SIM's own name is unknowable - so nothing is said.
+        val row = simRow(entity(outgoing = false, subscriptionId = 30), dualSims)
+
+        assertThat(row).isNull()
+        val labels = rows(entity(outgoing = false, subscriptionId = 30), sims = dualSims).filterIsInstance<Row.Sim>()
+        assertThat(labels).isEmpty()
+    }
+
+    @Test
+    fun `a null subscription id (older imported rows) gets no row`() {
+        assertThat(simRow(entity(outgoing = true, subscriptionId = null), dualSims)).isNull()
+        // Even with an active SIM list, null never "defaults" to any slot.
+        assertThat(rows(entity(outgoing = true), sims = dualSims).filterIsInstance<Row.Sim>()).isEmpty()
+    }
+
+    @Test
+    fun `single-SIM device still names its one SIM with slot and carrier`() {
+        // The fact is known and the dialog is the verbose place for it; the
+        // bubble tag (hidden on single-SIM phones) is a separate decision.
+        val single = listOf(SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Carrier A"))
+
+        val row = simRow(entity(outgoing = true, subscriptionId = 10), single)
+
+        assertThat(row!!.label).isEqualTo("SIM 1 - Carrier A")
+        // ...but a message from some OTHER, departed subscription says nothing.
+        assertThat(simRow(entity(outgoing = true, subscriptionId = 20), single)).isNull()
+    }
+
+    @Test
+    fun `no SIMs known at all - no row, whatever the message recorded`() {
+        // Permission-less or telephony-less: the list is empty, and no
+        // subscription id can be vouched for.
+        assertThat(simRow(entity(outgoing = true, subscriptionId = 10), emptyList())).isNull()
+    }
+
+    @Test
+    fun `sim row sits after the delivery rows and before the recycle-bin row`() {
+        val rows =
+            rows(
+                entity(outgoing = true, status = DeliveryStatus.SENT, subscriptionId = 10, deletedAt = 1_700_000_100_000),
+                sims = dualSims,
+            )
+
+        val simIndex = rows.indexOfFirst { it is Row.Sim }
+        assertThat(simIndex).isGreaterThan(rows.indexOfFirst { it is Row.Delivered })
+        assertThat(rows.last()).isEqualTo(Row.InRecycleBin)
+        assertThat(simIndex).isEqualTo(rows.lastIndex - 1)
     }
 
     @Test
