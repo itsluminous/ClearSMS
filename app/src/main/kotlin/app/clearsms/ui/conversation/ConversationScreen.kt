@@ -158,7 +158,6 @@ fun ConversationScreen(
     // snapshot of the entity (not just an id): the row keeps rendering even
     // if the message is binned underneath the open dialog.
     var detailsMessage by remember { mutableStateOf<MessageEntity?>(null) }
-    var detailsSimLabel by remember { mutableStateOf<String?>(null) }
     var detailsDataSimHint by remember { mutableStateOf<DataSimHint?>(null) }
 
     // The thread's MMS attachments keyed by message id, and the image
@@ -390,7 +389,6 @@ fun ConversationScreen(
                     onCopyOtp = copyOtp,
                     onShowDetails = {
                         detailsMessage = singleSelected?.message
-                        detailsSimLabel = singleSelected?.simLabel
                         detailsDataSimHint = singleSelected?.dataSimHint
                     },
                     onCreateRule = { body ->
@@ -655,15 +653,16 @@ fun ConversationScreen(
     // "More details" for the single selected message. Rows come from the
     // pure MessageDetails mapping; the name is the SAME contact →
     // sender-directory → raw-address resolution the top bar already shows
-    // (state.title), so the dialog never invents a second identity.
+    // (state.title), so the dialog never invents a second identity, and the
+    // SIM row resolves against the ViewModel's current subscription list
+    // (state.activeSims) - the same list the compose bar's indicator uses.
     detailsMessage?.let { message ->
         MessageDetailsDialog(
             message = message,
             resolvedName = state.title,
-            simLabel = detailsSimLabel,
+            activeSims = state.activeSims,
             onDismiss = {
                 detailsMessage = null
-                detailsSimLabel = null
                 detailsDataSimHint = null
             },
             dataSimHint = detailsDataSimHint,

@@ -181,6 +181,14 @@ data class ConversationUiState(
      * delete dialog's wording via [app.clearsms.ui.common.DeleteConfirmationText].
      */
     val recycleBinEnabled: Boolean = true,
+    /**
+     * The device's CURRENT active subscriptions (empty on single-SIM-less
+     * or permission-less devices), the same list the compose bar's SIM
+     * indicator is built from. The "More details" dialog resolves a
+     * message's stored subscription id against it for its SIM row, so the
+     * dialog never reads a system service itself.
+     */
+    val activeSims: List<SimInfo> = emptyList(),
     val loaded: Boolean = false,
 )
 
@@ -284,9 +292,13 @@ class ConversationViewModel
 
         fun onCameraResult(success: Boolean) = composerAttachments.onCameraResult(success)
 
-        /** Active SIMs, primed once in init; empty on single-SIM devices. */
-        @Volatile
-        private var activeSims: List<SimInfo> = emptyList()
+        /**
+         * Active SIMs, primed once in init; empty when none are available. A
+         * StateFlow (not a bare field) so [uiState] can carry the list to
+         * the "More details" dialog the moment it is known.
+         */
+        private val activeSimsFlow = MutableStateFlow<List<SimInfo>>(emptyList())
+        private val activeSims: List<SimInfo> get() = activeSimsFlow.value
 
         /** Whether bubbles carry SIM tags (2+ SIMs on device or in corpus). */
         @Volatile
@@ -319,7 +331,7 @@ class ConversationViewModel
             // Prime the SIM chooser: remembered per-recipient choice, else
             // the SIM this thread last used, else the system default.
             viewModelScope.launch(ioDispatcher) {
-                activeSims = subscriptionSource.activeSims()
+                activeSimsFlow.value = subscriptionSource.activeSims()
                 defaultDataSubscriptionId = subscriptionSource.defaultDataSubscriptionId()
                 simTagsEnabled =
                     SimSelector.showSimTags(activeSims, messageRepository.distinctSubscriptionIds())
@@ -514,6 +526,8 @@ class ConversationViewModel
                 // combine() maxes out at five flows; the bin setting rides a
                 // second stage, like InboxViewModel's chrome chain.
                 .combine(settings.recycleBinEnabled) { state, bin -> state.copy(recycleBinEnabled = bin) }
+                // The SIM list the details dialog resolves provenance against.
+                .combine(activeSimsFlow) { state, sims -> state.copy(activeSims = sims) }
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
