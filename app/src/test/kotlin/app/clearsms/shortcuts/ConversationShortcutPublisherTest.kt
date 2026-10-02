@@ -9,6 +9,7 @@ import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.ThreadPinEntity
+import app.clearsms.diagnostics.Diag
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.notification.NotificationSender
@@ -242,6 +243,44 @@ class ConversationShortcutPublisherTest {
         runBlocking { settings.setConversationShortcuts(false) }
         assertThat(dynamicIds()).isEmpty()
         assertThat(disabledPinnedIds()).containsExactly("thread:1")
+    }
+
+    @Test
+    fun `a pinned shortcut that is already disabled is not disabled again on the next pass`() {
+        val logStart = System.currentTimeMillis()
+        seedThreads(2)
+        publisher.start()
+        shortcutManager.requestPinShortcut(shortcutManager.dynamicShortcuts.single { it.id == "thread:2" }, null)
+        // One pass (the blocklist alone excludes the thread) disables the pinned copy.
+        runBlocking { settings.setBlockedSenders(setOf("sender-2")) }
+        assertThat(disabledPinnedIds()).containsExactly("thread:2")
+        assertThat(disableLogLines(logStart)).hasSize(1)
+
+        // The platform reports a disabled pinned shortcut with isEnabled false
+        // for as long as the user keeps it on the home screen. Robolectric's
+        // shadow never flips the flag, so flip it the way the framework does.
+        markDisabled(shortcutManager.pinnedShortcuts.single { it.id == "thread:2" })
+
+        // Further passes - the block's per-row half, messages in the surviving
+        // thread - must not re-disable it: no system call, and the log stays honest.
+        runBlocking { dao.setBlockedSender("sender-2", blocked = true) }
+        insert(message(id = 50, threadId = 1, timestamp = 5_000))
+        insert(message(id = 51, threadId = 1, timestamp = 6_000))
+        assertThat(disableLogLines(logStart)).hasSize(1)
+    }
+
+    /** The publisher's own "stale pinned ... disabled" diagnostic lines since [sinceMs]. */
+    private fun disableLogLines(sinceMs: Long) =
+        Diag.buffer.snapshot(sinceMs = sinceMs).map { it.text }.filter { "stale pinned conversation shortcuts disabled" in it }
+
+    /** Sets the framework's hidden `FLAG_DISABLED` on [info], as `disableShortcuts` does on a device. */
+    private fun markDisabled(info: ShortcutInfo) {
+        val flagDisabled = ShortcutInfo::class.java.getDeclaredField("FLAG_DISABLED").apply { isAccessible = true }.getInt(null)
+        ShortcutInfo::class.java
+            .getDeclaredMethod("addFlags", Int::class.javaPrimitiveType)
+            .apply { isAccessible = true }
+            .invoke(info, flagDisabled)
+        assertThat(info.isEnabled).isFalse()
     }
 
     /**

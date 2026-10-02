@@ -198,7 +198,11 @@ class ConversationShortcutPublisher
          * whose thread [shouldDisable] - the launcher greys it out and shows
          * [message] on tap. Other apps' or other kinds of pinned shortcuts
          * (the static one, pinned) are never touched: only ids carrying the
-         * conversation prefix are considered.
+         * conversation prefix are considered. A pinned shortcut that is
+         * ALREADY disabled stays in the system's pinned list for as long as
+         * the user keeps it on the home screen, so it is skipped: re-disabling
+         * it every pass is a pointless system call and made the log claim
+         * work that was not happening.
          */
         private suspend fun disablePinned(
             message: String,
@@ -207,6 +211,7 @@ class ConversationShortcutPublisher
             val pinnedConversations =
                 ShortcutManagerCompat
                     .getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+                    .filter { it.isEnabled }
                     .mapNotNull { info -> ConversationShortcutSelection.threadIdOf(info.id)?.let { info.id to it } }
             val stale = pinnedConversations.filter { (_, threadId) -> shouldDisable(threadId) }.map { it.first }
             if (stale.isEmpty()) return
