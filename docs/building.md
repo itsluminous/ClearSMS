@@ -1,6 +1,9 @@
 # Building Clear SMS
 
-Requirements: JDK 17+ and the Android SDK (compileSdk 35).
+Requirements: JDK 17+ and the Android SDK (compileSdk 35). The Android Gradle
+plugin (9.x, with its built-in Kotlin support) also needs SDK build-tools
+36.0.0; Gradle installs it on first build if the SDK manager's licences are
+accepted, which is also how the F-Droid build server gets it.
 
 ```bash
 git clone https://github.com/itsluminous/ClearSMS.git

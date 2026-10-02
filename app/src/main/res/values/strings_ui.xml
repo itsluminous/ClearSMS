@@ -405,8 +405,6 @@
     <string name="settings_show_balance_on">Balances are visible in the Finance tab</string>
     <string name="settings_show_balance_off">Balances stay hidden until you unlock with your device screen lock</string>
     <string name="balance_hidden">Balance hidden</string>
-    <string name="balance_reveal">Show balance</string>
-    <string name="balance_conceal">Hide balance</string>
     <string name="balance_show_balances">Show balances</string>
     <string name="balance_hide_balances">Hide balances</string>
     <string name="balance_unlock_title">Unlock to show balances</string>
