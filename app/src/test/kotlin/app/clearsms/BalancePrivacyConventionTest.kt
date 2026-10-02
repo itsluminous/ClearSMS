@@ -16,7 +16,8 @@ import java.io.File
  *    (`onStop`), while sparing configuration changes.
  * 3. `showTransactionDetails` must actually be consumed by the conversation
  *    UI - it shipped write-only once; this pins the fix.
- * 4. The eye control must expose the state-dependent content descriptions.
+ * 4. The reveal control must expose state-dependent labels, and the masked
+ *    value must stay out of the accessibility tree.
  */
 class BalancePrivacyConventionTest {
     private fun source(path: String): String {
@@ -65,13 +66,16 @@ class BalancePrivacyConventionTest {
     }
 
     @Test
-    fun `eye control has state-dependent content descriptions`() {
-        val component = source("ui/components/MaskedBalance.kt")
-        assertWithMessage("eye contentDescription must flip with state")
-            .that(component)
-            .contains("if (revealed) R.string.balance_conceal else R.string.balance_reveal")
+    fun `reveal control has state-dependent labels and the masked value hides from TalkBack`() {
+        val button = source("ui/components/BalanceRevealButton.kt")
+        assertWithMessage("hidden state must be labelled Show balances")
+            .that(button)
+            .contains("stringResource(R.string.balance_show_balances)")
+        assertWithMessage("revealed state must be labelled Hide balances")
+            .that(button)
+            .contains("stringResource(R.string.balance_hide_balances)")
         assertWithMessage("masked value must be hidden from TalkBack")
-            .that(component)
+            .that(source("ui/components/MaskedBalance.kt"))
             .contains("clearAndSetSemantics")
     }
 }
