@@ -1,11 +1,11 @@
 [versions]
-agp = "8.10.1"
+agp = "9.1.1"
 kotlin = "2.3.21"
 ksp = "2.3.7"
-composeBom = "2024.12.01"
+composeBom = "2026.03.01"
 activityCompose = "1.9.3"
 navigationCompose = "2.8.5"
-hilt = "2.58"
+hilt = "2.60.1"
 androidxHilt = "1.3.0"
 room = "2.8.4"
 paging = "3.5.1"
@@ -82,7 +82,6 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
