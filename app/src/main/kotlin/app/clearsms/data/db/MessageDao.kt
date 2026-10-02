@@ -111,6 +111,60 @@ interface MessageDao {
     suspend fun normalizedSendersForThreads(threadIds: List<Long>): List<String>
 
     /**
+     * The launcher-shortcut candidates: the inbox's own threads (same
+     * latest-live-message representative, archived threads excluded) in the
+     * inbox's own order - pinned first, then newest received - with the
+     * SQL half of the exclusion set already applied: a thread whose newest
+     * message is Spam or carries the blocked-sender flag never comes back,
+     * and a thread with no live message (every row binned or deleted) has
+     * no representative and so simply vanishes. Muted senders and the
+     * authoritative settings blocklist are applied in Kotlin
+     * ([app.clearsms.shortcuts.ConversationShortcutSelection]); [limit] is
+     * the shortcut budget plus the size of those two sets, so the Kotlin
+     * pass can never run short. A Room flow: every insert, bin, restore,
+     * block, pin or re-categorisation invalidates it, which is what drives
+     * a republish.
+     */
+    @Query(
+        """
+        SELECT m.threadId AS threadId, m.sender AS sender, m.normalizedSender AS normalizedSender,
+               m.timestamp AS timestamp, m.category AS category, m.isBlockedSender AS isBlockedSender,
+               p.pinnedAt AS pinnedAt
+        FROM messages m
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
+        LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
+        WHERE m.isArchived = 0
+          AND m.isBlockedSender = 0
+          AND m.category != 'SPAM'
+        ORDER BY (p.pinnedAt IS NOT NULL) DESC, m.timestamp DESC, m.id DESC
+        LIMIT :limit
+        """,
+    )
+    fun shortcutCandidates(limit: Int): Flow<List<ShortcutCandidateRow>>
+
+    /**
+     * [shortcutCandidates]' view of ONE thread, for re-checking a shortcut
+     * the user pinned to the home screen (a pinned shortcut outlives the
+     * dynamic list). Null when the thread has no live message any more or
+     * is archived; the Spam / blocked columns come back for the caller to
+     * judge - a pinned shortcut to a thread that became excluded is
+     * disabled, not merely dropped.
+     */
+    @Query(
+        """
+        SELECT m.threadId AS threadId, m.sender AS sender, m.normalizedSender AS normalizedSender,
+               m.timestamp AS timestamp, m.category AS category, m.isBlockedSender AS isBlockedSender,
+               p.pinnedAt AS pinnedAt
+        FROM messages m
+        ${LatestPerThreadSql.JOIN_BY_RECEIVED}
+        LEFT JOIN thread_pins p ON p.normalizedSender = m.normalizedSender
+        WHERE m.threadId = :threadId AND m.isArchived = 0
+        LIMIT 1
+        """,
+    )
+    suspend fun shortcutCandidateForThread(threadId: Long): ShortcutCandidateRow?
+
+    /**
      * Paged conversation, NEWEST first (rendered with `reverseLayout`), so the
      * initial page is the visible bottom of the thread and history loads on
      * upward scroll. Backed by the (threadId, timestamp) index.

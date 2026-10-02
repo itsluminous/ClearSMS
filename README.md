@@ -94,7 +94,9 @@ Everything shipped, and what's on the roadmap:
 - [x] Sort conversations and messages by the sender's network send time instead of the time the phone received them (Settings → Messages; the sent time is stored per message and falls back to the received time when the network reported none)
 - [x] Blocked senders & blocked keywords (both go straight to the bin, silently; blocking also bins the existing conversation)
 - [x] Mute a sender: messages still arrive and appear, but never notify (scam warnings still do); muted threads are marked in the inbox and conversation
+- [x] Launcher shortcuts (long-press the app icon, Android 7.1+): "New message" plus your pinned and most recent conversations with their inbox avatars, as many as the launcher's own budget allows; blocked, muted, binned and spam conversations never appear, and a shortcut disappears the moment its thread does. The conversation shortcuts can be turned off in Settings → Messages (the setting says plainly that names and photos are handed to the launcher)
 - [ ] Contact names (instead of bare numbers) in the blocked-senders list
+- [ ] Direct Share targets (conversations in the system share sheet) and Android 11 conversation notifications / bubbles - both build on the launcher-shortcut plumbing
 - [ ] Group-MMS conversation UI (group messages currently attribute to their sender)
 - [ ] MMS delivery reports
 - [ ] Attachments persisted in drafts

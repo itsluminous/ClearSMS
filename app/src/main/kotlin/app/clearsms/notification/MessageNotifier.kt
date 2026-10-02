@@ -2,11 +2,10 @@ package app.clearsms.notification
 
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
-import androidx.core.net.toUri
+import app.clearsms.ConversationDeepLink
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
@@ -44,8 +43,14 @@ class MessageNotifier
          * address); a denied READ_CONTACTS or any lookup failure degrades to
          * the raw address. Callers invoke this off the main thread (the
          * receiver's IO application scope), so the cached contact lookup never
-         * blocks UI. No shortcut/bubble APIs are used, so the [Person] built
-         * here is the only conversation identity to keep consistent.
+         * blocks UI. The [Person] built here is one of two conversation
+         * identities the app publishes - the other is the launcher shortcut
+         * [app.clearsms.shortcuts.ConversationShortcutPublisher] keys by the
+         * same app thread id - and both resolve the name and icon through
+         * this same resolver/icon chain, so they can never disagree. The
+         * notification does not yet reference its shortcut (`setShortcutId`
+         * / Android 11 conversation notifications and bubbles are a
+         * follow-up), so no bubble API is used here.
          *
          * [selected] is the user's notification-action choice (defaults to
          * the settings default for callers without settings access). REPLY
@@ -194,17 +199,10 @@ class MessageNotifier
             threadId: Long,
             messageId: Long?,
         ): PendingIntent {
-            val uri =
-                if (messageId != null) {
-                    "clearsms://conversation/$threadId?messageId=$messageId"
-                } else {
-                    "clearsms://conversation/$threadId"
-                }.toUri()
             val intent =
-                Intent(Intent.ACTION_VIEW, uri)
-                    .setClassName(context, "app.clearsms.MainActivity")
+                ConversationDeepLink
+                    .intent(context, threadId, messageId)
                     .putExtra(EXTRA_THREAD_ID, threadId)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             return PendingIntent.getActivity(
                 context,
                 // Distinct request-code space from conversationIntent so a
@@ -233,15 +231,14 @@ class MessageNotifier
             messageId: Long,
             requestCode: Int,
         ): PendingIntent {
-            // Explicit component (class-name string avoids a compile-time UI dependency):
-            // an implicit VIEW intent could be intercepted by another app claiming
-            // the clearsms scheme.
+            // The shared explicit intent (ConversationDeepLink): the same
+            // one a launcher shortcut fires, so a notification tap and a
+            // shortcut tap can never navigate differently.
             val intent =
-                Intent(Intent.ACTION_VIEW, "clearsms://conversation/$threadId?messageId=$messageId".toUri())
-                    .setClassName(context, "app.clearsms.MainActivity")
+                ConversationDeepLink
+                    .intent(context, threadId, messageId)
                     .putExtra(EXTRA_THREAD_ID, threadId)
                     .putExtra(MessageActionReceiver.EXTRA_MESSAGE_ID, messageId)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             return PendingIntent.getActivity(
                 context,
                 requestCode,

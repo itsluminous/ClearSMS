@@ -149,6 +149,12 @@ open class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setTransactionNotifications(value: Boolean) = Unit
 
+    override val conversationShortcuts = MutableStateFlow(true)
+
+    override suspend fun setConversationShortcuts(value: Boolean) {
+        conversationShortcuts.value = value
+    }
+
     override val logoBackground = MutableStateFlow(LogoBackground.WHITE)
 
     override suspend fun setLogoBackground(value: LogoBackground) = Unit

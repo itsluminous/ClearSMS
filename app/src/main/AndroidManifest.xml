@@ -109,6 +109,15 @@
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="image/*" />
             </intent-filter>
+            <!-- Launcher shortcuts (issue #81): the static "New message"
+                 entry lives in res/xml/shortcuts.xml; the per-conversation
+                 ones are published at runtime by
+                 shortcuts/ConversationShortcutPublisher against this same
+                 activity (the launcher activity owns the shortcut budget).
+                 Ignored below API 25, where ShortcutManager does not exist. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Default SMS app requirement #2: SMS_DELIVER receiver. -->

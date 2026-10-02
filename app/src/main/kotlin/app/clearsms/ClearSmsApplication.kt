@@ -10,6 +10,7 @@ import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagCrashHandler
 import app.clearsms.diagnostics.DiagFileSink
 import app.clearsms.diagnostics.DiagLevel
+import app.clearsms.shortcuts.ConversationShortcutPublisher
 import app.clearsms.sms.SenderRegion
 import app.clearsms.work.AutoResortScheduler
 import app.clearsms.work.SimBackfillWorker
@@ -39,6 +40,9 @@ class ClearSmsApplication :
     @Inject
     lateinit var senderBlocker: SenderBlocker
 
+    @Inject
+    lateinit var conversationShortcutPublisher: ConversationShortcutPublisher
+
     override fun onCreate() {
         super.onCreate()
         installDiagnostics()
@@ -56,6 +60,12 @@ class ClearSmsApplication :
         // Folds legacy block records (the old ui-prefs mirror and per-row
         // flags) into the authoritative settings blocklist - idempotent.
         senderBlocker.onAppStart()
+        // Launcher shortcuts (issue #81): a process-lifetime observer of the
+        // inbox's threads keeps the long-press menu equal to the pinned and
+        // recent conversations - started here, not in the activity, so a
+        // message received in the background (which starts this process)
+        // refreshes it too. No-op below API 25.
+        conversationShortcutPublisher.start()
         // One-time provider backfills (SIM, then sent time): fill columns on
         // rows imported before the importer read them. Instant no-op once
         // the versioned passes have completed.

@@ -82,6 +82,7 @@ data class SettingsUiState(
     val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
+    val conversationShortcuts: Boolean = true,
     val logoBackground: LogoBackground = LogoBackground.NONE,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
@@ -294,6 +295,7 @@ class SettingsViewModel
             val transactionNotifications: Boolean,
             /** Filled by the second combine stage (combine() maxes out at 5 flows). */
             val stripAccents: Boolean = false,
+            val conversationShortcuts: Boolean = true,
             /** Filled by the third combine stage. */
             val delayedSendEnabled: Boolean = false,
             val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
@@ -334,8 +336,10 @@ class SettingsViewModel
                 settings.notificationActions,
                 settings.transactionNotifications,
                 ::NotificationState,
-            ).combine(uiPrefs.stripAccents) { notifications, strip ->
-                notifications.copy(stripAccents = strip)
+            ).combine(
+                combine(uiPrefs.stripAccents, settings.conversationShortcuts, ::Pair),
+            ) { notifications, (strip, shortcuts) ->
+                notifications.copy(stripAccents = strip, conversationShortcuts = shortcuts)
             }.combine(
                 combine(settings.delayedSendEnabled, settings.delayedSendDelay, ::Pair),
             ) { notifications, (enabled, delay) ->
@@ -413,6 +417,7 @@ class SettingsViewModel
                     delayedSendDelay = notificationState.delayedSendDelay,
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
+                    conversationShortcuts = notificationState.conversationShortcuts,
                     swipeActionStart = gestures.swipeStart,
                     swipeActionEnd = gestures.swipeEnd,
                     swipeDeadZone = gestures.swipeDeadZone,
@@ -462,6 +467,8 @@ class SettingsViewModel
         fun setNotificationActions(value: Set<NotificationAction>) = launchIo { settings.setNotificationActions(value) }
 
         fun setTransactionNotifications(value: Boolean) = launchIo { settings.setTransactionNotifications(value) }
+
+        fun setConversationShortcuts(value: Boolean) = launchIo { settings.setConversationShortcuts(value) }
 
         fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
 

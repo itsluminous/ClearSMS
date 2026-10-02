@@ -3,7 +3,6 @@ package app.clearsms.notification
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.text.SpannableString
 import android.text.Spanned
@@ -14,7 +13,7 @@ import androidx.annotation.LayoutRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
+import app.clearsms.ConversationDeepLink
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.CurrencyCatalog
@@ -189,13 +188,11 @@ class TransactionNotifier
 
         /** Deep link carrying the target message id (query param `messageId` + extra). */
         private fun contentIntent(message: MessageEntity): PendingIntent {
-            val uri = "clearsms://conversation/${message.threadId}?messageId=${message.id}".toUri()
             val intent =
-                Intent(Intent.ACTION_VIEW, uri)
-                    .setClassName(context, "app.clearsms.MainActivity")
+                ConversationDeepLink
+                    .intent(context, message.threadId, message.id)
                     .putExtra(MessageNotifier.EXTRA_THREAD_ID, message.threadId)
                     .putExtra(MessageActionReceiver.EXTRA_MESSAGE_ID, message.id)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             return PendingIntent.getActivity(
                 context,
                 notificationId(message.id),

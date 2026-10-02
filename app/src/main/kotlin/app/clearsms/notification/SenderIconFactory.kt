@@ -84,6 +84,35 @@ class SenderIconFactory internal constructor(
         }
 
     /**
+     * Launcher-shortcut icon for [sender]: the SAME circular avatar
+     * [largeIconFor] renders (so a shortcut looks like the inbox row and the
+     * notification it will sit next to - one avatar chain, one shape, the
+     * circle `AvatarDefaults.shape` pins for every in-app avatar), packaged
+     * as an ADAPTIVE bitmap so the launcher masks it with its own icon
+     * shape instead of wrapping a legacy bitmap in a white backdrop. The
+     * avatar is inset to the adaptive safe zone over a plate in the tier's
+     * own ground colour - the tile colour for generated tiles (so a letter
+     * avatar reads as a full-bleed coloured icon, the Samsung Messages
+     * look), white for a contact photo or bundled logo (their own plates).
+     */
+    fun shortcutIconFor(sender: NotificationSender): IconCompat =
+        IconCompat.createWithAdaptiveBitmap(
+            adaptivePlate(largeIconFor(sender), plateColorFor(sender)),
+        )
+
+    /** The ground colour behind a shortcut avatar - see [shortcutIconFor]. */
+    internal fun plateColorFor(sender: NotificationSender): Int =
+        when (styleFor(sender)) {
+            AvatarStyle.PHOTO, AvatarStyle.BUNDLED -> {
+                android.graphics.Color.WHITE
+            }
+
+            AvatarStyle.BRAND, AvatarStyle.BRAND_MARK, AvatarStyle.PLAIN -> {
+                sender.colorArgb ?: fallbackColorFor(sender.name)
+            }
+        }
+
+    /**
      * Which tier of the chain [sender] lands on - decided by the SAME
      * [avatarStyleFor] the UI uses, so notification and in-app identity can
      * never disagree on precedence. Internal so tests can pin the order.
@@ -252,6 +281,45 @@ class SenderIconFactory internal constructor(
                 logo,
                 null,
                 RectF(left, top, left + width, top + height),
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG),
+            )
+            return output
+        }
+
+        /**
+         * Edge of the adaptive-icon bitmap handed to the launcher. 108dp is
+         * the adaptive canvas; at 2x it is comfortably above every
+         * launcher's icon size and well under ShortcutManager's max.
+         */
+        internal const val ADAPTIVE_SIZE_PX = 216
+
+        /**
+         * The adaptive-icon safe zone: the central 66/108 of the canvas is
+         * guaranteed visible under every launcher mask (72/108 is the
+         * largest the mask shows), so the circular avatar is scaled to it.
+         */
+        internal const val ADAPTIVE_SAFE_FRACTION = 66f / 108f
+
+        /**
+         * Square adaptive bitmap: [plateArgb] edge to edge, the circular
+         * [avatar] centered and scaled to the safe zone. The launcher clips
+         * the whole square to its mask, so the corners are never shown - the
+         * plate only fills the ring between the avatar and the mask edge.
+         */
+        internal fun adaptivePlate(
+            avatar: Bitmap,
+            plateArgb: Int,
+            sizePx: Int = ADAPTIVE_SIZE_PX,
+        ): Bitmap {
+            val output = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(output)
+            canvas.drawColor(plateArgb)
+            val diameter = sizePx * ADAPTIVE_SAFE_FRACTION
+            val inset = (sizePx - diameter) / 2f
+            canvas.drawBitmap(
+                avatar,
+                null,
+                RectF(inset, inset, inset + diameter, inset + diameter),
                 Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG),
             )
             return output

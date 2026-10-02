@@ -10,7 +10,8 @@ import java.io.File
  * `MAX(id)`-style "newest row" selection may reappear. That selection was
  * the inbox-preview bug - the newest ROW is the newest MESSAGE only while
  * insert order happens to match message order, which old threads break -
- * and it had been copy-pasted into seven queries that could drift apart.
+ * and it had been copy-pasted into seven queries that could drift apart
+ * (nine now, with the launcher-shortcut reads).
  */
 class LatestPerThreadContractTest {
     private val daoSource = File("src/main/kotlin/app/clearsms/data/db/MessageDao.kt").readText()
@@ -31,10 +32,12 @@ class LatestPerThreadContractTest {
     }
 
     @Test
-    fun `the seven per-thread lists all join through the shared fragment`() {
+    fun `the nine per-thread lists all join through the shared fragment`() {
         val uses = Regex("""\$\{LatestPerThreadSql\.JOIN_BY_(RECEIVED|SENT)}""").findAll(daoSource).toList()
-        assertThat(uses).hasSize(7)
-        // Six canonical (received-key) joins; exactly one sent-key join, the sent-ordered inbox pager.
+        // Seven inbox/archive lists plus the two launcher-shortcut reads
+        // (candidates + the per-thread pinned re-check, issue #81).
+        assertThat(uses).hasSize(9)
+        // Eight canonical (received-key) joins; exactly one sent-key join, the sent-ordered inbox pager.
         assertThat(uses.count { it.groupValues[1] == "SENT" }).isEqualTo(1)
         val sentPager = daoSource.substringAfter("JOIN_BY_SENT}").substringBefore("fun ")
         assertThat(sentPager).contains("COALESCE(m.dateSent, m.timestamp) DESC, m.id DESC")
