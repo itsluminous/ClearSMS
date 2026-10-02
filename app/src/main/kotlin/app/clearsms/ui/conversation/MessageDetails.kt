@@ -199,7 +199,7 @@ object MessageDetails {
                     // delivered here (no MMS delivery reports), so even a
                     // DELIVERED-marked MMS row reads as unsupported, with no
                     // time - never a delivery claim it cannot back.
-                    DeliveryStatus.DELIVERED ->
+                    DeliveryStatus.DELIVERED -> {
                         add(
                             if (transport == Transport.MMS) {
                                 Row.Delivered(DeliveryKnowledge.UNSUPPORTED_MMS)
@@ -207,7 +207,9 @@ object MessageDetails {
                                 Row.Delivered(DeliveryKnowledge.CONFIRMED, acknowledgedAtMs = message.deliveredAt)
                             },
                         )
-                    DeliveryStatus.SENT ->
+                    }
+
+                    DeliveryStatus.SENT -> {
                         add(
                             Row.Delivered(
                                 if (transport == Transport.MMS) {
@@ -217,13 +219,19 @@ object MessageDetails {
                                 },
                             ),
                         )
-                    DeliveryStatus.FAILED ->
+                    }
+
+                    DeliveryStatus.FAILED -> {
                         add(
                             Row.Error(SendFailureReason.fromName(message.sendFailureReason), dataSimHint),
                         )
+                    }
+
                     // Still SENDING or SCHEDULED: nothing has left the phone
                     // yet, so neither a delivery claim nor an error applies.
-                    DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED, null -> Unit
+                    DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED, null -> {
+                        Unit
+                    }
                 }
             }
             simRowFor(activeSims, message.subscriptionId)?.let { add(it) }

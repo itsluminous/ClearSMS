@@ -197,6 +197,7 @@ class SendReportRecorder
                         sideEffects.notifyFailure(report.destination, row?.threadId, row?.id)
                     }
                 }
+
                 DeliveryStatus.SENT -> {
                     if (systemSmsId != null && report.partIndex == report.partCount - 1) {
                         messageDao.promoteDeliveryStatusBySystemId(
@@ -206,12 +207,16 @@ class SendReportRecorder
                         )
                     }
                 }
+
                 DeliveryStatus.DELIVERED -> {
                     if (systemSmsId != null && messageDao.recordPartDelivered(systemSmsId, acknowledgedAtMs)) {
                         report.providerUri?.let { sideEffects.mirrorDelivered(it) }
                     }
                 }
-                DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED -> Unit
+
+                DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED -> {
+                    Unit
+                }
             }
         }
     }
@@ -223,9 +228,16 @@ object SendReportMapper {
         resultOk: Boolean,
     ): DeliveryStatus? =
         when (action) {
-            SmsSentReceiver.ACTION_SMS_SENT ->
+            SmsSentReceiver.ACTION_SMS_SENT -> {
                 if (resultOk) DeliveryStatus.SENT else DeliveryStatus.FAILED
-            SmsSentReceiver.ACTION_SMS_DELIVERED -> DeliveryStatus.DELIVERED
-            else -> null
+            }
+
+            SmsSentReceiver.ACTION_SMS_DELIVERED -> {
+                DeliveryStatus.DELIVERED
+            }
+
+            else -> {
+                null
+            }
         }
 }

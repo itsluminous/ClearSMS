@@ -35,10 +35,17 @@ object DeliveryTicks {
     ): DeliveryTick {
         if (!outgoing) return DeliveryTick.NONE
         return when (status) {
-            DeliveryStatus.SENT -> DeliveryTick.SINGLE
-            DeliveryStatus.DELIVERED ->
+            DeliveryStatus.SENT -> {
+                DeliveryTick.SINGLE
+            }
+
+            DeliveryStatus.DELIVERED -> {
                 if (transport == MessageDetails.Transport.MMS) DeliveryTick.SINGLE else DeliveryTick.DOUBLE
-            DeliveryStatus.SENDING, DeliveryStatus.FAILED, DeliveryStatus.SCHEDULED, null -> DeliveryTick.NONE
+            }
+
+            DeliveryStatus.SENDING, DeliveryStatus.FAILED, DeliveryStatus.SCHEDULED, null -> {
+                DeliveryTick.NONE
+            }
         }
     }
 

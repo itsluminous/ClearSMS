@@ -103,9 +103,13 @@ fun brandGlyphFor(
         SubCategory.FIXED_DEPOSIT,
         SubCategory.MUTUAL_FUND,
         -> return BrandGlyph.BANK
+
         SubCategory.GOVERNMENT -> return BrandGlyph.GOVERNMENT
+
         SubCategory.RECHARGE -> return BrandGlyph.TELECOM
+
         SubCategory.DELIVERY, SubCategory.OFFER -> return BrandGlyph.CART
+
         else -> Unit
     }
     val name = senderName.lowercase()

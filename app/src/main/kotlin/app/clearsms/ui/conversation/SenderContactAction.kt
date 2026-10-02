@@ -56,12 +56,19 @@ object SenderContactAction {
      */
     fun intent(action: Action): Intent? =
         when (action) {
-            is Action.ViewContact -> Intent(Intent.ACTION_VIEW, Uri.parse(action.lookupUri))
-            is Action.CreateContact ->
+            is Action.ViewContact -> {
+                Intent(Intent.ACTION_VIEW, Uri.parse(action.lookupUri))
+            }
+
+            is Action.CreateContact -> {
                 Intent(Intent.ACTION_INSERT_OR_EDIT).apply {
                     type = ContactsContract.Contacts.CONTENT_ITEM_TYPE
                     putExtra(ContactsContract.Intents.Insert.PHONE, action.number)
                 }
-            Action.ExplainServiceSender -> null
+            }
+
+            Action.ExplainServiceSender -> {
+                null
+            }
         }
 }

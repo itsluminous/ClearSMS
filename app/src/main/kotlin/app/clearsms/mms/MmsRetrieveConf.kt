@@ -61,20 +61,31 @@ object MmsRetrieveConfParser {
             val field = reader.readByte()
             if (field < 0x80) return null
             when (field) {
-                MmsHeaders.MESSAGE_TYPE -> messageType = reader.readByte()
-                MmsHeaders.FROM -> sender = MmsHeaders.readFrom(reader)
-                MmsHeaders.TO, MmsHeaders.CC, MmsHeaders.BCC ->
+                MmsHeaders.MESSAGE_TYPE -> {
+                    messageType = reader.readByte()
+                }
+
+                MmsHeaders.FROM -> {
+                    sender = MmsHeaders.readFrom(reader)
+                }
+
+                MmsHeaders.TO, MmsHeaders.CC, MmsHeaders.BCC -> {
                     MmsHeaders
                         .stripAddressType(reader.readEncodedString())
                         .takeIf { it.isNotBlank() }
                         ?.let(recipients::add)
+                }
+
                 MmsHeaders.CONTENT_TYPE -> {
                     // Per the spec Content-Type is the last header; the
                     // message body starts right after it.
                     contentType = readContentType(reader)
                     break
                 }
-                else -> reader.skipFieldValue()
+
+                else -> {
+                    reader.skipFieldValue()
+                }
             }
             if (messageType != null && messageType != MESSAGE_TYPE_RETRIEVE_CONF) return null
         }
@@ -176,11 +187,13 @@ object MmsRetrieveConfParser {
                     val value = sub.readTextString()
                     if (fileName == null) fileName = value.takeIf { it.isNotBlank() }
                 }
+
                 // 0x81 Charset (well-known charset MIBenum).
                 0x81 -> {
                     sub.skip(1)
                     charset = sub.readIntegerValue()
                 }
+
                 else -> {
                     // Unknown parameter: skip its name, then its value.
                     sub.skipFieldValue()

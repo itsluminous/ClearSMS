@@ -143,12 +143,16 @@ class OutgoingAttachmentStager
                         raw.delete()
                         StagingResult.TooLarge(budget.limitBytes)
                     }
+
                     copied == 0L -> {
                         Diag.w(TAG, "attachment unreadable - empty", null, mimeField(mime), flag("sizeDeclared", declared != null))
                         raw.delete()
                         StagingResult.Unreadable
                     }
-                    else -> finish(raw, mime, id, budget, remaining) { shrunkMime -> displayNameFor(uri, shrunkMime) }
+
+                    else -> {
+                        finish(raw, mime, id, budget, remaining) { shrunkMime -> displayNameFor(uri, shrunkMime) }
+                    }
                 }
             } catch (e: Exception) {
                 // The URI, the file name and the bytes stay out of the log:

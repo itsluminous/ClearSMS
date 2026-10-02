@@ -786,8 +786,14 @@ class ConversationViewModel
 
         private suspend fun resolve(messageId: Long) {
             when (sentMessageWatcher.await(messageId)) {
-                SendStatus.FAILED -> sendEvents.send(SendEvent.Failed(messageId))
-                SendStatus.SENT -> sendEvents.send(SendEvent.Sent)
+                SendStatus.FAILED -> {
+                    sendEvents.send(SendEvent.Failed(messageId))
+                }
+
+                SendStatus.SENT -> {
+                    sendEvents.send(SendEvent.Sent)
+                }
+
                 SendStatus.SENDING -> {
                     // MMS with no result yet: say so, then keep watching the
                     // row until the platform's single result arrives and

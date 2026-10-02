@@ -126,8 +126,15 @@ fun ClearSmsApp(
     ClearSmsTheme(themeMode = state.themeMode, dynamicColor = state.dynamicColor) {
         CompositionLocalProvider(LocalLogoBackground provides state.logoBackground) {
             when (state.onboardingComplete) {
-                null -> Box(Modifier.fillMaxSize()) // settings still loading; avoid flashing a screen
-                false -> OnboardingScreen()
+                null -> {
+                    Box(Modifier.fillMaxSize())
+                }
+
+                // settings still loading; avoid flashing a screen
+                false -> {
+                    OnboardingScreen()
+                }
+
                 true -> {
                     LaunchedEffect(Unit) { onOnboarded() }
                     MainScaffold(
@@ -230,7 +237,10 @@ private fun MainScaffold(
     LaunchedEffect(navController) {
         laterIntents.collect { intent ->
             when (val action = LaterIntentTriage.classify(intent)) {
-                is LaterIntentAction.Navigate -> navController.navigateDeepLink(action, sections)
+                is LaterIntentAction.Navigate -> {
+                    navController.navigateDeepLink(action, sections)
+                }
+
                 is LaterIntentAction.OpenCompose -> {
                     if (action.rejectedAttachment) {
                         // Same courtesy as the onCreate path: never fail a
@@ -239,7 +249,10 @@ private fun MainScaffold(
                     }
                     action.route?.let { navController.navigate(it) }
                 }
-                LaterIntentAction.None -> Unit
+
+                LaterIntentAction.None -> {
+                    Unit
+                }
             }
         }
     }

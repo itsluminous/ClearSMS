@@ -49,8 +49,14 @@ class SentMessageWatcher
             withContext(ioDispatcher) {
                 val resolved = withTimeoutOrNull(windowMs) { terminalStatus(messageId) }
                 when (resolved) {
-                    DeliveryStatus.FAILED -> SendStatus.FAILED
-                    DeliveryStatus.SENT, DeliveryStatus.DELIVERED -> SendStatus.SENT
+                    DeliveryStatus.FAILED -> {
+                        SendStatus.FAILED
+                    }
+
+                    DeliveryStatus.SENT, DeliveryStatus.DELIVERED -> {
+                        SendStatus.SENT
+                    }
+
                     // Window elapsed with no report recorded.
                     DeliveryStatus.SENDING, DeliveryStatus.SCHEDULED, null -> {
                         val transport =

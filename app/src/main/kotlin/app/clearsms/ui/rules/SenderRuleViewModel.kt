@@ -65,6 +65,7 @@ class SenderRuleViewModel
                 val count =
                     when (scope) {
                         is RuleApplyScope.Sender -> messageRepository.recategorizeSenderCore(scope.senderCore)
+
                         // Unreachable by construction (the pattern is a literal);
                         // kept exhaustive so a resolver change cannot silently
                         // leave the sender's messages unsorted.

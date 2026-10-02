@@ -209,7 +209,9 @@ class SettingsRepositoryImpl(
                 // stored "IMPORTANT" (only ever written by a deliberate
                 // Settings tap or a backup restore of one) is preserved.
                 null -> null
+
                 FILTER_ALL -> null
+
                 // Unknown value: intent is unrecoverable, fall back to the
                 // default (All), matching the lenient-decode convention.
                 else -> Category.entries.firstOrNull { it.name == stored }

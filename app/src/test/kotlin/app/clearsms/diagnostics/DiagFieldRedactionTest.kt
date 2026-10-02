@@ -33,7 +33,10 @@ class DiagFieldRedactionTest {
             val stringParams = params.filter { it.type.jvmErasure == String::class }
             when (factory.name) {
                 // The four validated string inputs take exactly one String: the value itself.
-                "sender", "ruleId", "mime", "packageName" -> assertThat(params).hasSize(1)
+                "sender", "ruleId", "mime", "packageName" -> {
+                    assertThat(params).hasSize(1)
+                }
+
                 else -> {
                     // Every other factory's only String is the field NAME; the
                     // value is Int / Long / Boolean / Enum.

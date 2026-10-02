@@ -47,7 +47,9 @@ class CatchUpNotifier
         ) {
             when {
                 freshCount == 0 -> Unit
+
                 freshCount <= MAX_INDIVIDUAL -> freshMessages.forEach { router.route(it) }
+
                 // The summary is literally "N new messages" - an Inbox
                 // surface - so it follows the Inbox flag. Individual routes
                 // are gated per type inside the router's notifiers.

@@ -182,8 +182,14 @@ fun SwipeableMessageItem(
                         totalDx += delta.x
                         totalDy += delta.y
                         when (evaluateSwipeClaim(totalDx, totalDy, slop)) {
-                            SwipeClaimVerdict.YIELD -> return@awaitEachGesture
-                            SwipeClaimVerdict.UNDECIDED -> Unit
+                            SwipeClaimVerdict.YIELD -> {
+                                return@awaitEachGesture
+                            }
+
+                            SwipeClaimVerdict.UNDECIDED -> {
+                                Unit
+                            }
+
                             SwipeClaimVerdict.CLAIM -> {
                                 tracker.addPointerInputChange(change)
                                 change.consume()
@@ -259,18 +265,21 @@ private fun SwipeActionBackground(
             container = MaterialTheme.colorScheme.secondaryContainer
             content = MaterialTheme.colorScheme.onSecondaryContainer
         }
+
         SwipeAction.DELETE -> {
             icon = Icons.Outlined.Delete
             label = stringResource(R.string.ui_action_delete)
             container = MaterialTheme.colorScheme.errorContainer
             content = MaterialTheme.colorScheme.onErrorContainer
         }
+
         SwipeAction.TOGGLE_READ -> {
             icon = Icons.Outlined.MarkEmailRead
             label = stringResource(R.string.swipe_action_toggle_read)
             container = MaterialTheme.colorScheme.tertiaryContainer
             content = MaterialTheme.colorScheme.onTertiaryContainer
         }
+
         SwipeAction.NONE -> {
             icon = null
             label = null

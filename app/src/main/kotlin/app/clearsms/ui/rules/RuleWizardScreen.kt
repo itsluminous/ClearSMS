@@ -753,21 +753,54 @@ private fun validationErrorText(
 ): String {
     val quoted = detail.orEmpty()
     return when (error) {
-        WizardValidationError.NEEDS_SAMPLE -> stringResource(R.string.rule_error_needs_sample)
-        WizardValidationError.NO_CONDITIONS -> stringResource(R.string.rule_error_no_conditions)
-        WizardValidationError.INVALID_PATTERN -> stringResource(R.string.rule_error_invalid_pattern, quoted)
-        WizardValidationError.INVALID_SENDER_PATTERN -> stringResource(R.string.rule_error_invalid_sender_pattern, quoted)
-        WizardValidationError.CATCH_ALL_WRAPPER -> stringResource(R.string.rule_error_catch_all)
-        WizardValidationError.DUPLICATE_FIELD -> stringResource(R.string.rule_error_duplicate_field, quoted)
+        WizardValidationError.NEEDS_SAMPLE -> {
+            stringResource(R.string.rule_error_needs_sample)
+        }
+
+        WizardValidationError.NO_CONDITIONS -> {
+            stringResource(R.string.rule_error_no_conditions)
+        }
+
+        WizardValidationError.INVALID_PATTERN -> {
+            stringResource(R.string.rule_error_invalid_pattern, quoted)
+        }
+
+        WizardValidationError.INVALID_SENDER_PATTERN -> {
+            stringResource(R.string.rule_error_invalid_sender_pattern, quoted)
+        }
+
+        WizardValidationError.CATCH_ALL_WRAPPER -> {
+            stringResource(R.string.rule_error_catch_all)
+        }
+
+        WizardValidationError.DUPLICATE_FIELD -> {
+            stringResource(R.string.rule_error_duplicate_field, quoted)
+        }
+
         WizardValidationError.CAPTURE_MISMATCH -> {
             val (needed, have) = quoted.split('/').let { (it.getOrNull(0) ?: "?") to (it.getOrNull(1) ?: "?") }
             stringResource(R.string.rule_error_capture_mismatch, needed, have)
         }
-        WizardValidationError.SENDER_NOT_MATCHING -> stringResource(R.string.rule_error_sender_not_matching, quoted)
-        WizardValidationError.BODY_PATTERN_NOT_MATCHING -> stringResource(R.string.rule_error_body_not_matching)
-        WizardValidationError.MUST_CONTAIN_MISSING -> stringResource(R.string.rule_error_must_contain_missing, quoted)
-        WizardValidationError.MUST_NOT_CONTAIN_PRESENT -> stringResource(R.string.rule_error_must_not_present, quoted)
-        WizardValidationError.NO_SOURCE_MATCH -> stringResource(R.string.rule_error_no_source_match)
+
+        WizardValidationError.SENDER_NOT_MATCHING -> {
+            stringResource(R.string.rule_error_sender_not_matching, quoted)
+        }
+
+        WizardValidationError.BODY_PATTERN_NOT_MATCHING -> {
+            stringResource(R.string.rule_error_body_not_matching)
+        }
+
+        WizardValidationError.MUST_CONTAIN_MISSING -> {
+            stringResource(R.string.rule_error_must_contain_missing, quoted)
+        }
+
+        WizardValidationError.MUST_NOT_CONTAIN_PRESENT -> {
+            stringResource(R.string.rule_error_must_not_present, quoted)
+        }
+
+        WizardValidationError.NO_SOURCE_MATCH -> {
+            stringResource(R.string.rule_error_no_source_match)
+        }
     }
 }
 

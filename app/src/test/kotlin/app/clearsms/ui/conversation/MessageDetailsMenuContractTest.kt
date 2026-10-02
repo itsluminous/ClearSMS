@@ -87,8 +87,7 @@ class MessageDetailsMenuContractTest {
         assertThat(dialog).contains("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)\n")
         assertThat(dialog).doesNotContain("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour) +")
         // MMS can only ever render through the unsupported string.
-        assertThat(dialog).contains("DeliveryKnowledge.UNSUPPORTED_MMS ->\n")
-        assertThat(dialog).contains("R.string.message_details_delivered_mms")
+        assertThat(dialog).containsMatch("""DeliveryKnowledge\.UNSUPPORTED_MMS ->\s*\{?\s*R\.string\.message_details_delivered_mms""")
     }
 
     @Test

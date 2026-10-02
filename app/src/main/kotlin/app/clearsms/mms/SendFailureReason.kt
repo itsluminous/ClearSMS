@@ -95,16 +95,23 @@ enum class SendFailureReason {
                 SmsManager.MMS_ERROR_DATA_DISABLED,
                 SmsManager.MMS_ERROR_UNABLE_CONNECT_MMS,
                 -> NO_MMS_NETWORK
+
                 SmsManager.MMS_ERROR_INVALID_APN,
                 SmsManager.MMS_ERROR_CONFIGURATION_ERROR,
                 -> APN_CONFIGURATION
+
                 SmsManager.MMS_ERROR_HTTP_FAILURE -> HTTP_FAILURE
+
                 SmsManager.MMS_ERROR_RETRY -> TRANSIENT
+
                 SmsManager.MMS_ERROR_IO_ERROR -> PDU_REJECTED
+
                 SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER -> CARRIER_DISABLED
+
                 SmsManager.MMS_ERROR_INVALID_SUBSCRIPTION_ID,
                 SmsManager.MMS_ERROR_INACTIVE_SUBSCRIPTION,
                 -> SIM_UNAVAILABLE
+
                 else -> UNKNOWN
             }
 
@@ -124,9 +131,11 @@ enum class SendFailureReason {
                 SmsManager.RESULT_ERROR_RADIO_OFF,
                 SmsManager.RESULT_ERROR_NO_SERVICE,
                 -> NO_SERVICE
+
                 SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED,
                 SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED,
                 -> SHORT_CODE_BLOCKED
+
                 else -> UNKNOWN
             }
 

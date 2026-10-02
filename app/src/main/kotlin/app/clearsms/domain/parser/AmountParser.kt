@@ -59,9 +59,15 @@ object AmountParser {
                 //    last one can only be a stray decimal mark; it is read as
                 //    one and its fraction dropped below, so the figure is 1000
                 //    - never 100050.
-                currency.zeroMinorUnits && (dots == 0 || commas == 0) -> null
+                currency.zeroMinorUnits && (dots == 0 || commas == 0) -> {
+                    null
+                }
+
                 // 2. Both present: the last one is the decimal mark.
-                dots > 0 && commas > 0 -> if (text.lastIndexOf('.') > text.lastIndexOf(',')) '.' else ','
+                dots > 0 && commas > 0 -> {
+                    if (text.lastIndexOf('.') > text.lastIndexOf(',')) '.' else ','
+                }
+
                 else -> {
                     val separator = if (dots > 0) '.' else ','
                     val occurrences = if (dots > 0) dots else commas
@@ -69,10 +75,13 @@ object AmountParser {
                     when {
                         // 3. Repeated: groups.
                         occurrences > 1 -> null
+
                         // 4. Exactly three digits after the only separator: groups.
                         tailDigits == 3 && currency.minorUnits < 3 -> null
+
                         // 5. The currency's own convention.
                         separator == currency.decimalSeparator -> separator
+
                         else -> null
                     }
                 }

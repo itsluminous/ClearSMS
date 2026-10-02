@@ -216,8 +216,11 @@ fun FinanceScreen(
             }
             when (selectedTab) {
                 // Every tab hidden: the screen is the month summary alone.
-                null -> Unit
-                FinanceTab.ACCOUNTS ->
+                null -> {
+                    Unit
+                }
+
+                FinanceTab.ACCOUNTS -> {
                     accountsSection(
                         state = state,
                         collapsed = accountsCollapsed,
@@ -227,7 +230,9 @@ fun FinanceScreen(
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
                     )
-                FinanceTab.CREDIT_CARDS ->
+                }
+
+                FinanceTab.CREDIT_CARDS -> {
                     creditCardsSection(
                         state = state,
                         showOlder = showOlderCards,
@@ -235,7 +240,9 @@ fun FinanceScreen(
                         onOpenAccount = onOpenAccount,
                         onOpenSource = openAccountSource,
                     )
-                FinanceTab.TRANSACTIONS ->
+                }
+
+                FinanceTab.TRANSACTIONS -> {
                     transactionsSection(
                         state = state,
                         expandedTxId = expandedTxId,
@@ -244,7 +251,9 @@ fun FinanceScreen(
                         onOpenTransaction = openTransaction,
                         onLoadMore = viewModel::loadMore,
                     )
-                FinanceTab.RECHARGES ->
+                }
+
+                FinanceTab.RECHARGES -> {
                     rechargesSection(
                         state = state,
                         expandedTxId = expandedTxId,
@@ -252,6 +261,7 @@ fun FinanceScreen(
                         loadSms = viewModel::smsBodyFor,
                         onOpenTransaction = openTransaction,
                     )
+                }
             }
         }
     }
@@ -995,6 +1005,7 @@ private fun CreditCardCard(
                                 revealed = revealed,
                             )
                         }
+
                         is CardHeadline.Outstanding -> {
                             Text(
                                 text = stringResource(R.string.finance_outstanding),
@@ -1009,12 +1020,14 @@ private fun CreditCardCard(
                                 revealed = revealed,
                             )
                         }
-                        CardHeadline.NoData ->
+
+                        CardHeadline.NoData -> {
                             Text(
                                 text = stringResource(R.string.finance_no_limit_data),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
                     }
                 }
             }

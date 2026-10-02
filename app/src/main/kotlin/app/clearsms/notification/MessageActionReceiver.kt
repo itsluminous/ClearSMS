@@ -64,6 +64,7 @@ class MessageActionReceiver : BroadcastReceiver() {
                     }
                 }
             }
+
             ACTION_DELETE -> {
                 val pendingResult = goAsync()
                 applicationScope.launch {
@@ -75,6 +76,7 @@ class MessageActionReceiver : BroadcastReceiver() {
                     }
                 }
             }
+
             ACTION_REPLY -> {
                 val destination = intent.getStringExtra(EXTRA_SENDER)
                 if (destination == null) {

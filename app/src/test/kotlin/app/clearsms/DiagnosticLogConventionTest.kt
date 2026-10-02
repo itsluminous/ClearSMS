@@ -99,8 +99,15 @@ class DiagnosticLogConventionTest {
                         inString = false
                     }
                 }
-                c == '"' -> inString = true
-                c == '(' -> depth++
+
+                c == '"' -> {
+                    inString = true
+                }
+
+                c == '(' -> {
+                    depth++
+                }
+
                 c == ')' -> {
                     depth--
                     if (depth == 0) return text.substring(open + 1, i)
@@ -130,23 +137,30 @@ class DiagnosticLogConventionTest {
                         current.append(c)
                     }
                 }
+
                 c == '"' -> {
                     inString = true
                     current.append(c)
                 }
+
                 c == '(' || c == '{' || c == '[' -> {
                     depth++
                     current.append(c)
                 }
+
                 c == ')' || c == '}' || c == ']' -> {
                     depth--
                     current.append(c)
                 }
+
                 c == ',' && depth == 0 -> {
                     out += current.toString().trim()
                     current.clear()
                 }
-                else -> current.append(c)
+
+                else -> {
+                    current.append(c)
+                }
             }
             i++
         }

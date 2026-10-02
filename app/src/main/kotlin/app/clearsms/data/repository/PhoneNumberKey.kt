@@ -138,9 +138,11 @@ object PhoneNumberKey {
         val international =
             when {
                 trimmed.startsWith("+") -> digits
+
                 // 00 is the international access code nearly everywhere and
                 // no national number begins with it.
                 digits.startsWith("00") && digits.length >= MIN_SUBSCRIBER_DIGITS + 3 -> digits.drop(2)
+
                 else -> null
             }
         if (international != null) {

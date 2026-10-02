@@ -251,8 +251,14 @@ fun ConversationScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                SendEvent.Sent -> snackbarHostState.showSnackbar(sentMessage)
-                SendEvent.MmsInFlight -> snackbarHostState.showSnackbar(mmsInFlightMessage)
+                SendEvent.Sent -> {
+                    snackbarHostState.showSnackbar(sentMessage)
+                }
+
+                SendEvent.MmsInFlight -> {
+                    snackbarHostState.showSnackbar(mmsInFlightMessage)
+                }
+
                 is SendEvent.Failed -> {
                     val result =
                         snackbarHostState.showSnackbar(
@@ -262,6 +268,7 @@ fun ConversationScreen(
                         )
                     if (result == SnackbarResult.ActionPerformed) viewModel.retry(event.messageId)
                 }
+
                 is SendEvent.Delayed -> {
                     // The pending bar lives exactly as long as the delay:
                     // Indefinite duration, torn down by the timeout when the
@@ -308,10 +315,13 @@ fun ConversationScreen(
         viewModel.undoEventFlow.collect { event ->
             val message =
                 when (event) {
-                    is UndoUiEvent.Deleted ->
+                    is UndoUiEvent.Deleted -> {
                         resources.getQuantityString(R.plurals.undo_deleted, event.count, event.count)
-                    is UndoUiEvent.Archived ->
+                    }
+
+                    is UndoUiEvent.Archived -> {
                         resources.getQuantityString(R.plurals.undo_archived, event.count, event.count)
+                    }
                 }
             val result =
                 snackbarHostState.showSnackbar(
@@ -550,8 +560,11 @@ fun ConversationScreen(
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
         bottomBar = {
             when {
-                !state.loaded -> Unit
-                state.repliable ->
+                !state.loaded -> {
+                    Unit
+                }
+
+                state.repliable -> {
                     MessageComposerBar(
                         draft = draft,
                         onDraftChange = viewModel::setDraft,
@@ -579,11 +592,14 @@ fun ConversationScreen(
                         attachmentError = attachmentError,
                         attachmentBudgetBytes = attachmentBudgetBytes,
                     )
-                else ->
+                }
+
+                else -> {
                     ReplyNoticeBar(
                         repliability = state.repliability,
                         onReplyAnyway = viewModel::replyAnyway,
                     )
+                }
             }
         },
     ) { padding ->
@@ -637,12 +653,25 @@ fun ConversationScreen(
                                     mmsDownloadFailed = item.message?.mmsStatus == MmsStatus.FAILED,
                                 )
                             ) {
-                                MessageMetadata.TapAction.TOGGLE_SELECTION -> viewModel.toggleSelection(item.id)
-                                MessageMetadata.TapAction.OFFER_RETRY -> failedMessageId = item.id
-                                MessageMetadata.TapAction.OFFER_SCHEDULE_ACTIONS -> scheduledMessageId = item.id
-                                MessageMetadata.TapAction.OFFER_MMS_RETRY -> failedMmsId = item.id
-                                MessageMetadata.TapAction.TOGGLE_DETAILS ->
+                                MessageMetadata.TapAction.TOGGLE_SELECTION -> {
+                                    viewModel.toggleSelection(item.id)
+                                }
+
+                                MessageMetadata.TapAction.OFFER_RETRY -> {
+                                    failedMessageId = item.id
+                                }
+
+                                MessageMetadata.TapAction.OFFER_SCHEDULE_ACTIONS -> {
+                                    scheduledMessageId = item.id
+                                }
+
+                                MessageMetadata.TapAction.OFFER_MMS_RETRY -> {
+                                    failedMmsId = item.id
+                                }
+
+                                MessageMetadata.TapAction.TOGGLE_DETAILS -> {
                                     expandedId = MessageMetadata.onTap(expandedId, item.id, selectionActive = false)
+                                }
                             }
                         },
                         onLongClick = { viewModel.enterSelection(item.id) },
@@ -915,26 +944,41 @@ private fun ConversationSelectionBar(
     @Composable
     fun specFor(action: MessageSelectionAction): SelectionActionSpec =
         when (action) {
-            MessageSelectionAction.COPY ->
+            MessageSelectionAction.COPY -> {
                 SelectionActionSpec(stringResource(R.string.action_copy_message), Icons.Outlined.ContentCopy, onCopy)
-            MessageSelectionAction.DELETE ->
+            }
+
+            MessageSelectionAction.DELETE -> {
                 SelectionActionSpec(stringResource(R.string.ui_action_delete), Icons.Outlined.Delete, onDelete)
-            MessageSelectionAction.MORE_DETAILS ->
+            }
+
+            MessageSelectionAction.MORE_DETAILS -> {
                 SelectionActionSpec(stringResource(R.string.action_message_details), Icons.Outlined.Info, onShowDetails)
-            MessageSelectionAction.FORWARD ->
+            }
+
+            MessageSelectionAction.FORWARD -> {
                 SelectionActionSpec(stringResource(R.string.action_forward_message), Icons.AutoMirrored.Outlined.Forward, onForward)
-            MessageSelectionAction.SHARE ->
+            }
+
+            MessageSelectionAction.SHARE -> {
                 SelectionActionSpec(stringResource(R.string.action_share_message), Icons.Outlined.Share, onShare)
-            MessageSelectionAction.SELECT_ALL ->
+            }
+
+            MessageSelectionAction.SELECT_ALL -> {
                 SelectionActionSpec(stringResource(R.string.action_select_all), Icons.Outlined.SelectAll, onSelectAll)
-            MessageSelectionAction.COPY_OTP ->
+            }
+
+            MessageSelectionAction.COPY_OTP -> {
                 SelectionActionSpec(stringResource(R.string.action_copy_otp), Icons.Outlined.Password) {
                     singleItem?.message?.extractedOtp?.let(onCopyOtp)
                 }
-            MessageSelectionAction.ADD_RULE ->
+            }
+
+            MessageSelectionAction.ADD_RULE -> {
                 SelectionActionSpec(stringResource(R.string.action_add_rule), Icons.Outlined.AddCircleOutline) {
                     singleItem?.let { onCreateRule(it.body) }
                 }
+            }
         }
 
     TopAppBar(
@@ -1137,13 +1181,15 @@ private fun MessageBubble(
                             MmsAttachmentContent(attachments = attachments, onImageTap = onImageTap)
                         }
                         when {
-                            item.message?.mmsStatus == MmsStatus.PENDING ->
+                            item.message?.mmsStatus == MmsStatus.PENDING -> {
                                 Text(
                                     text = stringResource(R.string.mms_downloading),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontStyle = FontStyle.Italic,
                                     color = textColor.copy(alpha = 0.8f),
                                 )
+                            }
+
                             item.message?.mmsStatus == MmsStatus.FAILED -> {
                                 Text(
                                     text = stringResource(R.string.mms_download_failed),
@@ -1156,15 +1202,20 @@ private fun MessageBubble(
                                     color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
                                 )
                             }
-                            item.body.isNotBlank() || attachments.isEmpty() ->
+
+                            item.body.isNotBlank() || attachments.isEmpty() -> {
                                 LinkifiedBodyText(
                                     body = item.body,
                                     onLinkClick = onLinkClick,
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = textColor,
                                 )
+                            }
+
                             // Image/file-only MMS: the attachments ARE the message.
-                            else -> Unit
+                            else -> {
+                                Unit
+                            }
                         }
                         // Time label with, for outgoing messages, the delivery
                         // tick beside it (one tick = left the phone, two = a
@@ -1208,7 +1259,8 @@ private fun MessageBubble(
                                     modifier = Modifier.align(Alignment.End),
                                 )
                             }
-                            DeliveryStatus.SENDING, DeliveryStatus.FAILED ->
+
+                            DeliveryStatus.SENDING, DeliveryStatus.FAILED -> {
                                 Text(
                                     text =
                                         if (item.deliveryStatus == DeliveryStatus.FAILED) {
@@ -1232,7 +1284,11 @@ private fun MessageBubble(
                                         },
                                     modifier = Modifier.align(Alignment.End),
                                 )
-                            else -> Unit
+                            }
+
+                            else -> {
+                                Unit
+                            }
                         }
                     }
                 }
@@ -1383,10 +1439,13 @@ private fun ParsedDetailCard(details: Map<String, String>) {
                     val kind =
                         when (key) {
                             "amount" -> amountKindOf(details)
+
                             "balance" -> AmountKind.BALANCE
+
                             // A collect/payment request's figure: asked for,
                             // never moved - informational blue, no sign.
                             "requested_amount" -> AmountKind.BALANCE
+
                             else -> null
                         }
                     val amount = value.toDoubleOrNull()

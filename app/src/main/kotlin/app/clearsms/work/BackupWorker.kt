@@ -162,13 +162,17 @@ class BackupWorker
             ) {
                 val workManager = WorkManager.getInstance(context)
                 when (frequency) {
-                    BackupFrequency.OFF -> workManager.cancelUniqueWork(WORK_NAME)
-                    BackupFrequency.DAILY, BackupFrequency.WEEKLY ->
+                    BackupFrequency.OFF -> {
+                        workManager.cancelUniqueWork(WORK_NAME)
+                    }
+
+                    BackupFrequency.DAILY, BackupFrequency.WEEKLY -> {
                         workManager.enqueueUniquePeriodicWork(
                             WORK_NAME,
                             ExistingPeriodicWorkPolicy.UPDATE,
                             PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS).build(),
                         )
+                    }
                 }
             }
         }

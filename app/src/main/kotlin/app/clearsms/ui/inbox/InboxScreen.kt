@@ -159,10 +159,13 @@ fun InboxScreen(
         viewModel.undoEventFlow.collect { event ->
             val message =
                 when (event) {
-                    is UndoUiEvent.Deleted ->
+                    is UndoUiEvent.Deleted -> {
                         resources.getQuantityString(R.plurals.undo_deleted, event.count, event.count)
-                    is UndoUiEvent.Archived ->
+                    }
+
+                    is UndoUiEvent.Archived -> {
                         resources.getQuantityString(R.plurals.undo_archived, event.count, event.count)
+                    }
                 }
             val result =
                 snackbarHostState.showSnackbar(
@@ -370,7 +373,7 @@ fun InboxScreen(
                     // the on-screen order; see InboxBannerSlot.
                     for (slot in InboxBannerSlot.entries) {
                         when (slot) {
-                            InboxBannerSlot.OTP ->
+                            InboxBannerSlot.OTP -> {
                                 state.latestOtp?.let { otp ->
                                     item(key = "otp_banner") {
                                         OtpBanner(
@@ -387,7 +390,9 @@ fun InboxScreen(
                                         )
                                     }
                                 }
-                            InboxBannerSlot.DEFAULT_SMS ->
+                            }
+
+                            InboxBannerSlot.DEFAULT_SMS -> {
                                 if (defaultSmsBanner.visible) {
                                     item(key = "default_sms_banner") {
                                         DefaultSmsBanner(
@@ -399,7 +404,9 @@ fun InboxScreen(
                                         )
                                     }
                                 }
-                            InboxBannerSlot.CONTACTS_PERMISSION ->
+                            }
+
+                            InboxBannerSlot.CONTACTS_PERMISSION -> {
                                 if (!contactsPermission.status.isGranted) {
                                     item(key = "contacts_permission") {
                                         ContactsPermissionBanner(
@@ -408,7 +415,9 @@ fun InboxScreen(
                                         )
                                     }
                                 }
-                            InboxBannerSlot.SORTING ->
+                            }
+
+                            InboxBannerSlot.SORTING -> {
                                 state.sortingBanner?.let { sorting ->
                                     item(key = "sorting_banner") {
                                         SortingProgressBanner(
@@ -417,6 +426,7 @@ fun InboxScreen(
                                         )
                                     }
                                 }
+                            }
                         }
                     }
                     // Every pill hidden = no row at all (see InboxPillConfig).
@@ -462,11 +472,21 @@ fun InboxScreen(
                             deadZone = state.swipeDeadZone,
                             onAction = { action ->
                                 when (action) {
-                                    SwipeAction.ARCHIVE -> viewModel.archive(item.message.id)
-                                    SwipeAction.DELETE -> viewModel.delete(item.message.id)
-                                    SwipeAction.TOGGLE_READ ->
+                                    SwipeAction.ARCHIVE -> {
+                                        viewModel.archive(item.message.id)
+                                    }
+
+                                    SwipeAction.DELETE -> {
+                                        viewModel.delete(item.message.id)
+                                    }
+
+                                    SwipeAction.TOGGLE_READ -> {
                                         viewModel.markRead(item.message.id, read = !item.message.isRead)
-                                    SwipeAction.NONE -> Unit
+                                    }
+
+                                    SwipeAction.NONE -> {
+                                        Unit
+                                    }
                                 }
                             },
                         ) {
@@ -607,7 +627,8 @@ private fun InboxSelectionBar(
                                 },
                             )
                         }
-                        SelectionAction.SELECT_ALL ->
+
+                        SelectionAction.SELECT_ALL -> {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_select_all)) },
                                 leadingIcon = { Icon(Icons.Outlined.SelectAll, contentDescription = null) },
@@ -616,6 +637,8 @@ private fun InboxSelectionBar(
                                     onSelectAll()
                                 },
                             )
+                        }
+
                         // One toggle, labelled by the current state: a muted
                         // thread offers Unmute, any other offers Mute.
                         SelectionAction.MUTE, SelectionAction.UNMUTE -> {
@@ -636,7 +659,8 @@ private fun InboxSelectionBar(
                                 },
                             )
                         }
-                        SelectionAction.BLOCK ->
+
+                        SelectionAction.BLOCK -> {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_block_sender)) },
                                 leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
@@ -645,7 +669,9 @@ private fun InboxSelectionBar(
                                     singleItem?.let { onBlock(it.message.sender) }
                                 },
                             )
-                        SelectionAction.ALWAYS_SORT_AS ->
+                        }
+
+                        SelectionAction.ALWAYS_SORT_AS -> {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_always_sort_as)) },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Label, contentDescription = null) },
@@ -654,8 +680,12 @@ private fun InboxSelectionBar(
                                     singleItem?.let { onAlwaysSortAs(it.message.sender, it.message.body) }
                                 },
                             )
+                        }
+
                         // Inline-only actions never reach the overflow.
-                        SelectionAction.TOGGLE_READ, SelectionAction.ARCHIVE, SelectionAction.DELETE -> Unit
+                        SelectionAction.TOGGLE_READ, SelectionAction.ARCHIVE, SelectionAction.DELETE -> {
+                            Unit
+                        }
                     }
                 }
             }

@@ -89,7 +89,7 @@ fun SenderAvatar(
             hasBrand = brand != null,
         )
     when (style) {
-        AvatarStyle.PHOTO ->
+        AvatarStyle.PHOTO -> {
             Box(modifier = modifier.size(size)) {
                 SubcomposeAsyncImage(
                     model = photoUri,
@@ -104,6 +104,8 @@ fun SenderAvatar(
                 )
                 GlyphBadge(glyph = avatarBadgeGlyph(brand?.category, glyph), avatarSize = size)
             }
+        }
+
         AvatarStyle.BUNDLED -> {
             // Decoded once per key on IO (BundledLogoCache); the brand tile
             // renders immediately so a list item's first frame never waits
@@ -121,10 +123,13 @@ fun SenderAvatar(
                 val plate =
                     when (LocalLogoBackground.current) {
                         LogoBackground.WHITE -> Color.White
+
                         // Not pure black: a near-black plate keeps a subtle edge
                         // against true-black dark surfaces.
                         LogoBackground.DARK -> Color(0xFF1C1B1F)
+
                         LogoBackground.DYNAMIC -> MaterialTheme.colorScheme.surfaceVariant
+
                         LogoBackground.NONE -> Color.Transparent
                     }
                 Box(modifier = modifier.size(size)) {
@@ -148,17 +153,23 @@ fun SenderAvatar(
                 SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand, size = size)
             }
         }
-        AvatarStyle.BRAND ->
+
+        AvatarStyle.BRAND -> {
             SenderBrandMark(name = name, glyph = glyph, modifier = modifier, brand = brand, size = size)
-        AvatarStyle.BRAND_MARK ->
+        }
+
+        AvatarStyle.BRAND_MARK -> {
             SenderBrandMark(name = name, glyph = glyph, modifier = modifier, size = size)
-        AvatarStyle.PLAIN ->
+        }
+
+        AvatarStyle.PLAIN -> {
             // The category glyph is informational, so it stays visible even
             // with "Show logos and contact photos" off.
             Box(modifier = modifier.size(size)) {
                 PlainAvatar(name = name, size = size)
                 GlyphBadge(glyph = avatarBadgeGlyph(brandCategory = null, glyph = glyph), avatarSize = size)
             }
+        }
     }
 }
 

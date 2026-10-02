@@ -110,32 +110,45 @@ class OtpNotifier
                     .setAutoCancel(true)
             for (action in NotificationActionPlanner.forOtp(selected)) {
                 when (action) {
-                    NotificationAction.COPY_OTP ->
+                    NotificationAction.COPY_OTP -> {
                         builder.addAction(
                             0,
                             context.getString(R.string.action_copy),
                             otpAction(OtpActionReceiver.ACTION_COPY, message, otp),
                         )
-                    NotificationAction.SHARE_OTP ->
+                    }
+
+                    NotificationAction.SHARE_OTP -> {
                         builder.addAction(
                             0,
                             context.getString(R.string.action_share),
                             otpAction(OtpActionReceiver.ACTION_SHARE, message, otp),
                         )
-                    NotificationAction.DELETE ->
+                    }
+
+                    NotificationAction.DELETE -> {
                         builder.addAction(
                             0,
                             context.getString(R.string.action_delete),
                             otpAction(OtpActionReceiver.ACTION_DELETE, message, otp),
                         )
-                    NotificationAction.MARK_READ ->
+                    }
+
+                    NotificationAction.MARK_READ -> {
                         MessageActionFactory
                             .build(context, message, notificationId(message.id), listOf(NotificationAction.MARK_READ))
                             .forEach(builder::addAction)
+                    }
+
                     // Planner never emits REPLY or generic SHARE for OTP notifications
                     // (OTP has its own SHARE_OTP action above).
-                    NotificationAction.REPLY -> Unit
-                    NotificationAction.SHARE -> Unit
+                    NotificationAction.REPLY -> {
+                        Unit
+                    }
+
+                    NotificationAction.SHARE -> {
+                        Unit
+                    }
                 }
             }
             return builder.build()

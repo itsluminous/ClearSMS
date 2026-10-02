@@ -149,14 +149,21 @@ internal class WspReader(
                 skip(1)
                 skip(b)
             }
+
             31 -> {
                 skip(1)
                 val len = readUintvar()
                 require(len <= remaining) { "skip past end" }
                 skip(len.toInt())
             }
-            in 32..127 -> readTextString()
-            else -> skip(1)
+
+            in 32..127 -> {
+                readTextString()
+            }
+
+            else -> {
+                skip(1)
+            }
         }
     }
 

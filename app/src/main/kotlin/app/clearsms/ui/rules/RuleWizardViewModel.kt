@@ -330,9 +330,13 @@ class RuleWizardViewModel
                                 senderPatternEdited = current.senderPatternOverride != null,
                             )
                     ) {
-                        is RuleApplyScope.Sender ->
+                        is RuleApplyScope.Sender -> {
                             RuleApplyOutcome.Applied(messageRepository.recategorizeSenderCore(scope.senderCore))
-                        RuleApplyScope.Everything -> RuleApplyOutcome.NeedsFullResort
+                        }
+
+                        RuleApplyScope.Everything -> {
+                            RuleApplyOutcome.NeedsFullResort
+                        }
                     }
                 state.value = state.value.copy(saved = true, applyOutcome = outcome)
             }

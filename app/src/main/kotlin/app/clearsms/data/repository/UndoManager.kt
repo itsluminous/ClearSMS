@@ -97,12 +97,18 @@ class UndoManager(
             timer?.cancel()
             timer = null
             when (val action = pending.also { pending = null }) {
-                is Pending.Delete -> repository.undoStagedDelete(action.messageIds)
+                is Pending.Delete -> {
+                    repository.undoStagedDelete(action.messageIds)
+                }
+
                 is Pending.Archive -> {
                     if (action.threadIds.isNotEmpty()) repository.archiveThreads(action.threadIds, archived = false)
                     action.messageIds.forEach { repository.archive(it, archived = false) }
                 }
-                null -> Unit
+
+                null -> {
+                    Unit
+                }
             }
         }
     }
@@ -148,6 +154,7 @@ class UndoManager(
         if (armed != null && armed !== currentCoroutineContext()[Job]) armed.cancel()
         when (val action = pending.also { pending = null }) {
             is Pending.Delete -> repository.commitStagedDelete(action.messageIds, toBin = recycleBinEnabled())
+
             // An archive is already fully applied; nothing is deferred.
             is Pending.Archive, null -> Unit
         }

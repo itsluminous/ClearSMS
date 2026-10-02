@@ -64,13 +64,20 @@ object CreditCardFigures {
                 // spending information - asserting "Outstanding ₹0" there is a
                 // lie. A KNOWN zero exists only on the legacy path below, where
                 // the issuer explicitly reported the outstanding figure itself.
-                availableLimit != null && totalLimit != null && totalLimit > 0.0 ->
+                availableLimit != null && totalLimit != null && totalLimit > 0.0 -> {
                     (totalLimit - availableLimit).takeIf { it > 0.0 }
+                }
+
                 // Available limit known but no total: outstanding is underivable.
-                availableLimit != null -> null
+                availableLimit != null -> {
+                    null
+                }
+
                 // Legacy rows: an issuer-reported balance is the outstanding -
                 // a 0.0 here is issuer-asserted (a genuinely paid-off card).
-                else -> lastKnownBalance
+                else -> {
+                    lastKnownBalance
+                }
             }
         val utilization = outstanding?.let { Utilization.fraction(it, totalLimit) }
         return CardFigures(

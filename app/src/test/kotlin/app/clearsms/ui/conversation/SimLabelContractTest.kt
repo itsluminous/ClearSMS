@@ -51,7 +51,7 @@ class SimLabelContractTest {
         // The details row formats through the SAME call.
         assertThat(mapper).contains("SimLabel.slotFirst(slot, operatorName)")
         // The dialog shows the row's label verbatim - no re-formatting.
-        assertThat(dialog).contains("is MessageDetails.Row.Sim -> row.label")
+        assertThat(dialog).containsMatch("""is MessageDetails\.Row\.Sim ->\s*\{?\s*row\.label""")
 
         // Nobody else builds a "SIM n - name" string by hand: every
         // interpolated "SIM $" literal outside SimLabel.kt is the shared
@@ -94,7 +94,7 @@ class SimLabelContractTest {
     fun `the SIM row keeps its own label resource and the other rows are untouched`() {
         val dialog = source("ui/conversation/MessageDetailsDialog.kt")
         val strings = File("src/main/res/values/strings_ui.xml").readText()
-        assertThat(dialog).contains("is MessageDetails.Row.Sim -> R.string.message_details_sim")
+        assertThat(dialog).containsMatch("""is MessageDetails\.Row\.Sim ->\s*\{?\s*R\.string\.message_details_sim""")
         assertThat(strings).contains("<string name=\"message_details_sim\">")
         // One merged accessibility node per row still: "SIM, SIM 1 - Carrier A".
         assertThat(dialog).contains("Column(modifier = Modifier.semantics(mergeDescendants = true) {})")

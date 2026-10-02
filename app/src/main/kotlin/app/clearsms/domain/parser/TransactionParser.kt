@@ -351,7 +351,9 @@ class TransactionParser(
             CARD_TXN_HEADER_REGEX.containsMatchIn(body) &&
                 CREDIT_CARD_REGEX.containsMatchIn(body) &&
                 TXN_AT_MERCHANT_REGEX.containsMatchIn(body) -> TransactionType.DEBIT
+
             PAYMENT_DONE_REGEX.containsMatchIn(body) -> TransactionType.DEBIT
+
             else -> null
         }
 
@@ -382,8 +384,11 @@ class TransactionParser(
             // your Pluxee Card") is a wallet transaction even though a card
             // number is quoted - the card is just the wallet's plastic.
             WALLET_SOURCE_REGEX.containsMatchIn(body) -> AccountType.WALLET
+
             CREDIT_CARD_REGEX.containsMatchIn(body) -> AccountType.CREDIT_CARD
+
             WALLET_REGEX.containsMatchIn(body) -> AccountType.WALLET
+
             else -> AccountType.SAVINGS
         }
 
@@ -603,19 +608,22 @@ class TransactionParser(
         type: TransactionType,
     ): String? =
         when (type) {
-            TransactionType.DEBIT ->
+            TransactionType.DEBIT -> {
                 DEBIT_RECEIVER_REGEX
                     .find(body)
                     ?.groupValues
                     ?.get(1)
                     ?.let { "A/c $it" }
-            TransactionType.CREDIT ->
+            }
+
+            TransactionType.CREDIT -> {
                 CREDIT_SENDER_VPA_REGEX.find(body)?.groupValues?.get(1)
                     ?: CREDIT_SENDER_ACCOUNT_REGEX
                         .find(body)
                         ?.groupValues
                         ?.get(1)
                         ?.let { "A/c $it" }
+            }
         }
 
     private fun categorize(

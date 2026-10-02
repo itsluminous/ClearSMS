@@ -140,8 +140,14 @@ class ComposerAttachments(
     /** Staging verdicts become inline errors; a staged attachment already fits the remaining budget. */
     private fun accept(result: StagingResult) {
         when (result) {
-            StagingResult.Unreadable -> errorFlow.value = AttachmentError.Unreadable
-            is StagingResult.TooLarge -> errorFlow.value = AttachmentError.TooLarge(result.limitBytes)
+            StagingResult.Unreadable -> {
+                errorFlow.value = AttachmentError.Unreadable
+            }
+
+            is StagingResult.TooLarge -> {
+                errorFlow.value = AttachmentError.TooLarge(result.limitBytes)
+            }
+
             is StagingResult.Staged -> {
                 list.value = list.value + result.attachment
                 errorFlow.value = null

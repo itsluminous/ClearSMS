@@ -89,67 +89,108 @@ private fun DetailRow(
     val label =
         stringResource(
             when (row) {
-                is MessageDetails.Row.Type -> R.string.message_details_type
-                is MessageDetails.Row.Counterparty ->
+                is MessageDetails.Row.Type -> {
+                    R.string.message_details_type
+                }
+
+                is MessageDetails.Row.Counterparty -> {
                     if (row.outgoing) R.string.message_details_to else R.string.message_details_from
-                is MessageDetails.Row.Timestamp ->
+                }
+
+                is MessageDetails.Row.Timestamp -> {
                     when (row.kind) {
                         MessageDetails.TimeKind.RECEIVED -> R.string.message_details_received
                         MessageDetails.TimeKind.SENT_BY_NETWORK -> R.string.message_details_sent_by_network
                         MessageDetails.TimeKind.SENT -> R.string.message_details_sent
                         MessageDetails.TimeKind.SCHEDULED -> R.string.message_details_scheduled
                     }
-                is MessageDetails.Row.Delivered -> R.string.message_details_delivered
-                is MessageDetails.Row.Error -> R.string.message_details_error
-                is MessageDetails.Row.Sim -> R.string.message_details_sim
-                MessageDetails.Row.InRecycleBin -> R.string.message_details_status
+                }
+
+                is MessageDetails.Row.Delivered -> {
+                    R.string.message_details_delivered
+                }
+
+                is MessageDetails.Row.Error -> {
+                    R.string.message_details_error
+                }
+
+                is MessageDetails.Row.Sim -> {
+                    R.string.message_details_sim
+                }
+
+                MessageDetails.Row.InRecycleBin -> {
+                    R.string.message_details_status
+                }
             },
         )
     val value =
         when (row) {
-            is MessageDetails.Row.Type ->
+            is MessageDetails.Row.Type -> {
                 stringResource(
                     when (row.transport) {
                         MessageDetails.Transport.SMS -> R.string.message_details_type_sms
                         MessageDetails.Transport.MMS -> R.string.message_details_type_mms
                     },
                 )
+            }
+
             // Contact / sender-directory name first, raw address beneath it.
-            is MessageDetails.Row.Counterparty ->
+            is MessageDetails.Row.Counterparty -> {
                 row.resolvedName?.let { "$it\n${row.address}" } ?: row.address
+            }
+
             // With seconds: sent vs received of one message can differ by
             // seconds, and that difference is what the row is for.
-            is MessageDetails.Row.Timestamp ->
+            is MessageDetails.Row.Timestamp -> {
                 MessageMetadata.preciseTimestampLabel(row.timestampMs, is24Hour)
-            is MessageDetails.Row.Delivered ->
+            }
+
+            is MessageDetails.Row.Delivered -> {
                 when {
                     // A recorded acknowledgement: just the time (with seconds,
                     // like the other time rows) - no story about the carrier.
-                    row.acknowledgedAtMs != null ->
+                    row.acknowledgedAtMs != null -> {
                         MessageMetadata.preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)
-                    else ->
+                    }
+
+                    else -> {
                         stringResource(
                             when (row.knowledge) {
                                 // Confirmed by a real report, time unknown: "Yes".
-                                MessageDetails.DeliveryKnowledge.CONFIRMED ->
+                                MessageDetails.DeliveryKnowledge.CONFIRMED -> {
                                     R.string.message_details_delivered_confirmed
+                                }
+
                                 // No report at all: honestly "Unknown".
-                                MessageDetails.DeliveryKnowledge.UNKNOWN_NO_REPORT ->
+                                MessageDetails.DeliveryKnowledge.UNKNOWN_NO_REPORT -> {
                                     R.string.message_details_delivered_unknown
+                                }
+
                                 // MMS: never "Yes" - no delivery reports exist here.
-                                MessageDetails.DeliveryKnowledge.UNSUPPORTED_MMS ->
+                                MessageDetails.DeliveryKnowledge.UNSUPPORTED_MMS -> {
                                     R.string.message_details_delivered_mms
+                                }
                             },
                         )
+                    }
                 }
+            }
+
             // The reason, plus the data-SIM guidance when it applies.
-            is MessageDetails.Row.Error ->
+            is MessageDetails.Row.Error -> {
                 listOfNotNull(
                     stringResource(SendFailureText.explanationRes(row.reason)),
                     row.dataSimHint?.let { stringResource(SendFailureText.dataSimHintRes(), it.sendingSlot, it.dataSlot) },
                 ).joinToString(separator = "\n\n")
-            is MessageDetails.Row.Sim -> row.label
-            MessageDetails.Row.InRecycleBin -> stringResource(R.string.message_details_bin)
+            }
+
+            is MessageDetails.Row.Sim -> {
+                row.label
+            }
+
+            MessageDetails.Row.InRecycleBin -> {
+                stringResource(R.string.message_details_bin)
+            }
         }
     // One accessibility node per row: label then value, so TalkBack reads
     // "Delivered, Yes" rather than a context-free "Yes".

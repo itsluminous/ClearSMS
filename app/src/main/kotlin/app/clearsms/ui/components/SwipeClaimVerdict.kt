@@ -46,7 +46,9 @@ fun evaluateSwipeClaim(
         // Checked first so a movement that crosses slop on both axes at once
         // (a fast diagonal) resolves as a scroll unless horizontal dominates.
         vertical > touchSlop && vertical >= horizontal -> SwipeClaimVerdict.YIELD
+
         horizontal > touchSlop && horizontal > vertical -> SwipeClaimVerdict.CLAIM
+
         else -> SwipeClaimVerdict.UNDECIDED
     }
 }

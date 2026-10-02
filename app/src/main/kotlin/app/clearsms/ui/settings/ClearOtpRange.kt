@@ -26,10 +26,15 @@ enum class ClearOtpRange {
     fun cutoffMs(nowMs: Long): Long =
         when (this) {
             ALL -> Long.MAX_VALUE
+
             OLDER_THAN_1_DAY -> nowMs - TimeUnit.DAYS.toMillis(1)
+
             OLDER_THAN_3_DAYS -> nowMs - TimeUnit.DAYS.toMillis(3)
+
             OLDER_THAN_1_WEEK -> nowMs - TimeUnit.DAYS.toMillis(7)
+
             OLDER_THAN_2_WEEKS -> nowMs - TimeUnit.DAYS.toMillis(14)
+
             // "1 month" is a cleanup horizon, not a calendar contract: a
             // fixed 30 days keeps the cutoff deterministic and testable.
             OLDER_THAN_1_MONTH -> nowMs - TimeUnit.DAYS.toMillis(30)

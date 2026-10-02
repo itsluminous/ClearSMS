@@ -85,10 +85,13 @@ fun ArchivedScreen(
         viewModel.undoEventFlow.collect { event ->
             val message =
                 when (event) {
-                    is UndoUiEvent.Deleted ->
+                    is UndoUiEvent.Deleted -> {
                         resources.getQuantityString(R.plurals.undo_deleted, event.count, event.count)
-                    is UndoUiEvent.Archived ->
+                    }
+
+                    is UndoUiEvent.Archived -> {
                         resources.getQuantityString(R.plurals.undo_archived, event.count, event.count)
+                    }
                 }
             val result =
                 snackbarHostState.showSnackbar(

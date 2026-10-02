@@ -83,8 +83,14 @@ class IncomingMessageRouter
             }
             val selectedActions = settingsRepository.notificationActions.first()
             when {
-                entity.category == Category.OTP && entity.extractedOtp != null -> notifyOtp(entity, selectedActions)
-                entity.subCategory == SubCategory.SCAM -> messageNotifier.notifyScam(entity)
+                entity.category == Category.OTP && entity.extractedOtp != null -> {
+                    notifyOtp(entity, selectedActions)
+                }
+
+                entity.subCategory == SubCategory.SCAM -> {
+                    messageNotifier.notifyScam(entity)
+                }
+
                 // Parsed transaction/balance/bill notification (opt-out via
                 // settings). Balance-only updates (BANK_ALERT with a parsed
                 // balance) and bill reminders (BILL with a parsed amount due)
@@ -101,37 +107,50 @@ class IncomingMessageRouter
                         entity.subCategory == SubCategory.BILL
                 ) &&
                     settingsRepository.transactionNotifications.first() &&
-                    transactionNotifier.notify(entity, selectedActions) -> Unit
-                entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT ->
+                    transactionNotifier.notify(entity, selectedActions) -> {
+                    Unit
+                }
+
+                entity.category == Category.PERSONAL || entity.category == Category.IMPORTANT -> {
                     messageNotifier.notify(entity, selectedActions)
+                }
+
                 // Promotions always post to their own "Promotions" channel, which
                 // is created BLOCKED (IMPORTANCE_NONE) - so nothing is shown until
                 // the user enables the category in Android's notification settings.
                 // Posting unconditionally is what makes that switch meaningful: an
                 // extra in-app gate would silently swallow them and the Android
                 // toggle would appear to do nothing.
-                entity.category == Category.PROMOTIONAL ->
+                entity.category == Category.PROMOTIONAL -> {
                     messageNotifier.notify(entity, selectedActions, channelId = Channels.PROMOTIONS)
+                }
+
                 // Spam: same shape as promotions, its own blocked channel
                 // (Channels.SPAM). Ordered AFTER the scam branch above on
                 // purpose - a message that is both sorted as spam and
                 // FLAGGED as a scam keeps its security warning; only
                 // unflagged spam lands here. MessageNotifier applies the
                 // Inbox section gate like every other message notification.
-                entity.category == Category.SPAM ->
+                entity.category == Category.SPAM -> {
                     messageNotifier.notify(entity, selectedActions, channelId = Channels.SPAM)
+                }
+
                 // Unknown senders get the same per-thread message notification
                 // on their own ENABLED channel (Channels.UNKNOWN) - a real
                 // person texting from a non-contact number must not arrive
                 // silently. Reusing MessageNotifier keeps the thread id band,
                 // deep-link highlight and read-in-app cancellation identical
                 // to plain messages.
-                entity.category == Category.UNKNOWN ->
+                entity.category == Category.UNKNOWN -> {
                     messageNotifier.notify(entity, selectedActions, channelId = Channels.UNKNOWN)
+                }
+
                 // The only reachable remainder: an OTP-category message whose
                 // code could not be extracted. Deliberately silent - a bare
                 // "OTP" notification with nothing to copy would be noise.
-                else -> Unit
+                else -> {
+                    Unit
+                }
             }
         }
 

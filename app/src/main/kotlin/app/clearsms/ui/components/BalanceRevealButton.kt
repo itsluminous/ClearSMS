@@ -87,6 +87,7 @@ fun BalanceRevealCardButton(
                 Text(label)
             }
         }
+
         RevealButtonState.SHOW_HIDE -> {
             val label = stringResource(R.string.balance_hide_balances)
             TextButton(
@@ -99,6 +100,9 @@ fun BalanceRevealCardButton(
                 Text(label)
             }
         }
-        RevealButtonState.NONE -> Unit
+
+        RevealButtonState.NONE -> {
+            Unit
+        }
     }
 }
