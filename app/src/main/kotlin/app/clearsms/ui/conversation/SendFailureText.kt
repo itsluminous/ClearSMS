@@ -16,9 +16,11 @@ import app.clearsms.mms.SendFailureReason
  * [SendFailureReason.CARRIER_DISABLED]) is never told that a retry will
  * work; only [SendFailureReason.TRANSIENT] gets that hint - in particular
  * NOT [SendFailureReason.PDU_REJECTED], which the platform returns within
- * milliseconds and which a bare retry repeats exactly (issue #51). A failure
- * recorded without a reason (an SMS failure, or a row from before the
- * column) reads honestly as unexplained.
+ * milliseconds and which a bare retry repeats exactly (issue #51). An SMS
+ * failure carries a reason only when the platform's result code has a clear
+ * meaning ([SendFailureReason.NO_SERVICE], [SendFailureReason.SHORT_CODE_BLOCKED]);
+ * a generic SMS failure, or a row from before the column, reads honestly as
+ * unexplained.
  *
  * One optional addendum exists: when a failed MMS went out on a SIM other
  * than the phone's mobile-data SIM, [dataSimHintRes] is appended to the
@@ -39,6 +41,8 @@ object SendFailureText {
             SendFailureReason.EXCEEDS_CARRIER_LIMIT -> R.string.send_failure_exceeds_carrier_limit
             SendFailureReason.CARRIER_DISABLED -> R.string.send_failure_carrier_disabled
             SendFailureReason.SIM_UNAVAILABLE -> R.string.send_failure_sim_unavailable
+            SendFailureReason.NO_SERVICE -> R.string.send_failure_no_service
+            SendFailureReason.SHORT_CODE_BLOCKED -> R.string.send_failure_short_code_blocked
             SendFailureReason.DISPATCH_FAILED -> R.string.send_failure_dispatch
             SendFailureReason.UNKNOWN, null -> R.string.send_failure_unknown
         }
@@ -58,6 +62,8 @@ object SendFailureText {
             SendFailureReason.EXCEEDS_CARRIER_LIMIT -> R.string.conversation_not_sent_exceeds_carrier_limit
             SendFailureReason.CARRIER_DISABLED -> R.string.conversation_not_sent_carrier_disabled
             SendFailureReason.SIM_UNAVAILABLE -> R.string.conversation_not_sent_sim_unavailable
+            SendFailureReason.NO_SERVICE -> R.string.conversation_not_sent_no_service
+            SendFailureReason.SHORT_CODE_BLOCKED -> R.string.conversation_not_sent_short_code_blocked
             SendFailureReason.DISPATCH_FAILED -> R.string.conversation_not_sent_dispatch
             SendFailureReason.UNKNOWN, null -> R.string.conversation_not_sent
         }

@@ -41,7 +41,9 @@ object NotificationActionPlanner {
      * Actions for an OTP notification. Copy is ALWAYS first and always
      * available regardless of the selection (it is the whole point of the
      * notification); the rest honor the user's selection. REPLY is skipped -
-     * OTP senders are one-way short codes. SHARE is skipped too: OTP
+     * an OTP is something to copy, not to answer, and the three slots are
+     * better spent (whether the short code behind it would accept a reply is
+     * beside the point here). SHARE is skipped too: OTP
      * notifications already have the dedicated SHARE_OTP action, and two
      * share buttons on one notification would be confusing.
      */
@@ -57,9 +59,12 @@ object NotificationActionPlanner {
         ).take(MAX_ACTIONS)
 
     /**
-     * A sender is repliable only when it looks like a real dialable phone
-     * number. Delegates to the shared [SenderRepliability] core predicate so
-     * notifications and the conversation composer agree on one rule.
+     * A sender is repliable when the phone can address a reply to it: a
+     * subscriber number OR a numeric short code (many are two-way - GitHub
+     * #75). Alphanumeric ids are not, because the platform cannot encode a
+     * name as an SMS destination. Delegates to the shared
+     * [SenderRepliability] predicate so notifications and the conversation
+     * composer agree on one rule.
      */
-    fun isRepliableAddress(sender: String): Boolean = SenderRepliability.isDialableNumber(sender)
+    fun isRepliableAddress(sender: String): Boolean = SenderRepliability.isAddressable(sender)
 }

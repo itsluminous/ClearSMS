@@ -54,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -87,8 +88,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.clearsms.R
 import app.clearsms.mms.StagedAttachment
+import app.clearsms.sms.SenderRepliability.Repliability
 import app.clearsms.sms.SimLabel
 import app.clearsms.ui.common.AttachmentError
+import app.clearsms.ui.common.RepliabilityText
 import kotlinx.coroutines.flow.drop
 
 /**
@@ -734,23 +737,29 @@ private val SimOutlineGlyph: ImageVector by lazy {
 }
 
 /**
- * Replaces [MessageComposerBar] for one-way senders (alphanumeric ids, short
- * codes). Lives here because it is a bottom bar: like the composer it must
- * pad for the system navigation bar itself (the Scaffold bottomBar slot adds
- * no inset), and this file is the single sanctioned home for inset reads
- * (see SystemBarInsetOwnershipConventionTest).
+ * Replaces [MessageComposerBar] when the sender does not get the composer
+ * outright (GitHub #75). The text comes from [RepliabilityText] - one line
+ * per [Repliability] verdict, each saying only what the app can know - and
+ * a short code adds a "Reply anyway" action, because sending to a short code
+ * is technically possible and whether it answers is the service's business,
+ * not this app's guess. Lives here because it is a bottom bar: like the
+ * composer it must pad for the system navigation bar itself (the Scaffold
+ * bottomBar slot adds no inset), and this file is the single sanctioned
+ * home for inset reads (see SystemBarInsetOwnershipConventionTest).
  */
 @Composable
-fun NotRepliableBar() {
+fun ReplyNoticeBar(
+    repliability: Repliability,
+    onReplyAnyway: () -> Unit,
+) {
     Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
         ) {
             Icon(
                 Icons.Outlined.Info,
@@ -759,10 +768,16 @@ fun NotRepliableBar() {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.conversation_not_repliable),
+                text = stringResource(RepliabilityText.messageRes(repliability)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
             )
+            if (RepliabilityText.offersReplyAnyway(repliability)) {
+                TextButton(onClick = onReplyAnyway) {
+                    Text(stringResource(RepliabilityText.replyAnywayRes()))
+                }
+            }
         }
     }
 }

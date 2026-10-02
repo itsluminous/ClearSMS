@@ -111,7 +111,7 @@ import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.MutedIndicator
 import app.clearsms.ui.components.MutedIndicatorIcon
-import app.clearsms.ui.components.NotRepliableBar
+import app.clearsms.ui.components.ReplyNoticeBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
@@ -579,7 +579,11 @@ fun ConversationScreen(
                         attachmentError = attachmentError,
                         attachmentBudgetBytes = attachmentBudgetBytes,
                     )
-                else -> NotRepliableBar()
+                else ->
+                    ReplyNoticeBar(
+                        repliability = state.repliability,
+                        onReplyAnyway = viewModel::replyAnyway,
+                    )
             }
         },
     ) { padding ->

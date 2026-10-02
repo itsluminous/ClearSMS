@@ -157,12 +157,32 @@ data class ConversationUiState(
     val address: String = "",
     val photoUri: String? = null,
     val isKnownSender: Boolean = false,
+    /**
+     * The title came from the user's own address book. For a short code this
+     * is the one thing the app CAN know about the user's intent: they saved
+     * `80122` as "O2 Zusatzvolumen" because they correspond with it (GitHub
+     * #75's screenshot was exactly that), so [repliable] opens the composer
+     * for it outright. Verified on device: `PhoneLookup` resolves a saved
+     * short code and nothing else resolves to it, see [app.clearsms.sms.ContactsSource].
+     */
+    val isContact: Boolean = false,
     /** Saved contact's lookup URI (name tap opens it); null for non-contacts. */
     val contactLookupUri: String? = null,
     val glyph: BrandGlyph = BrandGlyph.NONE,
     val richAvatars: Boolean = true,
-    /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
-    val repliable: Boolean = false,
+    /**
+     * What a reply to this sender can do (see [SenderRepliability]): a
+     * subscriber number gets the composer, a short code gets a hedged notice
+     * with "Reply anyway" unless it is a saved contact ([isContact]), an
+     * alphanumeric id or no address gets a notice only. [repliable] is the
+     * derived "show the composer" flag.
+     */
+    val repliability: SenderRepliability.Repliability = SenderRepliability.Repliability.INVALID,
+    /**
+     * The user tapped "Reply anyway" on a short code's notice: the composer
+     * is shown for this screen session. Meaningless for other verdicts.
+     */
+    val replyAnyway: Boolean = false,
     /** Mirrors Settings -> Messages -> Show extracted message details (default OFF). */
     val showTransactionDetails: Boolean = false,
     /**
@@ -190,7 +210,20 @@ data class ConversationUiState(
      */
     val activeSims: List<SimInfo> = emptyList(),
     val loaded: Boolean = false,
-)
+) {
+    /**
+     * Whether the composer is shown: a subscriber number outright, a short
+     * code once the user chose "Reply anyway" OR when they have saved it as
+     * a contact (a UI affordance only - what is addressable is still
+     * [SenderRepliability]'s call, and an alphanumeric id stays closed even
+     * when saved). Everything else gets the
+     * [app.clearsms.ui.common.RepliabilityText] notice instead.
+     */
+    val repliable: Boolean
+        get() =
+            repliability == SenderRepliability.Repliability.NUMBER ||
+                (repliability == SenderRepliability.Repliability.SHORT_CODE && (replyAnyway || isContact))
+}
 
 /** One-shot outcome of the overflow's mute toggle, surfaced as a snackbar. */
 data class MuteToggled(
@@ -299,6 +332,9 @@ class ConversationViewModel
          */
         private val activeSimsFlow = MutableStateFlow<List<SimInfo>>(emptyList())
         private val activeSims: List<SimInfo> get() = activeSimsFlow.value
+
+        /** Set by [replyAnyway]; read into [uiState]. */
+        private val replyAnywayChosen = MutableStateFlow(false)
 
         /** Whether bubbles carry SIM tags (2+ SIMs on device or in corpus). */
         @Volatile
@@ -513,10 +549,13 @@ class ConversationViewModel
                     address = first?.sender.orEmpty(),
                     photoUri = display?.photoUri,
                     isKnownSender = display?.isKnownSender ?: false,
+                    isContact = display?.isContact ?: false,
                     contactLookupUri = display?.contactLookupUri,
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
-                    repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
+                    repliability =
+                        first?.sender?.let { SenderRepliability.classifyOnDevice(it) }
+                            ?: SenderRepliability.Repliability.INVALID,
                     showTransactionDetails = showDetails,
                     muted = first?.sender?.let { MutedSenderGate.matches(mutedSenders, it) } ?: false,
                     selectionActionOrder = actionOrder,
@@ -528,8 +567,21 @@ class ConversationViewModel
                 .combine(settings.recycleBinEnabled) { state, bin -> state.copy(recycleBinEnabled = bin) }
                 // The SIM list the details dialog resolves provenance against.
                 .combine(activeSimsFlow) { state, sims -> state.copy(activeSims = sims) }
+                // "Reply anyway" on a short code's notice (GitHub #75).
+                .combine(replyAnywayChosen) { state, anyway -> state.copy(replyAnyway = anyway) }
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
+
+        /**
+         * The user chose to reply to a short code despite the notice that it
+         * may not accept replies: the composer opens for this screen
+         * session (ViewModel-scoped, so it survives rotation). Only a
+         * [SenderRepliability.Repliability.SHORT_CODE] sender has the
+         * button, so nothing else can reach this.
+         */
+        fun replyAnyway() {
+            replyAnywayChosen.value = true
+        }
 
         /**
          * Dispatches [body]: with attachments staged the message goes out as
