@@ -44,17 +44,20 @@ object DeleteConfirmationText {
         recycleBinEnabled: Boolean,
     ): Int =
         when (target) {
-            Target.MESSAGES ->
+            Target.MESSAGES -> {
                 if (recycleBinEnabled) {
                     R.string.selection_delete_messages_to_bin_message
                 } else {
                     R.string.selection_delete_messages_message
                 }
-            Target.CONVERSATIONS ->
+            }
+
+            Target.CONVERSATIONS -> {
                 if (recycleBinEnabled) {
                     R.string.selection_delete_threads_to_bin_message
                 } else {
                     R.string.selection_delete_threads_message
                 }
+            }
         }
 }

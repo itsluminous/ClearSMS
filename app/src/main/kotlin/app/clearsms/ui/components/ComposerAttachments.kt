@@ -172,9 +172,13 @@ fun AttachmentErrorText(error: AttachmentError?) {
     Text(
         text =
             when (error) {
-                is AttachmentError.TooLarge ->
+                is AttachmentError.TooLarge -> {
                     stringResource(R.string.compose_attachment_too_large, humanSize(error.limitBytes))
-                AttachmentError.Unreadable -> stringResource(R.string.compose_attachment_unreadable)
+                }
+
+                AttachmentError.Unreadable -> {
+                    stringResource(R.string.compose_attachment_unreadable)
+                }
             },
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.error,

@@ -247,6 +247,7 @@ class MessageRepositoryImpl(
             // Addresses are resolved from the same tokens the MATCH is built
             // from, so a tokenless query never carries addresses in practice.
             null -> EmptyPagingSource()
+
             else -> messageDao.pagingSearchWithSenders(match, senderAddresses, category, cutoffMs)
         }
     }
@@ -1265,32 +1266,54 @@ class MessageRepositoryImpl(
                 // ... is due") describe money OWED - they must never become a
                 // transaction, whether from the parser or from rule extracts.
                 // They stay reminders (see the reminder path below).
-                transactionParser.isStatementNotice(evalBody) -> null
+                transactionParser.isStatementNotice(evalBody) -> {
+                    null
+                }
+
                 // FAILED payments moved no money: no transaction, whether
                 // from the parser (already null there) or from rule extracts.
-                transactionParser.isFailedPayment(evalBody) -> null
+                transactionParser.isFailedPayment(evalBody) -> {
+                    null
+                }
+
                 // Collect / payment requests and mandate lifecycle notices
                 // quote an amount that was only ASKED for - never a
                 // transaction, from the parser OR from rule extracts. The
                 // requested figure is carried under its own unsigned key
                 // below.
-                transactionParser.isPaymentRequestNotice(evalBody) -> null
+                transactionParser.isPaymentRequestNotice(evalBody) -> {
+                    null
+                }
+
                 // Refund/payout lifecycle notices whose money has not landed
                 // ("refund ... initiated"; card credit-balance refunds whose
                 // money lands in a different bank account): never a
                 // transaction, from the parser (already null there) or from
                 // rule extracts - the receiving bank's own credit SMS
                 // records the money when it lands.
-                transactionParser.isPayoutInFlight(evalBody) -> null
+                transactionParser.isPayoutInFlight(evalBody) -> {
+                    null
+                }
+
                 // Retirement units-credited echoes re-announce a
                 // contribution whose fund-confirmation SMS already recorded
                 // the credit: never a second transaction; the valuation
                 // they quote refreshes the account balance below instead.
-                transactionParser.isRetirementUnitsEcho(evalBody) -> null
-                parsedTx != null -> mergeTransaction(parsedTx, result.typed, result.subCategory)
-                result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES ->
+                transactionParser.isRetirementUnitsEcho(evalBody) -> {
+                    null
+                }
+
+                parsedTx != null -> {
+                    mergeTransaction(parsedTx, result.typed, result.subCategory)
+                }
+
+                result.subCategory in TRANSACTION_DERIVING_SUBCATEGORIES -> {
                     transactionFromExtracts(extracts, result.typed, result.subCategory, sender, evalBody)
-                else -> null
+                }
+
+                else -> {
+                    null
+                }
             }
 
         // Delivery expectations only come from messages the categorizer
@@ -1307,11 +1330,14 @@ class MessageRepositoryImpl(
         val reminder =
             when {
                 parsedReminder != null -> mergeReminder(parsedReminder, result.typed, extracts)
+
                 // A dated journey (train or flight): the rule extracts the
                 // journey date; the entry expires past it. One shared path
                 // for both travel modes - never a train-only mechanism.
                 result.subCategory == SubCategory.TRAVEL -> travelFromExtracts(extracts, result.typed)
+
                 result.subCategory == SubCategory.BILL -> reminderFromExtracts(sender, evalBody, extracts, result.typed)
+
                 else -> null
                 // A reminder without a due date is not actionable; this also
                 // keeps transaction confirmations (SubCategory.TRANSACTION)
@@ -1489,9 +1515,12 @@ class MessageRepositoryImpl(
                     accountId?.let { touchedAccounts?.add(it) }
                     transactionDao.insert(unlinked.copy(accountId = accountId))
                 }
-                duplicate.bankName.isNotEmpty() && bankName.isNotEmpty() && duplicate.bankName != bankName ->
+
+                duplicate.bankName.isNotEmpty() && bankName.isNotEmpty() && duplicate.bankName != bankName -> {
                     collapseCrossBankEcho(duplicate, unlinked, tx, timestampMs)
                         ?.let { touchedAccounts?.add(it) }
+                }
+
                 else -> {
                     val accountId = resolveAccountId(tx, accountNumber, bankName, timestampMs)
                     accountId?.let { touchedAccounts?.add(it) }
@@ -1618,12 +1647,25 @@ class MessageRepositoryImpl(
         for (existing in (byReference + nearby).distinctBy { it.id }) {
             val duplicate =
                 when {
-                    TransactionDeduplication.isReferenceDuplicate(existing, candidate) -> true
-                    TransactionDeduplication.isNearDuplicateAlert(existing, candidate) -> true
-                    TransactionDeduplication.isCrossBankReferenceEcho(existing, candidate) -> true
-                    TransactionDeduplication.isCrossBankNearEcho(existing, candidate) ->
+                    TransactionDeduplication.isReferenceDuplicate(existing, candidate) -> {
+                        true
+                    }
+
+                    TransactionDeduplication.isNearDuplicateAlert(existing, candidate) -> {
+                        true
+                    }
+
+                    TransactionDeduplication.isCrossBankReferenceEcho(existing, candidate) -> {
+                        true
+                    }
+
+                    TransactionDeduplication.isCrossBankNearEcho(existing, candidate) -> {
                         !bothBanksHoldTail(existing, candidate)
-                    else -> false
+                    }
+
+                    else -> {
+                        false
+                    }
                 }
             if (duplicate) return existing
         }
@@ -1810,16 +1852,25 @@ class MessageRepositoryImpl(
         if (bankName.isEmpty()) return null
         val ownedType =
             when {
-                tx.accountType == AccountType.CREDIT_CARD && SenderNameResolver.isCardProductIssuer(bankName) ->
+                tx.accountType == AccountType.CREDIT_CARD && SenderNameResolver.isCardProductIssuer(bankName) -> {
                     AccountType.CREDIT_CARD
-                tx.accountType == AccountType.WALLET && SenderNameResolver.isWalletIssuer(bankName) ->
+                }
+
+                tx.accountType == AccountType.WALLET && SenderNameResolver.isWalletIssuer(bankName) -> {
                     AccountType.WALLET
-                else -> return null
+                }
+
+                else -> {
+                    return null
+                }
             }
         val owned = accountDao.findByBank(bankName).filter { it.type == ownedType }
         return when {
-            owned.size > 1 -> null
-            owned.size == 1 ->
+            owned.size > 1 -> {
+                null
+            }
+
+            owned.size == 1 -> {
                 upsertAccountBalance(
                     accountNumber = owned.single().accountNumber,
                     bankName = bankName,
@@ -1828,7 +1879,9 @@ class MessageRepositoryImpl(
                     timestampMs = timestampMs,
                     availableLimit = tx.availableLimit,
                 )
-            else ->
+            }
+
+            else -> {
                 upsertAccountBalance(
                     accountNumber = SenderNameResolver.syntheticAccountKey(bankName),
                     bankName = bankName,
@@ -1837,6 +1890,7 @@ class MessageRepositoryImpl(
                     timestampMs = timestampMs,
                     availableLimit = tx.availableLimit,
                 )
+            }
         }
     }
 

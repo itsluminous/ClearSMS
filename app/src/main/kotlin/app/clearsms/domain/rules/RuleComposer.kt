@@ -83,13 +83,20 @@ object RuleComposer {
                     }
                     out.append(c)
                 }
+
                 c.isWhitespace() -> {
                     while (i < text.length && text[i].isWhitespace()) i++
                     out.append("\\s+")
                     continue
                 }
-                c in REGEX_SPECIALS -> out.append('\\').append(c)
-                else -> out.append(c)
+
+                c in REGEX_SPECIALS -> {
+                    out.append('\\').append(c)
+                }
+
+                else -> {
+                    out.append(c)
+                }
             }
             i++
         }

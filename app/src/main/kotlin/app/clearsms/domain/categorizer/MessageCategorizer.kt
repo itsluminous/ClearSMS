@@ -264,12 +264,17 @@ class MessageCategorizer(
     ): SubCategory? =
         when {
             otpParser.parse(body) != null -> SubCategory.OTP
+
             // Payment requests / mandate notices: a bank alert, even for a
             // directory-matched sender like PhonePe.
             transactionParser.isPaymentRequestNotice(body) -> SubCategory.BANK_ALERT
+
             transactionParser.parse(sender, body) != null -> SubCategory.TRANSACTION
+
             reminderParser.parse(sender, body, anchor) != null -> SubCategory.BILL
+
             scamDetector.isScam(body) -> SubCategory.SCAM
+
             else -> null
         }
 

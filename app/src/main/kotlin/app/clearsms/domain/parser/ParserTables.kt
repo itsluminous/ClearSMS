@@ -173,9 +173,18 @@ object ParserTables {
         ref: String,
     ): Regex? =
         when (ref) {
-            "insurer_names" -> billers.insurerNameRegex
-            "bill_domains" -> billers.billDomainRegex
-            "known_biller_senders" -> billers.knownBillerSenderRegex
+            "insurer_names" -> {
+                billers.insurerNameRegex
+            }
+
+            "bill_domains" -> {
+                billers.billDomainRegex
+            }
+
+            "known_biller_senders" -> {
+                billers.knownBillerSenderRegex
+            }
+
             else -> {
                 warn("reminder_evidence.json", "$type: unknown table ref '$ref'; row skipped")
                 null

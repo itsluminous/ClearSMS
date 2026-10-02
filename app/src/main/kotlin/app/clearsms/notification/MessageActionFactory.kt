@@ -28,24 +28,36 @@ internal object MessageActionFactory {
     ): List<NotificationCompat.Action> =
         actions.mapNotNull { action ->
             when (action) {
-                NotificationAction.MARK_READ ->
+                NotificationAction.MARK_READ -> {
                     NotificationCompat.Action
                         .Builder(
                             0,
                             context.getString(R.string.notification_action_mark_read),
                             broadcast(context, message, notificationId, MessageActionReceiver.ACTION_MARK_READ, requestOffset = 0),
                         ).build()
-                NotificationAction.DELETE ->
+                }
+
+                NotificationAction.DELETE -> {
                     NotificationCompat.Action
                         .Builder(
                             0,
                             context.getString(R.string.action_delete),
                             broadcast(context, message, notificationId, MessageActionReceiver.ACTION_DELETE, requestOffset = 1),
                         ).build()
-                NotificationAction.REPLY -> replyAction(context, message, notificationId)
-                NotificationAction.SHARE -> shareAction(context, message)
+                }
+
+                NotificationAction.REPLY -> {
+                    replyAction(context, message, notificationId)
+                }
+
+                NotificationAction.SHARE -> {
+                    shareAction(context, message)
+                }
+
                 // OTP-only actions are handled by OtpNotifier, never here.
-                NotificationAction.COPY_OTP, NotificationAction.SHARE_OTP -> null
+                NotificationAction.COPY_OTP, NotificationAction.SHARE_OTP -> {
+                    null
+                }
             }
         }
 

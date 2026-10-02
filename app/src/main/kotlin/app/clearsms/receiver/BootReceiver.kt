@@ -53,6 +53,7 @@ class BootReceiver : BroadcastReceiver() {
                     }
                 }
             }
+
             Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> {
                 val pendingResult = goAsync()
                 applicationScope.launch {

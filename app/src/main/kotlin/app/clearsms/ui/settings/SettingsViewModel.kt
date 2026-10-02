@@ -230,12 +230,16 @@ class SettingsViewModel
         private val sortProgress: Flow<SortProgress?> =
             sortWorkInfo.map { info ->
                 when (info?.state) {
-                    WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED ->
+                    WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED -> {
                         SortProgress(
                             processed = info.progress.getInt(RecategorizeWorker.PROGRESS_PROCESSED, 0),
                             total = info.progress.getInt(RecategorizeWorker.PROGRESS_TOTAL, 0),
                         )
-                    else -> null
+                    }
+
+                    else -> {
+                        null
+                    }
                 }
             }
 
@@ -247,15 +251,24 @@ class SettingsViewModel
                 var sawActiveRun = false
                 sortWorkInfo.collect { info ->
                     when {
-                        info == null -> Unit
-                        !info.state.isFinished -> sawActiveRun = true
+                        info == null -> {
+                            Unit
+                        }
+
+                        !info.state.isFinished -> {
+                            sawActiveRun = true
+                        }
+
                         info.state == WorkInfo.State.SUCCEEDED && sawActiveRun -> {
                             sawActiveRun = false
                             events.emit(
                                 SettingsEvent.SortDone(info.outputData.getInt(RecategorizeWorker.OUTPUT_COUNT, 0)),
                             )
                         }
-                        else -> sawActiveRun = false
+
+                        else -> {
+                            sawActiveRun = false
+                        }
                     }
                 }
             }
@@ -379,11 +392,11 @@ class SettingsViewModel
                 other,
                 combine(sortProgress, busy, ::Pair),
             ) {
-                    (appearanceState, gestures),
-                    notificationState,
-                    (autoCopy, autoDelete, size),
-                    otherState,
-                    (sortState, isBusy),
+                (appearanceState, gestures),
+                notificationState,
+                (autoCopy, autoDelete, size),
+                otherState,
+                (sortState, isBusy),
                 ->
                 SettingsUiState(
                     theme = appearanceState.theme,
@@ -501,8 +514,14 @@ class SettingsViewModel
                 return@launchIo
             }
             when (tab) {
-                StartDestination.INBOX -> settings.setInboxSectionEnabled(value)
-                StartDestination.FINANCE -> settings.setFinanceSectionEnabled(value)
+                StartDestination.INBOX -> {
+                    settings.setInboxSectionEnabled(value)
+                }
+
+                StartDestination.FINANCE -> {
+                    settings.setFinanceSectionEnabled(value)
+                }
+
                 StartDestination.ALERTS -> {
                     settings.setAlertsSectionEnabled(value)
                     // Alerts off must stop the WAKE-UPS, not just the
@@ -593,9 +612,13 @@ class SettingsViewModel
             launchIo {
                 val hasDirectory = uiPrefs.backupDirectoryUri.first() != null
                 when (val outcome = BackupDirectoryGate.onFrequencySelected(value, hasDirectory)) {
-                    is BackupDirectoryGate.FrequencyOutcome.Apply -> applyBackupFrequency(outcome.frequency)
-                    is BackupDirectoryGate.FrequencyOutcome.NeedDirectory ->
+                    is BackupDirectoryGate.FrequencyOutcome.Apply -> {
+                        applyBackupFrequency(outcome.frequency)
+                    }
+
+                    is BackupDirectoryGate.FrequencyOutcome.NeedDirectory -> {
                         pendingBackupFrequencyFlow.value = outcome.pending
+                    }
                 }
             }
         }
@@ -617,13 +640,19 @@ class SettingsViewModel
                         uiPrefs.setBackupDirectoryError(false)
                         applyBackupFrequency(outcome.frequency)
                     }
+
                     BackupDirectoryGate.PickOutcome.LocationUpdated -> {
                         uiPrefs.setBackupDirectoryUri(treeUri)
                         uiPrefs.setBackupDirectoryError(false)
                     }
-                    BackupDirectoryGate.PickOutcome.RevertedToOff ->
+
+                    BackupDirectoryGate.PickOutcome.RevertedToOff -> {
                         events.emit(SettingsEvent.BackupDirectoryDeclined)
-                    BackupDirectoryGate.PickOutcome.Dismissed -> Unit
+                    }
+
+                    BackupDirectoryGate.PickOutcome.Dismissed -> {
+                        Unit
+                    }
                 }
             }
         }

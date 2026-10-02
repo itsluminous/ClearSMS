@@ -82,8 +82,14 @@ fun ClearSmsTheme(
                 val context = LocalContext.current
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
-            darkTheme -> DarkScheme
-            else -> LightScheme
+
+            darkTheme -> {
+                DarkScheme
+            }
+
+            else -> {
+                LightScheme
+            }
         }
     val semanticAmountColors = if (darkTheme) SemanticAmountColors.Dark else SemanticAmountColors.Light
     CompositionLocalProvider(LocalSemanticAmountColors provides semanticAmountColors) {

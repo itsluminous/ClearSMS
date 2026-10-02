@@ -62,7 +62,10 @@ fun balanceToggleHandler(
                         }
                     }
                 }
-                else -> blockedBy = decision
+
+                else -> {
+                    blockedBy = decision
+                }
             }
         }
     }

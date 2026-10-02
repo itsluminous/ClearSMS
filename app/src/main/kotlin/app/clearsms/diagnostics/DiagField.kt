@@ -105,7 +105,10 @@ class DiagField private constructor(
             DiagField(
                 "mime",
                 when {
-                    value == null -> "null"
+                    value == null -> {
+                        "null"
+                    }
+
                     else -> {
                         val trimmed = value.trim().lowercase()
                         if (MIME.matches(trimmed) && trimmed.substringBefore('/') in MIME_TOP_LEVEL) trimmed else DROPPED

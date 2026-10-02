@@ -287,17 +287,22 @@ class ComposeMessageViewModel
                 val messageId =
                     try {
                         when {
-                            attachments.isNotEmpty() ->
+                            attachments.isNotEmpty() -> {
                                 mmsSender
                                     .send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)
                                     .also { failedMmsMessageId = it }
+                            }
+
                             retryMmsId != null -> {
                                 // Attachments already live on the failed
                                 // row; Retry re-dispatches THAT row.
                                 mmsSender.resend(retryMmsId)
                                 retryMmsId
                             }
-                            else -> smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
+
+                            else -> {
+                                smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
+                            }
                         }
                     } catch (e: Exception) {
                         // Nothing (new) was persisted: give the text back so

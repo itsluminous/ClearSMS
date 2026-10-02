@@ -205,19 +205,31 @@ class RuleEngine(
         currency: () -> CurrencyInfo,
     ): ExtractedValue? =
         when (type) {
-            ExtractType.AMOUNT ->
+            ExtractType.AMOUNT -> {
                 AmountParser
                     .parse(trimmed, currency())
                     ?.let { ExtractedValue.Amount(trimmed, it) }
-            ExtractType.DATE -> dateParser(trimmed, anchor)?.let { ExtractedValue.Date(trimmed, it) }
-            ExtractType.MERCHANT -> ExtractedValue.Merchant(trimmed, merchantNormalizer(trimmed))
-            ExtractType.TRANSACTION_TYPE ->
+            }
+
+            ExtractType.DATE -> {
+                dateParser(trimmed, anchor)?.let { ExtractedValue.Date(trimmed, it) }
+            }
+
+            ExtractType.MERCHANT -> {
+                ExtractedValue.Merchant(trimmed, merchantNormalizer(trimmed))
+            }
+
+            ExtractType.TRANSACTION_TYPE -> {
                 when (trimmed.lowercase()) {
                     "debit" -> TransactionType.DEBIT
                     "credit" -> TransactionType.CREDIT
                     else -> null
                 }?.let { ExtractedValue.TxnType(trimmed, it) }
-            ExtractType.TEXT -> ExtractedValue.Text(trimmed)
+            }
+
+            ExtractType.TEXT -> {
+                ExtractedValue.Text(trimmed)
+            }
         }
 
     private fun compiled(
@@ -289,12 +301,18 @@ class RuleEngine(
         fun categoryOf(value: String): Category =
             when (value.lowercase()) {
                 "important" -> Category.IMPORTANT
+
                 "promotional" -> Category.PROMOTIONAL
+
                 // Legacy rule value: informational notices are IMPORTANT (no separate pill).
                 "informational" -> Category.IMPORTANT
+
                 "personal" -> Category.PERSONAL
+
                 "otp" -> Category.OTP
+
                 "spam" -> Category.SPAM
+
                 else -> Category.UNKNOWN
             }
 

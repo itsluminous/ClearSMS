@@ -230,7 +230,11 @@ object GuardLibrary {
 
         while (i < pattern.length) {
             when (pattern[i]) {
-                '\\' -> i++ // skip the escaped char
+                '\\' -> {
+                    i++
+                }
+
+                // skip the escaped char
                 '[' -> {
                     // Skip the whole character class (quantifiers inside are literals).
                     i++
@@ -241,12 +245,20 @@ object GuardLibrary {
                         i++
                     }
                 }
-                '(' -> groupHasUnbounded.addLast(false)
-                ')' -> lastClosedHadUnbounded = groupHasUnbounded.removeLastOrNull() ?: false
+
+                '(' -> {
+                    groupHasUnbounded.addLast(false)
+                }
+
+                ')' -> {
+                    lastClosedHadUnbounded = groupHasUnbounded.removeLastOrNull() ?: false
+                }
+
                 '*', '+' -> {
                     if (i > 0 && pattern[i - 1] == ')' && lastClosedHadUnbounded) return true
                     markUnbounded()
                 }
+
                 '{' -> {
                     // Only `{n,}` (no upper bound) is unbounded.
                     val end = pattern.indexOf('}', i)

@@ -48,7 +48,9 @@ object BalanceUnlock {
             BiometricManager.BIOMETRIC_SUCCESS,
             BiometricManager.BIOMETRIC_STATUS_UNKNOWN,
             -> UnlockDecision.PROMPT
+
             BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> UnlockDecision.NO_DEVICE_LOCK
+
             else -> UnlockDecision.UNAVAILABLE
         }
 

@@ -36,7 +36,7 @@ class SwipeableMessageItemConventionTest {
             .contains("evaluateSwipeClaim(")
         assertWithMessage("a YIELD verdict must abandon the gesture so the list scroll keeps it")
             .that(source)
-            .contains("SwipeClaimVerdict.YIELD -> return@awaitEachGesture")
+            .containsMatch("""SwipeClaimVerdict\.YIELD ->\s*\{?\s*return@awaitEachGesture""")
         assertWithMessage("a gesture already consumed elsewhere (an active scroll) must never be claimed")
             .that(source)
             .contains("if (change.isConsumed) return@awaitEachGesture")

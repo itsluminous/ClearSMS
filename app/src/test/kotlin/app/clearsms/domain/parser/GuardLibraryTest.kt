@@ -299,26 +299,73 @@ class GuardLibraryTest {
 
     private fun sampleFor(id: GuardId): List<String> =
         when (id) {
-            GuardId.STATEMENT_NOTICE -> listOf("Statement is sent to your email")
-            GuardId.BILL_DUE_NOTICE -> listOf("Payment of INR 532.62 for your Card is due on 04-04-26")
-            GuardId.FAILED_PAYMENT -> listOf("Your payment has failed")
-            GuardId.SETTLED_PAYMENT -> listOf("We have received your payment")
-            GuardId.MARKETING_PITCH -> listOf("reap benefits of rising markets")
-            GuardId.VOUCHER -> listOf("your voucher expires soon")
-            GuardId.MANDATE_NOTICE -> listOf("Mandate successfully created")
-            GuardId.COLLECT_REQUEST -> listOf("You've received a payment request from EXAMPLE for Rs.100")
-            GuardId.RETIREMENT_UNITS_ECHO ->
+            GuardId.STATEMENT_NOTICE -> {
+                listOf("Statement is sent to your email")
+            }
+
+            GuardId.BILL_DUE_NOTICE -> {
+                listOf("Payment of INR 532.62 for your Card is due on 04-04-26")
+            }
+
+            GuardId.FAILED_PAYMENT -> {
+                listOf("Your payment has failed")
+            }
+
+            GuardId.SETTLED_PAYMENT -> {
+                listOf("We have received your payment")
+            }
+
+            GuardId.MARKETING_PITCH -> {
+                listOf("reap benefits of rising markets")
+            }
+
+            GuardId.VOUCHER -> {
+                listOf("your voucher expires soon")
+            }
+
+            GuardId.MANDATE_NOTICE -> {
+                listOf("Mandate successfully created")
+            }
+
+            GuardId.COLLECT_REQUEST -> {
+                listOf("You've received a payment request from EXAMPLE for Rs.100")
+            }
+
+            GuardId.RETIREMENT_UNITS_ECHO -> {
                 listOf("Your contribution of Rs.50,000.00 has been credited to your NPS Tier-I a/c")
-            GuardId.HYPOTHETICAL_AMOUNT -> listOf("earn 3 pts on every Rs 100 spent")
-            GuardId.LIMIT_OFFER -> listOf("you are eligible for an increase")
-            GuardId.TIER_PREMIUM -> listOf("LIV Premium subscription active")
-            GuardId.FUTURE_TENSE -> listOf("amount will be ")
-            GuardId.INSTRUCTION_START -> listOf("know the transaction status")
-            GuardId.CONDITIONAL_LEAD -> listOf("are subject ")
-            GuardId.PAYOUT_IN_FLIGHT ->
+            }
+
+            GuardId.HYPOTHETICAL_AMOUNT -> {
+                listOf("earn 3 pts on every Rs 100 spent")
+            }
+
+            GuardId.LIMIT_OFFER -> {
+                listOf("you are eligible for an increase")
+            }
+
+            GuardId.TIER_PREMIUM -> {
+                listOf("LIV Premium subscription active")
+            }
+
+            GuardId.FUTURE_TENSE -> {
+                listOf("amount will be ")
+            }
+
+            GuardId.INSTRUCTION_START -> {
+                listOf("know the transaction status")
+            }
+
+            GuardId.CONDITIONAL_LEAD -> {
+                listOf("are subject ")
+            }
+
+            GuardId.PAYOUT_IN_FLIGHT -> {
                 listOf("Refund of Rs.1,240.50 towards credit balance has been initiated")
-            GuardId.FINANCIAL_EVIDENCE ->
+            }
+
+            GuardId.FINANCIAL_EVIDENCE -> {
                 listOf("SIP instalment of Rs.2,500.00 in Folio 5023/47 has been processed")
+            }
         }
 
     private fun repoFile(repoRelativePath: String): File =

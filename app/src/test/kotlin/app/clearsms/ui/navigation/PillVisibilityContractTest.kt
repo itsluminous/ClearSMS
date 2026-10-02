@@ -60,7 +60,7 @@ class PillVisibilityContractTest {
         assertThat(finance.indexOf("item(key = \"pills\")")).isGreaterThan(finance.indexOf("if (state.pills.showsRow) {"))
         assertThat(finance).contains("items(pills.visible, key = { it.name }) { tab ->")
         // No section at all once every tab is hidden - the summary stands alone.
-        assertThat(finance).contains("null -> Unit")
+        assertThat(finance).containsMatch("""null ->\s*\{?\s*Unit""")
         assertThat(finance).doesNotContain("FinanceTab.entries.toList()), key")
 
         val alerts = source("ui/alerts/AlertsScreen.kt")

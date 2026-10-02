@@ -253,7 +253,10 @@ internal object IntentTriage {
      */
     fun isValidDeepLink(uri: Uri): Boolean =
         when (uri.host?.lowercase()) {
-            "alerts" -> uri.pathSegments.isEmpty()
+            "alerts" -> {
+                uri.pathSegments.isEmpty()
+            }
+
             "conversation" -> {
                 val threadId = uri.pathSegments.singleOrNull()?.toLongOrNull()
                 val messageIdParam = runCatching { uri.getQueryParameter("messageId") }.getOrNull()
@@ -261,6 +264,9 @@ internal object IntentTriage {
                     messageIdParam == null || messageIdParam.toLongOrNull()?.let { it >= -1L } == true
                 threadId != null && threadId >= 0L && messageIdOk
             }
-            else -> false
+
+            else -> {
+                false
+            }
         }
 }

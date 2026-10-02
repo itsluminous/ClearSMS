@@ -61,21 +61,33 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
             modifier = Modifier.fillMaxSize().padding(padding),
         ) { step ->
             when (step) {
-                OnboardingStep.WELCOME -> WelcomeStep(onNext = viewModel::next)
-                OnboardingStep.PERMISSIONS -> PermissionsStep(onNext = viewModel::next)
-                OnboardingStep.DEFAULT_SMS -> DefaultSmsStep(onNext = viewModel::next)
-                OnboardingStep.SYNC ->
+                OnboardingStep.WELCOME -> {
+                    WelcomeStep(onNext = viewModel::next)
+                }
+
+                OnboardingStep.PERMISSIONS -> {
+                    PermissionsStep(onNext = viewModel::next)
+                }
+
+                OnboardingStep.DEFAULT_SMS -> {
+                    DefaultSmsStep(onNext = viewModel::next)
+                }
+
+                OnboardingStep.SYNC -> {
                     SyncStep(
                         imported = state.syncImported,
                         total = state.syncTotal,
                         onSkip = viewModel::next,
                     )
-                OnboardingStep.THEME ->
+                }
+
+                OnboardingStep.THEME -> {
                     ThemeStep(
                         selected = state.theme,
                         onPick = viewModel::pickTheme,
                         onFinish = viewModel::finish,
                     )
+                }
             }
         }
     }

@@ -104,6 +104,7 @@ fun RulesScreen(
                     pendingExport = event.json
                     exportLauncher.launch("clearsms-rules.json")
                 }
+
                 is RulesEvent.ShareReady -> {
                     val intent =
                         Intent(Intent.ACTION_SEND).apply {
@@ -114,8 +115,10 @@ fun RulesScreen(
                         }
                     context.startActivity(Intent.createChooser(intent, shareSubject))
                 }
-                is RulesEvent.ImportFinished ->
+
+                is RulesEvent.ImportFinished -> {
                     snackbarHostState.showSnackbar(if (event.success) importSucceeded else importFailed)
+                }
             }
         }
     }

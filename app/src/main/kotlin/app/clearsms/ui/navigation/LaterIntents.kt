@@ -140,13 +140,19 @@ internal object LaterIntentTriage {
         if (!uri.scheme.equals("clearsms", ignoreCase = true)) return null
         if (!IntentTriage.isValidDeepLink(uri)) return null
         return when (uri.host?.lowercase()) {
-            "alerts" -> Routes.ALERTS
+            "alerts" -> {
+                Routes.ALERTS
+            }
+
             "conversation" -> {
                 val threadId = uri.pathSegments.singleOrNull()?.toLongOrNull() ?: return null
                 val messageId = uri.getQueryParameter("messageId")?.toLongOrNull() ?: -1L
                 Routes.conversation(threadId, messageId)
             }
-            else -> null
+
+            else -> {
+                null
+            }
         }
     }
 }

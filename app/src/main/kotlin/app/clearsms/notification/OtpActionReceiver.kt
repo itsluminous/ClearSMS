@@ -52,6 +52,7 @@ class OtpActionReceiver : BroadcastReceiver() {
                 }
                 otpNotifier.cancel(messageId)
             }
+
             ACTION_SHARE -> {
                 val share =
                     Intent
@@ -62,6 +63,7 @@ class OtpActionReceiver : BroadcastReceiver() {
                 context.startActivity(share)
                 otpNotifier.cancel(messageId)
             }
+
             ACTION_DELETE -> {
                 if (messageId <= 0L) return
                 val pendingResult = goAsync()
