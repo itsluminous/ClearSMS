@@ -102,6 +102,22 @@ class RepliabilityTextTest {
     }
 
     @Test
+    fun `a short code the user saved as a contact gets the composer directly, an unsaved one the notice`() {
+        // GitHub #75's reporter had saved 80122 as "O2 Zusatzvolumen": that is
+        // the user telling us they correspond with it.
+        assertThat(ConversationUiState(repliability = Repliability.SHORT_CODE, isContact = true).repliable).isTrue()
+        assertThat(ConversationUiState(repliability = Repliability.SHORT_CODE, isContact = false).repliable).isFalse()
+        // A bundled-directory name is NOT the user's intent - still the notice.
+        assertThat(ConversationUiState(repliability = Repliability.SHORT_CODE, isKnownSender = true).repliable).isFalse()
+        // The affordance never widens what is addressable: a saved
+        // alphanumeric id ("O2" in the address book) stays closed.
+        assertThat(ConversationUiState(repliability = Repliability.UNADDRESSABLE_NAME, isContact = true).repliable).isFalse()
+        assertThat(ConversationUiState(repliability = Repliability.INVALID, isContact = true).repliable).isFalse()
+        // And a saved number is unchanged - the composer either way.
+        assertThat(ConversationUiState(repliability = Repliability.NUMBER, isContact = true).repliable).isTrue()
+    }
+
+    @Test
     fun `the screen reads the notice through this one mapping and the ViewModel classifies through the shared predicate`() {
         fun source(path: String) = File("src/main/kotlin/app/clearsms", path).readText()
         val screen = source("ui/conversation/ConversationScreen.kt")
@@ -114,6 +130,8 @@ class RepliabilityTextTest {
         assertThat(bar).contains("RepliabilityText.offersReplyAnyway(repliability)")
         assertThat(bar).contains("RepliabilityText.replyAnywayRes()")
         assertThat(viewModel).contains("SenderRepliability.classifyOnDevice(it)")
+        // The saved-contact signal is the address-book one, not the directory one.
+        assertThat(viewModel).contains("isContact = display?.isContact ?: false,")
         // No second, drifting notice string anywhere in the UI.
         File("src/main/kotlin/app/clearsms/ui")
             .walkTopDown()

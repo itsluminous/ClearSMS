@@ -14,7 +14,8 @@ import app.clearsms.sms.SenderRepliability.Repliability
  * - [Repliability.NUMBER]: nothing to say; the composer is shown.
  * - [Repliability.SHORT_CODE]: sending is possible, acceptance is a guess -
  *   the text hedges ("may not") and a "Reply anyway" action opens the
- *   composer. Never "doesn't".
+ *   composer. Never "doesn't". A short code the user has saved as a contact
+ *   skips the notice altogether (see `ConversationUiState.repliable`).
  * - [Repliability.UNADDRESSABLE_NAME]: a fact about the phone, not the
  *   sender - replies can only be addressed to a number, so the text names
  *   that limit and does not claim the sender refuses anything.

@@ -157,6 +157,15 @@ data class ConversationUiState(
     val address: String = "",
     val photoUri: String? = null,
     val isKnownSender: Boolean = false,
+    /**
+     * The title came from the user's own address book. For a short code this
+     * is the one thing the app CAN know about the user's intent: they saved
+     * `80122` as "O2 Zusatzvolumen" because they correspond with it (GitHub
+     * #75's screenshot was exactly that), so [repliable] opens the composer
+     * for it outright. Verified on device: `PhoneLookup` resolves a saved
+     * short code and nothing else resolves to it, see [app.clearsms.sms.ContactsSource].
+     */
+    val isContact: Boolean = false,
     /** Saved contact's lookup URI (name tap opens it); null for non-contacts. */
     val contactLookupUri: String? = null,
     val glyph: BrandGlyph = BrandGlyph.NONE,
@@ -164,8 +173,9 @@ data class ConversationUiState(
     /**
      * What a reply to this sender can do (see [SenderRepliability]): a
      * subscriber number gets the composer, a short code gets a hedged notice
-     * with "Reply anyway", an alphanumeric id or no address gets a notice
-     * only. [repliable] is the derived "show the composer" flag.
+     * with "Reply anyway" unless it is a saved contact ([isContact]), an
+     * alphanumeric id or no address gets a notice only. [repliable] is the
+     * derived "show the composer" flag.
      */
     val repliability: SenderRepliability.Repliability = SenderRepliability.Repliability.INVALID,
     /**
@@ -203,13 +213,16 @@ data class ConversationUiState(
 ) {
     /**
      * Whether the composer is shown: a subscriber number outright, a short
-     * code once the user chose "Reply anyway". Everything else gets the
+     * code once the user chose "Reply anyway" OR when they have saved it as
+     * a contact (a UI affordance only - what is addressable is still
+     * [SenderRepliability]'s call, and an alphanumeric id stays closed even
+     * when saved). Everything else gets the
      * [app.clearsms.ui.common.RepliabilityText] notice instead.
      */
     val repliable: Boolean
         get() =
             repliability == SenderRepliability.Repliability.NUMBER ||
-                (repliability == SenderRepliability.Repliability.SHORT_CODE && replyAnyway)
+                (repliability == SenderRepliability.Repliability.SHORT_CODE && (replyAnyway || isContact))
 }
 
 /** One-shot outcome of the overflow's mute toggle, surfaced as a snackbar. */
@@ -536,6 +549,7 @@ class ConversationViewModel
                     address = first?.sender.orEmpty(),
                     photoUri = display?.photoUri,
                     isKnownSender = display?.isKnownSender ?: false,
+                    isContact = display?.isContact ?: false,
                     contactLookupUri = display?.contactLookupUri,
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
