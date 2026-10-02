@@ -59,9 +59,10 @@ object SelectionBarLayout {
      * Overflow menu entries in display order. Mute, Block and "Always sort
      * as…" act on ONE sender, so they appear only when exactly one thread is
      * selected; Mute precedes Block (the gentler action first, and the two
-     * read as an escalation). Inbox threads are keyed by normalized sender (one thread per
-     * sender core - `MessageDao.threadIdFor`), so two selected threads are
-     * always two different senders and "always sort THIS sender as" has no
+     * read as an escalation). Inbox threads are one per person (the platform
+     * thread id, then the normalized sender key -
+     * [app.clearsms.data.repository.ThreadIdentity]), so two selected threads are
+     * two different senders and "always sort THIS sender as" has no
      * single answer: the entry is hidden (not disabled) for multi-select,
      * exactly as the conversation bar hides its single-message extras
      * ([app.clearsms.ui.conversation.ConversationSelectionBarLayout]).

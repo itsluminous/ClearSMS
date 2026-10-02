@@ -51,10 +51,10 @@ interface SettingsRepository {
     suspend fun setMessageSortOrder(value: MessageSortOrder)
 
     /**
-     * Recycle bin for deleted messages. Default OFF - deletes stay
-     * permanent exactly as before. When ON, a committed delete keeps the
-     * message in an in-app bin for 30 days (the system-provider copy is
-     * still removed) instead of dropping the row.
+     * Recycle bin for deleted messages. Default ON. When ON, a committed
+     * delete keeps the message in an in-app bin for 30 days (the
+     * system-provider copy is still removed) instead of dropping the row;
+     * when OFF, deletes are permanent.
      */
     val recycleBinEnabled: Flow<Boolean>
 

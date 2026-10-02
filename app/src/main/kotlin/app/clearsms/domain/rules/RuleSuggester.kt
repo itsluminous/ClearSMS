@@ -284,7 +284,8 @@ object RuleSuggester {
      * Sender pattern derived from the actual sender: TRAI operator route prefix
      * (`XY-`) and suffix (`-S`) stripped, regex metacharacters escaped, matched
      * case-insensitively. E.g. `VM-HDFCBK-S` → `(?i)HDFCBK`; a phone number
-     * reduces to its last ten digits so `+91...` and bare variants both match.
+     * reduces to its region-aware national number ([SenderRule.senderCore])
+     * so `+91...` and bare variants both match.
      * Shared with the one-tap sender rule ([SenderRule.pattern]) so both paths
      * produce the same literal and the same immediate re-sort scope.
      */

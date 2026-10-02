@@ -22,7 +22,8 @@ enum class BackupFrequency {
 
 /**
  * UI-owned preferences that sit outside the core settings contract:
- * dynamic color, delivery reports, backup frequency and the block list mirror.
+ * dynamic color, delivery reports, accent stripping, backup frequency and
+ * the disabled-rule parking lot.
  */
 @Singleton
 class UiPrefs

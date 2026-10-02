@@ -54,8 +54,8 @@ private const val DIMMED_BAR_ALPHA = 0.35f
 
 /**
  * Hand-rolled Compose Canvas bar chart: paired debit/credit bars per month
- * with a compact-INR y-axis, faint gridlines, a color key and tappable bars
- * that reveal the month's exact totals. No chart library.
+ * with a compact y-axis in the data's currency, faint gridlines, a color key
+ * and tappable bars that reveal the month's exact totals. No chart library.
  */
 @Composable
 fun MonthlyBarChart(

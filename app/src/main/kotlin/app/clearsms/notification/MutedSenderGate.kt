@@ -43,9 +43,10 @@ import javax.inject.Singleton
  *    message to it and nothing else.
  *
  * Matching reuses the blocked-sender normalisation
- * ([SenderNormalizer]): TRAI route prefixes/suffixes fall away
+ * ([SenderNormalizer.matchesAny]): TRAI route prefixes/suffixes fall away
  * ("VM-HDFCBK-S" matches an entry "HDFCBK") and phone numbers compare by
- * their last ten digits ("+91 98765 43210" matches "9876543210"). Entries
+ * their region-aware national key ("+91 98765 43210" matches "9876543210"),
+ * with an entry stored under the pre-#42 ten-digit key still matching. Entries
  * are stored normalized but re-normalized here, so a raw variant from a
  * restored backup still matches. Read at DECISION time (a `first()`), so a
  * mute racing a delivery errs on the side of the freshest choice.
