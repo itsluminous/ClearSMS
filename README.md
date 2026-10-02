@@ -71,17 +71,18 @@ Everything shipped, and what's on the roadmap:
 **Messaging**
 - [x] SMS send & receive (default-SMS-app role, catch-up import when the role is regained)
 - [x] MMS receive (auto-download, image bubbles, full-screen viewer, retry on failure)
-- [x] MMS send (photo picker / camera / any file, on-device compression, SIM-aware)
+- [x] MMS send (photo picker / camera / any file, SIM-aware; images are compressed on-device to fit the sending SIM's carrier size limit, and anything that still will not fit is refused before the carrier is ever contacted)
 - [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages); the compose bar shows the slot that will send, long-press names it, and it takes the system's own SIM colour where that stays legible
 - [x] Message scheduling (long-press Send; survives reboots)
 - [x] Optional delay before sending, with a Cancel that puts the text back for editing (off by default; survives the app being killed)
 - [x] Opens `sms:`, `smsto:`, `mms:` and `mmsto:` links from other apps, with recipient and body prefilled
 - [x] Per-thread drafts with inbox preview
 - [x] Expand the compose box to fill the screen for long messages (both the standalone composer and a conversation)
-- [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry (a failed MMS says why in the phone's own terms - no MMS connection, carrier MMS settings missing, refused by the carrier - and the diagnostic report records the raw platform result code); a single tick on sent and a double tick on delivered bubbles (never on failed, in-flight, scheduled or MMS-delivered), each announced to screen readers
+- [x] Delivery status: Sending / Sent / Delivered (real reports only) / Not sent + retry (a failed MMS says why in the phone's own terms - no MMS connection, carrier MMS settings missing, refused by the carrier; a failed SMS says when the phone had no service, or when the phone's own premium-short-code guard blocked the send - and the diagnostic report records the raw platform result code); a single tick on sent and a double tick on delivered bubbles (never on failed, in-flight, scheduled or MMS-delivered), each announced to screen readers
 - [x] Share & forward selected messages; share text or images from other apps into a new message
-- [x] A single tick on sent and a double tick on delivered messages
+- [x] Selection bar with Copy, Delete, More details and Forward/Share, in an order you can rearrange (Settings → Messages → Message action order)
 - [x] Per-message details (type, to/from, sent & received time - the Sent row is omitted when the network reported no sent time - delivery time when a real report exists, a plain "Yes" when a report exists but no time was recorded, and failure reason)
+- [x] Replies to numeric short codes (the "reply WEITER to re-enable data" case); a short code you saved as a contact opens the composer directly, and an alphanumeric sender id explains that the phone cannot address a reply to a name instead of pretending the sender refuses them
 - [x] Tappable links, phone numbers and UPI payment links in messages (tapping a number opens the dialer; scam-flagged messages warn first)
 - [x] Undo for delete & archive (Gmail-style snackbar)
 - [x] Strip accents before sending, so one diacritic does not turn a single SMS into several (opt-in setting; applies silently, and only when it actually saves a message)
@@ -90,6 +91,7 @@ Everything shipped, and what's on the roadmap:
 - [x] Recycle bin (on by default, 30-day retention, restore & delete-forever; tap a binned message to read it in full first)
 - [x] Call button in a conversation, and tap-the-name to view or create the contact (service senders explain themselves instead of doing nothing)
 - [x] Pinned conversations
+- [x] Sort conversations and messages by the sender's network send time instead of the time the phone received them (Settings → Messages; the sent time is stored per message and falls back to the received time when the network reported none)
 - [x] Blocked senders & blocked keywords (both go straight to the bin, silently; blocking also bins the existing conversation)
 - [x] Mute a sender: messages still arrive and appear, but never notify (scam warnings still do); muted threads are marked in the inbox and conversation
 - [ ] Contact names (instead of bare numbers) in the blocked-senders list
@@ -102,7 +104,7 @@ Everything shipped, and what's on the roadmap:
       message; real transcoding needs MediaCodec/Media3 Transformer)
 
 **Smart inbox**
-- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown / Spam (460+ community rules + 715k sender directory)
+- [x] Automatic categorization: Important / Promotional / Personal / OTP / Unknown / Spam (466 community rules + 715k sender directory)
 - [x] Automatic full re-sort after an app update ships new rules, with a progress banner in the inbox
 - [x] A rule added from a message applies to that sender's existing messages at once (body-only rules point you at the full re-sort instead)
 - [x] One-step "Always sort as" rules from a message, no regex needed; the full editor explains any rejection
@@ -119,6 +121,7 @@ Everything shipped, and what's on the roadmap:
 **Finance & alerts**
 - [x] Transactions extracted into accounts, cards & wallets with spend charts
 - [x] Balance tracking with biometric balance lock
+- [x] Amounts in the message's own currency - detected from the message, then from the SIM's country or the device locale, with a Settings override - and totals are never summed across currencies (each summary speaks one currency; other-currency rows are counted, not added)
 - [x] Bills, autopay, insurance & credit-card due reminders (CRED, BOBCARD statements and undated bills included)
 - [x] Train & flight journeys in Alerts (including compact Indian Railways PNR messages)
 - [x] Deliveries with courier & tracking id
@@ -160,253 +163,24 @@ Everything shipped, and what's on the roadmap:
 
 ## Building
 
-Requirements: JDK 17+ and the Android SDK (compileSdk 35).
-
-```bash
-git clone https://github.com/itsluminous/ClearSMS.git
-cd ClearSMS
-# point to your SDK if ANDROID_HOME is not set:
-echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
-./gradlew assembleDebug
-```
-
-Run checks the same way CI does:
-
-```bash
-./gradlew ktlintCheck lintDebug testDebugUnitTest
-```
-
-`./gradlew assembleRelease` produces a single universal APK under
-`app/build/outputs/apk/release/` (Clear SMS has no native code of its own -
-the only `.so` files come from AndroidX's DataStore and graphics-path
-helpers - so per-ABI splits would save about 45 KB and cost an extra
-artifact to verify). Without signing environment variables (see
-below) it is unsigned. Release APKs are shrunk with R8 and resource
-shrinking but **not obfuscated** (`-dontobfuscate` in
-`app/proguard-rules.pro`), keeping the shipped APK auditable and the build
-reproducible for F-Droid verification.
-
-> Follow-up: Gradle dependency verification / lockfiles are not yet
-> configured; CI validates the Gradle wrapper checksum but does not yet pin
-> dependency hashes.
+Requirements, the CI check commands, and notes on the release APK (R8-shrunk,
+not obfuscated, reproducible for F-Droid) are in [docs/building.md](docs/building.md).
 
 ## Release signing (CI)
 
-CI builds release APKs on every push. If signing secrets are **not** configured
-(e.g. on forks), it still succeeds and produces unsigned APKs - signed
-publishing activates automatically once the secrets exist.
-
-One-time keystore generation (keep this file and its passwords private; it is
-never committed - `*.jks` is gitignored):
-
-```bash
-keytool -genkeypair -v -keystore clearsms-release.jks -alias clearsms \
-  -keyalg RSA -keysize 4096 -validity 10000
-```
-
-Then configure four repository secrets under
-*Settings → Secrets and variables → Actions*:
-
-| Secret | Value |
-| --- | --- |
-| `SIGNING_KEYSTORE_BASE64` | `base64 -i clearsms-release.jks` output |
-| `SIGNING_KEYSTORE_PASSWORD` | the keystore password |
-| `SIGNING_KEY_ALIAS` | the key alias (e.g. `clearsms`) |
-| `SIGNING_KEY_PASSWORD` | the key password |
-
-Or with the GitHub CLI:
-
-```bash
-gh secret set SIGNING_KEYSTORE_BASE64 --body "$(base64 -i clearsms-release.jks)"
-gh secret set SIGNING_KEYSTORE_PASSWORD
-gh secret set SIGNING_KEY_ALIAS --body "clearsms"
-gh secret set SIGNING_KEY_PASSWORD
-```
-
-Pushing a tag matching `v*` (e.g. `v0.1.0`) creates a GitHub Release with the
-signed `ClearSMS.apk` attached, with auto-generated release notes. Before
-tagging, add a changelog file for the new versionCode at
-`fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` - F-Droid
-shows it as the "What's New" text (see
-[docs/publishing-fdroid.md](docs/publishing-fdroid.md)).
+How CI signs release APKs, which repository secrets to configure, and how a
+`v*` tag becomes a GitHub Release are in
+[docs/release-signing.md](docs/release-signing.md).
 
 ## Contributing Rules
 
-Categorization rules live under [`rules/`](rules/) and are bundled into the APK at
-build time - every app update ships the latest community rules. See [docs/adding-rules.md](docs/adding-rules.md) for a step-by-step
-walkthrough and [CONTRIBUTING.md](CONTRIBUTING.md) for the JSON schema.
-
-Two ways to contribute:
-
-1. **Pull request** - add or edit a JSON file under `rules/<region>/<category>/` and
-   open a PR (use the "Rule contribution" issue template if you prefer filing an issue).
-2. **Email from the app** - in the app, go to *Settings → Rules → Share rules with
-   developer*. This composes an email with your exported rules JSON attached; reviewed
-   submissions are incorporated into the next release. There are no runtime rule
-   downloads - the app stays fully offline.
-
-Want a fully populated app for testing or screenshots without using real
-messages? Replay the synthetic demo corpus into an emulator - see
-[`scripts/demo/`](scripts/demo/).
-
-### Finding missing rules using your own messages
-
-The most useful contribution is telling us which of *your* messages the app fails
-to categorize. `scripts/audit_rule_coverage.py` replays the bundled rules and the
-sender-ID directory against a real SMS corpus and reports exactly that. It runs on
-your computer, needs no app build, and **masks all digits by default** so the
-output is safe to share.
-
-**1. Install the prerequisites**
-
-- Python 3.8 or newer (`python3 --version`)
-- `adb`, from the [Android SDK platform-tools](https://developer.android.com/tools/releases/platform-tools)
-  (macOS: `brew install android-platform-tools`)
-- This repository: `git clone https://github.com/itsluminous/ClearSMS.git && cd ClearSMS`
-
-**2. Enable USB debugging on the phone**
-
-- *Settings → About phone → Software information* and tap **Build number** seven
-  times to unlock Developer options
-- *Settings → Developer options → USB debugging* → on
-- Connect the phone by USB and accept the "Allow USB debugging?" prompt
-- Confirm it is visible: `adb devices` should list your device as `device`
-  (not `unauthorized`)
-
-**3. Run the check**
-
-```bash
-python3 scripts/audit_rule_coverage.py --from-device
-```
-
-The script reads your SMS through `adb` into memory only - it writes no copy of
-your messages anywhere. Expect it to take a minute or two on a large inbox.
-
-**4. Read the report**
-
-- **Coverage** - the share of messages that got a confident category.
-- **Per-rule hit counts** - which rules are doing the work.
-- **Unmatched messages** - grouped by sender and body shape, ranked by how often
-  they occur. This is the list worth reporting: the senders at the top are the
-  biggest gaps.
-- **`generic-*` rule breakdown** - messages caught only by the catch-all rules,
-  listed per sender. Generic rules are a last-resort safety net, so anything here
-  ideally deserves a sender-specific rule.
-
-Useful flags: `--top N` (how many unmatched groups to print), `--generic-top N`
-(senders listed per generic rule), `--no-generic-breakdown`, and
-`--min-coverage N` (exit non-zero below a threshold, so the audit can gate CI).
-
-**5. Share the findings**
-
-Open an issue using the **Rule contribution** template and paste the *unmatched
-groups* and *generic breakdown* sections. Before posting, read what you are about
-to share:
-
-- Digits are masked as `X`, but **check the text anyway** - names, email
-  addresses, URLs and order references are not masked.
-- Never pass `--no-redact` on anything you post publicly.
-- Do not attach a full corpus dump, and keep any corpus file outside this
-  repository.
-- Better still, send a pull request: rules are plain JSON under `rules/`, and the
-  schema is documented in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Rules must contain only generic patterns and public brand/sender names - never
-your account numbers, amounts or personal details.
-
-If you would rather not use a computer at all, the app can do a simpler version of
-this: *Settings → Rules → Share rules with developer* emails your exported rules
-JSON, which tells us what you have had to add by hand.
-
-**Auditing from a file instead of a phone**
-
-If you already have a corpus exported as JSONL (one
-`{"sender": ..., "body": ...}` object per line):
-
-```bash
-python3 scripts/audit_rule_coverage.py corpus.jsonl --min-coverage 80
-```
-
-### Sender ID database
-
-The community-maintained sender ID directory lives at
-`rules/sender_ids/india_sender_ids.json.gz`. It is compiled into the SQLite asset the
-app ships (`app/src/main/assets/sender_ids.db`) with:
-
-```bash
-python3 scripts/build_sender_db.py \
-  rules/sender_ids/india_sender_ids.json.gz \
-  app/src/main/assets/sender_ids.db
-```
-
-After editing the JSON, rebuild the `.db` and include both files in your PR.
-
-For small fixes to wrong upstream entries (e.g. a sender ID mapped to an
-unrelated business), you do not need to regenerate the large `.db` asset:
-add the corrected entry to
-[`rules/sender_ids/corrections.json`](rules/sender_ids/corrections.json)
-and copy it to `app/src/main/assets/sender_id_corrections.json` (a unit test
-keeps the two identical). Corrections are consulted before the bundled
-directory, so they always win for the same normalized sender ID.
-
-### Brand identity table
-
-Sender avatars for well-known brands are drawn from a curated table at
-[`rules/brands/brands.json`](rules/brands/brands.json), bundled into the APK as
-`app/src/main/assets/brands.json` (a unit test keeps the two copies identical -
-edit the `rules/brands/` master and copy it over). For brands without bundled
-logo artwork (see below) the app renders an **original** mark from these
-facts - a circular tile in the brand's published primary color, a short
-monogram, and a category badge - with text color chosen by WCAG luminance so
-it stays legible.
-
-Each entry looks like:
-
-```json
-{
-  "key": "hdfc",
-  "name": "HDFC Bank",
-  "category": "BANK",
-  "color": "#004C8F",
-  "monogram": "H",
-  "senders": ["HDFCBK", "HDFCB"],
-  "aliases": ["HDFC", "HDFC BANK"]
-}
-```
-
-- `key` - unique lowercase identifier (also the bundled-logo filename key).
-- `category` - one of `BANK`, `CARD`, `WALLET`, `TELECOM`, `ECOMMERCE`,
-  `DELIVERY`, `GOVERNMENT`, `UTILITY`, `INVESTMENT`, `HEALTH`, `TRAVEL`, `OTHER`.
-- `color` - the brand's widely-published primary color as `#RRGGBB`.
-- `monogram` - 1–3 characters drawn on the tile.
-- `senders` - exact sender IDs after TRAI normalization (`VM-HDFCBK` → `HDFCBK`).
-- `aliases` - whole-word names matched against resolved display names.
-
-### Bundled sender logos
-
-The APK ships real logo artwork for 27 of the curated brands under
-`app/src/main/assets/logos/` (~180 KB total, PNG, max 256 px). The images
-are assembled by [`scripts/build_logo_pack.py`](scripts/build_logo_pack.py)
-`--bundle` from the latest commits of two MIT-licensed projects
-([auraveni/global-bank-logos](https://github.com/auraveni/global-bank-logos)
-and [cashfree/payments-icons-library](https://github.com/cashfree/payments-icons-library));
-the exact commits each build used are recorded in the manifest, so the
-committed asset set stays traceable.
-Per-file provenance lives in `app/src/main/assets/logos/MANIFEST.md`; the
-upstream MIT licence texts are reproduced in [NOTICE](NOTICE).
-
-On the legal position: the upstream MIT licences cover those projects'
-packaging of the files - the logos themselves remain trademarks of the
-banks and merchants they identify, and are bundled solely to label message
-senders in your own inbox. Logos are never fetched at runtime (the app
-requests no network permission); brands without bundled artwork get the
-generated brand tiles described above.
-
-The avatar fallback chain, in order: contact photo → bundled logo →
-generated brand tile → category glyph → letter avatar. All of it is gated
-behind *Settings → Appearance → Show logos and contact photos*, and every
-avatar renders as the same circular tile across the inbox, conversations,
-search, Finance and Alerts.
+Categorization rules are plain JSON under [`rules/`](rules/), bundled into the
+APK at build time. [docs/contributing-rules.md](docs/contributing-rules.md)
+covers the two ways to contribute (pull request, or *Settings → Rules → Share
+rules with developer* from the app), auditing your own inbox for missing rules
+with `scripts/audit_rule_coverage.py`, the sender ID database, the brand
+identity table, and the bundled sender logos. The JSON schema itself is in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
