@@ -209,7 +209,7 @@ class AppShortcutsContractTest {
         val tile = NotificationSender(name = "Acme", monogram = "A", colorArgb = Color.MAGENTA)
         assertThat(iconFactory.plateColorFor(tile)).isEqualTo(Color.MAGENTA)
         val plain = NotificationSender(name = "Priya", monogram = "P")
-        assertThat(iconFactory.plateColorFor(plain)).isEqualTo(SenderIconFactory.fallbackColorFor("Priya"))
+        assertThat(iconFactory.plateColorFor(plain)).isEqualTo(iconFactory.tileKeyFor(plain).colorArgb)
         assertThat(plate.config).isEqualTo(Bitmap.Config.ARGB_8888)
     }
 

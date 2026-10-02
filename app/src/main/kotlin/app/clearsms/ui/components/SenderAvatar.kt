@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -26,13 +26,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.ui.theme.ClearSmsTheme
 import coil3.compose.SubcomposeAsyncImage
+import kotlin.math.roundToInt
 
+/**
+ * Hue wheel for the plain letter avatar. Deliberately NOT the brand-mark
+ * wheel in `SenderBrandMark`: a saved contact and an unbranded business
+ * sender should not fall on the same colours.
+ */
 private val AVATAR_HUES = listOf(10f, 45f, 90f, 160f, 200f, 230f, 265f, 300f, 330f)
+
+/** The letter avatar's tone: a mid-light pastel of the name's hue... */
+private const val PLAIN_AVATAR_SATURATION = 0.45f
+private const val PLAIN_AVATAR_LIGHTNESS = 0.62f
+
+/** ...laid at this opacity over the surface it sits on. */
+private const val PLAIN_AVATAR_TINT_ALPHA = 0.35f
 
 /**
  * Sender avatar. With [richAvatars] (the "Show logos and contact photos"
@@ -175,7 +189,10 @@ fun SenderAvatar(
 
 /**
  * Letter avatar: the sender's initial on a deterministic tonal color derived
- * from the sender name, clipped to the shared avatar shape.
+ * from the sender name, clipped to the shared avatar shape. The initial and
+ * the colour come from [plainAvatarInitial] / [plainAvatarColorArgb] - the
+ * ONE derivation the notification and launcher-shortcut renderers also use,
+ * so a contact's letter avatar reads the same everywhere.
  */
 @Composable
 private fun PlainAvatar(
@@ -183,10 +200,7 @@ private fun PlainAvatar(
     modifier: Modifier = Modifier,
     size: Dp = AvatarDefaults.size,
 ) {
-    val hue = AVATAR_HUES[avatarHueIndex(name)]
-    val tone = Color.hsl(hue, 0.45f, 0.62f)
-    val background = tone.copy(alpha = 0.35f).compositeOver(MaterialTheme.colorScheme.surfaceVariant)
-    val initial = name.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#"
+    val background = Color(plainAvatarColorArgb(name, MaterialTheme.colorScheme.surfaceVariant.toArgb()))
     Box(
         modifier =
             modifier
@@ -196,12 +210,40 @@ private fun PlainAvatar(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = initial,
+            text = plainAvatarInitial(name),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
+}
+
+/**
+ * The single character the plain letter avatar shows for [name]: its first
+ * letter or digit, upper-cased; `#` when it has none. ONE initial, unlike
+ * the up-to-two [initialsOf] a brand mark draws - the inbox has always
+ * shown "A" for Asha Rao, so every other surface must too.
+ */
+fun plainAvatarInitial(name: String): String = name.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#"
+
+/** The hue (degrees) the plain letter avatar tints with for [name]. */
+fun plainAvatarHue(name: String): Float = AVATAR_HUES[avatarHueIndex(name)]
+
+/**
+ * The plain letter avatar's background for [name]: the name's pastel tone
+ * ([plainAvatarHue], fixed saturation and lightness) laid at a fixed opacity
+ * over [surfaceArgb] - the theme's `surfaceVariant` in the inbox, a neutral
+ * stand-in where there is no theme (notification shade, launcher). Pure
+ * JVM maths, so a renderer with no Compose can call it; a neutral grey
+ * surface leaves the hue exactly the inbox's.
+ */
+fun plainAvatarColorArgb(
+    name: String,
+    surfaceArgb: Int,
+): Int {
+    val tone = ColorUtils.HSLToColor(floatArrayOf(plainAvatarHue(name), PLAIN_AVATAR_SATURATION, PLAIN_AVATAR_LIGHTNESS))
+    val tint = ColorUtils.setAlphaComponent(tone, (PLAIN_AVATAR_TINT_ALPHA * 255).roundToInt())
+    return ColorUtils.compositeColors(tint, surfaceArgb)
 }
 
 /**

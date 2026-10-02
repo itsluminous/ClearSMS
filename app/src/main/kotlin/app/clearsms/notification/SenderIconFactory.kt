@@ -18,6 +18,8 @@ import app.clearsms.ui.components.BUNDLED_LOGO_DIR
 import app.clearsms.ui.components.BrandCategory
 import app.clearsms.ui.components.BundledLogoCache
 import app.clearsms.ui.components.avatarStyleFor
+import app.clearsms.ui.components.plainAvatarColorArgb
+import app.clearsms.ui.components.plainAvatarInitial
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -31,8 +33,11 @@ import javax.inject.Singleton
  * asset logo (`assets/logos/<brandKey>.png`, drawn whole on a circular white
  * plate exactly like `SenderAvatar`) → generated brand tile (brand color +
  * monogram + category badge) → category-glyph monogram tile for
- * directory-known senders → letter tile. Every rendered bitmap is circular,
- * matching the single avatar shape used across the app.
+ * directory-known senders → letter tile. The letter tile is the inbox's own
+ * `PlainAvatar` derivation (one initial, the `AVATAR_HUES` pastel - see
+ * [tileKeyFor]), so a contact's avatar in the shade and on the launcher is
+ * the one the inbox row shows. Every rendered bitmap is circular, matching
+ * the single avatar shape used across the app.
  *
  * Caching: bundled logos are decoded and plated at most once per brand key
  * ([BundledLogoCache], which also memoizes misses so a corrupt or missing
@@ -107,8 +112,9 @@ class SenderIconFactory internal constructor(
                 android.graphics.Color.WHITE
             }
 
+            // The plate follows the tile it frames, whichever tier drew it.
             AvatarStyle.BRAND, AvatarStyle.BRAND_MARK, AvatarStyle.PLAIN -> {
-                sender.colorArgb ?: fallbackColorFor(sender.name)
+                tileKeyFor(sender).colorArgb
             }
         }
 
@@ -141,14 +147,54 @@ class SenderIconFactory internal constructor(
     }
 
     private fun tileFor(sender: NotificationSender): Bitmap {
-        val key =
-            TileKey(
-                monogram = sender.monogram,
-                colorArgb = sender.colorArgb ?: fallbackColorFor(sender.name),
-                badge = badgeCharFor(sender.brandCategory),
-            )
+        val key = tileKeyFor(sender)
         return tiles.computeIfAbsent(key) { tileBitmap(it.monogram, it.colorArgb, it.badge) }
     }
+
+    /**
+     * What the generated tile for [sender] draws, decided by the tier the
+     * sender lands on WITHOUT a photo or bundled artwork ([tileStyleFor]) -
+     * the tile is also what a missing photo or corrupt logo degrades to, and
+     * `SenderAvatar` degrades the same way (photo error → letter avatar,
+     * missing logo → brand mark).
+     *
+     * - PLAIN (a saved contact, an unknown number): the inbox letter avatar's
+     *   own derivation - ONE initial on the name's `AVATAR_HUES` pastel
+     *   ([plainAvatarInitial] / [plainAvatarColorArgb]), composited over a
+     *   neutral grey since there is no theme surface here. Same letter, same
+     *   hue as the inbox row; only the surface differs.
+     * - BRAND / BRAND_MARK: the brand monogram (or [initialsOf]) on the brand
+     *   colour or the brand-mark hue wheel - `SenderBrandMark`'s facts.
+     *
+     * Internal so a test can pin the shortcut and notification tile to the
+     * inbox derivation and catch any drift.
+     */
+    internal fun tileKeyFor(sender: NotificationSender): TileKey =
+        when (tileStyleFor(sender)) {
+            AvatarStyle.PLAIN ->
+                TileKey(
+                    monogram = plainAvatarInitial(sender.name),
+                    colorArgb = plainAvatarColorArgb(sender.name, PLAIN_AVATAR_SURFACE_ARGB),
+                    badge = badgeCharFor(sender.brandCategory),
+                )
+
+            AvatarStyle.BRAND, AvatarStyle.BRAND_MARK, AvatarStyle.PHOTO, AvatarStyle.BUNDLED ->
+                TileKey(
+                    monogram = sender.monogram,
+                    colorArgb = sender.colorArgb ?: fallbackColorFor(sender.name),
+                    badge = badgeCharFor(sender.brandCategory),
+                )
+        }
+
+    /** [styleFor] with the photo and bundled-logo tiers taken away: the tier the generated tile stands in for. */
+    private fun tileStyleFor(sender: NotificationSender): AvatarStyle =
+        avatarStyleFor(
+            richAvatars = true,
+            photoUri = null,
+            isKnownSender = sender.isKnownSender,
+            hasBundledLogo = false,
+            hasBrand = sender.colorArgb != null,
+        )
 
     /** Everything a generated tile draws - the render-cache key. */
     internal data class TileKey(
@@ -164,10 +210,19 @@ class SenderIconFactory internal constructor(
         /** Fraction of the plate kept as padding around a bundled logo. */
         private const val PLATE_PADDING_FRACTION = 0.10f
 
-        /** Same hue wheel as the in-app brand marks, for visual consistency. */
+        /**
+         * The surface a PLAIN letter tile's tint is laid over - the stand-in
+         * for the inbox's themed `surfaceVariant`, which neither the shade
+         * nor the launcher can follow. A neutral grey, so the composite keeps
+         * exactly the inbox hue; light, so the letter is dark like the
+         * inbox's `onSurface`. Internal so the parity test can reproduce it.
+         */
+        internal const val PLAIN_AVATAR_SURFACE_ARGB = 0xFFE6E6E6.toInt()
+
+        /** Same hue wheel as the in-app brand marks (`SenderBrandMark`), for the BRAND_MARK tier. */
         private val FALLBACK_HUES = floatArrayOf(8f, 32f, 152f, 176f, 206f, 226f, 258f, 288f, 340f)
 
-        /** Deterministic tile color for senders without a curated brand color. */
+        /** Deterministic brand-mark tile color for directory-known senders without a curated brand color. */
         internal fun fallbackColorFor(name: String): Int =
             ColorUtils.HSLToColor(floatArrayOf(FALLBACK_HUES[Math.floorMod(name.hashCode(), FALLBACK_HUES.size)], 0.55f, 0.38f))
 
