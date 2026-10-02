@@ -1,0 +1,20 @@
+The app now does not assume your currency, your thread, your short codes.
+
+Fixed
+- The same person could appear as two separate conversations. Clear SMS matched phone numbers by their last ten digits, which is right for India and wrong almost everywhere else - a nine-digit Polish number, for instance, ended up with two different identities depending on whether the country code was written out. Conversations are now matched the way Android itself does it, and threads that were already split are merged when you update.
+- Amounts are no longer assumed to be rupees. In Chile, 1.000 pesos was read as one peso, because a full stop was taken to be a decimal point - so recorded amounts and every total built from them were wrong. The app now reads the currency from the message itself, falling back to your SIM's country, and you can set one by hand in Settings - Finance - Currency. Totals are never added up across different currencies.
+- You can now reply to carrier short codes, like texting WEITER to re-enable data on a German plan. The app used to refuse any sender shorter than seven digits and claim the sender did not accept replies, which it had no way of knowing. A short code you have saved as a contact gets a message box straight away; otherwise the app says replies might not be accepted and lets you send anyway. A sender name like HDFCBK still cannot be replied to, but now explains that a reply needs a number.
+- Older conversations showed their first message as the inbox preview instead of their most recent one. Scrolling the inbox is noticeably smoother as a result.
+- MMS picture messages are now shrunk to the size limit your own carrier allows, rather than a fixed size that could still be too large - which some phones rejected instantly, before even contacting the carrier.
+- The inbox no longer flashes the default filter pills before loading yours. It also reaches your messages a little quicker, because it now runs one query instead of two.
+- Delete now tells the truth: with the recycle bin on, it says your messages move there and can be restored for 30 days, instead of claiming the deletion is permanent.
+- Bank of Baroda credit cards appeared under bank accounts, because the card detection did not recognise brands written as one word like BOBCARD. SBICARD and ONECARD are covered too.
+- Salary and transfer deposits from HDFC were titled "clearing", picked out of the boilerplate sentence at the end of the message, instead of showing what the payment was for.
+- Message details name the carrier beside the SIM slot, and the SIM row is left out entirely when the message arrived on a SIM that is no longer in the phone.
+
+Added
+- More details is now a button in the row that appears when you select a message, instead of being hidden behind the three dots. You can also drag those actions into the order you want, in Settings - Messages - Message action order, so whichever you use most sits in the bar.
+- The main Settings page has an icon beside each entry.
+
+Changed
+- Change category moved from the conversation's title bar into its three-dot menu; the muted bell beside a contact's name is the same size as the other buttons now, and a long contact name wraps onto two lines instead of being cut short.
