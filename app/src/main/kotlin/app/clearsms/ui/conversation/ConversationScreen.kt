@@ -447,8 +447,11 @@ fun ConversationScreen(
                             //
                             // BasicText, not Text: Material3 1.3's Text has
                             // no autoSize yet. Style and colour are the ones
-                            // TopAppBar provides for its title slot, so a
-                            // short name renders exactly as before. A long
+                            // TopAppBar provides for its title slot - with
+                            // only the line height swapped for one that
+                            // follows the auto-sized font, since autoSize
+                            // shrinks the font and NOT the line height - so
+                            // a short name renders exactly as before. A long
                             // name wraps to two lines, shrinking (in 1sp
                             // steps) only as far as the sp floor, then
                             // ellipsises; heightIn(max) caps the layout at
@@ -456,7 +459,7 @@ fun ConversationScreen(
                             // scales, ellipsis drops the line that would not
                             // fit instead of the bar clipping or growing.
                             // See ConversationTitleFit.
-                            val titleStyle = LocalTextStyle.current
+                            val titleStyle = ConversationTitleFit.style(LocalTextStyle.current)
                             val titleColor = LocalContentColor.current
                             BasicText(
                                 text = state.title,
