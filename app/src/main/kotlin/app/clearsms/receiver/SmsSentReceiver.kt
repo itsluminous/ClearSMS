@@ -13,6 +13,7 @@ import app.clearsms.diagnostics.DiagField.Companion.code
 import app.clearsms.diagnostics.DiagField.Companion.count
 import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.diagnostics.DiagField.Companion.label
+import app.clearsms.mms.SendFailureReason
 import app.clearsms.notification.MessageNotifier
 import app.clearsms.sms.TelephonyWriter
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,9 +40,14 @@ class SmsSentReceiver : BroadcastReceiver() {
         context: Context,
         intent: Intent,
     ) {
+        val status = SendReportMapper.statusFor(intent.action, resultCode == Activity.RESULT_OK) ?: return
         val report =
             SendPartReport(
-                status = SendReportMapper.statusFor(intent.action, resultCode == Activity.RESULT_OK) ?: return,
+                status = status,
+                // The platform's SMS result code, where it has a meaning the
+                // user can act on; the raw code is in the diagnostic line below.
+                failureReason =
+                    if (status == DeliveryStatus.FAILED) SendFailureReason.fromSmsResultCode(resultCode) else null,
                 providerUri = intent.getStringExtra(EXTRA_PROVIDER_URI)?.toUri(),
                 destination = intent.getStringExtra(EXTRA_DESTINATION).orEmpty(),
                 partIndex = intent.getIntExtra(EXTRA_PART_INDEX, 0),
@@ -85,13 +91,19 @@ class SmsSentReceiver : BroadcastReceiver() {
     }
 }
 
-/** One radio report for one part of an outgoing message. */
+/**
+ * One radio report for one part of an outgoing message. [failureReason] is
+ * set only on a FAILED report, from the platform's result code - see
+ * [SendFailureReason.fromSmsResultCode] (UNKNOWN when the code says nothing
+ * specific, so the dialog reads "without saying why").
+ */
 data class SendPartReport(
     val status: DeliveryStatus,
     val providerUri: Uri?,
     val destination: String,
     val partIndex: Int,
     val partCount: Int,
+    val failureReason: SendFailureReason? = null,
 )
 
 /**
@@ -136,7 +148,9 @@ class DefaultSendReportSideEffects
  * the system provider row:
  *
  * - FAILED (any part): the whole message fails, overwriting SENT/DELIVERED -
- *   a message with a lost part was not delivered. Provider row is marked
+ *   a message with a lost part was not delivered. The report's mapped
+ *   reason (if any) is persisted with it so the bubble and dialog can say
+ *   more than "Not sent". Provider row is marked
  *   `MESSAGE_TYPE_FAILED` and the user is notified exactly once per message
  *   even when several parts fail.
  * - SENT: only the LAST part's OK report promotes SENDING → SENT
@@ -172,7 +186,11 @@ class SendReportRecorder
             when (report.status) {
                 DeliveryStatus.FAILED -> {
                     val newlyFailed =
-                        if (systemSmsId != null) messageDao.markFailedBySystemId(systemSmsId) > 0 else true
+                        if (systemSmsId != null) {
+                            messageDao.markFailedBySystemId(systemSmsId, report.failureReason?.name) > 0
+                        } else {
+                            true
+                        }
                     if (newlyFailed) {
                         report.providerUri?.let { sideEffects.mirrorFailed(it) }
                         val row = systemSmsId?.let { messageDao.getBySystemId(it) }

@@ -74,6 +74,39 @@ class SendFailureReasonTest {
     }
 
     @Test
+    fun `sms result codes map only where the platform's meaning is clear`() {
+        // Radio off / no service: the phone had no network.
+        assertThat(SendFailureReason.fromSmsResultCode(SmsManager.RESULT_ERROR_RADIO_OFF))
+            .isEqualTo(SendFailureReason.NO_SERVICE)
+        assertThat(SendFailureReason.fromSmsResultCode(SmsManager.RESULT_ERROR_NO_SERVICE))
+            .isEqualTo(SendFailureReason.NO_SERVICE)
+        // The platform's own premium-short-code guard refused the send: the
+        // one SMS failure a short-code reply (GitHub #75) is likely to meet.
+        assertThat(SendFailureReason.fromSmsResultCode(SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED))
+            .isEqualTo(SendFailureReason.SHORT_CODE_BLOCKED)
+        assertThat(SendFailureReason.fromSmsResultCode(SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED))
+            .isEqualTo(SendFailureReason.SHORT_CODE_BLOCKED)
+        // GENERIC_FAILURE is what an alphanumeric or network-rejected
+        // destination produces; its cause lives in a RIL extra this app does
+        // not interpret, so it reads as UNKNOWN ("without saying why") - as
+        // do the rare codes and anything undocumented.
+        listOf(
+            SmsManager.RESULT_ERROR_GENERIC_FAILURE,
+            SmsManager.RESULT_ERROR_NULL_PDU,
+            SmsManager.RESULT_ERROR_LIMIT_EXCEEDED,
+            SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE,
+            0,
+            -1,
+            999,
+        ).forEach { code ->
+            assertThat(SendFailureReason.fromSmsResultCode(code)).isEqualTo(SendFailureReason.UNKNOWN)
+        }
+        // The MMS table and the SMS table never produce the app's own reason.
+        assertThat(SendFailureReason.fromSmsResultCode(SmsManager.RESULT_ERROR_GENERIC_FAILURE))
+            .isNotEqualTo(SendFailureReason.DISPATCH_FAILED)
+    }
+
+    @Test
     fun `persisted names round-trip and junk reads as no reason`() {
         SendFailureReason.entries.forEach { reason ->
             assertThat(SendFailureReason.fromName(reason.name)).isEqualTo(reason)

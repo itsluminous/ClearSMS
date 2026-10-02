@@ -161,8 +161,18 @@ data class ConversationUiState(
     val contactLookupUri: String? = null,
     val glyph: BrandGlyph = BrandGlyph.NONE,
     val richAvatars: Boolean = true,
-    /** False for one-way senders (alphanumeric ids, short codes): composer is hidden. */
-    val repliable: Boolean = false,
+    /**
+     * What a reply to this sender can do (see [SenderRepliability]): a
+     * subscriber number gets the composer, a short code gets a hedged notice
+     * with "Reply anyway", an alphanumeric id or no address gets a notice
+     * only. [repliable] is the derived "show the composer" flag.
+     */
+    val repliability: SenderRepliability.Repliability = SenderRepliability.Repliability.INVALID,
+    /**
+     * The user tapped "Reply anyway" on a short code's notice: the composer
+     * is shown for this screen session. Meaningless for other verdicts.
+     */
+    val replyAnyway: Boolean = false,
     /** Mirrors Settings -> Messages -> Show extracted message details (default OFF). */
     val showTransactionDetails: Boolean = false,
     /**
@@ -190,7 +200,17 @@ data class ConversationUiState(
      */
     val activeSims: List<SimInfo> = emptyList(),
     val loaded: Boolean = false,
-)
+) {
+    /**
+     * Whether the composer is shown: a subscriber number outright, a short
+     * code once the user chose "Reply anyway". Everything else gets the
+     * [app.clearsms.ui.common.RepliabilityText] notice instead.
+     */
+    val repliable: Boolean
+        get() =
+            repliability == SenderRepliability.Repliability.NUMBER ||
+                (repliability == SenderRepliability.Repliability.SHORT_CODE && replyAnyway)
+}
 
 /** One-shot outcome of the overflow's mute toggle, surfaced as a snackbar. */
 data class MuteToggled(
@@ -299,6 +319,9 @@ class ConversationViewModel
          */
         private val activeSimsFlow = MutableStateFlow<List<SimInfo>>(emptyList())
         private val activeSims: List<SimInfo> get() = activeSimsFlow.value
+
+        /** Set by [replyAnyway]; read into [uiState]. */
+        private val replyAnywayChosen = MutableStateFlow(false)
 
         /** Whether bubbles carry SIM tags (2+ SIMs on device or in corpus). */
         @Volatile
@@ -516,7 +539,9 @@ class ConversationViewModel
                     contactLookupUri = display?.contactLookupUri,
                     glyph = brandGlyphFor(first?.subCategory, display?.name.orEmpty()),
                     richAvatars = richAvatars,
-                    repliable = first?.sender?.let { SenderRepliability.isRepliable(it) } ?: false,
+                    repliability =
+                        first?.sender?.let { SenderRepliability.classifyOnDevice(it) }
+                            ?: SenderRepliability.Repliability.INVALID,
                     showTransactionDetails = showDetails,
                     muted = first?.sender?.let { MutedSenderGate.matches(mutedSenders, it) } ?: false,
                     selectionActionOrder = actionOrder,
@@ -528,8 +553,21 @@ class ConversationViewModel
                 .combine(settings.recycleBinEnabled) { state, bin -> state.copy(recycleBinEnabled = bin) }
                 // The SIM list the details dialog resolves provenance against.
                 .combine(activeSimsFlow) { state, sims -> state.copy(activeSims = sims) }
+                // "Reply anyway" on a short code's notice (GitHub #75).
+                .combine(replyAnywayChosen) { state, anyway -> state.copy(replyAnyway = anyway) }
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
+
+        /**
+         * The user chose to reply to a short code despite the notice that it
+         * may not accept replies: the composer opens for this screen
+         * session (ViewModel-scoped, so it survives rotation). Only a
+         * [SenderRepliability.Repliability.SHORT_CODE] sender has the
+         * button, so nothing else can reach this.
+         */
+        fun replyAnyway() {
+            replyAnywayChosen.value = true
+        }
 
         /**
          * Dispatches [body]: with attachments staged the message goes out as

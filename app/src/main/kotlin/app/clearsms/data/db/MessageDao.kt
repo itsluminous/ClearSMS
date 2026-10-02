@@ -539,17 +539,20 @@ interface MessageDao {
      * FAILED row must never carry a delivery instant. Returns the number of
      * rows changed - 0 when the row was already FAILED, so callers can
      * notify the user exactly once even when several parts of one message
-     * fail.
+     * fail. [reason] is the persisted [app.clearsms.mms.SendFailureReason]
+     * name the platform's result code mapped to, or null when it said
+     * nothing usable.
      */
     @Query(
         """
-        UPDATE messages SET deliveryStatus = :failed, deliveredAt = NULL
+        UPDATE messages SET deliveryStatus = :failed, deliveredAt = NULL, sendFailureReason = :reason
         WHERE systemSmsId = :systemSmsId
           AND (deliveryStatus IS NULL OR deliveryStatus != :failed)
         """,
     )
     suspend fun markFailedBySystemId(
         systemSmsId: Long,
+        reason: String?,
         failed: DeliveryStatus = DeliveryStatus.FAILED,
     ): Int
 

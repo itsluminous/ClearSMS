@@ -26,6 +26,13 @@
     <string name="selection_delete_messages_message">%1$d message(s) will be permanently deleted, including from the system SMS store. This can\'t be undone.</string>
     <string name="selection_delete_messages_to_bin_message">%1$d message(s) will move to the recycle bin. You can restore them for 30 days; until then they are also gone from the phone\'s SMS store.</string>
 
-    <!-- Reply availability -->
-    <string name="conversation_not_repliable">This sender doesn\'t accept replies</string>
+    <!-- Reply availability (RepliabilityText, GitHub #75). Each line says only
+         what the app can know: a short code's acceptance is a guess ("may
+         not"), an alphanumeric id is a phone-side limit (replies are addressed
+         to numbers), and an empty or absurd address is simply not a
+         destination. Never "this sender doesn't accept replies". -->
+    <string name="conversation_short_code_may_not_reply">Short codes like this one may not accept replies</string>
+    <string name="conversation_reply_anyway">Reply anyway</string>
+    <string name="conversation_reply_needs_number">Replies can only be sent to a number, not to a sender name like this</string>
+    <string name="conversation_reply_no_address">This sender has no address a reply could be sent to</string>
 </resources>

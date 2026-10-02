@@ -33,6 +33,8 @@ class SendFailureTextTest {
             R.string.send_failure_exceeds_carrier_limit to "send_failure_exceeds_carrier_limit",
             R.string.send_failure_carrier_disabled to "send_failure_carrier_disabled",
             R.string.send_failure_sim_unavailable to "send_failure_sim_unavailable",
+            R.string.send_failure_no_service to "send_failure_no_service",
+            R.string.send_failure_short_code_blocked to "send_failure_short_code_blocked",
             R.string.send_failure_dispatch to "send_failure_dispatch",
             R.string.send_failure_unknown to "send_failure_unknown",
             R.string.send_failure_data_sim_hint to "send_failure_data_sim_hint",
@@ -45,6 +47,8 @@ class SendFailureTextTest {
             R.string.conversation_not_sent_transient to "conversation_not_sent_transient",
             R.string.conversation_not_sent_carrier_disabled to "conversation_not_sent_carrier_disabled",
             R.string.conversation_not_sent_sim_unavailable to "conversation_not_sent_sim_unavailable",
+            R.string.conversation_not_sent_no_service to "conversation_not_sent_no_service",
+            R.string.conversation_not_sent_short_code_blocked to "conversation_not_sent_short_code_blocked",
             R.string.conversation_not_sent_dispatch to "conversation_not_sent_dispatch",
         )
 
@@ -111,6 +115,17 @@ class SendFailureTextTest {
         assertThat(dispatch).doesNotContain("MMS")
         // Unknown says exactly that.
         assertThat(explanation(SendFailureReason.UNKNOWN)).contains("without saying why")
+        // The SMS-side reasons (GitHub #75 made short-code replies possible):
+        // no service is "had no mobile network", not a diagnosis of where
+        // the user was; a short code the PHONE blocked says so and makes
+        // clear the carrier never saw it - the service is not blamed.
+        assertThat(explanation(SendFailureReason.NO_SERVICE)).contains("had no mobile network")
+        val blocked = explanation(SendFailureReason.SHORT_CODE_BLOCKED)
+        assertThat(blocked).contains("The phone did not send this")
+        assertThat(blocked).contains("possibly chargeable")
+        assertThat(blocked).contains("carrier was never contacted")
+        assertThat(bubble(SendFailureReason.SHORT_CODE_BLOCKED)).isEqualTo("Not sent · blocked by phone")
+        assertThat(bubble(SendFailureReason.NO_SERVICE)).isEqualTo("Not sent · no mobile network")
         // Every explanation is short: at most two sentences and under 200 chars.
         SendFailureReason.entries.forEach { reason ->
             val text = explanation(reason)

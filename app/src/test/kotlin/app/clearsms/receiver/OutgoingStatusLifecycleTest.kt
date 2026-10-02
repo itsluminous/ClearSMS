@@ -10,6 +10,7 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.mms.SendFailureReason
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -108,7 +109,24 @@ class OutgoingStatusLifecycleTest {
         status: DeliveryStatus,
         partIndex: Int = 0,
         partCount: Int = 1,
-    ) = SendPartReport(status, providerUri, "+15551234567", partIndex, partCount)
+        failureReason: SendFailureReason? = null,
+    ) = SendPartReport(status, providerUri, "+15551234567", partIndex, partCount, failureReason)
+
+    @Test
+    fun `a failure report's mapped reason is persisted with the FAILED status - and a bare one leaves it empty`() =
+        runBlocking {
+            val blocked = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.FAILED, failureReason = SendFailureReason.SHORT_CODE_BLOCKED))
+            assertThat(status(blocked)).isEqualTo(DeliveryStatus.FAILED)
+            assertThat(dao.getById(blocked)?.sendFailureReason).isEqualTo(SendFailureReason.SHORT_CODE_BLOCKED.name)
+            assertThat(sideEffects.failureNotifications).isEqualTo(1)
+
+            db.clearAllTables()
+            val unexplained = outgoing(partCount = 1)
+            recorder.record(report(DeliveryStatus.FAILED))
+            assertThat(status(unexplained)).isEqualTo(DeliveryStatus.FAILED)
+            assertThat(dao.getById(unexplained)?.sendFailureReason).isNull()
+        }
 
     @Test
     fun `single part - SENDING promotes to SENT on the sent report`() =

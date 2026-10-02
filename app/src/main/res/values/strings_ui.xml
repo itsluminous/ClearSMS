@@ -75,6 +75,8 @@
     <string name="send_failure_pdu_rejected">The phone\'s messaging service could not read this message and gave up before contacting the carrier, often because it exceeds the carrier\'s MMS size limit. A smaller attachment may go through.</string>
     <string name="send_failure_carrier_disabled">Your carrier has switched MMS off for this SIM, so no app can send one.</string>
     <string name="send_failure_sim_unavailable">The SIM this message was sent from is not active right now.</string>
+    <string name="send_failure_no_service">The phone had no mobile network when it tried to send this message.</string>
+    <string name="send_failure_short_code_blocked">The phone did not send this: it treats this short code as possibly chargeable, and sending to it was not allowed. The carrier was never contacted.</string>
     <string name="send_failure_dispatch">The message could not be handed to the phone\'s messaging service.</string>
     <string name="send_failure_unknown">The phone reported that the send failed, without saying why.</string>
     <!-- Appended to send_failure_no_mms_network / send_failure_apn ONLY when
@@ -93,6 +95,8 @@
     <string name="conversation_not_sent_pdu_rejected">Not sent · rejected by phone</string>
     <string name="conversation_not_sent_carrier_disabled">Not sent · MMS off on this SIM</string>
     <string name="conversation_not_sent_sim_unavailable">Not sent · SIM not active</string>
+    <string name="conversation_not_sent_no_service">Not sent · no mobile network</string>
+    <string name="conversation_not_sent_short_code_blocked">Not sent · blocked by phone</string>
     <string name="conversation_not_sent_dispatch">Not sent · could not start</string>
     <string name="conversation_delivered">Delivered</string>
 
