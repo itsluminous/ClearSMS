@@ -14,8 +14,10 @@ allprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
-        version.set("1.3.1")
-        android.set(true)
+        // ktlint-cli 1.8.0 ships logback-classic 1.3.16 (closes Dependabot #12, #13, #23).
+        version.set("1.8.0")
+        // `android.set(true)` is NOT forwarded to ktlint >= 1.0 by plugin 12.x (only to the
+        // 0.47/0.48 code paths); the code style comes from .editorconfig `ktlint_code_style`.
         filter {
             exclude { it.file.path.contains("${layout.buildDirectory.get()}") }
             exclude("**/build/**")

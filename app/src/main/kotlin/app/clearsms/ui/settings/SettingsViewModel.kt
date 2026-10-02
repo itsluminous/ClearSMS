@@ -392,11 +392,11 @@ class SettingsViewModel
                 other,
                 combine(sortProgress, busy, ::Pair),
             ) {
-                    (appearanceState, gestures),
-                    notificationState,
-                    (autoCopy, autoDelete, size),
-                    otherState,
-                    (sortState, isBusy),
+                (appearanceState, gestures),
+                notificationState,
+                (autoCopy, autoDelete, size),
+                otherState,
+                (sortState, isBusy),
                 ->
                 SettingsUiState(
                     theme = appearanceState.theme,
