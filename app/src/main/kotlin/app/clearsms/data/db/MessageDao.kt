@@ -494,7 +494,7 @@ interface MessageDao {
     )
 
     /**
-     * Compare-and-set status transition: applies [new] only while the row is
+     * Compare-and-set status transition: applies [newStatus] only while the row is
      * still at [expected]. Guards the ordering SENDING → SENT → DELIVERED so
      * a late sent-report can never downgrade a DELIVERED message.
      */

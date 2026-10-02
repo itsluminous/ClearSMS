@@ -58,8 +58,9 @@ object RuleScopeResolver {
         if (sourceSender.isBlank() || senderPattern.isBlank()) return RuleApplyScope.Everything
         if (!literalSenderPattern.matches(senderPattern)) return RuleApplyScope.Everything
         // Unescape back to the literal, then normalise it exactly as the
-        // message table normalises senders (phone numbers → last ten digits),
-        // since that column is what the targeted re-sort searches.
+        // message table normalises senders (phone numbers → their
+        // region-aware national key), since that column is what the
+        // targeted re-sort searches.
         val literal = unescape(senderPattern.removePrefix("(?i)")).trim()
         val core = SenderRule.senderCore(literal)
         return if (core.isEmpty()) RuleApplyScope.Everything else RuleApplyScope.Sender(core)

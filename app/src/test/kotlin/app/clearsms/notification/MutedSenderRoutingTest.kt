@@ -31,7 +31,7 @@ import org.robolectric.Shadows.shadowOf
  *
  * Also pins that the mute matches the way blocking does: a TRAI route
  * prefix/suffix falls away ("VM-HDFCBK-S" is muted by "HDFCBK") and phone
- * numbers compare by their last ten digits.
+ * numbers compare by their region-aware national key.
  */
 @RunWith(RobolectricTestRunner::class)
 class MutedSenderRoutingTest {

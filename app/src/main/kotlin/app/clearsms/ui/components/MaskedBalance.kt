@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import app.clearsms.R
 import app.clearsms.domain.model.MoneyFormat
 
-/** Pure helpers behind [MaskedBalance], kept separate for JVM tests. */
+/** Pure helpers behind [MaskedAmountText], kept separate for JVM tests. */
 object BalanceMask {
     /**
      * The placeholder shown instead of a hidden balance: the currency's
@@ -28,7 +28,7 @@ object BalanceMask {
      */
     fun mask(currency: String): String = MoneyFormat.mask(currency)
 
-    /** True when a gated value should render as [MASK]. */
+    /** True when a gated value should render as the [mask] placeholder. */
     fun isMasked(
         gated: Boolean,
         revealed: Boolean,

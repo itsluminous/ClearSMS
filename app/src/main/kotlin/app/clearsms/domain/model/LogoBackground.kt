@@ -13,7 +13,7 @@ package app.clearsms.domain.model
  * chosen - the setting can only control the plate WE draw.
  */
 enum class LogoBackground {
-    /** White plate - brand-accurate, always legible. The default. */
+    /** White plate - brand-accurate, always legible. */
     WHITE,
 
     /** Dark plate - blends into dark themes; keeps light marks readable. */
@@ -22,6 +22,6 @@ enum class LogoBackground {
     /** Material You tinted plate that follows the app's color scheme. */
     DYNAMIC,
 
-    /** No plate: transparent artwork sits directly on the row. */
+    /** No plate: transparent artwork sits directly on the row. The default. */
     NONE,
 }

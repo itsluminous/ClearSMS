@@ -322,7 +322,7 @@ class InboxViewModel
          * the refresh had no anchor to keep. With them, Room reports
          * `itemsBefore`/`itemsAfter`, index N still means the N-th thread,
          * and the rows around it load on access. Null rows render as
-         * [InboxRowPlaceholder][app.clearsms.ui.inbox.InboxRowPlaceholder].
+         * [PagedRowPlaceholder][app.clearsms.ui.components.PagedRowPlaceholder].
          */
         val pagedItems: Flow<PagingData<InboxItem>> =
             pagerKeys
