@@ -276,6 +276,14 @@ tasks.matching { it.name == "assembleRelease" }.configureEach {
     dependsOn("checkReleaseApkNoHttpClient")
 }
 
+// TranslationStatusTest reads the repo README to verify the generated
+// translation table. README.md is not otherwise a test input, so without this
+// an edit to it would leave the test task UP-TO-DATE and the check would not
+// re-run locally (CI always starts cold). Resource files are already inputs.
+tasks.withType<Test>().configureEach {
+    inputs.file(rootProject.file("README.md")).withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 // Exported Room schemas (schemas/<db>/<version>.json) are committed so future
 // schema changes can ship validated migrations against the released baseline.
 ksp {
