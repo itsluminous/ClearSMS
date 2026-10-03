@@ -5,12 +5,15 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
+import androidx.core.content.LocusIdCompat
 import app.clearsms.ConversationDeepLink
 import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.mms.MmsSnippet
+import app.clearsms.shortcuts.ConversationShortcutRegistry
+import app.clearsms.shortcuts.ConversationShortcutSelection
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +27,14 @@ import javax.inject.Singleton
  * the main activity's navigation graph, which scrolls to and briefly
  * highlights the message the notification was about (the same wash a search
  * result gets).
+ *
+ * On Android 11+ the notification is a *conversation notification*: it names
+ * the thread's long-lived shortcut (`setShortcutId`), so the system files it
+ * in the Conversations section and offers its per-conversation controls.
+ * Bubbles are NOT implemented: they would need `BubbleMetadata` with a
+ * dedicated conversation activity that is `resizeableActivity`,
+ * `documentLaunchMode="always"` and `allowEmbedded`, plus a floating-window
+ * conversation UI - none of which exist here yet.
  */
 @Singleton
 class MessageNotifier
@@ -34,6 +45,12 @@ class MessageNotifier
         private val iconFactory: SenderIconFactory,
         private val sectionGate: NotificationSectionGate,
         private val mutedSenderGate: MutedSenderGate,
+        /**
+         * Which conversation shortcuts exist right now; defaults to "none",
+         * the exact pre-feature behaviour and what every device below API 25
+         * lives with. Tests that do not care about shortcuts omit it.
+         */
+        private val shortcuts: ConversationShortcutRegistry = ConversationShortcutRegistry { false },
     ) {
         /**
          * Posts / updates the notification for [message]'s thread.
@@ -44,13 +61,14 @@ class MessageNotifier
          * the raw address. Callers invoke this off the main thread (the
          * receiver's IO application scope), so the cached contact lookup never
          * blocks UI. The [Person] built here is one of two conversation
-         * identities the app publishes - the other is the launcher shortcut
+         * identities the app publishes - the other is the shortcut
          * [app.clearsms.shortcuts.ConversationShortcutPublisher] keys by the
-         * same app thread id - and both resolve the name and icon through
-         * this same resolver/icon chain, so they can never disagree. The
-         * notification does not yet reference its shortcut (`setShortcutId`
-         * / Android 11 conversation notifications and bubbles are a
-         * follow-up), so no bubble API is used here.
+         * same app thread id, carrying a Person with the same key - and both
+         * resolve the name and icon through this same resolver/icon chain,
+         * so they can never disagree. When that shortcut is published the
+         * notification names it (`setShortcutId`), which is what makes it an
+         * Android 11 conversation notification; see [build] for how a
+         * missing shortcut is handled. No bubble API is used here.
          *
          * [selected] is the user's notification-action choice (defaults to
          * the settings default for callers without settings access). REPLY
@@ -72,7 +90,26 @@ class MessageNotifier
             post(threadNotificationId(message.threadId), build(message, selected, channelId))
         }
 
-        /** Builds the notification; internal so tests can inspect it without posting. */
+        /**
+         * Builds the notification; internal so tests can inspect it without
+         * posting.
+         *
+         * **A missing shortcut never costs a notification.** The id is set
+         * only when [ConversationShortcutRegistry] says the thread's shortcut
+         * is published - an in-memory read, no settings or system call, so
+         * this path never suspends. When it is not (setting off, outside
+         * the budget, excluded thread, rate-limited publish, API < 25), the
+         * notification is built exactly as before this feature: a plain
+         * MessagingStyle notification in the app's channel. And should the
+         * shortcut vanish between the check and the post, the platform is
+         * lenient by design: `NotificationManagerService.enqueueNotificationInternal`
+         * resolves the id via `ShortcutHelper.getValidShortcutInfo`, and on
+         * null it only logs "added an invalid shortcut", clears the record's
+         * shortcut and continues to enqueue - the notification posts as a
+         * non-conversation one, nothing is dropped or delayed (verified in
+         * AOSP android11-release and main). The LocusId mirrors the shortcut,
+         * as the platform recommends, so the system can tie the two.
+         */
         internal fun build(
             message: MessageEntity,
             selected: Set<NotificationAction> = DEFAULT_SELECTED,
@@ -118,6 +155,10 @@ class MessageNotifier
                             requestCode = threadNotificationId(message.threadId),
                         ),
                     ).setAutoCancel(true)
+            if (shortcuts.isPublished(message.threadId)) {
+                val shortcutId = ConversationShortcutSelection.shortcutId(message.threadId)
+                builder.setShortcutId(shortcutId).setLocusId(LocusIdCompat(shortcutId))
+            }
             MessageActionFactory.build(context, message, notificationId, planned).forEach(builder::addAction)
             return builder.build()
         }

@@ -319,4 +319,45 @@ class ConversationShortcutPublisherTest {
         insert(message(id = 100, threadId = 4, timestamp = 100_000))
         assertThat(dynamicIds().first()).isEqualTo("thread:4")
     }
+
+    // --- The registry the notifier reads -----------------------------------
+
+    @Test
+    fun `the registry reports exactly the threads the system accepted, and nothing before the first publish`() {
+        seedThreads(7) // budget is 5, minus the static "New message" = 4
+        // Before start(): nothing is published, so a notification names no shortcut.
+        assertThat(publisher.isPublished(7L)).isFalse()
+
+        publisher.start()
+        val live = dynamicIds().map { ConversationShortcutSelection.threadIdOf(it) }
+        assertThat(live).containsExactly(7L, 6L, 5L, 4L).inOrder()
+        live.forEach { assertThat(publisher.isPublished(requireNotNull(it))).isTrue() }
+        // Outside the budget: a real conversation, no shortcut, and the
+        // registry says so rather than letting the notifier name a ghost.
+        assertThat(publisher.isPublished(3L)).isFalse()
+        assertThat(publisher.isPublished(1L)).isFalse()
+        assertThat(publisher.isPublished(999L)).isFalse()
+    }
+
+    @Test
+    fun `the registry follows the setting and exclusions the same instant the launcher does`() {
+        seedThreads(2)
+        publisher.start()
+        assertThat(publisher.isPublished(1L)).isTrue()
+        assertThat(publisher.isPublished(2L)).isTrue()
+
+        runBlocking { settings.setConversationShortcuts(false) }
+        assertThat(dynamicIds()).isEmpty()
+        assertThat(publisher.isPublished(1L)).isFalse()
+        assertThat(publisher.isPublished(2L)).isFalse()
+
+        runBlocking { settings.setConversationShortcuts(true) }
+        assertThat(publisher.isPublished(2L)).isTrue()
+
+        // Blocking thread 2's sender drops its shortcut AND its registry entry together.
+        runBlocking { settings.setBlockedSenders(setOf("sender-2")) }
+        assertThat(dynamicIds()).containsExactly("thread:1")
+        assertThat(publisher.isPublished(2L)).isFalse()
+        assertThat(publisher.isPublished(1L)).isTrue()
+    }
 }

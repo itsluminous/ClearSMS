@@ -97,7 +97,8 @@ Everything shipped, and what's on the roadmap:
 - [x] Launcher shortcuts (long-press the app icon, Android 7.1+): "New message" plus your pinned and most recent conversations with their inbox avatars, as many as the launcher's own budget allows; blocked, muted, binned and spam conversations never appear, and a shortcut disappears the moment its thread does. The conversation shortcuts can be turned off in Settings → Messages (the setting says plainly that names and photos are handed to the launcher and the share sheet)
 - [x] Direct Share targets (Android 10+): the same pinned and recent conversations appear in the system share sheet's direct-share row when another app shares text or a single picture; a pick opens the composer with that conversation prefilled and the content carried in, never auto-sent. Same shortcuts, same exclusions and the same single setting as the launcher shortcuts - only conversations with a number the phone can address are offered, since the composer cannot send to an alphanumeric sender id
 - [ ] Contact names (instead of bare numbers) in the blocked-senders list
-- [ ] Android 11 conversation notifications / bubbles - build on the same shortcut plumbing
+- [x] Conversation notifications (Android 11+): a message notification names its conversation shortcut, so it files under the system's Conversations section with per-conversation controls; when the shortcut is absent (setting off, outside the launcher's budget, excluded thread) the notification is posted exactly as before - a missing shortcut never delays or drops a message
+- [ ] Bubbles - would need a dedicated resizeable, embeddable conversation activity and a floating conversation UI on top of the shortcut plumbing
 - [ ] Group-MMS conversation UI (group messages currently attribute to their sender)
 - [ ] MMS delivery reports
 - [ ] Attachments persisted in drafts

@@ -39,11 +39,12 @@ import javax.inject.Singleton
  * `thread:<appThreadId>`, opening that conversation through the SAME
  * explicit deep link a notification tap uses ([app.clearsms.ConversationDeepLink]).
  * The same list feeds every surface the system builds from shortcuts - the
- * launcher's long-press menu and the share sheet's direct-share row (the
+ * launcher's long-press menu, the share sheet's direct-share row (the
  * `<share-target>` in `res/xml/shortcuts.xml` matches the category
- * [ConversationShortcutFactory] attaches) - so the exclusion set above is
- * applied once, here, for all of them, and the single setting switches all
- * of them together.
+ * [ConversationShortcutFactory] attaches) and the conversation identity an
+ * Android 11 message notification names by id ([ConversationShortcutRegistry],
+ * implemented here) - so the exclusion set above is applied once, here, for
+ * all of them, and the single setting switches all of them together.
  *
  * **What drives a refresh.** One collector, alive for the process
  * ([start] from the Application), observes the Room flow of candidates
@@ -91,7 +92,7 @@ class ConversationShortcutPublisher
         private val senderResolver: NotificationSenderResolver,
         private val factory: ConversationShortcutFactory,
         @ApplicationScope private val scope: CoroutineScope,
-    ) {
+    ) : ConversationShortcutRegistry {
         private val started = AtomicBoolean(false)
 
         /** Bumped on foreground when a publish was refused; part of the pipeline's inputs. */
@@ -103,6 +104,19 @@ class ConversationShortcutPublisher
         /** Fingerprint of the last list the system accepted; null until the first publish. */
         @Volatile
         private var published: List<String>? = null
+
+        /**
+         * Thread ids of the last list the system ACCEPTED - the shortcuts
+         * that exist right now. Empty until the first accepted publish, after
+         * a refused (rate-limited) publish that followed a change, when the
+         * setting is off, and forever below API 25 where [start] never runs.
+         * Read by [isPublished] on the notification path: a plain volatile
+         * read, so that path never suspends or touches a system service.
+         */
+        @Volatile
+        private var publishedThreadIds: Set<Long> = emptySet()
+
+        override fun isPublished(threadId: Long): Boolean = threadId in publishedThreadIds
 
         /** The coalescing window; tests set 0 to drive the pipeline synchronously. */
         internal var debounceMs: Long = DEBOUNCE_MS
@@ -164,6 +178,7 @@ class ConversationShortcutPublisher
                 ShortcutManagerCompat.removeAllDynamicShortcuts(context)
                 disablePinned(context.getString(R.string.shortcut_disabled_setting_off)) { true }
                 published = emptyList()
+                publishedThreadIds = emptySet()
                 retryPending = false
                 return
             }
@@ -182,9 +197,14 @@ class ConversationShortcutPublisher
                 Diag.d(TAG, "conversation shortcuts published", count("count", shortcuts.size), flag("accepted", accepted))
                 if (accepted) {
                     published = fingerprint
+                    publishedThreadIds = selected.mapTo(HashSet()) { it.threadId }
                     retryPending = false
                 } else {
                     // Background rate limit: remembered, retried on foreground.
+                    // The system kept its PREVIOUS list, so the registry keeps
+                    // reporting that list - a notification for a thread that
+                    // only exists in the refused list must not name a
+                    // shortcut the system never received.
                     retryPending = true
                 }
             }
