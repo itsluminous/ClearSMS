@@ -44,7 +44,11 @@ import javax.inject.Singleton
  * [ConversationShortcutFactory] attaches) and the conversation identity an
  * Android 11 message notification names by id ([ConversationShortcutRegistry],
  * implemented here) - so the exclusion set above is applied once, here, for
- * all of them, and the single setting switches all of them together.
+ * all of them, and the single setting switches all of them together. Off
+ * means GONE from the system: the dynamic list, the copies the system
+ * cached when a conversation notification named them (which outlive a
+ * plain `removeAllDynamicShortcuts`), the avatar files, and the user's
+ * pinned copies disabled - nothing conversation-derived stays behind.
  *
  * **What drives a refresh.** One collector, alive for the process
  * ([start] from the Application), observes the Room flow of candidates
@@ -77,7 +81,7 @@ import javax.inject.Singleton
  * caches in DataModule are irrelevant to it.
  *
  * **API 23-24.** `ShortcutManager` is API 25+. Every `ShortcutManagerCompat`
- * call used here is safe below 25 (verified against androidx.core 1.15.0:
+ * call made through [ShortcutSystem] is safe below 25 (verified against androidx.core 1.15.0:
  * the compat layer returns a fixed budget of 5, treats set / remove /
  * disable as no-ops and reports no shortcuts), but there is nothing to
  * publish to, so [start] returns at once and no bitmap is ever rendered.
@@ -92,6 +96,7 @@ class ConversationShortcutPublisher
         private val senderResolver: NotificationSenderResolver,
         private val factory: ConversationShortcutFactory,
         private val icons: ConversationShortcutIcons,
+        private val system: ShortcutSystem,
         @ApplicationScope private val scope: CoroutineScope,
     ) : ConversationShortcutRegistry {
         private val started = AtomicBoolean(false)
@@ -167,7 +172,7 @@ class ConversationShortcutPublisher
 
         private fun budget(): Int =
             ConversationShortcutSelection.budget(
-                maxPerActivity = ShortcutManagerCompat.getMaxShortcutCountPerActivity(context),
+                maxPerActivity = system.maxShortcutCountPerActivity(),
                 staticCount = STATIC_SHORTCUT_COUNT,
             )
 
@@ -176,11 +181,25 @@ class ConversationShortcutPublisher
             if (!inputs.enabled) {
                 // The switch is off: no conversation shortcut anywhere, the
                 // static "New message" stays (it is the manifest's, not ours).
-                ShortcutManagerCompat.removeAllDynamicShortcuts(context)
+                //
+                // Every copy the system holds, in every state. A long-lived
+                // shortcut is CACHED by the system the moment a conversation
+                // notification names it, and a cached copy - label, Person,
+                // avatar - outlives removeAllDynamicShortcuts (device log:
+                // `thread:1 flags=0x6288 [Ic-fIc-aStrLiv]` after the switch
+                // went off). removeLongLivedShortcuts is the API that deletes
+                // the dynamic AND cached copies; a copy the user pinned is
+                // left pinned-only and disabled below. The ids are read from
+                // the system rather than from this process's memory, so a
+                // copy published by an earlier process is removed too.
+                val held = conversationShortcutIds(ALL_CONVERSATION_STATES)
+                system.removeAllDynamicShortcuts()
+                if (held.isNotEmpty()) system.removeLongLivedShortcuts(held)
                 disablePinned(context.getString(R.string.shortcut_disabled_setting_off)) { true }
                 // The avatar files the system was referencing go too: with the
                 // switch off nothing avatar-shaped stays on disk either.
                 icons.deleteAll()
+                Diag.i(TAG, "conversation shortcuts removed - setting off", count("count", held.size))
                 published = emptyList()
                 publishedThreadIds = emptySet()
                 retryPending = false
@@ -197,7 +216,7 @@ class ConversationShortcutPublisher
             val fingerprint = resolved.map { (row, sender) -> fingerprint(row, sender) }
             if (fingerprint != published || retryPending) {
                 val shortcuts = resolved.mapIndexed { rank, (row, sender) -> factory.build(row, sender, rank) }
-                val accepted = ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts)
+                val accepted = system.setDynamicShortcuts(shortcuts)
                 Diag.d(TAG, "conversation shortcuts published", count("count", shortcuts.size), flag("accepted", accepted))
                 if (accepted) {
                     published = fingerprint
@@ -230,9 +249,21 @@ class ConversationShortcutPublisher
 
         /** Thread ids of every conversation shortcut the user pinned, enabled or not. */
         private fun pinnedConversationThreadIds(): Set<Long> =
-            ShortcutManagerCompat
-                .getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+            system
+                .getShortcuts(ShortcutManagerCompat.FLAG_MATCH_PINNED)
                 .mapNotNullTo(HashSet()) { ConversationShortcutSelection.threadIdOf(it.id) }
+
+        /**
+         * Ids of the conversation shortcuts (and only those - never the
+         * manifest's static one or anything else) the system holds in any of
+         * the [matchFlags] states.
+         */
+        private fun conversationShortcutIds(matchFlags: Int): List<String> =
+            system
+                .getShortcuts(matchFlags)
+                .map { it.id }
+                .filter { ConversationShortcutSelection.threadIdOf(it) != null }
+                .distinct()
 
         /**
          * Disables (and removes) every conversation shortcut the user pinned
@@ -250,13 +281,13 @@ class ConversationShortcutPublisher
             shouldDisable: suspend (threadId: Long) -> Boolean,
         ) {
             val pinnedConversations =
-                ShortcutManagerCompat
-                    .getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+                system
+                    .getShortcuts(ShortcutManagerCompat.FLAG_MATCH_PINNED)
                     .filter { it.isEnabled }
                     .mapNotNull { info -> ConversationShortcutSelection.threadIdOf(info.id)?.let { info.id to it } }
             val stale = pinnedConversations.filter { (_, threadId) -> shouldDisable(threadId) }.map { it.first }
             if (stale.isEmpty()) return
-            ShortcutManagerCompat.disableShortcuts(context, stale, message)
+            system.disableShortcuts(stale, message)
             Diag.i(TAG, "stale pinned conversation shortcuts disabled", count("count", stale.size))
         }
 
@@ -322,5 +353,11 @@ class ConversationShortcutPublisher
 
             /** Coalesces the burst of invalidations one receive or bulk action produces. */
             internal const val DEBOUNCE_MS = 1_500L
+
+            /** Every state a conversation shortcut can be held in: the dynamic list, the system's cache, the home screen. */
+            private const val ALL_CONVERSATION_STATES =
+                ShortcutManagerCompat.FLAG_MATCH_DYNAMIC or
+                    ShortcutManagerCompat.FLAG_MATCH_CACHED or
+                    ShortcutManagerCompat.FLAG_MATCH_PINNED
         }
     }

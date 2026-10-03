@@ -10,8 +10,10 @@ import app.clearsms.mms.FrameworkMmsGateway
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.SystemMmsDownloader
+import app.clearsms.shortcuts.AndroidShortcutSystem
 import app.clearsms.shortcuts.ConversationShortcutPublisher
 import app.clearsms.shortcuts.ConversationShortcutRegistry
+import app.clearsms.shortcuts.ShortcutSystem
 import app.clearsms.sms.ContactLookupImpl
 import app.clearsms.sms.DeviceSubscriptionSource
 import app.clearsms.sms.FrameworkSmsGateway
@@ -104,4 +106,8 @@ internal interface PlatformBindings {
      */
     @Binds
     fun conversationShortcutRegistry(impl: ConversationShortcutPublisher): ConversationShortcutRegistry
+
+    /** The system's shortcut store, behind the seam the publisher's tests fake. */
+    @Binds
+    fun shortcutSystem(impl: AndroidShortcutSystem): ShortcutSystem
 }

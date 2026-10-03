@@ -43,6 +43,11 @@ import java.util.concurrent.Executor
  * run on direct executors and the publisher on an unconfined scope with a
  * zero debounce, so every database write drives the pipeline synchronously
  * and the assertions need no sleeping. All fixtures are synthetic.
+ *
+ * Robolectric's shadow keeps no CACHED shortcuts, so what the OFF state
+ * does to the copies the system caches for conversation notifications is
+ * pinned separately, against a faithful model of the platform, in
+ * [ConversationShortcutCachedCopiesTest].
  */
 @RunWith(RobolectricTestRunner::class)
 class ConversationShortcutPublisherTest {
@@ -88,6 +93,7 @@ class ConversationShortcutPublisherTest {
                 senderResolver = resolver,
                 factory = ConversationShortcutFactory(context, iconFactory, icons),
                 icons = icons,
+                system = AndroidShortcutSystem(context),
                 scope = scope,
             ).apply { debounceMs = 0L }
     }
