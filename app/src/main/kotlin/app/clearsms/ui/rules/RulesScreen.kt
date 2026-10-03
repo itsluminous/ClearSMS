@@ -55,7 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.data.rules.RuleEngine
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 
@@ -354,9 +356,14 @@ private fun RuleDetailDialog(
             ) {
                 DetailField(stringResource(R.string.rule_detail_id), detail.id)
                 DetailField(stringResource(R.string.rule_detail_priority), detail.priority.toString())
+                // The rule stores ids ("important", "bill"); the user reads
+                // the same labels the inbox shows for them.
                 DetailField(
                     stringResource(R.string.rule_detail_category),
-                    listOfNotNull(detail.category, detail.subCategory).joinToString(" / "),
+                    listOfNotNull(
+                        RuleEngine.categoryOf(detail.category).displayName(),
+                        detail.subCategory?.let { RuleEngine.subCategoryOf(it)?.displayName() },
+                    ).joinToString(" / "),
                 )
                 detail.senderPattern?.let { DetailField(stringResource(R.string.rule_detail_sender_pattern), it) }
                 detail.bodyPattern?.let { DetailField(stringResource(R.string.rule_detail_body_pattern), it) }

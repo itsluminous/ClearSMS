@@ -21,6 +21,7 @@ import app.clearsms.R
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.mms.DataSimHint
 import app.clearsms.sms.SimInfo
+import app.clearsms.ui.common.rememberDisplayLocale
 
 /**
  * The "More details" dialog for ONE selected message. Rows come from the
@@ -86,6 +87,7 @@ private fun DetailRow(
     row: MessageDetails.Row,
     is24Hour: Boolean,
 ) {
+    val locale = rememberDisplayLocale()
     val label =
         stringResource(
             when (row) {
@@ -142,7 +144,7 @@ private fun DetailRow(
             // With seconds: sent vs received of one message can differ by
             // seconds, and that difference is what the row is for.
             is MessageDetails.Row.Timestamp -> {
-                MessageMetadata.preciseTimestampLabel(row.timestampMs, is24Hour)
+                MessageMetadata.preciseTimestampLabel(row.timestampMs, is24Hour, locale = locale)
             }
 
             is MessageDetails.Row.Delivered -> {
@@ -150,7 +152,7 @@ private fun DetailRow(
                     // A recorded acknowledgement: just the time (with seconds,
                     // like the other time rows) - no story about the carrier.
                     row.acknowledgedAtMs != null -> {
-                        MessageMetadata.preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)
+                        MessageMetadata.preciseTimestampLabel(row.acknowledgedAtMs, is24Hour, locale = locale)
                     }
 
                     else -> {

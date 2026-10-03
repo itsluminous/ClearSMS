@@ -29,6 +29,14 @@ object BackupFileNames {
 
     private const val PATTERN = "yyyyMMddHHmm"
 
+    /**
+     * DELIBERATELY Locale.US - do not "localize" this. The stamp is part of a
+     * FILE NAME that [matches] parses back (exactly 12 ASCII digits) and that
+     * must sort and restore identically whatever language the app is later
+     * switched to; a locale with its own digits (Arabic-Indic, Devanagari
+     * numerals) would produce names the pruner and restore cannot read.
+     * It is never shown to the user as text.
+     */
     fun timestamp(nowMs: Long): String = SimpleDateFormat(PATTERN, Locale.US).format(Date(nowMs))
 
     fun manualMessages(nowMs: Long): String = named(MANUAL_MESSAGES_PREFIX, nowMs)

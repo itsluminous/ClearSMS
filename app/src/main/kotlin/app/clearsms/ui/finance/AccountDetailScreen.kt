@@ -49,6 +49,8 @@ import app.clearsms.R
 import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.rememberDisplayLocale
+import app.clearsms.ui.common.rememberRelativeTimeStrings
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.EmptyState
@@ -57,9 +59,10 @@ import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
-private val MONTH_HEADER = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
+// Pattern only - a user-facing month header, rendered in the display locale
+// per call (withLocale), so the month name follows the app language.
+private val MONTH_HEADER = DateTimeFormatter.ofPattern("MMMM yyyy")
 
 /** Account detail: chart, direction filter, monthly groups and expandable rows. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -188,7 +191,7 @@ fun AccountDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = MONTH_HEADER.format(group.month.atDay(1)),
+                            text = MONTH_HEADER.withLocale(rememberDisplayLocale()).format(group.month.atDay(1)),
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.weight(1f),
                         )
@@ -286,7 +289,7 @@ private fun TransactionRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = RelativeTime.format(tx.timestamp),
+                        text = RelativeTime.format(tx.timestamp, rememberRelativeTimeStrings()),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

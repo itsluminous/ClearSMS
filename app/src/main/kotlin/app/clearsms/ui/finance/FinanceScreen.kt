@@ -76,6 +76,7 @@ import app.clearsms.data.db.TransactionEntity
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.rememberRelativeTimeStrings
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.BalanceMask
@@ -410,7 +411,7 @@ private fun BankAccountCard(
                             maskedAccountLabel(account.accountNumber),
                             stringResource(
                                 R.string.finance_updated,
-                                RelativeTime.format(account.lastUpdated),
+                                RelativeTime.format(account.lastUpdated, rememberRelativeTimeStrings()),
                             ),
                         ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
@@ -652,7 +653,7 @@ private fun TransactionRow(
                 Text(
                     text =
                         listOfNotNull(tx.bankName.takeIf { it.isNotBlank() }, tx.accountNumber.takeIf { it.isNotBlank() })
-                            .joinToString(" · ") + "  " + RelativeTime.format(tx.timestamp),
+                            .joinToString(" · ") + "  " + RelativeTime.format(tx.timestamp, rememberRelativeTimeStrings()),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },

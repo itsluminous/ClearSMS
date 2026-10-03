@@ -59,6 +59,7 @@ import app.clearsms.data.db.ReminderEntity
 import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.MoneyFormat
 import app.clearsms.domain.model.ReminderType
+import app.clearsms.ui.common.rememberDisplayLocale
 import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.SenderAvatar
@@ -71,9 +72,10 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
-private val DUE_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
+// Pattern only - a user-facing due date, rendered in the display locale per
+// call (withLocale), so the month name follows the app language.
+private val DUE_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy")
 
 /** Alerts: upcoming bill/payment reminder cards plus a collapsible past section. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -421,7 +423,9 @@ private fun ReminderCard(
                     text =
                         stringResource(
                             if (delivery) R.string.alerts_expected_on else R.string.alerts_due_on,
-                            DUE_DATE_FORMAT.format(Instant.ofEpochMilli(dueMs).atZone(ZoneId.systemDefault())),
+                            DUE_DATE_FORMAT
+                                .withLocale(rememberDisplayLocale())
+                                .format(Instant.ofEpochMilli(dueMs).atZone(ZoneId.systemDefault())),
                         ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,

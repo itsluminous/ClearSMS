@@ -203,10 +203,18 @@ private fun openAttachment(
     }
 }
 
-/** 12345 -> "12.1 KB" - compact, locale-stable size label. */
-internal fun humanSize(bytes: Long): String =
+/**
+ * 12345 -> "12.1 KB" - a compact size label the user reads, so the number is
+ * formatted in [locale] (the display locale): a German device shows "12,1 KB"
+ * exactly as its own file manager does. Only the decimal separator and digits
+ * vary; the unit symbols B/KB/MB are international and left as they are.
+ */
+internal fun humanSize(
+    bytes: Long,
+    locale: Locale = Locale.getDefault(),
+): String =
     when {
         bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
-        else -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+        bytes < 1024 * 1024 -> String.format(locale, "%.1f KB", bytes / 1024.0)
+        else -> String.format(locale, "%.1f MB", bytes / (1024.0 * 1024.0))
     }

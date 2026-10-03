@@ -371,16 +371,23 @@ class TransactionNotifier
             }
 
             /**
-             * "2026-08-04" (the pipeline's normalized ISO due date) → "4 Aug".
+             * "2026-08-04" (the pipeline's normalized ISO due date) → "4 Aug",
+             * with the month name in [locale] - notification text the user
+             * reads, so it follows the app language (the process default
+             * locale IS the per-app language on Android 13+). The INPUT is
+             * ISO and locale-free; only the output is localized.
              * Null when the stored value is not ISO - a missing date is
              * better than a raw capture leaking into the notification.
              */
-            internal fun formatDueDate(iso: String?): String? {
+            internal fun formatDueDate(
+                iso: String?,
+                locale: Locale = Locale.getDefault(),
+            ): String? {
                 if (iso == null) return null
                 return try {
                     LocalDate
                         .parse(iso)
-                        .format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
+                        .format(DateTimeFormatter.ofPattern("d MMM", locale))
                 } catch (_: Exception) {
                     null
                 }

@@ -4,10 +4,12 @@ import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.db.MmsStatus
 import app.clearsms.domain.model.Category
+import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.conversation.MessageDetails.Transport
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
+import java.util.Locale
 
 /**
  * The bubble tick follows the persisted [DeliveryStatus] exactly (GitHub
@@ -17,6 +19,8 @@ import org.junit.Test
  * fixtures are synthetic.
  */
 class DeliveryTickTest {
+    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH)
+
     private fun entity(
         outgoing: Boolean,
         status: DeliveryStatus? = null,
@@ -110,13 +114,13 @@ class DeliveryTickTest {
     @Test
     fun `conversation item view - uses the item's direction and status, SMS when no backing row`() {
         val sent = entity(outgoing = true, status = DeliveryStatus.SENT)
-        assertThat(DeliveryTicks.tickFor(sent.toConversationItem(Json)))
+        assertThat(DeliveryTicks.tickFor(sent.toConversationItem(Json, english)))
             .isEqualTo(DeliveryTick.SINGLE)
         val delivered = entity(outgoing = true, status = DeliveryStatus.DELIVERED)
-        assertThat(DeliveryTicks.tickFor(delivered.toConversationItem(Json)))
+        assertThat(DeliveryTicks.tickFor(delivered.toConversationItem(Json, english)))
             .isEqualTo(DeliveryTick.DOUBLE)
         val mmsDelivered = entity(outgoing = true, status = DeliveryStatus.DELIVERED, attachmentKinds = "IMAGE")
-        assertThat(DeliveryTicks.tickFor(mmsDelivered.toConversationItem(Json)))
+        assertThat(DeliveryTicks.tickFor(mmsDelivered.toConversationItem(Json, english)))
             .isEqualTo(DeliveryTick.SINGLE)
         assertThat(
             DeliveryTicks.tickFor(

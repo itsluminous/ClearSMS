@@ -21,14 +21,17 @@ data class MonthlyTotals(
     val currency: String = CurrencyCatalog.INR_CODE,
     val otherCurrencyCount: Int = 0,
 ) {
-    val label: String get() = month.format(MONTH_FORMAT)
+    /** "Jun" - the bar's axis label, with the month name in [locale] (the display locale). */
+    fun label(locale: Locale): String = month.format(MONTH_FORMAT.withLocale(locale))
 
     /** "June 2026" - used by the selection details row and bar accessibility labels. */
-    val fullLabel: String get() = month.format(FULL_MONTH_FORMAT)
+    fun fullLabel(locale: Locale): String = month.format(FULL_MONTH_FORMAT.withLocale(locale))
 
     private companion object {
-        val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)
-        val FULL_MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
+        // Patterns only: user-facing month names are rendered in the display
+        // locale per call (withLocale), so they follow the app language.
+        val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM")
+        val FULL_MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
     }
 }
 

@@ -153,6 +153,10 @@ class ReminderParser(
         text: String,
         anchor: LocalDate = today(),
     ): LocalDate? {
+        // The "d-MMM-yyyy" formatters below are DELIBERATELY Locale.ENGLISH:
+        // they PARSE the English month abbreviations banks and couriers put
+        // in their SMS ("12-Mar-2026", "11Dec"). This is input matching, not
+        // display - the app language must never change which messages parse.
         NUMERIC_DATE_REGEX.find(text)?.let { match ->
             val (day, month, year) = match.destructured
             return buildDate(day.toInt(), month.toInt(), year.toInt())

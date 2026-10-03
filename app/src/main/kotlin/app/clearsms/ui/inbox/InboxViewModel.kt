@@ -1,5 +1,6 @@
 package app.clearsms.ui.inbox
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -28,6 +29,7 @@ import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.notification.MutedSenderGate
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
@@ -38,6 +40,7 @@ import app.clearsms.ui.navigation.activePill
 import app.clearsms.work.CatchUpSyncScheduler
 import app.clearsms.work.RecategorizeWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -202,6 +205,7 @@ data class MuteUiEvent(
 class InboxViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
         private val senderBlocker: SenderBlocker,
@@ -272,6 +276,12 @@ class InboxViewModel
             viewModelScope.launch(ioDispatcher) {
                 val startCategory = settings.defaultInboxFilter.first()
                 filter.compareAndSet(null, InboxFilterState(pill = startCategory?.let(InboxPill::of)))
+            }
+            // The rows' time labels are pre-formatted in the language of the
+            // moment they were mapped (see timeStrings); a language switch
+            // re-maps the loaded pages in place, like a contacts grant does.
+            viewModelScope.launch {
+                context.displayLocaleChanges().collect { activePagingSource?.invalidate() }
             }
         }
 
@@ -601,11 +611,19 @@ class InboxViewModel
                 message = message,
                 display = display,
                 glyph = brandGlyphFor(message.subCategory, display.name),
-                timeLabel = RelativeTime.format(sortOrder.sortTimestamp(message.timestamp, message.dateSent)),
+                timeLabel = RelativeTime.format(sortOrder.sortTimestamp(message.timestamp, message.dateSent), timeStrings()),
                 draftText = draftText?.takeIf { it.isNotBlank() },
                 pinned = pinned,
             )
         }
+
+        /**
+         * Read per row, not cached: the resources follow the app language, so a
+         * row mapped after a language change is already in the new language -
+         * and `init` re-maps the loaded rows when the language changes, so a
+         * label never outlives the language it was formatted in.
+         */
+        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(context)
 
         private fun resolveDisplay(sender: String): SenderDisplay =
             displayCache.getOrPut(sender) {

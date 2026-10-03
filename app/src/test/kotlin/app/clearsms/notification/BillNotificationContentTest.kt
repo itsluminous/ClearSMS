@@ -4,6 +4,7 @@ import app.clearsms.R
 import app.clearsms.notification.TransactionNotifier.Content
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import java.util.Locale
 
 /**
  * Round-T: bill reminders render through the SAME parsed notification as
@@ -97,6 +98,8 @@ class BillNotificationContentTest {
     @Test
     fun `non-iso due date never leaks into the detail line`() {
         assertThat(TransactionNotifier.formatDueDate("03-Jul-26")).isNull()
-        assertThat(TransactionNotifier.formatDueDate("2026-07-03")).isEqualTo("3 Jul")
+        assertThat(TransactionNotifier.formatDueDate("2026-07-03", Locale.ENGLISH)).isEqualTo("3 Jul")
+        // Notification text follows the app language: the month name is the locale's.
+        assertThat(TransactionNotifier.formatDueDate("2026-07-03", Locale.forLanguageTag("hi-IN"))).containsMatch("[\\u0900-\\u097F]")
     }
 }

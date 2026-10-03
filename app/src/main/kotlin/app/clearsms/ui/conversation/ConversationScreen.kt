@@ -102,6 +102,10 @@ import app.clearsms.ui.common.DeleteConfirmationText
 import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
+import app.clearsms.ui.common.rememberDisplayLocale
+import app.clearsms.ui.common.rememberRelativeTimeStrings
+import app.clearsms.ui.components.extractKeyLabel
+import app.clearsms.ui.components.extractValueLabel
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
@@ -118,6 +122,7 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
+import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
@@ -1041,7 +1046,7 @@ private fun DateSeparator(timestamp: Long) {
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Text(
-                text = RelativeTime.dateLabel(timestamp),
+                text = RelativeTime.dateLabel(timestamp, rememberRelativeTimeStrings()),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -1250,12 +1255,13 @@ private fun MessageBubble(
                             DeliveryStatus.SCHEDULED -> {
                                 val context = LocalContext.current
                                 val is24Hour = remember { DateFormat.is24HourFormat(context) }
+                                val locale = rememberDisplayLocale()
                                 val at = item.message?.scheduledAt ?: item.timestamp
                                 Text(
                                     text =
                                         stringResource(
                                             R.string.conversation_scheduled_for,
-                                            MessageMetadata.timestampLabel(at, is24Hour),
+                                            MessageMetadata.timestampLabel(at, is24Hour, locale = locale),
                                         ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.tertiary,
@@ -1352,14 +1358,14 @@ private fun MessageBubble(
 private fun MessageMetadataLine(item: ConversationItem) {
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
-    val timestamp = remember(item.id) { MessageMetadata.timestampLabel(item.timestamp, is24Hour) }
+    val locale = rememberDisplayLocale()
+    val timestamp = remember(item.id, locale) { MessageMetadata.timestampLabel(item.timestamp, is24Hour, locale = locale) }
     val detail =
         if (item.outgoing) {
             stringResource(deliveryStatusLabelRes(item.deliveryStatus))
         } else {
             item.message?.let { message ->
-                message.subCategory?.let { categoryLabel(it.name) }
-                    ?: categoryLabel(message.category.name)
+                message.subCategory?.displayName() ?: message.category.displayName()
             }
         }
     Text(
@@ -1415,9 +1421,6 @@ internal fun DeliveryTickIcon(
     )
 }
 
-/** "BANK_ALERT" → "Bank alert" (enum names are already user-meaningful). */
-private fun categoryLabel(name: String): String = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
-
 /** Expandable card showing parsed transaction / OTP fields under a bubble. */
 @Composable
 private fun ParsedDetailCard(details: Map<String, String>) {
@@ -1434,8 +1437,12 @@ private fun ParsedDetailCard(details: Map<String, String>) {
             )
             details.forEach { (key, value) ->
                 Row {
+                    // The key is the STORED name ("amount", "due_date",
+                    // "pnr" …); every key the pipeline or a bundled rule
+                    // writes has a resource, and a user's own rule's key is
+                    // shown as its author typed it (ExtractKeyLabels.kt).
                     Text(
-                        text = key.replace('_', ' ').replaceFirstChar { it.uppercaseChar() } + ": ",
+                        text = extractKeyLabel(key) + ": ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
@@ -1463,8 +1470,11 @@ private fun ParsedDetailCard(details: Map<String, String>) {
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     } else {
+                        // Only an enum-ish value ("debit" / "credit") is
+                        // translated; a bank, merchant, reference or OTP is
+                        // text lifted from the message and stays as written.
                         Text(
-                            text = value,
+                            text = extractValueLabel(key, value),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )

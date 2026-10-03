@@ -49,6 +49,7 @@ import app.clearsms.R
 import app.clearsms.data.repository.SearchQueryFormat
 import app.clearsms.domain.model.Category
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.rememberRelativeTimeStrings
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
 import app.clearsms.ui.components.PagedRowPlaceholder
@@ -218,7 +219,7 @@ fun SearchScreen(
                     },
                     trailingContent = {
                         Text(
-                            text = RelativeTime.format(message.timestamp),
+                            text = RelativeTime.format(message.timestamp, rememberRelativeTimeStrings()),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

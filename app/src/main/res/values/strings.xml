@@ -801,4 +801,60 @@
     <string name="diagnostics_share_button">Share…</string>
     <string name="diagnostics_share_title">Share diagnostic logs</string>
     <string name="diagnostics_share_failed">Could not prepare the report file. Try again.</string>
+    <!-- Category and sub-category labels: the ONE place a category's user-visible name lives
+         (CategoryLabels.kt). The stored/serialized values are the enum NAMES, never these. -->
+    <string name="category_important">Important</string>
+    <string name="category_promotional">Promotional</string>
+    <string name="category_personal">Personal</string>
+    <string name="category_unknown">Unknown</string>
+    <string name="category_otp">OTP</string>
+    <string name="category_spam">Spam</string>
+    <string name="subcategory_transaction">Transaction</string>
+    <string name="subcategory_otp">OTP</string>
+    <string name="subcategory_bill">Bill</string>
+    <string name="subcategory_bank_alert">Bank alert</string>
+    <string name="subcategory_government">Government</string>
+    <string name="subcategory_recharge">Recharge</string>
+    <string name="subcategory_investment">Investment</string>
+    <string name="subcategory_delivery">Delivery</string>
+    <string name="subcategory_offer">Offer</string>
+    <string name="subcategory_scam">Scam</string>
+    <string name="subcategory_fixed_deposit">Fixed deposit</string>
+    <string name="subcategory_mutual_fund">Mutual fund</string>
+    <string name="subcategory_travel">Travel</string>
+    <string name="subcategory_appointment">Appointment</string>
+    <string name="subcategory_general">General</string>
+    <!-- Relative dates in inbox rows and conversation date separators (RelativeTime.kt). -->
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+    <!-- Extract keys and enum-ish values shown on the parsed-detail card and in the rule wizard
+         (ExtractKeyLabels.kt). The keys themselves are STORED in rules and extractedDataJson. -->
+    <string name="extract_key_amount">Amount</string>
+    <string name="extract_key_type">Type</string>
+    <string name="extract_key_account_last4">Account (last 4 digits)</string>
+    <string name="extract_key_bank">Bank</string>
+    <string name="extract_key_merchant">Merchant</string>
+    <string name="extract_key_balance">Balance</string>
+    <string name="extract_key_available_limit">Available limit</string>
+    <string name="extract_key_total_limit">Total limit</string>
+    <string name="extract_key_reference">Reference</string>
+    <string name="extract_key_currency">Currency</string>
+    <string name="extract_key_requested_amount">Requested amount</string>
+    <string name="extract_key_otp_code">OTP code</string>
+    <string name="extract_key_due_date">Due date</string>
+    <string name="extract_key_total_due">Total due</string>
+    <string name="extract_key_min_due">Minimum due</string>
+    <string name="extract_key_label">Label</string>
+    <string name="extract_key_operator">Operator</string>
+    <string name="extract_key_data_remaining">Data remaining</string>
+    <string name="extract_key_pnr">PNR</string>
+    <string name="extract_key_train">Train</string>
+    <string name="extract_key_flight">Flight</string>
+    <string name="extract_key_route">Route</string>
+    <string name="extract_key_journey_date">Journey date</string>
+    <string name="extract_key_departure_time">Departure time</string>
+    <string name="extract_key_courier">Courier</string>
+    <string name="extract_key_tracking_id">Tracking ID</string>
+    <string name="transaction_type_debit">Debit</string>
+    <string name="transaction_type_credit">Credit</string>
 </resources>
