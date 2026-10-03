@@ -26,25 +26,40 @@ Copy the English files into a new directory whose name uses Android's
 | Brazilian Portuguese | `values-pt-rBR` (region prefixed with `r`) |
 | Serbian in Latin script | `values-b+sr+Latn` (BCP 47 form, `b+` prefix) |
 
-The seven files to copy, all under `app/src/main/res/values/`:
+The English strings are split by *whether they are translated*, not by
+feature. There are three files under `app/src/main/res/values/`, and you copy
+two of them:
 
 ```
-strings.xml              app name
-strings_ui.xml           almost everything the user sees
-strings_platform.xml     notifications, delivery status, system-facing text
-strings_selection.xml    the message selection bar
-strings_bin.xml          recycle bin
-strings_diagnostics.xml  diagnostic log sharing
-strings_brands.xml       (one string; see "What not to translate")
+strings.xml              everything the user sees in the app - copy this
+strings_platform.xml     text shown by Android itself (notification channel
+                         names and descriptions in system Settings, launcher
+                         shortcuts, delivery status) - copy this too; it is
+                         separate only because Android's own UI gives these
+                         strings tighter length limits than the app does
+strings_notranslate.xml  the product name and URLs, every one marked
+                         translatable="false" - do NOT copy this
 ```
 
 Leave `colors.xml` and `themes.xml` alone - they are not strings. Keep the
-same file names and the same `name="..."` attributes; only the text between
-the tags changes. You may delete any `<string>` you have not translated yet
-(see "Partial translations"), but never rename one or invent a new name:
-Android Lint's `ExtraTranslation` check fails the build for a name that does
-not exist in English, because it is almost always a typo or a leftover from a
-string that was since removed.
+same `name="..."` attributes; only the text between the tags changes. You may
+delete any `<string>` you have not translated yet (see "Partial
+translations"), but never rename one or invent a new name: Android Lint's
+`ExtraTranslation` check fails the build for a name that does not exist in
+English, because it is almost always a typo or a leftover from a string that
+was since removed.
+
+**File names inside your directory do not matter - string names do.** Android
+reads every `.xml` file in `values-<code>/` and resolves each string by its
+`name`; the file a string sits in is invisible to it. We checked this
+directly: strings taken from three different English files, put into a single
+`values-ru/anything_at_all.xml`, all resolved as Russian in the built APK. So
+you may keep everything in one file, mirror the English split, or use any
+layout you find convenient. In particular, a translation written against the
+earlier seven-file English layout (`strings_ui.xml`, `strings_bin.xml`,
+`strings_selection.xml` and so on) is still completely valid and needs no
+renaming or reshuffling - as long as each `name` exists in English, it is
+picked up.
 
 ## 2. Plural quantities - the thing most likely to go wrong
 
@@ -58,13 +73,13 @@ does use but you did not provide falls back to `other`, which reads wrongly.
 Russian, for example, uses `one`, `few`, `many` and `other`:
 
 ```xml
-<!-- English (values/strings_ui.xml) -->
+<!-- English (values/strings.xml) -->
 <plurals name="settings_muted_senders_summary">
     <item quantity="one">%1$d muted sender - messages arrive, nothing notifies</item>
     <item quantity="other">%1$d muted senders - messages arrive, nothing notifies</item>
 </plurals>
 
-<!-- Russian (values-ru/strings_ui.xml) -->
+<!-- Russian (values-ru/strings.xml, or any file name you like) -->
 <plurals name="settings_muted_senders_summary">
     <item quantity="one">%1$d отключённый отправитель - сообщения приходят, уведомлений нет</item>
     <item quantity="few">%1$d отключённых отправителя - сообщения приходят, уведомлений нет</item>
@@ -99,12 +114,16 @@ in double quotes, exactly as in the English files.
 
 ## 4. What not to translate
 
-- Anything marked `translatable="false"` (the URLs in `strings_ui.xml`). Do
-  not copy these into your directory at all.
-- Brand and product names: *Clear SMS* itself, *F-Droid*, *UPI*, bank and
-  courier names, and the brand label in `strings_brands.xml`. Transliterate
-  only where that is the local convention.
-- The `name="..."` attributes, file names and the `%1$s`-style placeholders.
+- Everything in `strings_notranslate.xml` - the app name and the URLs, all
+  marked `translatable="false"`. Do not copy this file into your directory
+  at all; a convention test fails the build if a URL or the product name is
+  placed anywhere else.
+- Brand and product names that appear inside otherwise translatable strings:
+  *Clear SMS*, *F-Droid*, *UPI*, bank and courier names. Transliterate only
+  where that is the local convention. (`avatar_sender_logo`, `%1$s logo`,
+  gets the brand name as `%1$s` from data - translate the word "logo", not
+  the brand.)
+- The `name="..."` attributes and the `%1$s`-style placeholders.
 
 ## 5. Partial translations are welcome
 

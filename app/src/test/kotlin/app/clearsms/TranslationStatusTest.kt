@@ -55,7 +55,11 @@ class TranslationStatusTest {
         assertThat(translatable.size).isGreaterThan(500)
         assertThat(all.size).isGreaterThan(translatable.size)
         assertThat(translatable).doesNotContain("url_source_code")
-        assertThat(translatable).contains("app_name")
+        // The product name is translatable="false" (strings_notranslate.xml), so it is not
+        // in the denominator: 742 items, not 743, as of the file split by translatability.
+        assertThat(translatable).doesNotContain("app_name")
+        assertThat(all).contains("app_name")
+        assertThat(translatable).contains("nav_inbox")
     }
 
     @Test
@@ -98,17 +102,17 @@ class TranslationStatusTest {
 
     @Test
     fun `rendering with zero translations states that plainly`() {
-        val block = render(743, emptyList())
+        val block = render(742, emptyList())
         assertThat(block).contains("No translations yet")
-        assertThat(block).contains("743 translatable strings")
+        assertThat(block).contains("742 translatable strings")
         assertThat(block).doesNotContain("| Language |")
     }
 
     @Test
     fun `rendering a locale truncates the percentage and names the language`() {
-        val block = render(743, listOf("ru" to 742, "b+sr+Latn" to 743))
-        assertThat(block).contains("| Russian | `ru` | 742 / 743 | 99% |")
-        assertThat(block).contains("| Serbian (Latin) | `b+sr+Latn` | 743 / 743 | 100% |")
+        val block = render(742, listOf("ru" to 741, "b+sr+Latn" to 742))
+        assertThat(block).contains("| Russian | `ru` | 741 / 742 | 99% |")
+        assertThat(block).contains("| Serbian (Latin) | `b+sr+Latn` | 742 / 742 | 100% |")
         assertThat(block).contains("measures presence, not quality")
     }
 
