@@ -62,15 +62,25 @@ object Routes {
         messageId: Long = -1L,
     ) = "conversation/$threadId?messageId=$messageId"
 
-    const val COMPOSE = "compose?recipient={recipient}&body={body}&imageUri={imageUri}"
+    const val COMPOSE = "compose?recipient={recipient}&body={body}&imageUri={imageUri}&threadId={threadId}"
 
+    /** The `threadId` argument's "no thread" value; nav args cannot be absent. */
+    const val COMPOSE_NO_THREAD = -1L
+
+    /**
+     * The composer, optionally prefilled. [threadId] is the conversation a
+     * Direct Share pick named: the composer resolves it to that thread's
+     * address and prefills the recipient (the share-receiving path stays the
+     * one path; see ComposeMessageViewModel). Null for every other entry.
+     */
     fun compose(
         recipient: String? = null,
         body: String? = null,
         imageUri: String? = null,
+        threadId: Long? = null,
     ): String =
         "compose?recipient=${Uri.encode(recipient.orEmpty())}&body=${Uri.encode(body.orEmpty())}" +
-            "&imageUri=${Uri.encode(imageUri.orEmpty())}"
+            "&imageUri=${Uri.encode(imageUri.orEmpty())}&threadId=${threadId ?: COMPOSE_NO_THREAD}"
 
     const val ACCOUNT_DETAIL = "account/{accountNumber}?bank={bank}"
 

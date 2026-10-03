@@ -147,7 +147,7 @@ class SettingsCatalogTest {
                 "Muted senders",
                 // Launcher shortcuts (GitHub #81), right after the two lists
                 // that decide what the launcher may ever be shown.
-                "Conversations in app shortcuts",
+                "Conversations in app shortcuts and sharing",
                 "Strip accents when sending",
                 "Delay before sending",
                 "Sending delay",
@@ -330,7 +330,7 @@ class SettingsCatalogTest {
                 "Currency",
                 // Messages (GitHub #81): pinned + recent conversations as
                 // launcher shortcuts, with the honest privacy wording.
-                "Conversations in app shortcuts",
+                "Conversations in app shortcuts and sharing",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
@@ -382,6 +382,10 @@ class SettingsCatalogTest {
             .isEqualTo(messagesRows.indexOf(SettingsItem.MUTED_SENDERS) + 1)
         assertThat(search("shortcuts")).containsExactly(SettingsItem.CONVERSATION_SHORTCUTS)
         assertThat(search("app shortcuts")).containsExactly(SettingsItem.CONVERSATION_SHORTCUTS)
+        // One switch covers the launcher menu AND Direct Share (the same
+        // shortcuts feed both), so the title must say so and be found by it.
+        assertThat(search("sharing")).contains(SettingsItem.CONVERSATION_SHORTCUTS)
+        assertThat(title(SettingsItem.CONVERSATION_SHORTCUTS)).isEqualTo("Conversations in app shortcuts and sharing")
     }
 
     @Test

@@ -164,6 +164,27 @@ class ComposeMessageViewModel
             savedStateHandle.get<String>("imageUri")?.takeIf { it.isNotBlank() }?.let { raw ->
                 composerAttachments.add(listOf(Uri.parse(raw)))
             }
+            // A Direct Share pick names a conversation, not an address: the
+            // `threadId` argument is resolved to the thread's sender and set
+            // as the recipient through the SAME path a picked suggestion
+            // takes, so the SIM memory re-primes exactly as it would for a
+            // typed number. The address comes from the thread's oldest live
+            // message - the conversation screen's own header/reply address.
+            // Only an EMPTY recipient is filled: a route carrying both wins
+            // for the explicit recipient, and a thread that no longer exists
+            // (binned since the share sheet was opened) leaves the composer
+            // open with the shared content and no recipient, never an error.
+            savedStateHandle
+                .get<Long>("threadId")
+                ?.takeIf { it >= 0L && state.value.recipient.isBlank() }
+                ?.let { threadId ->
+                    viewModelScope.launch(ioDispatcher) {
+                        val address = messageDao.firstInThread(threadId)?.sender?.trim().orEmpty()
+                        if (address.isNotEmpty() && state.value.recipient.isBlank()) {
+                            applySelection(currentSelection.edit(address))
+                        }
+                    }
+                }
         }
 
         val suggestions: StateFlow<List<ContactSuggestion>> =

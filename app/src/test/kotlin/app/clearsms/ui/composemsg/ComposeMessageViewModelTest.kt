@@ -11,6 +11,8 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
+import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.model.Category
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsGateway
@@ -27,6 +29,7 @@ import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
+import app.clearsms.ui.navigation.Routes
 import app.clearsms.work.MessageScheduler
 import app.clearsms.work.ScheduledSendAlarms
 import com.google.common.truth.Truth.assertThat
@@ -521,5 +524,60 @@ class ComposeMessageViewModelTest {
             assertThat(shownSlot).isEqualTo(2)
             assertThat(row.subscriptionId).isEqualTo(20)
             assertThat(vm.simState.value.slot).isEqualTo(shownSlot)
+        }
+
+    // --- Direct Share: the chosen conversation becomes the recipient ------
+
+    @Test
+    fun `a direct share thread id prefills the thread's address as the recipient and keeps the shared text`() =
+        runBlocking<Unit> {
+            dao.insert(
+                MessageEntity(
+                    threadId = 42L,
+                    sender = "+91 98765 43210",
+                    normalizedSender = "9876543210",
+                    body = "earlier",
+                    timestamp = 1_000L,
+                    category = Category.PERSONAL,
+                ),
+            )
+            val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "see you at nine")))
+
+            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            // The thread's own address, through the same selection path a
+            // picked suggestion takes - the SIM memory re-primes for it.
+            assertThat(vm.uiState.value.recipient).isEqualTo("+91 98765 43210")
+            assertThat(vm.uiState.value.body).isEqualTo("see you at nine")
+            assertThat(vm.uiState.value.sendStatus).isNull() // never auto-sent
+        }
+
+    @Test
+    fun `an explicit recipient wins over the thread id and an unknown thread leaves the recipient empty`() =
+        runBlocking<Unit> {
+            dao.insert(
+                MessageEntity(
+                    threadId = 42L,
+                    sender = "+91 98765 43210",
+                    normalizedSender = "9876543210",
+                    body = "earlier",
+                    timestamp = 1_000L,
+                    category = Category.PERSONAL,
+                ),
+            )
+            val explicit = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "recipient" to "12345")))
+            repeat(20) { kotlinx.coroutines.delay(10) }
+            assertThat(explicit.uiState.value.recipient).isEqualTo("12345")
+
+            // The thread vanished (binned) between the share sheet and here:
+            // the composer still opens with the content, no recipient, no error.
+            val gone = viewModel(SavedStateHandle(mapOf("threadId" to 999L, "body" to "hi")))
+            repeat(20) { kotlinx.coroutines.delay(10) }
+            assertThat(gone.uiState.value.recipient).isEmpty()
+            assertThat(gone.uiState.value.body).isEqualTo("hi")
+
+            // The route's "no thread" value is simply ignored.
+            val none = viewModel(SavedStateHandle(mapOf("threadId" to Routes.COMPOSE_NO_THREAD, "body" to "hi")))
+            repeat(20) { kotlinx.coroutines.delay(10) }
+            assertThat(none.uiState.value.recipient).isEmpty()
         }
 }

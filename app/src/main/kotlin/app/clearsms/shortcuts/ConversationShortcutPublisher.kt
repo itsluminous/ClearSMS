@@ -32,12 +32,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Keeps the launcher's dynamic shortcuts equal to the conversations
+ * Keeps the app's dynamic shortcuts equal to the conversations
  * [ConversationShortcutSelection] picks (issue #81): pinned threads first,
  * then the most recent, inside the system's own budget, never a blocked,
  * muted, binned or Spam thread. One shortcut per conversation, keyed
  * `thread:<appThreadId>`, opening that conversation through the SAME
  * explicit deep link a notification tap uses ([app.clearsms.ConversationDeepLink]).
+ * The same list feeds every surface the system builds from shortcuts - the
+ * launcher's long-press menu and the share sheet's direct-share row (the
+ * `<share-target>` in `res/xml/shortcuts.xml` matches the category
+ * [ConversationShortcutFactory] attaches) - so the exclusion set above is
+ * applied once, here, for all of them, and the single setting switches all
+ * of them together.
  *
  * **What drives a refresh.** One collector, alive for the process
  * ([start] from the Application), observes the Room flow of candidates

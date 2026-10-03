@@ -100,6 +100,12 @@ fun ClearSmsApp(
     initialImageUri: String?,
     onOnboarded: () -> Unit,
     /**
+     * The conversation a Direct Share pick named (`Intent.EXTRA_SHORTCUT_ID`
+     * on the creation intent), or null: the composer prefills that thread's
+     * address as the recipient so the shared text or image lands there.
+     */
+    initialShareThreadId: Long? = null,
+    /**
      * True when the creation intent carried an sms-family URI (`sms:` et
      * al.) - the composer opens even with nothing to prefill, because a
      * bare `sms:` link must show an EMPTY composer, not do nothing (#32).
@@ -141,6 +147,7 @@ fun ClearSmsApp(
                         initialRecipient = initialRecipient,
                         initialBody = initialBody,
                         initialImageUri = initialImageUri,
+                        initialShareThreadId = initialShareThreadId,
                         initialOpenCompose = initialOpenCompose,
                         laterIntents = laterIntents,
                         initialIntent = initialIntent,
@@ -161,6 +168,7 @@ private fun MainScaffold(
     initialRecipient: String?,
     initialBody: String?,
     initialImageUri: String?,
+    initialShareThreadId: Long?,
     initialOpenCompose: Boolean,
     laterIntents: Flow<Intent>,
     initialIntent: Intent?,
@@ -198,13 +206,13 @@ private fun MainScaffold(
     // stages it immediately (the share grant dies with the activity).
     // initialOpenCompose covers a bare `sms:` URI with nothing to prefill:
     // the link asked for the composer, so it opens empty (#32).
-    LaunchedEffect(initialRecipient, initialBody, initialImageUri) {
+    LaunchedEffect(initialRecipient, initialBody, initialImageUri, initialShareThreadId) {
         if (initialOpenCompose ||
             !initialRecipient.isNullOrBlank() ||
             !initialBody.isNullOrBlank() ||
             !initialImageUri.isNullOrBlank()
         ) {
-            navController.navigate(Routes.compose(initialRecipient, initialBody, initialImageUri))
+            navController.navigate(Routes.compose(initialRecipient, initialBody, initialImageUri, initialShareThreadId))
         }
     }
 
@@ -514,6 +522,10 @@ private fun MainScaffold(
                         navArgument("recipient") { defaultValue = "" },
                         navArgument("body") { defaultValue = "" },
                         navArgument("imageUri") { defaultValue = "" },
+                        navArgument("threadId") {
+                            type = NavType.LongType
+                            defaultValue = Routes.COMPOSE_NO_THREAD
+                        },
                     ),
             ) {
                 ComposeMessageScreen(

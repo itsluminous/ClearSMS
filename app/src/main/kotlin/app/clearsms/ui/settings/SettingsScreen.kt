@@ -1328,9 +1328,15 @@ private fun settingsRowEntries(
                     )
                 }
 
-                // The summary says plainly what the launcher is handed
-                // (names and photos, visible to anyone holding the phone)
-                // and what is never handed over, in both states.
+                // ONE switch for every surface the conversation shortcuts
+                // feed - the launcher menu AND the share sheet's direct-share
+                // row - because they are the same ShortcutInfoCompat objects:
+                // a shortcut is either published (and then the launcher has
+                // its name and photo) or it is not, so the two cannot be
+                // split without lying about one of them. The summary says
+                // plainly what is handed over (names and photos, visible to
+                // anyone holding the phone) and what is never handed over,
+                // in both states.
                 SettingsItem.CONVERSATION_SHORTCUTS -> {
                     toggle(
                         section = section,

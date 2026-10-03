@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
+import app.clearsms.shortcuts.ConversationShortcutSelection
 import app.clearsms.ui.finance.BalanceVisibility
 import app.clearsms.ui.navigation.ClearSmsApp
 import app.clearsms.work.WorkScheduler
@@ -73,6 +74,7 @@ class MainActivity : FragmentActivity() {
                 initialRecipient = send.recipient,
                 initialBody = send.body,
                 initialImageUri = send.imageUri,
+                initialShareThreadId = send.shareThreadId,
                 initialOpenCompose = send.explicitCompose,
                 onOnboarded = { WorkScheduler.scheduleAll(applicationContext) },
             )
@@ -109,6 +111,10 @@ class MainActivity : FragmentActivity() {
  * (`sms:`/`smsto:`/`mms:`/`mmsto:`): the sender explicitly asked for the
  * message composer, so it opens even when there is nothing to prefill
  * (a bare `sms:` link must show an empty composer, not do nothing).
+ * [shareThreadId] is the app thread id a Direct Share pick named through
+ * `Intent.EXTRA_SHORTCUT_ID` (a conversation shortcut, `thread:<id>`): the
+ * composer then prefills that thread's address as the recipient so the share
+ * lands in the chosen conversation. Null for every other intent.
  */
 internal data class SendIntent(
     val recipient: String?,
@@ -116,6 +122,7 @@ internal data class SendIntent(
     val imageUri: String? = null,
     val rejectedAttachment: Boolean = false,
     val explicitCompose: Boolean = false,
+    val shareThreadId: Long? = null,
 )
 
 /**
@@ -199,7 +206,33 @@ internal object IntentTriage {
         val isImageShare = intent.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true
         val imageUri = stream?.takeIf { isImageShare }?.toString()
         val rejectedAttachment = stream != null && !isImageShare
-        return SendIntent(recipient, body, imageUri, rejectedAttachment, explicitCompose = isSmsScheme)
+        return SendIntent(
+            recipient,
+            body,
+            imageUri,
+            rejectedAttachment,
+            explicitCompose = isSmsScheme,
+            shareThreadId = shareThreadId(intent),
+        )
+    }
+
+    /**
+     * The app thread id behind a Direct Share pick, or null. The system
+     * launches the `<share-target>` activity with the sharer's ACTION_SEND
+     * intent plus [Intent.EXTRA_SHORTCUT_ID] naming the chosen conversation
+     * shortcut; only ids in the conversation scheme (`thread:<id>`, see
+     * [ConversationShortcutSelection.threadIdOf]) are honoured, anything
+     * else - a foreign shortcut id, junk from a co-installed app - yields
+     * null and the share opens the composer with no recipient, exactly like
+     * a share picked on the app icon. Untrusted like everything else here:
+     * the id only PREFILLS a recipient the user still has to send to, the
+     * same trust level as a `smsto:` recipient, and it never reveals the
+     * address to the sending app.
+     */
+    private fun shareThreadId(intent: Intent): Long? {
+        if (intent.action != Intent.ACTION_SEND) return null
+        val id = runCatching { intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID) }.getOrNull() ?: return null
+        return ConversationShortcutSelection.threadIdOf(id)
     }
 
     /**

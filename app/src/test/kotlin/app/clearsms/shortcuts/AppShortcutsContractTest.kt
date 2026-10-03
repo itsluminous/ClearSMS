@@ -52,7 +52,15 @@ import java.io.File
  *   conversation push (not a tab selection - so it can never corrupt the
  *   bottom bar's saved stack, and never a hand-rolled second mechanism);
  * - the shortcut carries the thread id, the inbox display name and the
- *   avatar - and nothing else;
+ *   avatar - plus, since Direct Share, the long-lived flag, a Person keyed
+ *   by the normalized sender and (for addressable senders only) the
+ *   share-target category - and nothing else: no body, no extracted value;
+ * - the `<share-target>` in the xml advertises EXACTLY the mime types the
+ *   manifest's inbound ACTION_SEND filter accepts, names the launcher
+ *   activity, and its category is the one the factory attaches;
+ * - a Direct Share pick (ACTION_SEND + EXTRA_SHORTCUT_ID) is triaged into
+ *   the existing compose route with the thread carried along, and a
+ *   foreign or junk shortcut id degrades to a plain share;
  * - the stale KDoc claim in MessageNotifier ("No shortcut/bubble APIs are
  *   used") is gone;
  * - `allowBackup` stays false, so the system backs up none of the shortcut
@@ -139,9 +147,110 @@ class AppShortcutsContractTest {
         assertThat(shortcut.rank).isEqualTo(2)
         assertThat(shortcut.icon).isNotNull()
         assertThat(shortcut.icon.type).isEqualTo(IconCompat.TYPE_ADAPTIVE_BITMAP)
-        // Names and identity only: no extras, no categories, no Person.
+        // Names and identity only: the intent carries no extras (no body,
+        // no OTP, no amount rides along into the launcher).
         assertThat(shortcut.intent.extras).isNull()
-        assertThat(shortcut.categories).isNull()
+    }
+
+    @Test
+    fun `a conversation shortcut is long-lived and carries the sender as a Person keyed like the notification`() {
+        val sender = NotificationSender(name = "Priya", monogram = "P", isContact = true)
+        val info = factory.build(row, sender, rank = 0).toShortcutInfo()
+        // Both prerequisites of an Android 11 conversation notification, read
+        // off the REAL platform object. `isLongLived` / `getPersons` are
+        // @hide on ShortcutInfo (not in the compile stubs) but present in
+        // Robolectric's framework jar, so reflection reads what the system
+        // service would see.
+        assertThat(info.javaClass.getMethod("isLongLived").invoke(info)).isEqualTo(true)
+        val persons = info.javaClass.getMethod("getPersons").invoke(info) as Array<*>
+        assertThat(persons).hasLength(1)
+        val person = persons.single() as android.app.Person
+        assertThat(person.name.toString()).isEqualTo("Priya")
+        // The SAME key MessageNotifier gives its MessagingStyle sender
+        // (message.normalizedSender), so the platform sees ONE identity.
+        assertThat(person.key).isEqualTo(row.normalizedSender)
+        assertThat(info.locusId?.id).isEqualTo("thread:42")
+    }
+
+    @Test
+    fun `an addressable sender is a share target and an alphanumeric sender id is not`() {
+        val person = NotificationSender(name = "Priya", monogram = "P")
+        val number = factory.build(row, person, rank = 0)
+        assertThat(number.categories).containsExactly(ConversationShortcutSelection.SHARE_TARGET_CATEGORY)
+
+        val shortCode = factory.build(row.copy(sender = "56767", normalizedSender = "56767"), person, rank = 0)
+        assertThat(shortCode.categories).containsExactly(ConversationShortcutSelection.SHARE_TARGET_CATEGORY)
+
+        // The composer cannot address a name (SenderRepliability): offering
+        // it as a share target would land the share in a composer that
+        // refuses to send. It stays a launcher shortcut, nothing more.
+        val serviceRow = row.copy(sender = "AX-HDFCBK", normalizedSender = "HDFCBK")
+        val service = factory.build(serviceRow, NotificationSender(name = "HDFC Bank", monogram = "H"), rank = 0)
+        assertThat(service.categories).isNull()
+        assertThat(service.id).isEqualTo("thread:42")
+        assertThat(ConversationShortcutSelection.acceptsShares("AX-HDFCBK")).isFalse()
+        assertThat(ConversationShortcutSelection.acceptsShares("+91 98765 43210")).isTrue()
+    }
+
+    @Test
+    fun `the share target advertises exactly the mime types the manifest's send filter accepts`() {
+        val target = parseShareTargets().single()
+        assertThat(target.targetClass).isEqualTo(MainActivity::class.java.name)
+        assertThat(target.categories).containsExactly(ConversationShortcutSelection.SHARE_TARGET_CATEGORY)
+        // Never advertise a type the app cannot receive: the set must equal
+        // the manifest's inbound ACTION_SEND filter (text/plain + image/*),
+        // read back from the installed package rather than re-typed here.
+        val manifestTypes =
+            shadowOf(context.packageManager)
+                .getIntentFiltersForActivity(ComponentName(context, MainActivity::class.java))
+                .filter { it.hasAction(Intent.ACTION_SEND) && it.countDataSchemes() == 0 }
+                .flatMap { f -> (0 until f.countDataTypes()).map { f.getDataType(it) } }
+                // IntentFilter stores "image/*" as the bare base type "image".
+                .map { if (it.contains('/')) it else "$it/*" }
+                .toSet()
+        assertThat(manifestTypes).containsExactly("text/plain", "image/*")
+        assertThat(target.mimeTypes.toSet()).isEqualTo(manifestTypes)
+    }
+
+    @Test
+    fun `a direct share pick is triaged into the compose route carrying the chosen thread`() {
+        val picked =
+            Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_TEXT, "see you at nine")
+                .putExtra(Intent.EXTRA_SHORTCUT_ID, "thread:42")
+        val send = IntentTriage.extractSendIntent(picked)
+        assertThat(send.shareThreadId).isEqualTo(42L)
+        assertThat(send.body).isEqualTo("see you at nine")
+        assertThat(send.recipient).isNull()
+        // Same route, same screen as any share: the thread rides along and
+        // the composer resolves it to the recipient.
+        assertThat(LaterIntentTriage.classify(picked))
+            .isEqualTo(
+                LaterIntentAction.OpenCompose(
+                    Routes.compose(body = "see you at nine", threadId = 42L),
+                    rejectedAttachment = false,
+                ),
+            )
+        assertThat(Routes.compose(body = "x", threadId = 42L)).endsWith("&threadId=42")
+        assertThat(Routes.compose(body = "x")).endsWith("&threadId=${Routes.COMPOSE_NO_THREAD}")
+    }
+
+    @Test
+    fun `a foreign or junk shortcut id degrades to a plain share and never throws`() {
+        for (junk in listOf("compose", "thread:", "thread:-5", "thread:abc", "", "other:42")) {
+            val send =
+                IntentTriage.extractSendIntent(
+                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "hi")
+                        .putExtra(Intent.EXTRA_SHORTCUT_ID, junk),
+                )
+            assertWithMessage(junk).that(send.shareThreadId).isNull()
+            assertThat(send.body).isEqualTo("hi")
+        }
+        // Only a SEND carries a Direct Share pick: a SENDTO or VIEW with the
+        // extra smuggled in is ignored.
+        val smuggled = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:12345")).putExtra(Intent.EXTRA_SHORTCUT_ID, "thread:42")
+        assertThat(IntentTriage.extractSendIntent(smuggled).shareThreadId).isNull()
     }
 
     @Test
@@ -285,6 +394,42 @@ class AppShortcutsContractTest {
         val targetPackage: String?,
         val targetClass: String?,
     )
+
+    private data class ShareTarget(
+        val targetClass: String?,
+        val mimeTypes: List<String>,
+        val categories: List<String>,
+    )
+
+    private fun parseShareTargets(): List<ShareTarget> {
+        val parser = context.resources.getXml(R.xml.shortcuts)
+        val result = mutableListOf<ShareTarget>()
+        var targetClass: String? = null
+        var mimeTypes = mutableListOf<String>()
+        var categories = mutableListOf<String>()
+        var inTarget = false
+        var event = parser.eventType
+        while (event != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG) {
+                when (parser.name) {
+                    "share-target" -> {
+                        inTarget = true
+                        targetClass = parser.getAttributeValue(ANDROID_NS, "targetClass")
+                        mimeTypes = mutableListOf()
+                        categories = mutableListOf()
+                    }
+
+                    "data" -> if (inTarget) parser.getAttributeValue(ANDROID_NS, "mimeType")?.let(mimeTypes::add)
+                    "category" -> if (inTarget) parser.getAttributeValue(ANDROID_NS, "name")?.let(categories::add)
+                }
+            } else if (event == XmlPullParser.END_TAG && parser.name == "share-target") {
+                result += ShareTarget(targetClass, mimeTypes.toList(), categories.toList())
+                inTarget = false
+            }
+            event = parser.next()
+        }
+        return result
+    }
 
     private fun parseShortcuts(): List<StaticShortcut> {
         val parser = context.resources.getXml(R.xml.shortcuts)
