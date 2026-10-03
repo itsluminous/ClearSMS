@@ -19,7 +19,7 @@ import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * "The rule was rejected, but I couldn't figure out why" (issue #38): every
@@ -196,10 +196,7 @@ class RuleWizardValidationTest {
 
     @Test
     fun `every validation error has a message that says which step to fix`() {
-        val strings =
-            listOf(File("src/main/res/values/strings_ui.xml"), File("app/src/main/res/values/strings_ui.xml"))
-                .first { it.exists() }
-                .readText()
+        val strings = DefaultStrings.ui
         val messageKeys =
             mapOf(
                 WizardValidationError.NEEDS_SAMPLE to "rule_error_needs_sample",

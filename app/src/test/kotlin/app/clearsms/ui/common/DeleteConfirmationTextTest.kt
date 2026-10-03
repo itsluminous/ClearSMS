@@ -5,8 +5,8 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.ui.common.DeleteConfirmationText.Target
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import java.io.File
 import java.util.concurrent.TimeUnit
+import app.clearsms.testing.DefaultStrings
 
 /**
  * The delete dialog must promise exactly what the repository then does:
@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
  * the dialog must keep saying so, including the system-SMS-store part.
  */
 class DeleteConfirmationTextTest {
-    private val selection = File("src/main/res/values/strings_selection.xml").readText()
+    private val selection = DefaultStrings.ui
 
     private fun string(name: String): String =
         Regex("""<string name="$name">(.*?)</string>""")

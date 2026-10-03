@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Source-level contract (the repo has no Compose UI harness, same style as
@@ -83,7 +84,7 @@ class DeleteConfirmationContractTest {
         assertThat(bin).contains("R.string.bin_delete_forever_message")
         assertThat(bin).contains("R.string.bin_empty_confirm_message")
         assertThat(bin).doesNotContain("DeleteConfirmationText")
-        val strings = File("src/main/res/values/strings_bin.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains(
             "<string name=\"bin_delete_forever_message\">This message will be permanently removed. This cannot be undone.</string>",
         )

@@ -3,6 +3,7 @@ package app.clearsms.ui.settings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Source-level contracts for the pill-order dialog, in the repo's convention
@@ -115,7 +116,7 @@ class PillOrderDialogContractTest {
         // The handle is a real focusable node, so keyboard and switch users reach it.
         assertThat(dialog).contains(".focusable()")
         // And the strings the actions are built from exist.
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"pill_order_move_up\">Move %1\$s up</string>")
         assertThat(strings).contains("<string name=\"pill_order_move_down\">Move %1\$s down</string>")
         assertThat(strings).contains("<string name=\"pill_order_drag_handle\">Reorder %1\$s</string>")

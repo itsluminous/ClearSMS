@@ -6,6 +6,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * The user-facing side of a failed send: every reason (and no reason) has
@@ -13,7 +14,7 @@ import java.io.File
  * reported, and only genuinely transient trouble is told a retry may work.
  */
 class SendFailureTextTest {
-    private val strings = File("src/main/res/values/strings_ui.xml").readText()
+    private val strings = DefaultStrings.ui
 
     private fun string(name: String): String =
         Regex("""<string name="$name">(.*?)</string>""")

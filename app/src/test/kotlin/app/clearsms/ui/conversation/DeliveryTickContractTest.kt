@@ -3,6 +3,7 @@ package app.clearsms.ui.conversation
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Source-level contract for the bubble delivery ticks (GitHub #44). The
@@ -36,7 +37,7 @@ class DeliveryTickContractTest {
             "if (tick == DeliveryTick.DOUBLE) R.string.conversation_delivered else R.string.conversation_sent",
         )
         assertThat(screen).doesNotContain("contentDescription = null,\n        tint = tint")
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"conversation_sent\">Sent</string>")
         assertThat(strings).contains("<string name=\"conversation_delivered\">Delivered</string>")
     }

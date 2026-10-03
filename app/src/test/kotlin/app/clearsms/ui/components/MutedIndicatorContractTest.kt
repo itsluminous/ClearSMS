@@ -4,6 +4,7 @@ import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for the muted glyph. The repo deliberately has no Compose UI
@@ -27,7 +28,7 @@ class MutedIndicatorContractTest {
         assertThat(component).contains("Icons.Outlined.NotificationsOff")
         assertThat(component).contains("contentDescription = stringResource(R.string.inbox_muted)")
         // The label reads as a reason, not a bare state.
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"inbox_muted\">Muted - no notifications</string>")
     }
 
@@ -196,7 +197,7 @@ class MutedIndicatorContractTest {
         assertThat(gate.indexOf("label = stringResource(R.string.action_more_options),")).isGreaterThan(-1)
         assertThat(gate.indexOf("R.string.action_change_category")).isGreaterThan(gate.indexOf("DropdownMenu(expanded = menuOpen"))
         // The label string itself is unchanged user-visible text.
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"action_change_category\">Change category</string>")
     }
 }
