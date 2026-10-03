@@ -19,15 +19,25 @@ import java.io.File
  * 1. a `when` branch whose result is a bare string literal that reads as a
  *    human word or phrase (`Category.FOO -> "Foo"`, `nowDate -> "Today"`,
  *    `else -> "Bank alert"`), and
- * 2. a label derived from an enum NAME (`name.lowercase().replace('_', ' ')`),
- *    which is unlocalizable by construction.
+ * 2. a label derived from an enum NAME or a JSON key (`name.lowercase()
+ *    .replace('_', ' ')`, `key.replace('_', ' ').replaceFirstChar { … }`),
+ *    which is unlocalizable by construction,
+ * 3. a bare literal handed straight to `Text("…")`, whatever its case, and
+ * 4. a STORED id shown as its own label: a list of lower-case ids
+ *    (`listOf("important", "bank_alert", …)`) whose loop variable reaches a
+ *    `Text(option)`. This is the hole the first version of this test had -
+ *    it only judged `when` branches, and only capitalised ones, so the rule
+ *    wizard's chips reading `important` / `bank_alert` and the detail card's
+ *    humanised `account_last4` → "Account last4:" both slipped through.
  *
- * It stays narrow on purpose: branch results that are codes, MIME types,
- * paths, keys, interpolations or lower-case identifiers are not words a
- * user reads and are ignored, and the diagnostics package is skipped
- * because the shareable report is deliberately English (see
- * [DiagnosticLogConventionTest]). Verified against planted literals in the
- * self-test below and against the real `CategoryBadge.kt` before the fix.
+ * It stays narrow on purpose: `when` branch results that are codes, MIME
+ * types, paths, keys, interpolations or lower-case identifiers (`-> "debit"`
+ * is a serialized value, not a label) are ignored, and the diagnostics
+ * package is skipped because the shareable report is deliberately English
+ * (see [DiagnosticLogConventionTest]). Verified against planted literals in
+ * the self-test below, against the real `CategoryBadge.kt` before the BO1
+ * fix, and against `RuleWizardScreen.kt` / `ConversationScreen.kt` before
+ * the BO3 fix.
  */
 class UserVisibleLabelConventionTest {
     private data class Finding(
@@ -54,8 +64,23 @@ class UserVisibleLabelConventionTest {
     /** `Category.OTP`, `SubCategory.BANK_ALERT`, or a bare `OTP` inside the enum's own `when`. */
     private val enumConstant = Regex("""^(?:[A-Za-z_][\w.]*\.)?[A-Z][A-Z0-9_]*$""")
 
-    /** `name.lowercase().replace('_', ' ')` - humanising an enum name into a label. */
-    private val enumNameAsLabel = Regex("""\.lowercase\(\)\s*\.replace\('_',\s*' '\)""")
+    /**
+     * `name.lowercase().replace('_', ' ')`, `key.replace('_', ' ').replaceFirstChar { … }`
+     * - humanising an enum name or a JSON key into a label: an underscore
+     * swapped for a space TOGETHER with a case change on the same line.
+     */
+    private val underscoreToSpace = Regex("""\.replace\('_',\s*' '\)""")
+    private val caseChange = Regex("""\.lowercase\(\)|\.uppercase\(\)|replaceFirstChar|uppercaseChar|\.capitalize\(""")
+
+    /**
+     * `Text("Important")`, `Text(text = "debit")` - a literal shown as-is.
+     * Any letter makes it a word; `Text("•")` or `Text("₹")` are symbols.
+     */
+    private val bareTextLiteral = Regex("""\bText\(\s*(?:text\s*=\s*)?"((?:\\.|[^"\\])*)"""")
+    private val hasLetter = Regex("""[A-Za-z]""")
+
+    /** `val NAME = listOf("important", "bank_alert", …)` - a list of stored lower-case ids. */
+    private val idList = Regex("""\bval\s+(\w+)\s*=\s*listOf\(((?:\s*"[a-z][a-z0-9_]*"\s*,?)+)\s*\)""")
 
     private fun sources(): Sequence<File> =
         File("src/main/kotlin")
@@ -99,8 +124,67 @@ class UserVisibleLabelConventionTest {
         text: String,
     ): List<Finding> =
         text.lines().mapIndexedNotNull { index, line ->
-            if (enumNameAsLabel.containsMatchIn(line)) Finding(path, index + 1, line) else null
+            if (underscoreToSpace.containsMatchIn(line) && caseChange.containsMatchIn(line)) {
+                Finding(path, index + 1, line)
+            } else {
+                null
+            }
         }
+
+    private fun bareTextLiterals(
+        path: String,
+        text: String,
+    ): List<Finding> =
+        text.lines().mapIndexedNotNull { index, line ->
+            val literal = bareTextLiteral.find(line)?.groupValues?.get(1) ?: return@mapIndexedNotNull null
+            if ('$' in literal || !hasLetter.containsMatchIn(literal)) return@mapIndexedNotNull null
+            Finding(path, index + 1, line)
+        }
+
+    /**
+     * A stored id rendered as its own label: for every lower-case id list in
+     * the file, the body of each `NAME.forEach { option -> … }` /
+     * `for (option in NAME)` is searched for a `Text(option)` (also as the
+     * `else` of an inline `if`, the chip-label idiom).
+     */
+    private fun rawIdLabels(
+        path: String,
+        text: String,
+    ): List<Finding> {
+        val findings = mutableListOf<Finding>()
+        for (list in idList.findAll(text)) {
+            val name = list.groupValues[1]
+            val loops =
+                Regex("""\b$name\s*\.forEach(?:Indexed)?\s*\{\s*(?:\w+\s*,\s*)?(\w+)\s*->""").findAll(text) +
+                    Regex("""\bfor\s*\(\s*(\w+)\s+in\s+$name\s*\)\s*\{""").findAll(text)
+            for (loop in loops) {
+                val variable = loop.groupValues[1]
+                val open = text.indexOf('{', loop.range.first)
+                val body = text.substring(open, closingBrace(text, open))
+                val shown = Regex("""\bText\(\s*(?:text\s*=\s*)?(?:if\s*\(.*?\)\s*.*?\s+else\s+)?$variable\s*[,)]""")
+                for (hit in shown.findAll(body)) {
+                    val line = text.substring(0, open + hit.range.first).count { it == '\n' } + 1
+                    findings += Finding(path, line, text.lines()[line - 1])
+                }
+            }
+        }
+        return findings
+    }
+
+    /** Index just past the brace matching the one at [open] (or the end of [text]). */
+    private fun closingBrace(
+        text: String,
+        open: Int,
+    ): Int {
+        var depth = 0
+        for (i in open until text.length) {
+            when (text[i]) {
+                '{' -> depth++
+                '}' -> if (--depth == 0) return i + 1
+            }
+        }
+        return text.length
+    }
 
     @Test
     fun `no when branch hands the user a literal word as a label`() {
@@ -113,11 +197,31 @@ class UserVisibleLabelConventionTest {
     }
 
     @Test
-    fun `no label is manufactured from an enum name`() {
+    fun `no label is manufactured from an enum name or a key`() {
         val findings = sources().flatMap { enumNameLabels(it.path, it.readText()) }.toList()
         assertWithMessage(
-            "Enum names are STORED values; a label for one is a string resource, " +
-                "never name.lowercase().replace('_', ' '):\n" + findings.joinToString("\n"),
+            "Enum names and JSON keys are STORED values; a label for one is a string resource, " +
+                "never name.lowercase().replace('_', ' ') or key.replace('_', ' ').replaceFirstChar { … }:\n" +
+                findings.joinToString("\n"),
+        ).that(findings).isEmpty()
+    }
+
+    @Test
+    fun `no Text shows a bare literal`() {
+        val findings = sources().flatMap { bareTextLiterals(it.path, it.readText()) }.toList()
+        assertWithMessage(
+            "A word shown with Text(\"…\") is a string resource (stringResource(R.string.…)), " +
+                "whatever its case:\n" + findings.joinToString("\n"),
+        ).that(findings).isEmpty()
+    }
+
+    @Test
+    fun `no stored id is shown as its own label`() {
+        val findings = sources().flatMap { rawIdLabels(it.path, it.readText()) }.toList()
+        assertWithMessage(
+            "A lower-case id (\"important\", \"bank_alert\") is the STORED value; what the user sees is " +
+                "its string resource (e.g. RuleEngine.categoryOf(id).displayName()), never the id itself:\n" +
+                findings.joinToString("\n"),
         ).that(findings).isEmpty()
     }
 
@@ -152,6 +256,32 @@ class UserVisibleLabelConventionTest {
                 x -> "${'$'}a - ${'$'}b"
             }
             private fun categoryLabel(name: String): String = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
+            Text(text = key.replace('_', ' ').replaceFirstChar { it.uppercaseChar() } + ": ")
+            val sql = type.name.lowercase().replace('_', '-')
+            Text("Important")
+            Text(text = "debit")
+            Text("•")
+            Text("${'$'}count")
+            Text(stringResource(R.string.category_spam))
+            private val CATEGORY_OPTIONS = listOf("important", "promotional", "otp")
+            private val SUB_CATEGORY_OPTIONS =
+                listOf(
+                    "transaction",
+                    "bank_alert",
+                )
+            private val HINTS = listOf("bank", "credit card")
+            CATEGORY_OPTIONS.forEach { option ->
+                FilterChip(label = { Text(option) })
+            }
+            SUB_CATEGORY_OPTIONS.forEach { option ->
+                FilterChip(label = { Text(if (option == FIELD_IGNORE) stringResource(R.string.ignore) else option) })
+            }
+            for (hint in HINTS) {
+                Text(hint)
+            }
+            CATEGORY_OPTIONS.forEach { option ->
+                FilterChip(label = { Text(RuleEngine.categoryOf(option).displayName()) })
+            }
             """.trimIndent()
         val branches = literalBranches("planted.kt", planted)
         // Two enum-constant labels (one of them the all-caps OTP), a wrapped
@@ -160,16 +290,28 @@ class UserVisibleLabelConventionTest {
         // caps, but behind a boolean / else condition), the lower-case SQL
         // value, the string-keyed map entry or the interpolation.
         assertThat(branches.map { it.line }).containsExactly(3, 4, 6, 8, 11).inOrder()
-        assertThat(enumNameLabels("planted.kt", planted).map { it.line }).containsExactly(27)
+        // The enum-name humaniser AND the key humaniser (no lowercase() call,
+        // which is what used to hide it); NOT the underscore-to-dash SQL name.
+        assertThat(enumNameLabels("planted.kt", planted).map { it.line }).containsExactly(27, 28).inOrder()
+        // A capitalised word and a lower-case one; NOT the symbol, the
+        // interpolation or the resource.
+        assertThat(bareTextLiterals("planted.kt", planted).map { it.line }).containsExactly(30, 31).inOrder()
+        // The two chip rows showing their id (one as the else of an inline
+        // if); NOT the hint list (its "credit card" is a phrase, not an id)
+        // nor the row that maps the id to its resource.
+        assertThat(rawIdLabels("planted.kt", planted).map { it.line }).containsExactly(43, 46).inOrder()
     }
 
     @Test
-    fun `every category and sub-category label resource exists in English and in Hindi`() {
-        // The one-definition file: every R.string it names must resolve in
+    fun `every category, sub-category and extract-key label resource exists in English and in Hindi`() {
+        // The one-definition files: every R.string they name must resolve in
         // both languages, or a Hindi user gets English (or a crash) back.
-        val labels = File("src/main/kotlin/app/clearsms/ui/components/CategoryLabels.kt").readText()
+        val labels =
+            File("src/main/kotlin/app/clearsms/ui/components/CategoryLabels.kt").readText() +
+                File("src/main/kotlin/app/clearsms/ui/components/ExtractKeyLabels.kt").readText()
         val referenced = Regex("""R\.string\.(\w+)""").findAll(labels).map { it.groupValues[1] }.toSet()
-        assertThat(referenced.size).isAtLeast(21)
+        // 21 category / sub-category labels + 26 extract keys + 2 transaction types.
+        assertThat(referenced.size).isAtLeast(49)
         for (values in listOf("values", "values-hi")) {
             val xml = File("src/main/res/$values/strings.xml").readText()
             val defined = Regex("""<string name="(\w+)"""").findAll(xml).map { it.groupValues[1] }.toSet()
