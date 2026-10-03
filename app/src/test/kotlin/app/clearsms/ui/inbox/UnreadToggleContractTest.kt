@@ -5,6 +5,7 @@ import app.clearsms.domain.model.InboxPill
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for the "Unread only" control after its move out of the pill row.
@@ -61,7 +62,7 @@ class UnreadToggleContractTest {
     fun `unread count surfaces on the toggle label`() {
         val inbox = source("ui/inbox/InboxScreen.kt")
         assertThat(inbox).contains("stringResource(R.string.inbox_unread_toggle_count, totalUnread)")
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"inbox_unread_toggle_count\">Unread · %1\$d</string>")
     }
 

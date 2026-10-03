@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Translation policy (see docs/translating.md).
+
+  MissingTranslation is deliberately a WARNING, not the default error.
+  Community translations arrive incomplete and grow over several pull
+  requests; Android resolves each string independently and falls back to
+  the default (English) locale for any name a `values-<code>/` directory
+  does not define, so a partial translation is fully usable at runtime -
+  only lint objected. With the default severity, a translation that covers
+  anything less than every one of the ~740 translatable strings fails
+  `lintDebug` (which CI runs), which would reject every real-world
+  contribution. `warningsAsErrors` is false in app/build.gradle.kts, so a
+  warning never fails the build. Do not "tidy" this back to error.
+
+  ExtraTranslation stays an ERROR on purpose: a name present in a
+  translation but absent from values/ is a typo or a leftover from a
+  string that was since removed, and catching it is worth a failed build.
+-->
+<lint>
+    <issue id="MissingTranslation" severity="warning" />
+    <issue id="ExtraTranslation" severity="error" />
+</lint>

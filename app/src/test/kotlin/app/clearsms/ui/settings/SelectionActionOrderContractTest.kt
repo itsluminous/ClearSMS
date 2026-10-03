@@ -8,6 +8,7 @@ import app.clearsms.ui.navigation.PillConfig
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Contracts for the user-ordered conversation selection-bar actions (issue
@@ -68,7 +69,7 @@ class SelectionActionOrderContractTest {
         val dialog = source("ui/settings/PillOrderDialog.kt")
         assertThat(dialog).contains("hint: String = stringResource(R.string.pill_order_drag_hint),")
         assertThat(dialog).contains("text = hint,")
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"selection_action_order_drag_hint\">")
         assertThat(strings).contains("<string name=\"settings_selection_action_order\">Message action order</string>")
     }

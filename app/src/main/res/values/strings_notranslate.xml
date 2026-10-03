@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings that must NOT be translated: the product name and URLs. Every
+     entry here carries translatable="false", which keeps them out of the
+     translation status table and out of Lint's MissingTranslation check,
+     and tells translators to leave them alone. A convention test
+     (NoTranslateStringsConventionTest) fails the build if a string here
+     lacks the flag, or if a url_* string lands in any other file. -->
+<resources>
+    <!-- "Clear SMS" is the product name; it is the same in every language. -->
+    <string name="app_name" translatable="false">Clear SMS</string>
+
+    <!-- Links opened from Settings → About / Support. -->
+    <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
+    <string name="url_release_notes" translatable="false">https://github.com/itsluminous/ClearSMS/releases/tag/v%1$s</string>
+    <string name="url_donate_paypal" translatable="false">https://paypal.me/prakashait</string>
+    <string name="url_donate_upi" translatable="false">upi://pay?pa=electricprakash@axisb&amp;cn=ClearSMS</string>
+</resources>

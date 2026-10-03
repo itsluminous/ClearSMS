@@ -3,6 +3,7 @@ package app.clearsms.ui.conversation
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for the "More details" entry (issue #44). Source-level contracts
@@ -71,7 +72,7 @@ class MessageDetailsMenuContractTest {
 
     @Test
     fun `delivery wording is short and honest - Yes, Unknown, never Yes for MMS, no time invented`() {
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         // Confirmed without a recorded time: exactly "Yes" - no carrier story.
         assertThat(strings).contains("<string name=\"message_details_delivered_confirmed\">Yes</string>")
         // No report at all: a one-word honest "Unknown".
@@ -92,7 +93,7 @@ class MessageDetailsMenuContractTest {
 
     @Test
     fun `the explanatory strings are gone - no not-reported sent row, no delivery-report note`() {
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).doesNotContain("message_details_sent_unknown")
         assertThat(strings).doesNotContain("message_details_delivered_at_note")
         assertThat(strings).doesNotContain("not the carrier\\'s own timestamp")

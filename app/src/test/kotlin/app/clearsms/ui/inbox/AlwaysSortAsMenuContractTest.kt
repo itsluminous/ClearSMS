@@ -5,6 +5,7 @@ import app.clearsms.domain.rules.SenderRule
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for "Always sort as…" in the inbox selection overflow. Source-level
@@ -56,7 +57,7 @@ class AlwaysSortAsMenuContractTest {
         assertThat(inbox).contains("SelectionAction.ALWAYS_SORT_AS ->")
         assertThat(inbox).contains("stringResource(R.string.action_always_sort_as)")
         assertThat(inbox).doesNotContain("if (singleItem != null) {")
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"action_always_sort_as\">Always sort as…</string>")
         // Same words as the dialog title it opens.
         assertThat(strings).contains("<string name=\"sender_rule_title\">Always sort as…</string>")

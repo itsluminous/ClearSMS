@@ -3,6 +3,7 @@ package app.clearsms.ui.components
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Convention tests (source scan, the repo pattern) for the setting-only
@@ -16,7 +17,7 @@ class NoAccentAffordanceConventionTest {
     private val composerBar = File("src/main/kotlin/app/clearsms/ui/components/MessageComposerBar.kt").readText()
     private val conversationScreen = File("src/main/kotlin/app/clearsms/ui/conversation/ConversationScreen.kt").readText()
     private val composeScreen = File("src/main/kotlin/app/clearsms/ui/composemsg/ComposeMessageScreen.kt").readText()
-    private val stringsUi = File("src/main/res/values/strings_ui.xml").readText()
+    private val stringsUi = DefaultStrings.ui
 
     @Test
     fun `the compose bar contains no accent affordance`() {

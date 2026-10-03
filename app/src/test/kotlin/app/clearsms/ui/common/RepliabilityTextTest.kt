@@ -7,6 +7,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * The wording of the conversation's reply notice, per verdict (GitHub #75).
@@ -16,7 +17,7 @@ import java.io.File
  * not claim. Source-level where the repo has no Compose harness.
  */
 class RepliabilityTextTest {
-    private val strings = File("src/main/res/values/strings_selection.xml").readText()
+    private val strings = DefaultStrings.ui
 
     private fun string(name: String): String =
         Regex("""<string name="$name">(.*?)</string>""")

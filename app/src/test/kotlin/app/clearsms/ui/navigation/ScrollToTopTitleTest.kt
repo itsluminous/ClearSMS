@@ -7,6 +7,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Item 2 + issue #46: the unread switch shares the title line and leaves
@@ -121,7 +122,7 @@ class ScrollToTopTitleTest {
         assertThat(Regex("\\.clickable\\(").findAll(title).count()).isEqualTo(1)
         assertThat(title.indexOf(".clickable(")).isGreaterThan(title.indexOf("Text("))
         assertThat(title.indexOf(".clickable(")).isLessThan(title.indexOf("maxLines = 1"))
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(strings).contains("<string name=\"action_scroll_to_top\">Scroll to top</string>")
     }
 
@@ -149,7 +150,7 @@ class ScrollToTopTitleTest {
                 .doesNotContainMatch("title = \\{ Text\\(stringResource\\(R\\.string\\.(inbox|finance|alerts)_title\\)\\) \\}")
         }
         // The per-tab title strings are gone: one string, one title.
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         listOf("inbox_title", "finance_title", "alerts_title").forEach { name ->
             assertWithMessage("$name should no longer exist").that(strings).doesNotContain("name=\"$name\"")
         }

@@ -4,6 +4,7 @@ import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Source contract (the ComposerBarContractTest pattern) for the
@@ -124,7 +125,7 @@ class ComposerExpansionConventionTest {
         // One label feeds both the action label and the icon description.
         assertThat(bar).contains("onClickLabel = label")
         assertThat(bar).contains("contentDescription = label")
-        val strings = File("src/main/res/values/strings_platform.xml").readText()
+        val strings = DefaultStrings.platform
         assertThat(strings).contains("\"compose_expand\"")
         assertThat(strings).contains("\"compose_collapse\"")
     }

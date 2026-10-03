@@ -6,6 +6,7 @@ import app.clearsms.ui.components.SimUiState
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
+import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract: the compose bar's SIM hint and the "More details" SIM row name
@@ -93,7 +94,7 @@ class SimLabelContractTest {
     @Test
     fun `the SIM row keeps its own label resource and the other rows are untouched`() {
         val dialog = source("ui/conversation/MessageDetailsDialog.kt")
-        val strings = File("src/main/res/values/strings_ui.xml").readText()
+        val strings = DefaultStrings.ui
         assertThat(dialog).containsMatch("""is MessageDetails\.Row\.Sim ->\s*\{?\s*R\.string\.message_details_sim""")
         assertThat(strings).contains("<string name=\"message_details_sim\">")
         // One merged accessibility node per row still: "SIM, SIM 1 - Carrier A".
