@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Clear SMS</string>
-
     <!-- Navigation -->
     <string name="nav_inbox">Inbox</string>
     <string name="nav_finance">Finance</string>
@@ -531,10 +529,6 @@
     <string name="link_scam_title_payment">Open a payment app from a suspicious message?</string>
     <string name="link_scam_body_payment">This message is flagged as a possible scam. Payment links can arrive with the amount and recipient already filled in, so approving one sends YOUR money.\n\n%1$s</string>
     <string name="link_scam_pay">Continue anyway</string>
-    <string name="url_source_code" translatable="false">https://github.com/itsluminous/ClearSMS</string>
-    <string name="url_release_notes" translatable="false">https://github.com/itsluminous/ClearSMS/releases/tag/v%1$s</string>
-    <string name="url_donate_paypal" translatable="false">https://paypal.me/prakashait</string>
-    <string name="url_donate_upi" translatable="false">upi://pay?pa=electricprakash@axisb&amp;cn=ClearSMS</string>
 
     <!-- Enum labels -->
     <string name="theme_system">System default</string>
