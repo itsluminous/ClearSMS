@@ -2,7 +2,7 @@
 agp = "9.1.1"
 kotlin = "2.3.21"
 ksp = "2.3.7"
-composeBom = "2026.03.01"
+composeBom = "2026.09.00"
 activityCompose = "1.9.3"
 navigationCompose = "2.8.5"
 hilt = "2.60.1"
