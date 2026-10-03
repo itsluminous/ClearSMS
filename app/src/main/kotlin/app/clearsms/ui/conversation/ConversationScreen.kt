@@ -104,6 +104,8 @@ import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.common.rememberDisplayLocale
 import app.clearsms.ui.common.rememberRelativeTimeStrings
+import app.clearsms.ui.components.extractKeyLabel
+import app.clearsms.ui.components.extractValueLabel
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
@@ -1435,13 +1437,12 @@ private fun ParsedDetailCard(details: Map<String, String>) {
             )
             details.forEach { (key, value) ->
                 Row {
-                    // Known gap (not localized): the keys are whatever the
-                    // community rules' JSON extracts ("amount", "due_date",
-                    // "pnr" …) - an open set with no enum to map to resources.
-                    // Localizing them needs a key→R.string table with a
-                    // humanised fallback; tracked separately.
+                    // The key is the STORED name ("amount", "due_date",
+                    // "pnr" …); every key the pipeline or a bundled rule
+                    // writes has a resource, and a user's own rule's key is
+                    // shown as its author typed it (ExtractKeyLabels.kt).
                     Text(
-                        text = key.replace('_', ' ').replaceFirstChar { it.uppercaseChar() } + ": ",
+                        text = extractKeyLabel(key) + ": ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
@@ -1469,8 +1470,11 @@ private fun ParsedDetailCard(details: Map<String, String>) {
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     } else {
+                        // Only an enum-ish value ("debit" / "credit") is
+                        // translated; a bank, merchant, reference or OTP is
+                        // text lifted from the message and stays as written.
                         Text(
-                            text = value,
+                            text = extractValueLabel(key, value),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )

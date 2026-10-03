@@ -827,4 +827,34 @@
     <!-- Relative dates in inbox rows and conversation date separators (RelativeTime.kt). -->
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
+    <!-- Extract keys and enum-ish values shown on the parsed-detail card and in the rule wizard
+         (ExtractKeyLabels.kt). The keys themselves are STORED in rules and extractedDataJson. -->
+    <string name="extract_key_amount">Amount</string>
+    <string name="extract_key_type">Type</string>
+    <string name="extract_key_account_last4">Account (last 4 digits)</string>
+    <string name="extract_key_bank">Bank</string>
+    <string name="extract_key_merchant">Merchant</string>
+    <string name="extract_key_balance">Balance</string>
+    <string name="extract_key_available_limit">Available limit</string>
+    <string name="extract_key_total_limit">Total limit</string>
+    <string name="extract_key_reference">Reference</string>
+    <string name="extract_key_currency">Currency</string>
+    <string name="extract_key_requested_amount">Requested amount</string>
+    <string name="extract_key_otp_code">OTP code</string>
+    <string name="extract_key_due_date">Due date</string>
+    <string name="extract_key_total_due">Total due</string>
+    <string name="extract_key_min_due">Minimum due</string>
+    <string name="extract_key_label">Label</string>
+    <string name="extract_key_operator">Operator</string>
+    <string name="extract_key_data_remaining">Data remaining</string>
+    <string name="extract_key_pnr">PNR</string>
+    <string name="extract_key_train">Train</string>
+    <string name="extract_key_flight">Flight</string>
+    <string name="extract_key_route">Route</string>
+    <string name="extract_key_journey_date">Journey date</string>
+    <string name="extract_key_departure_time">Departure time</string>
+    <string name="extract_key_courier">Courier</string>
+    <string name="extract_key_tracking_id">Tracking ID</string>
+    <string name="transaction_type_debit">Debit</string>
+    <string name="transaction_type_credit">Credit</string>
 </resources>

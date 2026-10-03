@@ -57,12 +57,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
+import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.model.CategorizationResult
 import app.clearsms.domain.rules.RuleSuggester
 import app.clearsms.domain.rules.SenderRule
 import app.clearsms.domain.rules.SuggestedToken
 import app.clearsms.domain.rules.TokenKind
+import app.clearsms.ui.components.displayName
+import app.clearsms.ui.components.extractKeyLabel
 
+/*
+ * The rule-JSON ids a wizard chip SELECTS (what `action.category` /
+ * `action.sub_category` store, read back by `RuleEngine.categoryOf` /
+ * `subCategoryOf`). Never shown: each chip's label is the id's category
+ * resolved to its string resource, see `CategoryLabels.kt`.
+ */
 private val CATEGORY_OPTIONS = listOf("important", "promotional", "personal", "otp", "unknown", "spam")
 private val SUB_CATEGORY_OPTIONS =
     listOf(
@@ -304,7 +313,7 @@ private fun CategoryStep(
                 FilterChip(
                     selected = state.category == option,
                     onClick = { viewModel.onCategoryChange(option) },
-                    label = { Text(option) },
+                    label = { Text(RuleEngine.categoryOf(option).displayName()) },
                 )
             }
         }
@@ -316,7 +325,7 @@ private fun CategoryStep(
                     onClick = {
                         viewModel.onSubCategoryChange(if (state.subCategory == option) null else option)
                     },
-                    label = { Text(option) },
+                    label = { Text(RuleEngine.subCategoryOf(option)?.displayName() ?: option) },
                 )
             }
         }
@@ -337,7 +346,7 @@ private fun ExtractionStep(
                 // through the advanced pattern editor.
                 state.extract.forEach { (key, value) ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = key, style = MaterialTheme.typography.bodyMedium)
+                        Text(text = extractKeyLabel(key), style = MaterialTheme.typography.bodyMedium)
                         Text(
                             text = value,
                             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
@@ -400,14 +409,14 @@ private fun FieldSelector(
     var expanded by remember { mutableStateOf(false) }
     AssistChip(
         onClick = { expanded = true },
-        label = { Text(if (field == FIELD_IGNORE) stringResource(R.string.rule_wizard_field_ignore) else field) },
+        label = { Text(if (field == FIELD_IGNORE) stringResource(R.string.rule_wizard_field_ignore) else extractKeyLabel(field)) },
         trailingIcon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
     )
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
         (listOf(FIELD_IGNORE) + RuleSuggester.Fields.ALL).forEach { option ->
             DropdownMenuItem(
                 text = {
-                    Text(if (option == FIELD_IGNORE) stringResource(R.string.rule_wizard_field_ignore) else option)
+                    Text(if (option == FIELD_IGNORE) stringResource(R.string.rule_wizard_field_ignore) else extractKeyLabel(option))
                 },
                 onClick = {
                     expanded = false
