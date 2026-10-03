@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.paging.map
 import app.clearsms.data.db.AttachmentDao
@@ -47,6 +48,7 @@ import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.common.ComposerAttachments
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.ScheduleTipGate
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
@@ -365,6 +367,12 @@ class ConversationViewModel
             viewModelScope.launch(ioDispatcher) {
                 messageRepository.setReadForThreads(listOf(threadId), read = true)
             }
+            // Bubble time labels are pre-formatted in the language of the
+            // moment they were mapped; a language switch re-maps the loaded
+            // pages in place (see activePagingSource).
+            viewModelScope.launch {
+                appContext.displayLocaleChanges().collect { activePagingSource?.invalidate() }
+            }
             // Prime the SIM chooser: remembered per-recipient choice, else
             // the SIM this thread last used, else the system default.
             viewModelScope.launch(ioDispatcher) {
@@ -420,9 +428,21 @@ class ConversationViewModel
 
         /**
          * Read per row, not cached: the resources follow the app language, so a
-         * row mapped after a language change is already in the new language.
+         * row mapped after a language change is already in the new language -
+         * and the loaded rows are re-mapped on that change (see
+         * [activePagingSource]), so a bubble's label never outlives the
+         * language it was formatted in.
          */
         private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(appContext)
+
+        /**
+         * The PagingSource the running pager loads from, so a language change
+         * can ask Paging for an in-place refresh (anchored, like Room's own
+         * invalidation on a write) instead of rebuilding the pager and
+         * jumping the list. Set from the factory on IO, read on main.
+         */
+        @Volatile
+        private var activePagingSource: PagingSource<Int, MessageEntity>? = null
 
         /** Bubble SIM tag for a stored subscription id (null when tags are off). */
         private fun simTagFor(subscriptionId: Int?): String? =
@@ -501,7 +521,9 @@ class ConversationViewModel
                                 enablePlaceholders = false,
                             ),
                         initialKey = position,
-                        pagingSourceFactory = { messageRepository.pagedThread(threadId, sortOrder) },
+                        pagingSourceFactory = {
+                            messageRepository.pagedThread(threadId, sortOrder).also { activePagingSource = it }
+                        },
                     ).flow
                         .map { data -> data.map { it.toConversationItem(json, timeStrings(), ::simTagFor, sortOrder, ::dataSimHintFor) } }
                 }.flowOn(ioDispatcher)

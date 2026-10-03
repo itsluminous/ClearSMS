@@ -29,6 +29,7 @@ import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.notification.MutedSenderGate
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
@@ -275,6 +276,12 @@ class InboxViewModel
             viewModelScope.launch(ioDispatcher) {
                 val startCategory = settings.defaultInboxFilter.first()
                 filter.compareAndSet(null, InboxFilterState(pill = startCategory?.let(InboxPill::of)))
+            }
+            // The rows' time labels are pre-formatted in the language of the
+            // moment they were mapped (see timeStrings); a language switch
+            // re-maps the loaded pages in place, like a contacts grant does.
+            viewModelScope.launch {
+                context.displayLocaleChanges().collect { activePagingSource?.invalidate() }
             }
         }
 
@@ -612,7 +619,9 @@ class InboxViewModel
 
         /**
          * Read per row, not cached: the resources follow the app language, so a
-         * row mapped after a language change is already in the new language.
+         * row mapped after a language change is already in the new language -
+         * and `init` re-maps the loaded rows when the language changes, so a
+         * label never outlives the language it was formatted in.
          */
         private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(context)
 

@@ -1,6 +1,8 @@
 package app.clearsms.ui.inbox
 
+import android.app.Application
 import android.content.Context
+import android.content.res.Configuration
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.WorkManager
@@ -43,6 +45,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.Locale
 
 /**
  * Regression coverage for the inbox jumping to the top: the pager behind
@@ -197,6 +200,40 @@ class InboxViewModelPagerTest {
             }
             job.cancel()
         }
+
+    @Test
+    fun `a language change refreshes rows in place - the pager is not rebuilt`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            val job = collectPager(viewModel)
+            viewModel.pagerKeys.test {
+                advanceUntilIdle()
+                awaitItem()
+                assertThat(repository.pagedInboxCalls).hasSize(1)
+
+                // What the system delivers to the application when the
+                // per-app (or system) language changes while the process
+                // lives: the rows' pre-formatted "Yesterday" must be re-mapped.
+                switchLanguage(Locale("hi"))
+                advanceUntilIdle()
+
+                expectNoEvents()
+                assertThat(repository.pagedInboxCalls).hasSize(2)
+
+                // A configuration change that leaves the language alone
+                // (a rotation re-delivering it) touches nothing.
+                switchLanguage(Locale("hi"))
+                advanceUntilIdle()
+                expectNoEvents()
+                assertThat(repository.pagedInboxCalls).hasSize(2)
+            }
+            job.cancel()
+        }
+
+    private fun switchLanguage(locale: Locale) {
+        val configuration = Configuration(context.resources.configuration).apply { setLocale(locale) }
+        (context as Application).onConfigurationChanged(configuration)
+    }
 
     @Test
     fun `a real query change rebuilds the pager exactly once`() =

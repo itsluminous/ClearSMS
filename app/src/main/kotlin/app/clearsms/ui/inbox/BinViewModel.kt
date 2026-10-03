@@ -10,6 +10,7 @@ import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -72,7 +74,10 @@ class BinViewModel
             combine(
                 messageRepository.observeBin(),
                 settings.showRichAvatars,
-            ) { messages, richAvatars ->
+                // Rows pre-format their time label in the language of the
+                // moment; a language switch re-runs this mapping once.
+                context.displayLocaleChanges().runningFold(0) { n, _ -> n + 1 },
+            ) { messages, richAvatars, _ ->
                 BinUiState(
                     items = messages.map { it.toInboxItem() },
                     richAvatars = richAvatars,
