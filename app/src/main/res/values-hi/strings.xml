@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_inbox">इनबॉक्स</string>
-    <string name="nav_finance">वित्त</string>
+    <string name="nav_finance">फ़ाइनेंस</string>
     <string name="nav_alerts">अलर्ट</string>
     <string name="action_back">वापस</string>
     <string name="action_search">खोजें</string>
@@ -22,7 +22,7 @@
     <string name="mute_applied">म्यूट किया गया। संदेश यहां आते रहेंगे, लेकिन कोई सूचना नहीं मिलेगी - OTP भी नहीं। धोखाधड़ी की चेतावनियां फिर भी दिखेंगी।</string>
     <string name="mute_removed">अनम्यूट किया गया। इस भेजने वाले की सूचनाएं फिर से चालू हैं।</string>
     <string name="action_change_category">श्रेणी बदलें</string>
-    <string name="action_always_sort_as">हमेशा इस रूप में छांटें…</string>
+    <string name="action_always_sort_as">हमेशा इस श्रेणी में रखें…</string>
     <string name="action_copy_message">संदेश कॉपी करें</string>
     <string name="action_copy_otp">OTP कॉपी करें</string>
     <string name="action_add_rule">नियम जोड़ें</string>
@@ -35,7 +35,7 @@
     <string name="inbox_muted">म्यूट - कोई सूचना नहीं</string>
     <string name="filter_unread">अपठित</string>
     <string name="inbox_unread_toggle_count">अपठित · %1$d</string>
-    <string name="inbox_contacts_permission">जिन लोगों को आप जानते हैं उनके नाम देखने के लिए संपर्क एक्सेस दें</string>
+    <string name="inbox_contacts_permission">जिन लोगों को आप जानते हैं उनके नाम देखने के लिए संपर्कों की अनुमति दें</string>
     <string name="inbox_contacts_grant">अनुमति दें</string>
     <string name="avatar_contact_photo">संपर्क फ़ोटो</string>
     <string name="otp_banner_from">%1$s से कोड</string>
@@ -161,7 +161,7 @@
     <string name="account_add_note">नोट जोड़ें</string>
     <string name="account_note_label">नोट</string>
     <string name="account_balance_after">बाद का बैलेंस: %1$s</string>
-    <string name="account_reference">संदर्भ: %1$s</string>
+    <string name="account_reference">रेफ़: %1$s</string>
     <string name="alerts_empty_title">कोई आने वाला बिल नहीं</string>
     <string name="alerts_empty_subtitle">आपके SMS से बिल रिमाइंडर और भुगतान की देय तिथियां यहां दिखेंगी।</string>
     <string name="alerts_filter_all">सभी</string>
@@ -212,7 +212,7 @@
     <string name="rule_wizard_title">नियम बनाएं</string>
     <string name="rule_wizard_name">नियम का नाम</string>
     <string name="rule_wizard_sender_pattern">भेजने वाले का पैटर्न (regex)</string>
-    <string name="rule_wizard_body_pattern">संदेश टेक्स्ट का पैटर्न (regex)</string>
+    <string name="rule_wizard_body_pattern">टेक्स्ट पैटर्न (regex)</string>
     <string name="rule_wizard_body_pattern_hint">अंकों को \\d+ में बदल दिया गया ताकि नियम समान संदेशों से मेल खाए।</string>
     <string name="rule_wizard_category">श्रेणी</string>
     <string name="rule_wizard_sub_category">उप-श्रेणी</string>
@@ -233,7 +233,7 @@
     <string name="onboarding_default_sms_body">संदेश पाने और भेजने के लिए Clear SMS आपका डिफ़ॉल्ट SMS ऐप होना चाहिए। आप कभी भी वापस बदल सकते हैं।</string>
     <string name="onboarding_set_default">डिफ़ॉल्ट बनाएं</string>
     <string name="onboarding_sync_title">आपका इनबॉक्स व्यवस्थित हो रहा है</string>
-    <string name="onboarding_sync_body">आपके मौजूदा संदेश इंपोर्ट और श्रेणीबद्ध हो रहे हैं। यह बैकग्राउंड में जारी रहता है।</string>
+    <string name="onboarding_sync_body">आपके मौजूदा संदेश इंपोर्ट और वर्गीकृत हो रहे हैं। यह बैकग्राउंड में जारी रहता है।</string>
     <string name="onboarding_theme_title">थीम चुनें</string>
     <string name="onboarding_theme_body">इसे आप कभी भी सेटिंग में बदल सकते हैं।</string>
     <string name="onboarding_skip">अभी छोड़ें</string>
@@ -264,12 +264,12 @@
     <string name="settings_mute_add">म्यूट करें</string>
     <string name="settings_unmute">अनम्यूट करें</string>
     <string name="settings_conversation_shortcuts">ऐप शॉर्टकट और शेयरिंग में बातचीत</string>
-    <string name="settings_conversation_shortcuts_on">पिन की गई और हाल की बातचीत ऐप आइकन को देर तक दबाने पर खुलती हैं और जब कोई दूसरा ऐप टेक्स्ट या तस्वीर शेयर करता है तो डायरेक्ट-शेयर लक्ष्य के रूप में दिखती हैं। उनके संपर्क नाम और फ़ोटो लॉन्चर और शेयर शीट को दिए जाते हैं, जहां फ़ोन हाथ में लिए कोई भी उन्हें देख सकता है। ब्लॉक, म्यूट, बिन में गई और स्पैम बातचीत कभी शामिल नहीं होतीं।</string>
+    <string name="settings_conversation_shortcuts_on">पिन की गई और हाल की बातचीत ऐप आइकन को देर तक दबाने पर खुलती हैं और जब कोई दूसरा ऐप टेक्स्ट या फ़ोटो शेयर करता है तो डायरेक्ट-शेयर लक्ष्य के रूप में दिखती हैं। उनके संपर्क नाम और फ़ोटो लॉन्चर और शेयर शीट को दिए जाते हैं, जहां फ़ोन हाथ में लिए कोई भी उन्हें देख सकता है। ब्लॉक, म्यूट, बिन में गई और स्पैम बातचीत कभी शामिल नहीं होतीं।</string>
     <string name="settings_conversation_shortcuts_off">केवल \"नया संदेश\" शॉर्टकट दिखता है और कोई बातचीत शेयर लक्ष्य के रूप में नहीं दी जाती। लॉन्चर या शेयर शीट को बातचीत का कोई नाम या फ़ोटो नहीं दिया जाता।</string>
     <string name="settings_mute_refused_blocked">वह भेजने वाला ब्लॉक है - ब्लॉक किए गए भेजने वाले पहले से ही शांत हैं, इसलिए म्यूट करने को कुछ नहीं।</string>
     <string name="settings_section_backup">बैकअप और पुनर्स्थापना</string>
     <string name="settings_backup_now">संदेशों का बैकअप लें</string>
-    <string name="settings_backup_now_summary">सारा डेटा आपके नियंत्रण वाली एक लोकल फ़ाइल में सहेजें</string>
+    <string name="settings_backup_now_summary">सारा डेटा अपने नियंत्रण वाली एक लोकल फ़ाइल में सहेजें</string>
     <string name="settings_restore">संदेश पुनर्स्थापित करें</string>
     <string name="settings_restore_summary">मौजूदा डेटा को बैकअप फ़ाइल से बदलें</string>
     <string name="settings_backup_frequency">बैकअप फ़्रीक्वेंसी</string>
@@ -286,7 +286,7 @@
     <string name="settings_restore_failed">वह फ़ाइल मान्य बैकअप नहीं है</string>
     <string name="settings_restore_failed_reason">पुनर्स्थापना विफल रही: %1$s</string>
     <string name="settings_backup_settings">सेटिंग का बैकअप लें</string>
-    <string name="settings_backup_settings_summary">अपनी ऐप सेटिंग और अपने नियम आपके नियंत्रण वाली एक लोकल फ़ाइल में सहेजें</string>
+    <string name="settings_backup_settings_summary">अपनी ऐप सेटिंग और अपने नियम अपने नियंत्रण वाली एक लोकल फ़ाइल में सहेजें</string>
     <string name="settings_restore_settings">सेटिंग पुनर्स्थापित करें</string>
     <string name="settings_restore_settings_summary">सेटिंग बैकअप फ़ाइल से ऐप सेटिंग और अपने नियम लागू करें</string>
     <string name="settings_backup_settings_done">सेटिंग बैकअप सहेजा गया</string>
@@ -321,7 +321,7 @@
     <string name="settings_show_finance_tab">फ़ाइनेंस टैब दिखाएं</string>
     <string name="settings_show_alerts_tab">अलर्ट टैब दिखाएं</string>
     <string name="settings_show_tab_on">नीचे के नेविगेशन में दिखता है</string>
-    <string name="settings_show_inbox_tab_off">छिपा है - संदेश फिर भी आते और छांटे जाते हैं</string>
+    <string name="settings_show_inbox_tab_off">छिपा है - संदेश फिर भी आते और सॉर्ट होते हैं</string>
     <string name="settings_show_finance_tab_off">छिपा है - लेन-देन फिर भी निकाले जाते हैं</string>
     <string name="settings_show_alerts_tab_off">छिपा है - बिल और रिमाइंडर फिर भी ट्रैक होते हैं</string>
     <string name="settings_last_section_kept">कम से कम एक टैब चालू रहना चाहिए - पहले कोई दूसरा टैब चालू करें</string>
@@ -343,8 +343,8 @@
     <string name="settings_message_sort_sent">भेजने का समय (नेटवर्क ने न बताया हो तो प्राप्ति समय)</string>
     <string name="settings_selection_action_order">संदेश कार्रवाई का क्रम</string>
     <string name="settings_selection_action_order_summary">चुनें कि संदेश चुनने पर बार में कौन सी कार्रवाइयां रहें; पहली तीन दिखती हैं, बाकी अधिक विकल्प के नीचे जाती हैं</string>
-    <string name="selection_action_order_drag_hint">क्रम बदलने के लिए हैंडल खींचें। पहले तीन बार में रहते हैं; बाकी अधिक विकल्प के नीचे जाते हैं। एक संदेश वाली क्रियाएं कई चुने जाने पर छिप जाती हैं और अगली ऊपर आ जाती है।</string>
-    <string name="settings_show_transaction_details_summary">डिफ़ॉल्ट रूप से बंद। चालू होने पर, बातचीत में बैंक या OTP संदेश पर टैप करने से पार्स किया गया कार्ड (राशि, व्यापारी, खाता) भी दिखता है</string>
+    <string name="selection_action_order_drag_hint">क्रम बदलने के लिए हैंडल खींचें। पहले तीन बार में रहते हैं; बाकी अधिक विकल्प के नीचे जाते हैं। एक संदेश वाली कार्रवाइयां कई चुने जाने पर छिप जाती हैं और अगली ऊपर आ जाती है।</string>
+    <string name="settings_show_transaction_details_summary">डिफ़ॉल्ट रूप से बंद। चालू होने पर, बातचीत में बैंक या OTP संदेश पर टैप करने से पार्स किया गया कार्ड (राशि, मर्चेंट, खाता) भी दिखता है</string>
     <string name="settings_strip_accents">भेजते समय एक्सेंट हटाएं</string>
     <string name="settings_strip_accents_summary">एक्सेंट वाले अक्षरों को अपने आप सादे अक्षरों से बदलें (č→c), केवल तब जब इससे संदेश कम SMS में जाए</string>
     <string name="settings_delayed_send">भेजने से पहले देरी</string>
@@ -374,7 +374,7 @@
     <string name="settings_section_notification">सूचनाएं</string>
     <string name="settings_delivery_reports">SMS डिलीवरी रिपोर्ट</string>
     <string name="settings_delivery_reports_summary">भेजे गए संदेश डिलीवर होने पर पुष्टि करें</string>
-    <string name="settings_notification_actions">सूचना क्रिया बटन</string>
+    <string name="settings_notification_actions">सूचना कार्रवाई बटन</string>
     <string name="settings_notification_actions_none">कोई नहीं</string>
     <string name="settings_notification_actions_hint">अधिकतम 3 चुनें - Android एक सूचना पर ज़्यादा से ज़्यादा 3 बटन दिखाता है।</string>
     <string name="settings_transaction_notifications">लेन-देन सूचनाएं</string>
@@ -382,8 +382,8 @@
     <string name="settings_system_notifications">सूचनाएं कस्टमाइज़ करें</string>
     <string name="settings_system_notifications_summary">Clear SMS के लिए Android की सेटिंग खोलता है - हर श्रेणी की ध्वनि, वाइब्रेशन और महत्व वहीं हैं</string>
     <string name="settings_system_notifications_no_handler">इस डिवाइस में सूचना सेटिंग की कोई स्क्रीन नहीं है</string>
-    <string name="settings_swipe_right">दाएं स्वाइप की क्रिया</string>
-    <string name="settings_swipe_left">बाएं स्वाइप की क्रिया</string>
+    <string name="settings_swipe_right">दाएं स्वाइप की कार्रवाई</string>
+    <string name="settings_swipe_left">बाएं स्वाइप की कार्रवाई</string>
     <string name="settings_swipe_dead_zone">स्वाइप डेड ज़ोन</string>
     <string name="settings_swipe_dead_zone_summary_off">बंद - स्वाइप पंक्ति में कहीं से भी शुरू होते हैं</string>
     <string name="settings_swipe_dead_zone_summary_on">चालू - हर पंक्ति पर %1$d%% चौड़ी पट्टी</string>
@@ -405,7 +405,7 @@
     <string name="swipe_action_toggle_read">पढ़ा/अपठित बदलें</string>
     <string name="settings_sort_again">इनबॉक्स फिर से सॉर्ट करें</string>
     <string name="settings_sort_again_summary">सभी संदेशों को फिर से वर्गीकृत करें और फ़ाइनेंस व अलर्ट रीफ़्रेश करें</string>
-    <string name="settings_sort_confirm">सभी संदेश वर्तमान नियमों से फिर से वर्गीकृत किए जाएंगे, और फ़ाइनेंस लेन-देन व अलर्ट रीफ़्रेश होंगे। आपके नोट और कार्ड लिमिट बने रहेंगे। इसमें थोड़ा समय लग सकता है।</string>
+    <string name="settings_sort_confirm">सभी संदेश वर्तमान नियमों से फिर से वर्गीकृत किए जाएंगे, और फ़ाइनेंस लेन-देन व अलर्ट रीफ़्रेश होंगे। आपके नोट और कार्ड सीमाएं बने रहेंगे। इसमें थोड़ा समय लग सकता है।</string>
     <string name="settings_sort_go">सॉर्ट करें</string>
     <string name="settings_sort_done">इनबॉक्स सॉर्ट हो गया</string>
     <string name="settings_sort_running">इनबॉक्स सॉर्ट हो रहा है…</string>
@@ -416,7 +416,7 @@
     <string name="settings_otp_auto_copy">अपने आप कॉपी करें</string>
     <string name="settings_otp_auto_copy_summary">आने वाले OTP अपने आप क्लिपबोर्ड पर कॉपी करें</string>
     <string name="settings_otp_auto_delete">OTP अपने आप हटाएं</string>
-    <string name="settings_otp_size">OTP प्रदर्शन आकार</string>
+    <string name="settings_otp_size">OTP डिस्प्ले का आकार</string>
     <string name="settings_clear_otp">पुराने OTP साफ़ करें</string>
     <string name="settings_clear_otp_summary">एक बार की सफ़ाई - अभी हटाता है, कुछ सहेजा नहीं जाता</string>
     <string name="settings_clear_otp_note">एक बार, अभी चलता है - यह कोई सहेजी गई सेटिंग नहीं है। बार-बार सफ़ाई के लिए ऊपर “OTP अपने आप हटाएं” इस्तेमाल करें।</string>
@@ -458,7 +458,7 @@
     <string name="settings_finance_currency">मुद्रा</string>
     <string name="settings_finance_currency_auto">स्वचालित</string>
     <string name="settings_finance_currency_auto_summary">हर संदेश से, नहीं तो आपके SIM या डिवाइस के क्षेत्र से</string>
-    <string name="settings_finance_currency_forced_summary">बिना स्पष्ट मुद्रा वाली राशियां %1$s मानी जाती हैं। पुराने संदेश फिर से पढ़ने के लिए “इनबॉक्स फिर से सॉर्ट करें” इस्तेमाल करें।</string>
+    <string name="settings_finance_currency_forced_summary">बिना स्पष्ट मुद्रा वाली राशियां %1$s मानी जाती हैं। पुराने संदेश फिर से पढ़ने के लिए इनबॉक्स फिर से सॉर्ट करें इस्तेमाल करें।</string>
     <string name="settings_source_code">सोर्स कोड</string>
     <string name="settings_source_code_summary">GitHub पर प्रोजेक्ट देखें</string>
     <string name="settings_section_support">सहयोग</string>
@@ -507,7 +507,7 @@
     <string name="privacy_backups_title">बैकअप आपके हैं</string>
     <string name="privacy_backups_body">बैकअप सादी स्थानीय फ़ाइलें हैं जो आपकी चुनी जगह पर सहेजी जाती हैं। वे कभी अपने आप कहीं नहीं भेजी जातीं।</string>
     <string name="privacy_rules_title">पारदर्शी नियम</string>
-    <string name="privacy_rules_body">हर वर्गीकरण नियम पढ़ने योग्य JSON है जिसे आप देख, संपादित, एक्सपोर्ट और समुदाय को वापस योगदान कर सकते हैं। डेवलपर के साथ नियम शेयर करना हमेशा एक स्पष्ट क्रिया है जो आपके ईमेल ऐप का इस्तेमाल करती है।</string>
+    <string name="privacy_rules_body">हर वर्गीकरण नियम पढ़ने योग्य JSON है जिसे आप देख, संपादित, एक्सपोर्ट और समुदाय को वापस योगदान कर सकते हैं। डेवलपर के साथ नियम शेयर करना हमेशा एक स्पष्ट कार्रवाई है जो आपके ईमेल ऐप का इस्तेमाल करती है।</string>
     <string name="licenses_app">Apache License 2.0 - मुफ़्त और ओपन सोर्स।</string>
     <string name="licenses_apache2">Apache License 2.0</string>
     <string name="perm_sms_body">SMS पढ़ें और प्राप्त करें ताकि संदेश दिखाए और वर्गीकृत किए जा सकें।</string>
@@ -515,7 +515,7 @@
     <string name="perm_contacts_body">आपकी पता-पुस्तिका के भेजने वालों को पहचानें ताकि उनके संदेश व्यक्तिगत में जाएं।</string>
     <string name="perm_phone_body">डिफ़ॉल्ट SMS ऐप की ज़िम्मेदारियों के लिए Android को यह चाहिए।</string>
     <string name="perm_notifications_body">नए संदेश और OTP की सूचनाएं दिखाएं।</string>
-    <string name="perm_boot_body">रीस्टार्ट के बाद पृष्ठभूमि कार्य (जैसे OTP का अपने-आप हटना) फिर से शेड्यूल करें।</string>
+    <string name="perm_boot_body">रीस्टार्ट के बाद बैकग्राउंड कार्य (जैसे OTP का अपने आप हटना) फिर से शेड्यूल करें।</string>
     <string name="finance_section_empty">यहां अभी कुछ नहीं है।</string>
     <string name="chart_legend_debits">डेबिट</string>
     <string name="chart_legend_credits">क्रेडिट</string>
@@ -533,7 +533,7 @@
     <string name="account_open_message">संदेश खोलें</string>
     <string name="alerts_past_reminders_count">पुराने अलर्ट (%1$d)</string>
     <string name="alerts_expand_past">पुराने अलर्ट दिखाएं</string>
-    <string name="alerts_collapse_past">पुराने अलर्ट छुपाएं</string>
+    <string name="alerts_collapse_past">पुराने अलर्ट छिपाएं</string>
     <string name="alerts_restore">पुनर्स्थापित करें</string>
     <string name="alerts_delete_forever">हटाएं</string>
     <string name="alerts_show_more_older">और दिखाएं (%1$d)</string>
@@ -553,9 +553,9 @@
     <string name="rule_wizard_keywords_hint">संदेश में होना चाहिए</string>
     <string name="rule_wizard_must_not">इसमें नहीं होना चाहिए (अल्पविराम से अलग करें)</string>
     <string name="rule_wizard_bind_sender">केवल इस भेजने वाले से</string>
-    <string name="rule_wizard_step_test">5. परीक्षण</string>
+    <string name="rule_wizard_step_test">5. जांच</string>
     <string name="rule_wizard_show_pattern">बनाया गया पैटर्न दिखाएं</string>
-    <string name="rule_wizard_hide_pattern">बनाया गया पैटर्न छुपाएं</string>
+    <string name="rule_wizard_hide_pattern">बनाया गया पैटर्न छिपाएं</string>
     <string name="rule_wizard_source_match">स्रोत संदेश से मेल खाता है</string>
     <string name="rule_wizard_source_no_match">स्रोत संदेश से मेल नहीं खाता</string>
     <string name="rule_wizard_extracted_values">निकाले गए मान</string>
@@ -564,7 +564,7 @@
     <string name="rule_wizard_advanced_reset">सुझाए गए पैटर्न पर रीसेट करें</string>
     <string name="rule_wizard_step_save">6. सहेजें</string>
     <string name="rule_wizard_priority">प्राथमिकता</string>
-    <string name="rule_wizard_priority_hint">1000 से ऊपर के उपयोगकर्ता नियम बंडल किए गए नियमों से ऊपर माने जाते हैं।</string>
+    <string name="rule_wizard_priority_hint">1000 से ऊपर के उपयोगकर्ता नियम ऐप में शामिल नियमों से ऊपर माने जाते हैं।</string>
     <string name="rule_token_amount">राशि</string>
     <string name="rule_token_balance">बैलेंस</string>
     <string name="rule_token_account">खाते / कार्ड के अंतिम अंक</string>
@@ -577,7 +577,7 @@
     <string name="rule_token_keyword">कीवर्ड</string>
     <string name="rule_error_not_saved_title">अभी सहेजा नहीं गया</string>
     <string name="rule_error_cannot_save">अभी सहेजा नहीं जा सकता: %1$s</string>
-    <string name="rule_error_needs_sample">पहले एक नमूना संदेश पेस्ट करें और \"विश्लेषण करें\" पर टैप करें। नियम उसी संदेश से बनता है।</string>
+    <string name="rule_error_needs_sample">पहले एक नमूना संदेश पेस्ट करें और विश्लेषण करें पर टैप करें। नियम उसी संदेश से बनता है।</string>
     <string name="rule_error_no_conditions">इस नियम में कोई शर्त नहीं है, इसलिए यह हर संदेश पर लागू होगा। \"केवल इस भेजने वाले से\" चालू करें (चरण 4), या उन्नत के अंतर्गत एक टेक्स्ट पैटर्न जोड़ें (चरण 5)।</string>
     <string name="rule_error_invalid_pattern">उन्नत (चरण 5) के अंतर्गत टेक्स्ट पैटर्न मान्य पैटर्न नहीं है: %1$s। इसे वहां ठीक करें, या \"सुझाए गए पैटर्न पर रीसेट करें\" पर टैप करें।</string>
     <string name="rule_error_invalid_sender_pattern">इस नियम का सहेजा गया भेजने वाले का पैटर्न मान्य पैटर्न नहीं है: %1$s। \"केवल इस भेजने वाले से\" बंद करें (चरण 4), या नियम के JSON में भेजने वाले का पैटर्न ठीक करके उसे फिर से इंपोर्ट करें।</string>
@@ -595,7 +595,7 @@
     <string name="sender_rule_detailed">विस्तृत नियम</string>
     <string name="sender_rule_saved">%2$s के %1$d संदेश %3$s में रखे गए।</string>
     <string name="sender_rule_saved_none">नियम सहेजा गया: %1$s से नए संदेश %2$s में रखे जाएंगे।</string>
-    <string name="rule_wizard_quick_title">बस इस भेजने वाले को छांटना है?</string>
+    <string name="rule_wizard_quick_title">बस इस भेजने वाले की श्रेणी तय करनी है?</string>
     <string name="rule_wizard_quick_body">%1$s से सब कुछ, हमेशा एक ही श्रेणी - किसी पैटर्न की ज़रूरत नहीं।</string>
     <string name="rule_wizard_quick_action">श्रेणी चुनें</string>
     <string name="alerts_filter_delivery">डिलीवरी</string>
@@ -680,8 +680,8 @@
     <string name="diagnostics_window_hour">पिछला घंटा</string>
     <string name="diagnostics_window_everything">सब कुछ</string>
     <string name="diagnostics_mask_senders">भेजने वाले की ID मास्क करें</string>
-    <string name="diagnostics_mask_senders_on">VM-HDFCBK जैसे नाम sender#1, sender#2 … बन जाते हैं, ताकि रिपोर्ट से पता न चले कि कौन से बैंक और सेवाएं आपको संदेश भेजते हैं। केवल तभी अनटिक करें जब कोई डेवलपर असली ID मांगे।</string>
-    <string name="diagnostics_mask_senders_off">VM-HDFCBK जैसी भेजने वाले की ID जैसी दर्ज हैं वैसी ही भेजी जाती हैं - रिपोर्ट दिखाती है कि कौन से बैंक और सेवाएं आपको संदेश भेजते हैं। फ़ोन नंबर किसी भी स्थिति में शामिल नहीं होते।</string>
+    <string name="diagnostics_mask_senders_on">VM-HDFCBK जैसे नाम sender#1, sender#2 … बन जाते हैं, ताकि रिपोर्ट से पता न चले कि कौन से बैंक और सेवाएं आपको संदेश भेजते हैं। केवल तभी टिक हटाएं जब कोई डेवलपर असली ID मांगे।</string>
+    <string name="diagnostics_mask_senders_off">VM-HDFCBK जैसी भेजने वाले की ID वैसी ही भेजी जाती हैं जैसी दर्ज हैं - रिपोर्ट दिखाती है कि कौन से बैंक और सेवाएं आपको संदेश भेजते हैं। फ़ोन नंबर किसी भी स्थिति में शामिल नहीं होते।</string>
     <string name="diagnostics_preview_heading">पूर्वावलोकन - ठीक यही शेयर किया जाएगा (ज़िप करके लगभग %1$d KB)</string>
     <string name="diagnostics_loading">रिपोर्ट तैयार हो रही है…</string>
     <string name="diagnostics_share_button">शेयर करें…</string>
