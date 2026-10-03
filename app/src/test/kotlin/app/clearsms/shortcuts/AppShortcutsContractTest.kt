@@ -25,11 +25,13 @@ import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.SenderIconFactory
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.FileProviderTestSupport
 import app.clearsms.ui.navigation.LaterIntentAction
 import app.clearsms.ui.navigation.LaterIntentTriage
 import app.clearsms.ui.navigation.Routes
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -55,6 +57,9 @@ import java.io.File
  *   avatar - plus, since Direct Share, the long-lived flag, a Person keyed
  *   by the normalized sender and (for addressable senders only) the
  *   share-target category - and nothing else: no body, no extracted value;
+ * - the avatar is a CONTENT-URI icon (a long-lived shortcut may not carry a
+ *   bitmap), served by the app's one FileProvider from the one root added
+ *   for it, byte-identical to the in-process adaptive avatar;
  * - the `<share-target>` in the xml advertises EXACTLY the mime types the
  *   manifest's inbound ACTION_SEND filter accepts, names the launcher
  *   activity, and its category is the one the factory attaches;
@@ -70,7 +75,11 @@ import java.io.File
 class AppShortcutsContractTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val iconFactory = SenderIconFactory(context)
-    private val factory = ConversationShortcutFactory(context, iconFactory)
+    private val icons = ConversationShortcutIcons(context, iconFactory)
+    private val factory = ConversationShortcutFactory(context, iconFactory, icons)
+
+    @Before
+    fun resetFileProvider() = FileProviderTestSupport.resetPathStrategyCache()
 
     private val row =
         ShortcutCandidateRow(
@@ -146,10 +155,94 @@ class AppShortcutsContractTest {
         assertThat(shortcut.longLabel).isEqualTo("Priya")
         assertThat(shortcut.rank).isEqualTo(2)
         assertThat(shortcut.icon).isNotNull()
-        assertThat(shortcut.icon.type).isEqualTo(IconCompat.TYPE_ADAPTIVE_BITMAP)
+        assertThat(shortcut.icon.type).isEqualTo(IconCompat.TYPE_URI_ADAPTIVE_BITMAP)
         // Names and identity only: the intent carries no extras (no body,
         // no OTP, no amount rides along into the launcher).
         assertThat(shortcut.intent.extras).isNull()
+    }
+
+    @Test
+    fun `the shortcut icon is a content uri on the app's own provider, scoped to the avatar root`() {
+        val sender = NotificationSender(name = "Priya", monogram = "P", isContact = true)
+        val icon = factory.build(row, sender, rank = 0).icon
+        // A long-lived shortcut may not carry a bitmap (ShortcutService
+        // "Bitmaps are not allowed in long-lived shortcuts", with a TODO to
+        // throw): the system must REFERENCE the avatar, not copy it.
+        assertThat(icon.type).isEqualTo(IconCompat.TYPE_URI_ADAPTIVE_BITMAP)
+        val uri = icon.uri
+        assertThat(uri.scheme).isEqualTo("content")
+        // The EXISTING FileProvider, not a second provider...
+        assertThat(uri.authority).isEqualTo(context.packageName + ".fileprovider")
+        assertThat(uri.authority).isEqualTo(ConversationShortcutIcons.AUTHORITY)
+        // ...and the one root added for avatars: the path names that root
+        // and the thread, nothing else about the app's private files.
+        assertThat(uri.pathSegments.first()).isEqualTo("shortcut_icons")
+        assertThat(uri.lastPathSegment).isEqualTo("thread-42.png")
+        assertThat(uri.pathSegments).hasSize(2)
+        // The file sits under filesDir/shortcuts/icons - the root the xml maps.
+        val file = icons.fileFor(42L)
+        assertThat(file.canonicalPath).isEqualTo(File(context.filesDir, "shortcuts/icons/thread-42.png").canonicalPath)
+        assertThat(file.isFile).isTrue()
+    }
+
+    @Test
+    fun `the provider xml exposes exactly the three roots and the avatar root is the icons directory`() {
+        val roots = parseProviderRoots()
+        assertThat(roots.keys).containsExactly("mms", "diagnostics", "shortcut_icons")
+        assertThat(roots["shortcut_icons"]).isEqualTo(ConversationShortcutIcons.RELATIVE_DIR + "/")
+        // Every root is a files-path (app-private storage), none is the
+        // whole filesDir: the avatar root can never reach the database,
+        // the attachment store, the logs or the settings.
+        roots.values.forEach { path ->
+            assertWithMessage(path).that(path).isNotEmpty()
+            assertWithMessage(path).that(path).isNotEqualTo("/")
+            assertWithMessage(path).that(path).isNotEqualTo(".")
+        }
+        // Not exported, grant-based: a reader needs the per-URI grant the
+        // system issues for a shortcut icon.
+        val provider =
+            context.packageManager
+                .resolveContentProvider(context.packageName + ".fileprovider", 0)
+        assertThat(provider).isNotNull()
+        assertThat(provider!!.exported).isFalse()
+        assertThat(provider.grantUriPermissions).isTrue()
+    }
+
+    @Test
+    fun `the avatar the launcher reads through the provider is byte-identical to the in-process adaptive avatar`() {
+        val sender = NotificationSender(name = "Asha Rao", monogram = "AR", isContact = true)
+        val icon = factory.build(row, sender, rank = 0).icon
+        // Read it exactly as the launcher does: through the content resolver.
+        val served =
+            context.contentResolver.openInputStream(icon.uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }
+        val expected = iconFactory.shortcutAvatarFor(sender)
+        assertThat(served.width).isEqualTo(SenderIconFactory.ADAPTIVE_SIZE_PX)
+        assertThat(served.height).isEqualTo(SenderIconFactory.ADAPTIVE_SIZE_PX)
+        assertThat(served.sameAs(expected)).isTrue()
+        // And the derivation is the one verified against the inbox (#85):
+        // the plate is the inbox letter colour, the disc inside is too.
+        val plateArgb = iconFactory.plateColorFor(sender)
+        assertThat(served.getPixel(1, 1)).isEqualTo(plateArgb)
+        assertThat(served.getPixel(served.width / 2, served.height / 4)).isEqualTo(plateArgb)
+    }
+
+    @Test
+    fun `the avatar file is replaced per publish and dropped with the thread`() {
+        val sender = NotificationSender(name = "Priya", monogram = "P", isContact = true)
+        factory.build(row, sender, rank = 0)
+        factory.build(row.copy(threadId = 43L), sender, rank = 1)
+        assertThat(icons.fileFor(42L).isFile).isTrue()
+        assertThat(icons.fileFor(43L).isFile).isTrue()
+        // No temp file lingers: the write is temp + rename.
+        assertThat(icons.fileFor(42L).parentFile!!.list()!!.toList()).containsExactly("thread-42.png", "thread-43.png")
+
+        icons.retainOnly(setOf(43L))
+        assertThat(icons.fileFor(42L).exists()).isFalse()
+        assertThat(icons.fileFor(43L).isFile).isTrue()
+
+        icons.deleteAll()
+        assertThat(icons.fileFor(43L).exists()).isFalse()
+        assertThat(icons.fileFor(43L).parentFile!!.list()!!.toList()).isEmpty()
     }
 
     @Test
@@ -466,6 +559,21 @@ class AppShortcutsContractTest {
             event = parser.next()
         }
         return result
+    }
+
+    /** `name -> path` of every root in the FileProvider's path xml; all must be `files-path`. */
+    private fun parseProviderRoots(): Map<String, String> {
+        val parser = context.resources.getXml(R.xml.mms_file_paths)
+        val roots = linkedMapOf<String, String>()
+        var event = parser.eventType
+        while (event != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && parser.name != "paths") {
+                assertWithMessage("only app-private files-path roots: ${parser.name}").that(parser.name).isEqualTo("files-path")
+                roots[parser.getAttributeValue(null, "name")] = parser.getAttributeValue(null, "path")
+            }
+            event = parser.next()
+        }
+        return roots
     }
 
     private companion object {

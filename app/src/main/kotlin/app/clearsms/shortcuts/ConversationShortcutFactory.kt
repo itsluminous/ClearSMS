@@ -15,10 +15,12 @@ import javax.inject.Singleton
 /**
  * Turns one selected conversation into the [ShortcutInfoCompat] the system
  * receives: id `thread:<appThreadId>`, the inbox's display name as both
- * labels, the shared avatar chain's icon ([SenderIconFactory]) and the SAME
- * explicit conversation deep link a notification tap fires
- * ([ConversationDeepLink]). Separate from the publisher so the shape can be
- * asserted without the database or the system service.
+ * labels, the shared avatar chain's icon ([SenderIconFactory], served as a
+ * content-URI icon by [ConversationShortcutIcons] because a long-lived
+ * shortcut may not carry a bitmap) and the SAME explicit conversation deep
+ * link a notification tap fires ([ConversationDeepLink]). Separate from the
+ * publisher so the shape can be asserted without the database or the
+ * system service.
  *
  * One object serves three system surfaces, which is why it carries more
  * than a launcher entry needs:
@@ -46,6 +48,7 @@ class ConversationShortcutFactory
     constructor(
         @ApplicationContext private val context: Context,
         private val iconFactory: SenderIconFactory,
+        private val icons: ConversationShortcutIcons,
     ) {
         fun build(
             row: ShortcutCandidateRow,
@@ -66,7 +69,7 @@ class ConversationShortcutFactory
                     .Builder(context, shortcutId)
                     .setShortLabel(label)
                     .setLongLabel(label)
-                    .setIcon(iconFactory.shortcutIconFor(sender))
+                    .setIcon(icons.iconFor(row.threadId, sender))
                     .setIntent(ConversationDeepLink.intent(context, row.threadId))
                     .setRank(rank)
                     .setLongLived(true)

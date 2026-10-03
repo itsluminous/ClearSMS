@@ -91,6 +91,7 @@ class ConversationShortcutPublisher
         private val messageDao: MessageDao,
         private val senderResolver: NotificationSenderResolver,
         private val factory: ConversationShortcutFactory,
+        private val icons: ConversationShortcutIcons,
         @ApplicationScope private val scope: CoroutineScope,
     ) : ConversationShortcutRegistry {
         private val started = AtomicBoolean(false)
@@ -177,6 +178,9 @@ class ConversationShortcutPublisher
                 // static "New message" stays (it is the manifest's, not ours).
                 ShortcutManagerCompat.removeAllDynamicShortcuts(context)
                 disablePinned(context.getString(R.string.shortcut_disabled_setting_off)) { true }
+                // The avatar files the system was referencing go too: with the
+                // switch off nothing avatar-shaped stays on disk either.
+                icons.deleteAll()
                 published = emptyList()
                 publishedThreadIds = emptySet()
                 retryPending = false
@@ -217,7 +221,18 @@ class ConversationShortcutPublisher
                     mutedSenders = inputs.muted,
                 )
             }
+            // Avatar files exist only for shortcuts the system still holds:
+            // the accepted list (not a refused one - the system kept the
+            // previous list and still references its files) plus whatever
+            // the user pinned, which outlives the dynamic list.
+            icons.retainOnly(publishedThreadIds + pinnedConversationThreadIds())
         }
+
+        /** Thread ids of every conversation shortcut the user pinned, enabled or not. */
+        private fun pinnedConversationThreadIds(): Set<Long> =
+            ShortcutManagerCompat
+                .getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+                .mapNotNullTo(HashSet()) { ConversationShortcutSelection.threadIdOf(it.id) }
 
         /**
          * Disables (and removes) every conversation shortcut the user pinned

@@ -17,6 +17,7 @@ import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.SenderIconFactory
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.FileProviderTestSupport
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +52,7 @@ class ConversationShortcutPublisherTest {
     private lateinit var settings: FakeSettingsRepository
     private lateinit var scope: CoroutineScope
     private lateinit var publisher: ConversationShortcutPublisher
+    private lateinit var icons: ConversationShortcutIcons
 
     private val shortcutManager: ShortcutManager
         get() = context.getSystemService(ShortcutManager::class.java)
@@ -75,13 +77,17 @@ class ConversationShortcutPublisherTest {
         settings = FakeSettingsRepository()
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         shadowOf(shortcutManager).setMaxShortcutCountPerActivity(5)
+        FileProviderTestSupport.resetPathStrategyCache()
+        val iconFactory = SenderIconFactory(context)
+        icons = ConversationShortcutIcons(context, iconFactory)
         publisher =
             ConversationShortcutPublisher(
                 context = context,
                 settings = settings,
                 messageDao = dao,
                 senderResolver = resolver,
-                factory = ConversationShortcutFactory(context, SenderIconFactory(context)),
+                factory = ConversationShortcutFactory(context, iconFactory, icons),
+                icons = icons,
                 scope = scope,
             ).apply { debounceMs = 0L }
     }
@@ -200,13 +206,42 @@ class ConversationShortcutPublisherTest {
         seedThreads(2)
         publisher.start()
         assertThat(dynamicIds()).hasSize(2)
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png")
 
         runBlocking { settings.setConversationShortcuts(false) }
         assertThat(dynamicIds()).isEmpty()
+        // The avatar files the system referenced go with the shortcuts.
+        assertThat(avatarFiles()).isEmpty()
 
         runBlocking { settings.setConversationShortcuts(true) }
         assertThat(dynamicIds()).containsExactly("thread:2", "thread:1").inOrder()
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png")
     }
+
+    @Test
+    fun `avatar files follow the published list - a thread that drops out loses its file, a pinned one keeps it`() {
+        seedThreads(3)
+        publisher.start()
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png", "thread-3.png")
+        // The user pins thread 1 to the home screen: the launcher keeps
+        // reading its icon through the URI for as long as it stays pinned,
+        // whether or not the thread is still in the dynamic list.
+        shortcutManager.requestPinShortcut(shortcutManager.dynamicShortcuts.single { it.id == "thread:1" }, null)
+
+        // Blocking sender 3 drops thread 3 out of the list: its file goes.
+        runBlocking { settings.setBlockedSenders(setOf("sender-3")) }
+        assertThat(dynamicIds()).doesNotContain("thread:3")
+        assertThat(shortcutManager.pinnedShortcuts.map(ShortcutInfo::getId)).containsExactly("thread:1")
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png")
+
+        // Binning thread 2 drops it too; the pinned thread 1 keeps its file.
+        runBlocking { dao.stageDelete(listOf(2L), deletedAt = 1L) }
+        assertThat(dynamicIds()).doesNotContain("thread:2")
+        assertThat(avatarFiles()).containsExactly("thread-1.png")
+    }
+
+    /** Names of the avatar files under the provider's shortcut-icon root. */
+    private fun avatarFiles(): List<String> = icons.fileFor(0L).parentFile!!.list()?.sorted().orEmpty()
 
     @Test
     fun `a home-screen-pinned shortcut to a thread that became excluded is disabled`() {
