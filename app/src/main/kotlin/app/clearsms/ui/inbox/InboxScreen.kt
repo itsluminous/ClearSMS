@@ -75,6 +75,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -244,6 +246,12 @@ fun InboxScreen(
 
     // Reading this in composition is what makes the FAB yield below.
     val snackbarShowing = snackbarHostState.currentSnackbarData != null
+    // Where the compose action lives: the WINDOW height decides, never the
+    // orientation (a tablet in landscape is not short; a phone in portrait
+    // split-screen is) - see InboxFabPlacement for the measured geometry.
+    // containerSize is the app's own window, so multi-window is covered.
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val fabPlacement = InboxFabPlacement.placement(windowHeight)
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SwipeDismissSnackbarHost(snackbarHostState) },
@@ -320,7 +328,20 @@ fun InboxScreen(
                                 },
                         )
                     },
-                    actions = { SearchSettingsActions(onSearch = onSearch, onSettings = onSettings) },
+                    actions = {
+                        // In a SHORT window the FAB would float over the
+                        // first banner's Copy and X (InboxFabPlacement), so
+                        // the compose action lives here instead - first, as
+                        // the tab's primary action, before Search and Settings.
+                        if (fabPlacement == FabPlacement.APP_BAR) {
+                            TooltipIconButton(
+                                label = stringResource(R.string.action_compose),
+                                onClick = onCompose,
+                                icon = Icons.Outlined.Edit,
+                            )
+                        }
+                        SearchSettingsActions(onSearch = onSearch, onSettings = onSettings)
+                    },
                     scrollBehavior = scrollBehavior,
                 )
             }
@@ -332,7 +353,9 @@ fun InboxScreen(
             // is up instead: composing a new message is never the urgent
             // action while an undo is still on offer, and the snackbar then
             // sits at the bottom where it is expected.
-            if (!selection.active && !snackbarShowing) {
+            // In a short window there is no FAB at all - the compose action
+            // is in the app bar above (InboxFabPlacement).
+            if (!selection.active && !snackbarShowing && fabPlacement == FabPlacement.FLOATING) {
                 FloatingActionButton(onClick = onCompose) {
                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_compose))
                 }
@@ -348,6 +371,11 @@ fun InboxScreen(
             // See PagedListRestore: a first measure without the threads would
             // clamp the restored scroll position to the banners and pill row.
             val awaitingFirstPage = listState.awaitingFirstPage(items)
+            // Under a floating FAB every row - the last conversation, a
+            // second stacked banner - can be scrolled clear of it
+            // (InboxFabPlacement.ListClearance); with the action in the app
+            // bar nothing floats and nothing is reserved.
+            val listClearance = PaddingValues(bottom = InboxFabPlacement.listBottomPadding(fabPlacement))
             // Issue #63: until the settings have been READ, the whole body is
             // preference-derived defaults (the built-in pill set, an Unread
             // switch that may be hidden, swipe actions, the OTP banner's
@@ -367,7 +395,7 @@ fun InboxScreen(
                     subtitle = stringResource(R.string.inbox_empty_subtitle),
                 )
             } else if (!awaitingFirstPage) {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = listClearance) {
                     // Top banners in the PINNED precedence order (OTP >
                     // default-SMS > contacts > sorting) - the enum order IS
                     // the on-screen order; see InboxBannerSlot.
