@@ -1328,6 +1328,26 @@ private fun settingsRowEntries(
                     )
                 }
 
+                // The summary says plainly what the launcher is handed
+                // (names and photos, visible to anyone holding the phone)
+                // and what is never handed over, in both states.
+                SettingsItem.CONVERSATION_SHORTCUTS -> {
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary =
+                            stringResource(
+                                if (state.conversationShortcuts) {
+                                    R.string.settings_conversation_shortcuts_on
+                                } else {
+                                    R.string.settings_conversation_shortcuts_off
+                                },
+                            ),
+                        checked = state.conversationShortcuts,
+                        onToggle = viewModel::setConversationShortcuts,
+                    )
+                }
+
                 // ACTION row (leading icon per convention): leaves the app for
                 // Android's own notification settings, where per-category
                 // channels are tuned. Nothing is stored, nothing to back up.

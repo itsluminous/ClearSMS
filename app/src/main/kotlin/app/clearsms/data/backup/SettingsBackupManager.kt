@@ -133,6 +133,11 @@ internal object SettingsBackupCatalog {
             SettingsBackupEntry.StringEntry("default_finance_filter"),
             SettingsBackupEntry.StringEntry("finance_currency"),
             SettingsBackupEntry.BooleanEntry("transaction_notifications"),
+            // Launcher shortcuts (issue #81): an ordinary preference. A
+            // restored OFF keeps the user's privacy choice; a restored ON is
+            // the default anyway, and the publisher re-applies the exclusion
+            // set on the new device before anything reaches its launcher.
+            SettingsBackupEntry.BooleanEntry("conversation_shortcuts"),
             SettingsBackupEntry.StringEntry("logo_background"),
             SettingsBackupEntry.StringEntry("inbox_pill_order"),
             SettingsBackupEntry.StringSetEntry("inbox_hidden_pills"),

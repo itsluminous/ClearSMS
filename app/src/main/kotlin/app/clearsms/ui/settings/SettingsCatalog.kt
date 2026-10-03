@@ -99,6 +99,12 @@ enum class SettingsItem(
     // (messages arrive, nothing notifies). Directly under the block list it
     // is the gentler sibling of.
     MUTED_SENDERS(SettingsSection.MESSAGES, R.string.settings_muted_senders),
+
+    // Launcher shortcuts (GitHub #81): whether pinned and recent
+    // conversations appear under a long-press of the app icon. Right after
+    // the block and mute lists because those two decide what this surface
+    // may ever show - a blocked or muted sender is never a shortcut.
+    CONVERSATION_SHORTCUTS(SettingsSection.MESSAGES, R.string.settings_conversation_shortcuts),
     STRIP_ACCENTS(SettingsSection.MESSAGES, R.string.settings_strip_accents),
 
     // Delayed sending (GitHub #40): the toggle, then the delay it gates -

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon of the static "New message" shortcut (API 26+): the
+     launcher masks the teal seed plate with its own shape, like the app icon. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_shortcut_compose_foreground" />
+</adaptive-icon>

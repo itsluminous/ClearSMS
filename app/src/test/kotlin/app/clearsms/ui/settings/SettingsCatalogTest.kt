@@ -145,6 +145,9 @@ class SettingsCatalogTest {
                 "Block & allow list",
                 // The gentler sibling of the block list, directly under it.
                 "Muted senders",
+                // Launcher shortcuts (GitHub #81), right after the two lists
+                // that decide what the launcher may ever be shown.
+                "Conversations in app shortcuts",
                 "Strip accents when sending",
                 "Delay before sending",
                 "Sending delay",
@@ -325,10 +328,13 @@ class SettingsCatalogTest {
                 // Finance (issue #65): the manual currency override - the
                 // safety net when detection from the message / SIM is wrong.
                 "Currency",
+                // Messages (GitHub #81): pinned + recent conversations as
+                // launcher shortcuts, with the honest privacy wording.
+                "Conversations in app shortcuts",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 25 additions = 57 rows.
+        // No row lost, none dropped: 32 survivors + 26 additions = 58 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear
@@ -367,6 +373,15 @@ class SettingsCatalogTest {
         assertThat(messagesRows.indexOf(SettingsItem.MUTED_SENDERS))
             .isEqualTo(messagesRows.indexOf(SettingsItem.BLOCK_LIST) + 1)
         assertThat(search("muted")).containsExactly(SettingsItem.MUTED_SENDERS)
+    }
+
+    @Test
+    fun `conversation shortcuts follows the muted senders row and is searchable`() {
+        val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
+        assertThat(messagesRows.indexOf(SettingsItem.CONVERSATION_SHORTCUTS))
+            .isEqualTo(messagesRows.indexOf(SettingsItem.MUTED_SENDERS) + 1)
+        assertThat(search("shortcuts")).containsExactly(SettingsItem.CONVERSATION_SHORTCUTS)
+        assertThat(search("app shortcuts")).containsExactly(SettingsItem.CONVERSATION_SHORTCUTS)
     }
 
     @Test

@@ -92,4 +92,15 @@
     <!-- Manual re-sort -->
     <string name="resort_title">Sorting your inbox</string>
     <string name="inbox_sorting_banner">Sorting your messages again after the update…</string>
+
+    <!-- Launcher shortcuts (long-press the app icon, issue #81) -->
+    <string name="shortcut_compose_short">New message</string>
+    <string name="shortcut_compose_long">Write a new message</string>
+    <string name="shortcut_compose_disabled">Clear SMS is not available</string>
+    <!-- Shown by the launcher when a conversation shortcut the user pinned to the
+         home screen was disabled because its thread was blocked, binned, muted or
+         sorted as spam. -->
+    <string name="shortcut_disabled_unavailable">This conversation is no longer available in Clear SMS</string>
+    <!-- Shown when the user turned conversation shortcuts off in Settings. -->
+    <string name="shortcut_disabled_setting_off">Conversation shortcuts are turned off in Clear SMS settings</string>
 </resources>

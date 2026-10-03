@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static launcher shortcuts (long-press the app icon, issue #81). This file
+     holds exactly ONE shortcut; ConversationShortcutPublisher subtracts that
+     count from the system's per-activity budget before publishing the
+     dynamic conversation shortcuts, and AppShortcutsContractTest pins the
+     two numbers against each other.
+
+     "New message" opens the composer EMPTY through the same path a tapped
+     bare `sms:` link takes (ACTION_SENDTO on an smsto: URI with no
+     recipient, issue #32): IntentTriage sees an sms-family URI, so the
+     composer opens with nothing prefilled and nothing is ever auto-sent.
+     The target is the launcher activity itself - a static shortcut is
+     always launched with NEW_TASK | CLEAR_TASK by the system, so this is a
+     fresh cold start of MainActivity, which handles it in onCreate. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:targetApi="25">
+    <shortcut
+        android:shortcutId="compose"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_compose"
+        android:shortcutShortLabel="@string/shortcut_compose_short"
+        android:shortcutLongLabel="@string/shortcut_compose_long"
+        android:shortcutDisabledMessage="@string/shortcut_compose_disabled">
+        <intent
+            android:action="android.intent.action.SENDTO"
+            android:data="smsto:"
+            android:targetPackage="app.clearsms"
+            android:targetClass="app.clearsms.MainActivity" />
+    </shortcut>
+</shortcuts>

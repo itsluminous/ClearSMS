@@ -182,6 +182,19 @@ interface SettingsRepository {
 
     suspend fun setTransactionNotifications(value: Boolean)
 
+    /**
+     * Publish pinned and recent conversations as launcher shortcuts (long-
+     * press the app icon), issue #81. Default ON - the feature was asked
+     * for, and one nobody can see is not a feature. OFF keeps the static
+     * "New message" shortcut and removes (and disables, for any the user
+     * pinned to the home screen) every conversation shortcut. Governs
+     * [app.clearsms.shortcuts.ConversationShortcutPublisher]; the exclusion
+     * set (blocked, muted, binned, Spam) applies regardless of this flag.
+     */
+    val conversationShortcuts: Flow<Boolean>
+
+    suspend fun setConversationShortcuts(value: Boolean)
+
     /** Backing plate drawn behind bundled sender logos. */
     val logoBackground: Flow<LogoBackground>
 
