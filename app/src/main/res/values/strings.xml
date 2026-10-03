@@ -801,4 +801,30 @@
     <string name="diagnostics_share_button">Share…</string>
     <string name="diagnostics_share_title">Share diagnostic logs</string>
     <string name="diagnostics_share_failed">Could not prepare the report file. Try again.</string>
+    <!-- Category and sub-category labels: the ONE place a category's user-visible name lives
+         (CategoryLabels.kt). The stored/serialized values are the enum NAMES, never these. -->
+    <string name="category_important">Important</string>
+    <string name="category_promotional">Promotional</string>
+    <string name="category_personal">Personal</string>
+    <string name="category_unknown">Unknown</string>
+    <string name="category_otp">OTP</string>
+    <string name="category_spam">Spam</string>
+    <string name="subcategory_transaction">Transaction</string>
+    <string name="subcategory_otp">OTP</string>
+    <string name="subcategory_bill">Bill</string>
+    <string name="subcategory_bank_alert">Bank alert</string>
+    <string name="subcategory_government">Government</string>
+    <string name="subcategory_recharge">Recharge</string>
+    <string name="subcategory_investment">Investment</string>
+    <string name="subcategory_delivery">Delivery</string>
+    <string name="subcategory_offer">Offer</string>
+    <string name="subcategory_scam">Scam</string>
+    <string name="subcategory_fixed_deposit">Fixed deposit</string>
+    <string name="subcategory_mutual_fund">Mutual fund</string>
+    <string name="subcategory_travel">Travel</string>
+    <string name="subcategory_appointment">Appointment</string>
+    <string name="subcategory_general">General</string>
+    <!-- Relative dates in inbox rows and conversation date separators (RelativeTime.kt). -->
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
 </resources>

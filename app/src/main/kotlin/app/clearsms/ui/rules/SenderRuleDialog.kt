@@ -110,7 +110,7 @@ fun senderRuleSavedMessage(
     resources: Resources,
     saved: SenderRuleSaved,
 ): String {
-    val category = RuleEngine.categoryOf(saved.category).displayName()
+    val category = RuleEngine.categoryOf(saved.category).displayName(resources)
     return if (saved.messages > 0) {
         resources.getString(R.string.sender_rule_saved, saved.messages, saved.senderCore, category)
     } else {

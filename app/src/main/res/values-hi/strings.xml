@@ -687,4 +687,27 @@
     <string name="diagnostics_share_button">शेयर करें…</string>
     <string name="diagnostics_share_title">डायग्नोस्टिक लॉग शेयर करें</string>
     <string name="diagnostics_share_failed">रिपोर्ट फ़ाइल तैयार नहीं हो सकी। पुनः प्रयास करें।</string>
+    <string name="category_important">महत्वपूर्ण</string>
+    <string name="category_promotional">प्रचार</string>
+    <string name="category_personal">व्यक्तिगत</string>
+    <string name="category_unknown">अज्ञात</string>
+    <string name="category_otp">OTP</string>
+    <string name="category_spam">स्पैम</string>
+    <string name="subcategory_transaction">लेन-देन</string>
+    <string name="subcategory_otp">OTP</string>
+    <string name="subcategory_bill">बिल</string>
+    <string name="subcategory_bank_alert">बैंक अलर्ट</string>
+    <string name="subcategory_government">सरकारी</string>
+    <string name="subcategory_recharge">रिचार्ज</string>
+    <string name="subcategory_investment">निवेश</string>
+    <string name="subcategory_delivery">डिलीवरी</string>
+    <string name="subcategory_offer">ऑफ़र</string>
+    <string name="subcategory_scam">धोखाधड़ी</string>
+    <string name="subcategory_fixed_deposit">फ़िक्स्ड डिपॉज़िट</string>
+    <string name="subcategory_mutual_fund">म्यूचुअल फ़ंड</string>
+    <string name="subcategory_travel">यात्रा</string>
+    <string name="subcategory_appointment">अपॉइंटमेंट</string>
+    <string name="subcategory_general">सामान्य</string>
+    <string name="date_today">आज</string>
+    <string name="date_yesterday">कल</string>
 </resources>

@@ -16,7 +16,7 @@ editor can create the files in your fork directly.
 
 **A complete, real example to copy from:**
 [`app/src/main/res/values-hi/`](../app/src/main/res/values-hi/) is the Hindi
-translation - every one of the 742 items, in the same two-file layout as the
+translation - every one of the 765 items, in the same two-file layout as the
 English. You may copy that directory as your starting template instead of the
 English one: the file layout, escaping, plural blocks and placeholder handling
 are already in the shape the build expects, and the English text is one

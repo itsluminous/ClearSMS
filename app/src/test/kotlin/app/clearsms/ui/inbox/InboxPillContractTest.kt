@@ -1,8 +1,9 @@
 package app.clearsms.ui.inbox
 
+import app.clearsms.R
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.InboxPill
-import app.clearsms.ui.components.defaultLabel
+import app.clearsms.ui.components.labelRes
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
@@ -69,7 +70,9 @@ class InboxPillContractTest {
         assertThat(dao).doesNotContain("scamOnly")
         assertThat(dao).doesNotContain("m.subCategory = 'SCAM'")
         assertThat(InboxPill.SPAM.category).isEqualTo(Category.SPAM)
-        assertThat(InboxPill.SPAM.defaultLabel()).isEqualTo("Spam")
+        // The pill shows its category's label - the "Spam" string resource, translated per language.
+        assertThat(InboxPill.SPAM.labelRes()).isEqualTo(R.string.category_spam)
+        assertThat(InboxPill.SPAM.labelRes()).isEqualTo(Category.SPAM.labelRes())
         // One pill per category, one category per pill.
         assertThat(InboxPill.entries.map { it.category }).containsExactlyElementsIn(Category.entries)
     }
