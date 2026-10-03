@@ -5,9 +5,11 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.mms.DataSimHint
+import app.clearsms.ui.common.RelativeTime
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
 import org.junit.Test
+import java.util.Locale
 
 /**
  * Bubble direction is derived from the PERSISTED [MessageEntity.isOutgoing]
@@ -15,6 +17,8 @@ import org.junit.Test
  * their status after an app restart.
  */
 class ConversationItemMappingTest {
+    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH)
+
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun entity(
@@ -34,7 +38,7 @@ class ConversationItemMappingTest {
 
     @Test
     fun `outgoing rows map to right-aligned bubbles carrying their status`() {
-        val item = entity(outgoing = true, status = DeliveryStatus.DELIVERED).toConversationItem(json)
+        val item = entity(outgoing = true, status = DeliveryStatus.DELIVERED).toConversationItem(json, english)
 
         assertThat(item.outgoing).isTrue()
         assertThat(item.deliveryStatus).isEqualTo(DeliveryStatus.DELIVERED)
@@ -42,7 +46,7 @@ class ConversationItemMappingTest {
 
     @Test
     fun `incoming rows map to left-aligned bubbles without a status`() {
-        val item = entity(outgoing = false).toConversationItem(json)
+        val item = entity(outgoing = false).toConversationItem(json, english)
 
         assertThat(item.outgoing).isFalse()
         assertThat(item.deliveryStatus).isNull()
@@ -57,21 +61,21 @@ class ConversationItemMappingTest {
             hint
         }
 
-        val failed = entity(outgoing = true, status = DeliveryStatus.FAILED).toConversationItem(json, dataSimHintFor = hintFor)
-        val sent = entity(outgoing = true, status = DeliveryStatus.SENT).toConversationItem(json, dataSimHintFor = hintFor)
-        val incoming = entity(outgoing = false, status = DeliveryStatus.FAILED).toConversationItem(json, dataSimHintFor = hintFor)
+        val failed = entity(outgoing = true, status = DeliveryStatus.FAILED).toConversationItem(json, english, dataSimHintFor = hintFor)
+        val sent = entity(outgoing = true, status = DeliveryStatus.SENT).toConversationItem(json, english, dataSimHintFor = hintFor)
+        val incoming = entity(outgoing = false, status = DeliveryStatus.FAILED).toConversationItem(json, english, dataSimHintFor = hintFor)
 
         assertThat(failed.dataSimHint).isEqualTo(hint)
         assertThat(sent.dataSimHint).isNull()
         assertThat(incoming.dataSimHint).isNull()
         assertThat(asked).containsExactly(5L)
         // Default: no hint source, no hint.
-        assertThat(entity(outgoing = true, status = DeliveryStatus.FAILED).toConversationItem(json).dataSimHint).isNull()
+        assertThat(entity(outgoing = true, status = DeliveryStatus.FAILED).toConversationItem(json, english).dataSimHint).isNull()
     }
 
     @Test
     fun `a stray status on an incoming row is never surfaced`() {
-        val item = entity(outgoing = false, status = DeliveryStatus.SENT).toConversationItem(json)
+        val item = entity(outgoing = false, status = DeliveryStatus.SENT).toConversationItem(json, english)
 
         assertThat(item.deliveryStatus).isNull()
     }
@@ -84,9 +88,9 @@ class ConversationItemMappingTest {
         val withSent = entity(outgoing = false).copy(timestamp = 5_000L, dateSent = 1_000L)
         val withoutSent = entity(outgoing = false).copy(timestamp = 5_000L, dateSent = null)
 
-        assertThat(withSent.toConversationItem(json).timestamp).isEqualTo(5_000L)
-        assertThat(withSent.toConversationItem(json, sortOrder = MessageSortOrder.RECEIVED).timestamp).isEqualTo(5_000L)
-        assertThat(withSent.toConversationItem(json, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(1_000L)
-        assertThat(withoutSent.toConversationItem(json, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(5_000L)
+        assertThat(withSent.toConversationItem(json, english).timestamp).isEqualTo(5_000L)
+        assertThat(withSent.toConversationItem(json, english, sortOrder = MessageSortOrder.RECEIVED).timestamp).isEqualTo(5_000L)
+        assertThat(withSent.toConversationItem(json, english, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(1_000L)
+        assertThat(withoutSent.toConversationItem(json, english, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(5_000L)
     }
 }

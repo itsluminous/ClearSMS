@@ -1,9 +1,9 @@
 package app.clearsms.ui.conversation
 
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for the "More details" entry (issue #44). Source-level contracts
@@ -85,8 +85,8 @@ class MessageDetailsMenuContractTest {
         val dialog = source("ui/conversation/MessageDetailsDialog.kt")
         // A recorded acknowledgement is shown as the bare time, nothing appended.
         assertThat(dialog).contains("row.acknowledgedAtMs != null ->")
-        assertThat(dialog).contains("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour)\n")
-        assertThat(dialog).doesNotContain("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour) +")
+        assertThat(dialog).contains("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour, locale = locale)\n")
+        assertThat(dialog).doesNotContain("preciseTimestampLabel(row.acknowledgedAtMs, is24Hour, locale = locale) +")
         // MMS can only ever render through the unsupported string.
         assertThat(dialog).containsMatch("""DeliveryKnowledge\.UNSUPPORTED_MMS ->\s*\{?\s*R\.string\.message_details_delivered_mms""")
     }

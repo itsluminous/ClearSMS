@@ -102,6 +102,8 @@ import app.clearsms.ui.common.DeleteConfirmationText
 import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
+import app.clearsms.ui.common.rememberDisplayLocale
+import app.clearsms.ui.common.rememberRelativeTimeStrings
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
@@ -118,6 +120,7 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
+import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
@@ -1041,7 +1044,7 @@ private fun DateSeparator(timestamp: Long) {
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Text(
-                text = RelativeTime.dateLabel(timestamp),
+                text = RelativeTime.dateLabel(timestamp, rememberRelativeTimeStrings()),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -1250,12 +1253,13 @@ private fun MessageBubble(
                             DeliveryStatus.SCHEDULED -> {
                                 val context = LocalContext.current
                                 val is24Hour = remember { DateFormat.is24HourFormat(context) }
+                                val locale = rememberDisplayLocale()
                                 val at = item.message?.scheduledAt ?: item.timestamp
                                 Text(
                                     text =
                                         stringResource(
                                             R.string.conversation_scheduled_for,
-                                            MessageMetadata.timestampLabel(at, is24Hour),
+                                            MessageMetadata.timestampLabel(at, is24Hour, locale = locale),
                                         ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.tertiary,
@@ -1352,14 +1356,14 @@ private fun MessageBubble(
 private fun MessageMetadataLine(item: ConversationItem) {
     val context = LocalContext.current
     val is24Hour = remember { DateFormat.is24HourFormat(context) }
-    val timestamp = remember(item.id) { MessageMetadata.timestampLabel(item.timestamp, is24Hour) }
+    val locale = rememberDisplayLocale()
+    val timestamp = remember(item.id, locale) { MessageMetadata.timestampLabel(item.timestamp, is24Hour, locale = locale) }
     val detail =
         if (item.outgoing) {
             stringResource(deliveryStatusLabelRes(item.deliveryStatus))
         } else {
             item.message?.let { message ->
-                message.subCategory?.let { categoryLabel(it.name) }
-                    ?: categoryLabel(message.category.name)
+                message.subCategory?.displayName() ?: message.category.displayName()
             }
         }
     Text(
@@ -1415,9 +1419,6 @@ internal fun DeliveryTickIcon(
     )
 }
 
-/** "BANK_ALERT" → "Bank alert" (enum names are already user-meaningful). */
-private fun categoryLabel(name: String): String = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
-
 /** Expandable card showing parsed transaction / OTP fields under a bubble. */
 @Composable
 private fun ParsedDetailCard(details: Map<String, String>) {
@@ -1434,6 +1435,11 @@ private fun ParsedDetailCard(details: Map<String, String>) {
             )
             details.forEach { (key, value) ->
                 Row {
+                    // Known gap (not localized): the keys are whatever the
+                    // community rules' JSON extracts ("amount", "due_date",
+                    // "pnr" …) - an open set with no enum to map to resources.
+                    // Localizing them needs a key→R.string table with a
+                    // humanised fallback; tracked separately.
                     Text(
                         text = key.replace('_', ' ').replaceFirstChar { it.uppercaseChar() } + ": ",
                         style = MaterialTheme.typography.bodyMedium,

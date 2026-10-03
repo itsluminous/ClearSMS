@@ -113,6 +113,7 @@ class InboxColdStartTest {
             }
         val senderMuter = SenderMuter(settings)
         return InboxViewModel(
+            context = context,
             messageRepository = repository,
             undoManager = UndoManager(repository, scope, { true }),
             senderBlocker = SenderBlocker(settings, repository, senderMuter, InMemoryPreferencesDataStore(), scope),

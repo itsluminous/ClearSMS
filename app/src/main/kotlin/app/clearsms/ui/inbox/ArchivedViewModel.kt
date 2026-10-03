@@ -1,5 +1,6 @@
 package app.clearsms.ui.inbox
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.clearsms.data.db.MessageEntity
@@ -16,6 +17,7 @@ import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor
 import app.clearsms.ui.components.resolveSenderDisplay
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +47,7 @@ data class ArchivedUiState(
 class ArchivedViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
         private val senderIdLookup: SenderIdLookup,
@@ -148,7 +151,7 @@ class ArchivedViewModel
                 message = this,
                 display = display,
                 glyph = brandGlyphFor(subCategory, display.name),
-                timeLabel = RelativeTime.format(timestamp),
+                timeLabel = RelativeTime.format(timestamp, RelativeTime.Strings.from(context)),
             )
         }
     }

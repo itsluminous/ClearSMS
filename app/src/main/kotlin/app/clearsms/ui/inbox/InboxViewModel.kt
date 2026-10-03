@@ -1,5 +1,6 @@
 package app.clearsms.ui.inbox
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -38,6 +39,7 @@ import app.clearsms.ui.navigation.activePill
 import app.clearsms.work.CatchUpSyncScheduler
 import app.clearsms.work.RecategorizeWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -202,6 +204,7 @@ data class MuteUiEvent(
 class InboxViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val messageRepository: MessageRepository,
         private val undoManager: UndoManager,
         private val senderBlocker: SenderBlocker,
@@ -601,11 +604,17 @@ class InboxViewModel
                 message = message,
                 display = display,
                 glyph = brandGlyphFor(message.subCategory, display.name),
-                timeLabel = RelativeTime.format(sortOrder.sortTimestamp(message.timestamp, message.dateSent)),
+                timeLabel = RelativeTime.format(sortOrder.sortTimestamp(message.timestamp, message.dateSent), timeStrings()),
                 draftText = draftText?.takeIf { it.isNotBlank() },
                 pinned = pinned,
             )
         }
+
+        /**
+         * Read per row, not cached: the resources follow the app language, so a
+         * row mapped after a language change is already in the new language.
+         */
+        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(context)
 
         private fun resolveDisplay(sender: String): SenderDisplay =
             displayCache.getOrPut(sender) {

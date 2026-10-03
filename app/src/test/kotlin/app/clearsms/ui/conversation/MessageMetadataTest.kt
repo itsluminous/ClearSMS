@@ -4,6 +4,7 @@ import app.clearsms.data.db.DeliveryStatus
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.time.ZoneId
+import java.util.Locale
 
 /** Tap-to-reveal metadata: timestamp formatting and the single-expansion toggle. */
 class MessageMetadataTest {
@@ -14,31 +15,31 @@ class MessageMetadataTest {
 
     @Test
     fun `24-hour devices get a 24-hour timestamp`() {
-        assertThat(MessageMetadata.timestampLabel(afternoon, is24Hour = true, zone = zone))
+        assertThat(MessageMetadata.timestampLabel(afternoon, is24Hour = true, zone = zone, locale = Locale.ENGLISH))
             .isEqualTo("26 Jul 2026, 16:59")
     }
 
     @Test
     fun `12-hour devices get an am-pm timestamp`() {
-        assertThat(MessageMetadata.timestampLabel(afternoon, is24Hour = false, zone = zone))
+        assertThat(MessageMetadata.timestampLabel(afternoon, is24Hour = false, zone = zone, locale = Locale.ENGLISH))
             .isEqualTo("26 Jul 2026, 4:59 pm")
     }
 
     @Test
     fun `precise labels carry seconds in both clock styles - the details view's format`() {
         val withSeconds = afternoon + 7_000L // 16:59:07 IST
-        assertThat(MessageMetadata.preciseTimestampLabel(withSeconds, is24Hour = true, zone = zone))
+        assertThat(MessageMetadata.preciseTimestampLabel(withSeconds, is24Hour = true, zone = zone, locale = Locale.ENGLISH))
             .isEqualTo("26 Jul 2026, 16:59:07")
-        assertThat(MessageMetadata.preciseTimestampLabel(withSeconds, is24Hour = false, zone = zone))
+        assertThat(MessageMetadata.preciseTimestampLabel(withSeconds, is24Hour = false, zone = zone, locale = Locale.ENGLISH))
             .isEqualTo("26 Jul 2026, 4:59:07 pm")
     }
 
     @Test
     fun `morning times keep the am marker and no leading zero`() {
         val morning = afternoon - 8 * 60 * 60 * 1000 // 08:59 IST
-        assertThat(MessageMetadata.timestampLabel(morning, is24Hour = false, zone = zone))
+        assertThat(MessageMetadata.timestampLabel(morning, is24Hour = false, zone = zone, locale = Locale.ENGLISH))
             .isEqualTo("26 Jul 2026, 8:59 am")
-        assertThat(MessageMetadata.timestampLabel(morning, is24Hour = true, zone = zone))
+        assertThat(MessageMetadata.timestampLabel(morning, is24Hour = true, zone = zone, locale = Locale.ENGLISH))
             .isEqualTo("26 Jul 2026, 08:59")
     }
 

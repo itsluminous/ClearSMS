@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import app.clearsms.R
 import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.domain.model.MoneyFormat
+import app.clearsms.ui.common.rememberDisplayLocale
 import app.clearsms.ui.theme.LocalSemanticAmountColors
 
 private val CHART_HEIGHT = 160.dp
@@ -86,11 +87,12 @@ fun MonthlyBarChart(
 
     // Buckets arrive pre-aggregated from the ViewModel; only cheap scaling happens here.
     val maxValue = remember(data) { ChartMath.maxValue(data) }
+    val locale = rememberDisplayLocale()
     val chartSummary =
         if (data.isEmpty()) {
             stringResource(R.string.chart_empty_description)
         } else {
-            stringResource(R.string.chart_summary_description, data.first().fullLabel, data.last().fullLabel)
+            stringResource(R.string.chart_summary_description, data.first().fullLabel(locale), data.last().fullLabel(locale))
         }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -171,7 +173,7 @@ fun MonthlyBarChart(
                         val barLabel =
                             stringResource(
                                 R.string.chart_bar_description,
-                                month.fullLabel,
+                                month.fullLabel(locale),
                                 MoneyFormat.format(month.debits, month.currency),
                                 MoneyFormat.format(month.credits, month.currency),
                             )
@@ -197,7 +199,7 @@ fun MonthlyBarChart(
                 Spacer(Modifier.width(AXIS_WIDTH))
                 data.forEach { month ->
                     Text(
-                        text = month.label,
+                        text = month.label(locale),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -238,6 +240,7 @@ private fun SelectionDetailsRow(selected: MonthlyTotals?) {
         var shown by remember { mutableStateOf(selected) }
         if (selected != null) shown = selected
         shown?.let { month ->
+            val locale = rememberDisplayLocale()
             Surface(
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -247,7 +250,7 @@ private fun SelectionDetailsRow(selected: MonthlyTotals?) {
                     text =
                         stringResource(
                             R.string.chart_selection_details,
-                            month.fullLabel,
+                            month.fullLabel(locale),
                             MoneyFormat.format(month.debits, month.currency),
                             MoneyFormat.format(month.credits, month.currency),
                         ),

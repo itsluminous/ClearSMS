@@ -121,6 +121,7 @@ data class ConversationItem(
  */
 internal fun MessageEntity.toConversationItem(
     json: Json,
+    timeStrings: RelativeTime.Strings,
     simTagFor: (Int?) -> String? = { null },
     sortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
     dataSimHintFor: (MessageEntity) -> DataSimHint? = { null },
@@ -133,7 +134,7 @@ internal fun MessageEntity.toConversationItem(
         outgoing = isOutgoing,
         message = this,
         details = parseDetails(json, extractedDataJson),
-        timeLabel = RelativeTime.format(shownAt),
+        timeLabel = RelativeTime.format(shownAt, timeStrings),
         deliveryStatus = if (isOutgoing) deliveryStatus else null,
         simLabel = simTagFor(subscriptionId),
         dataSimHint = if (isOutgoing && deliveryStatus == DeliveryStatus.FAILED) dataSimHintFor(this) else null,
@@ -417,6 +418,12 @@ class ConversationViewModel
                 )
         }
 
+        /**
+         * Read per row, not cached: the resources follow the app language, so a
+         * row mapped after a language change is already in the new language.
+         */
+        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(appContext)
+
         /** Bubble SIM tag for a stored subscription id (null when tags are off). */
         private fun simTagFor(subscriptionId: Int?): String? =
             if (simTagsEnabled) SimSelector.slotLabelFor(activeSims, subscriptionId) else null
@@ -496,7 +503,7 @@ class ConversationViewModel
                         initialKey = position,
                         pagingSourceFactory = { messageRepository.pagedThread(threadId, sortOrder) },
                     ).flow
-                        .map { data -> data.map { it.toConversationItem(json, ::simTagFor, sortOrder, ::dataSimHintFor) } }
+                        .map { data -> data.map { it.toConversationItem(json, timeStrings(), ::simTagFor, sortOrder, ::dataSimHintFor) } }
                 }.flowOn(ioDispatcher)
                 .cachedIn(viewModelScope)
 
