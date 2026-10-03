@@ -75,7 +75,9 @@ internal object LaterIntentTriage {
         val send = IntentTriage.extractSendIntent(intent)
         val route =
             if (!send.recipient.isNullOrBlank() || !send.body.isNullOrBlank() || !send.imageUri.isNullOrBlank()) {
-                Routes.compose(send.recipient, send.body, send.imageUri)
+                // A Direct Share pick adds the chosen thread; the composer
+                // resolves it to the recipient. Same route, same screen.
+                Routes.compose(send.recipient, send.body, send.imageUri, send.shareThreadId)
             } else if (send.explicitCompose) {
                 // A bare `sms:` (issue #32): the link explicitly asked for
                 // the composer, so it opens EMPTY rather than doing nothing.

@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Exposes ONLY filesDir/mms/ and filesDir/diagnostics/share/ through the
-     FileProvider: the download staging file the platform MMS service writes
-     into, the stored attachment files shared/viewed via per-URI grants, and
-     the zipped diagnostic report the user previews before sharing (the
-     rotating log files themselves live one level up and stay unreachable).
+<!-- Exposes ONLY filesDir/mms/, filesDir/diagnostics/share/ and
+     filesDir/shortcuts/icons/ through the FileProvider: the download staging
+     file the platform MMS service writes into, the stored attachment files
+     shared/viewed via per-URI grants, the zipped diagnostic report the user
+     previews before sharing (the rotating log files themselves live one
+     level up and stay unreachable), and the rendered conversation-shortcut
+     avatars the launcher and share sheet read through the per-URI grant the
+     system issues for a shortcut icon (see ConversationShortcutIcons).
      Nothing else in the app's private storage is reachable through this
      authority. -->
 <paths>
@@ -13,4 +16,7 @@
     <files-path
         name="diagnostics"
         path="diagnostics/share/" />
+    <files-path
+        name="shortcut_icons"
+        path="shortcuts/icons/" />
 </paths>

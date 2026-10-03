@@ -89,21 +89,23 @@ class SenderIconFactory internal constructor(
         }
 
     /**
-     * Launcher-shortcut icon for [sender]: the SAME circular avatar
+     * Launcher-shortcut avatar for [sender]: the SAME circular avatar
      * [largeIconFor] renders (so a shortcut looks like the inbox row and the
      * notification it will sit next to - one avatar chain, one shape, the
-     * circle `AvatarDefaults.shape` pins for every in-app avatar), packaged
-     * as an ADAPTIVE bitmap so the launcher masks it with its own icon
+     * circle `AvatarDefaults.shape` pins for every in-app avatar), laid out
+     * as an ADAPTIVE-icon square so the launcher masks it with its own icon
      * shape instead of wrapping a legacy bitmap in a white backdrop. The
      * avatar is inset to the adaptive safe zone over a plate in the tier's
      * own ground colour - the tile colour for generated tiles (so a letter
      * avatar reads as a full-bleed coloured icon, the Samsung Messages
      * look), white for a contact photo or bundled logo (their own plates).
+     *
+     * Returned as a bitmap, not an [IconCompat]: a long-lived shortcut may
+     * not carry a bitmap icon (the system caches long-lived shortcuts and
+     * refuses to cache bitmaps), so `ConversationShortcutIcons` writes this
+     * bitmap to a file and hands the system a content-URI icon instead.
      */
-    fun shortcutIconFor(sender: NotificationSender): IconCompat =
-        IconCompat.createWithAdaptiveBitmap(
-            adaptivePlate(largeIconFor(sender), plateColorFor(sender)),
-        )
+    fun shortcutAvatarFor(sender: NotificationSender): Bitmap = adaptivePlate(largeIconFor(sender), plateColorFor(sender))
 
     /** The ground colour behind a shortcut avatar - see [shortcutIconFor]. */
     internal fun plateColorFor(sender: NotificationSender): Int =

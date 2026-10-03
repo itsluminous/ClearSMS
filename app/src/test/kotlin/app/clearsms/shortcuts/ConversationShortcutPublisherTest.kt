@@ -17,6 +17,7 @@ import app.clearsms.notification.NotificationSenderResolver
 import app.clearsms.notification.SenderIconFactory
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.FileProviderTestSupport
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,11 @@ import java.util.concurrent.Executor
  * run on direct executors and the publisher on an unconfined scope with a
  * zero debounce, so every database write drives the pipeline synchronously
  * and the assertions need no sleeping. All fixtures are synthetic.
+ *
+ * Robolectric's shadow keeps no CACHED shortcuts, so what the OFF state
+ * does to the copies the system caches for conversation notifications is
+ * pinned separately, against a faithful model of the platform, in
+ * [ConversationShortcutCachedCopiesTest].
  */
 @RunWith(RobolectricTestRunner::class)
 class ConversationShortcutPublisherTest {
@@ -51,6 +57,7 @@ class ConversationShortcutPublisherTest {
     private lateinit var settings: FakeSettingsRepository
     private lateinit var scope: CoroutineScope
     private lateinit var publisher: ConversationShortcutPublisher
+    private lateinit var icons: ConversationShortcutIcons
 
     private val shortcutManager: ShortcutManager
         get() = context.getSystemService(ShortcutManager::class.java)
@@ -75,13 +82,18 @@ class ConversationShortcutPublisherTest {
         settings = FakeSettingsRepository()
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         shadowOf(shortcutManager).setMaxShortcutCountPerActivity(5)
+        FileProviderTestSupport.resetPathStrategyCache()
+        val iconFactory = SenderIconFactory(context)
+        icons = ConversationShortcutIcons(context, iconFactory)
         publisher =
             ConversationShortcutPublisher(
                 context = context,
                 settings = settings,
                 messageDao = dao,
                 senderResolver = resolver,
-                factory = ConversationShortcutFactory(context, SenderIconFactory(context)),
+                factory = ConversationShortcutFactory(context, iconFactory, icons),
+                icons = icons,
+                system = AndroidShortcutSystem(context),
                 scope = scope,
             ).apply { debounceMs = 0L }
     }
@@ -200,13 +212,42 @@ class ConversationShortcutPublisherTest {
         seedThreads(2)
         publisher.start()
         assertThat(dynamicIds()).hasSize(2)
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png")
 
         runBlocking { settings.setConversationShortcuts(false) }
         assertThat(dynamicIds()).isEmpty()
+        // The avatar files the system referenced go with the shortcuts.
+        assertThat(avatarFiles()).isEmpty()
 
         runBlocking { settings.setConversationShortcuts(true) }
         assertThat(dynamicIds()).containsExactly("thread:2", "thread:1").inOrder()
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png")
     }
+
+    @Test
+    fun `avatar files follow the published list - a thread that drops out loses its file, a pinned one keeps it`() {
+        seedThreads(3)
+        publisher.start()
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png", "thread-3.png")
+        // The user pins thread 1 to the home screen: the launcher keeps
+        // reading its icon through the URI for as long as it stays pinned,
+        // whether or not the thread is still in the dynamic list.
+        shortcutManager.requestPinShortcut(shortcutManager.dynamicShortcuts.single { it.id == "thread:1" }, null)
+
+        // Blocking sender 3 drops thread 3 out of the list: its file goes.
+        runBlocking { settings.setBlockedSenders(setOf("sender-3")) }
+        assertThat(dynamicIds()).doesNotContain("thread:3")
+        assertThat(shortcutManager.pinnedShortcuts.map(ShortcutInfo::getId)).containsExactly("thread:1")
+        assertThat(avatarFiles()).containsExactly("thread-1.png", "thread-2.png")
+
+        // Binning thread 2 drops it too; the pinned thread 1 keeps its file.
+        runBlocking { dao.stageDelete(listOf(2L), deletedAt = 1L) }
+        assertThat(dynamicIds()).doesNotContain("thread:2")
+        assertThat(avatarFiles()).containsExactly("thread-1.png")
+    }
+
+    /** Names of the avatar files under the provider's shortcut-icon root. */
+    private fun avatarFiles(): List<String> = icons.fileFor(0L).parentFile!!.list()?.sorted().orEmpty()
 
     @Test
     fun `a home-screen-pinned shortcut to a thread that became excluded is disabled`() {
@@ -318,5 +359,46 @@ class ConversationShortcutPublisherTest {
         // Whereas a NEW thread on top changes the list and IS re-sent.
         insert(message(id = 100, threadId = 4, timestamp = 100_000))
         assertThat(dynamicIds().first()).isEqualTo("thread:4")
+    }
+
+    // --- The registry the notifier reads -----------------------------------
+
+    @Test
+    fun `the registry reports exactly the threads the system accepted, and nothing before the first publish`() {
+        seedThreads(7) // budget is 5, minus the static "New message" = 4
+        // Before start(): nothing is published, so a notification names no shortcut.
+        assertThat(publisher.isPublished(7L)).isFalse()
+
+        publisher.start()
+        val live = dynamicIds().map { ConversationShortcutSelection.threadIdOf(it) }
+        assertThat(live).containsExactly(7L, 6L, 5L, 4L).inOrder()
+        live.forEach { assertThat(publisher.isPublished(requireNotNull(it))).isTrue() }
+        // Outside the budget: a real conversation, no shortcut, and the
+        // registry says so rather than letting the notifier name a ghost.
+        assertThat(publisher.isPublished(3L)).isFalse()
+        assertThat(publisher.isPublished(1L)).isFalse()
+        assertThat(publisher.isPublished(999L)).isFalse()
+    }
+
+    @Test
+    fun `the registry follows the setting and exclusions the same instant the launcher does`() {
+        seedThreads(2)
+        publisher.start()
+        assertThat(publisher.isPublished(1L)).isTrue()
+        assertThat(publisher.isPublished(2L)).isTrue()
+
+        runBlocking { settings.setConversationShortcuts(false) }
+        assertThat(dynamicIds()).isEmpty()
+        assertThat(publisher.isPublished(1L)).isFalse()
+        assertThat(publisher.isPublished(2L)).isFalse()
+
+        runBlocking { settings.setConversationShortcuts(true) }
+        assertThat(publisher.isPublished(2L)).isTrue()
+
+        // Blocking thread 2's sender drops its shortcut AND its registry entry together.
+        runBlocking { settings.setBlockedSenders(setOf("sender-2")) }
+        assertThat(dynamicIds()).containsExactly("thread:1")
+        assertThat(publisher.isPublished(2L)).isFalse()
+        assertThat(publisher.isPublished(1L)).isTrue()
     }
 }

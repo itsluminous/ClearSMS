@@ -17,6 +17,7 @@ import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SmsSender
+import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.common.ComposerAttachments
@@ -64,6 +65,7 @@ class ComposeMessageViewModel
         private val messageDao: MessageDao,
         private val settings: SettingsRepository,
         private val contactSuggestions: ContactSuggestions,
+        private val contactsSource: ContactsSource,
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
         private val messageScheduler: MessageScheduler,
@@ -164,6 +166,33 @@ class ComposeMessageViewModel
             savedStateHandle.get<String>("imageUri")?.takeIf { it.isNotBlank() }?.let { raw ->
                 composerAttachments.add(listOf(Uri.parse(raw)))
             }
+            // A Direct Share pick names a conversation, not an address: the
+            // `threadId` argument is resolved to the thread's sender and set
+            // as the recipient through the SAME path a picked suggestion
+            // takes, so the SIM memory re-primes exactly as it would for a
+            // typed number. The address comes from the thread's oldest live
+            // message - the conversation screen's own header/reply address.
+            // The address is then resolved to its saved contact through the
+            // SAME lookup the conversation header uses ([ContactsSource]), so
+            // the field shows the name with the number beneath and the
+            // "change recipient" affordance - exactly what picking that
+            // contact from the suggestions shows - instead of a bare number;
+            // a non-contact stays a plain number. Only an EMPTY recipient is
+            // filled: a route carrying both wins for the explicit recipient,
+            // and a thread that no longer exists (binned since the share
+            // sheet was opened) leaves the composer open with the shared
+            // content and no recipient, never an error.
+            savedStateHandle
+                .get<Long>("threadId")
+                ?.takeIf { it >= 0L && state.value.recipient.isBlank() }
+                ?.let { threadId ->
+                    viewModelScope.launch(ioDispatcher) {
+                        val address = messageDao.firstInThread(threadId)?.sender?.trim().orEmpty()
+                        if (address.isNotEmpty() && state.value.recipient.isBlank()) {
+                            applySelection(resolvedSelection(address))
+                        }
+                    }
+                }
         }
 
         val suggestions: StateFlow<List<ContactSuggestion>> =
@@ -189,6 +218,17 @@ class ComposeMessageViewModel
 
         private val currentSelection: RecipientSelection
             get() = RecipientSelection(state.value.recipient, state.value.picked)
+
+        /**
+         * [address] as the selection a suggestion pick would have produced
+         * when it belongs to a saved contact (name shown, this exact number
+         * sent), or a plain edit when it does not. The lookup is the
+         * conversation header's own; it answers null without READ_CONTACTS.
+         */
+        private fun resolvedSelection(address: String): RecipientSelection {
+            val contact = contactsSource.lookup(address) ?: return currentSelection.edit(address)
+            return currentSelection.pick(ContactSuggestion(name = contact.name, number = address, photoUri = contact.photoUri))
+        }
 
         private fun applySelection(selection: RecipientSelection) {
             state.value = state.value.copy(recipient = selection.destination, picked = selection.picked)

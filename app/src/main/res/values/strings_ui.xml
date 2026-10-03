@@ -307,9 +307,9 @@
     <string name="settings_muted_senders_empty">No muted senders. Mute one from a conversation\'s menu, the inbox selection menu, or add it here.</string>
     <string name="settings_mute_add">Mute</string>
     <string name="settings_unmute">Unmute</string>
-    <string name="settings_conversation_shortcuts">Conversations in app shortcuts</string>
-    <string name="settings_conversation_shortcuts_on">Long-press the app icon to open pinned and recent conversations. Their contact names and photos are handed to the launcher, where anyone holding the phone can see them. Blocked, muted, binned and spam conversations are never included.</string>
-    <string name="settings_conversation_shortcuts_off">Only the \"New message\" shortcut is shown. No conversation names or photos are given to the launcher.</string>
+    <string name="settings_conversation_shortcuts">Conversations in app shortcuts and sharing</string>
+    <string name="settings_conversation_shortcuts_on">Pinned and recent conversations open from a long-press on the app icon and appear as direct-share targets when another app shares text or a picture. Their contact names and photos are handed to the launcher and the share sheet, where anyone holding the phone can see them. Blocked, muted, binned and spam conversations are never included.</string>
+    <string name="settings_conversation_shortcuts_off">Only the \"New message\" shortcut is shown and no conversation is offered as a share target. No conversation names or photos are given to the launcher or the share sheet.</string>
     <string name="settings_mute_refused_blocked">That sender is blocked - blocked senders are already silent, so there is nothing to mute.</string>
     <string name="settings_section_backup">Backup &amp; restore</string>
     <string name="settings_backup_now">Back up messages</string>

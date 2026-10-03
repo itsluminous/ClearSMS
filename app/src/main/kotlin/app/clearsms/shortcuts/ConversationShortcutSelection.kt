@@ -3,6 +3,7 @@ package app.clearsms.shortcuts
 import app.clearsms.data.db.ShortcutCandidateRow
 import app.clearsms.data.repository.SenderNormalizer
 import app.clearsms.domain.model.Category
+import app.clearsms.sms.SenderRepliability
 
 /**
  * The pure half of the launcher-shortcut feature (issue #81): which
@@ -34,6 +35,30 @@ import app.clearsms.domain.model.Category
 object ConversationShortcutSelection {
     /** Id prefix of every conversation shortcut; the suffix is the app thread id. */
     const val ID_PREFIX = "thread:"
+
+    /**
+     * The shortcut category the `<share-target>` in `res/xml/shortcuts.xml`
+     * names: a conversation shortcut carrying it is offered in the system
+     * share sheet's direct-share row for the mime types that element lists.
+     * `AppShortcutsContractTest` pins the xml and this constant against each
+     * other, so neither can drift alone.
+     */
+    const val SHARE_TARGET_CATEGORY = "app.clearsms.category.CONVERSATION_SHARE_TARGET"
+
+    /**
+     * Whether a conversation shortcut for [sender] may be a Direct Share
+     * target. Every shortcut is still published (the exclusion set and the
+     * ranking are untouched); this only decides which of them carry
+     * [SHARE_TARGET_CATEGORY]. A share picked in the share sheet lands in
+     * the composer with this sender as the recipient, so the sender must be
+     * one the phone can actually address: a subscriber number or a short
+     * code. An alphanumeric sender id ("AX-HDFCBK") cannot be a recipient -
+     * offering it as a share target would hand the user a composer that
+     * refuses to send - so it stays a plain launcher shortcut. The same
+     * verdict decides the notification's Reply action
+     * ([app.clearsms.sms.SenderRepliability.isAddressable]).
+     */
+    fun acceptsShares(sender: String): Boolean = SenderRepliability.isAddressable(sender)
 
     /**
      * The number of conversation shortcuts that may be published: the

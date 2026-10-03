@@ -10,6 +10,10 @@ import app.clearsms.mms.FrameworkMmsGateway
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.SystemMmsDownloader
+import app.clearsms.shortcuts.AndroidShortcutSystem
+import app.clearsms.shortcuts.ConversationShortcutPublisher
+import app.clearsms.shortcuts.ConversationShortcutRegistry
+import app.clearsms.shortcuts.ShortcutSystem
 import app.clearsms.sms.ContactLookupImpl
 import app.clearsms.sms.DeviceSubscriptionSource
 import app.clearsms.sms.FrameworkSmsGateway
@@ -95,4 +99,15 @@ internal interface PlatformBindings {
     /** The carrier's MMS size limit, read from the chosen SIM's carrier config. */
     @Binds
     fun carrierMmsLimits(impl: FrameworkCarrierMmsLimits): CarrierMmsLimits
+
+    /**
+     * The notifier's view of which conversation shortcuts exist, served by
+     * the publisher's own in-memory record of the last accepted publish.
+     */
+    @Binds
+    fun conversationShortcutRegistry(impl: ConversationShortcutPublisher): ConversationShortcutRegistry
+
+    /** The system's shortcut store, behind the seam the publisher's tests fake. */
+    @Binds
+    fun shortcutSystem(impl: AndroidShortcutSystem): ShortcutSystem
 }

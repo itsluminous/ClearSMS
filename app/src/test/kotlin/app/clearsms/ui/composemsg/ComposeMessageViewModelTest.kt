@@ -11,6 +11,8 @@ import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.DeliveryStatus
 import app.clearsms.data.db.MessageDao
+import app.clearsms.data.db.MessageEntity
+import app.clearsms.domain.model.Category
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsGateway
@@ -19,6 +21,7 @@ import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
+import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
@@ -27,6 +30,7 @@ import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
+import app.clearsms.ui.navigation.Routes
 import app.clearsms.work.MessageScheduler
 import app.clearsms.work.ScheduledSendAlarms
 import com.google.common.truth.Truth.assertThat
@@ -43,6 +47,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.io.File
@@ -166,6 +171,7 @@ class ComposeMessageViewModelTest {
             messageDao = dao,
             settings = FakeSettingsRepository(),
             contactSuggestions = ContactSuggestions(context),
+            contactsSource = ContactsSource(context),
             subscriptionSource = subscriptions,
             simChoiceStore = simChoiceStore,
             messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
@@ -521,5 +527,175 @@ class ComposeMessageViewModelTest {
             assertThat(shownSlot).isEqualTo(2)
             assertThat(row.subscriptionId).isEqualTo(20)
             assertThat(vm.simState.value.slot).isEqualTo(shownSlot)
+        }
+
+    // --- Direct Share: the chosen conversation becomes the recipient ------
+
+    @Test
+    fun `a direct share thread id prefills the thread's address as the recipient and keeps the shared text`() =
+        runBlocking<Unit> {
+            dao.insert(
+                MessageEntity(
+                    threadId = 42L,
+                    sender = "+91 98765 43210",
+                    normalizedSender = "9876543210",
+                    body = "earlier",
+                    timestamp = 1_000L,
+                    category = Category.PERSONAL,
+                ),
+            )
+            val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "see you at nine")))
+
+            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            // The thread's own address, through the same selection path a
+            // picked suggestion takes - the SIM memory re-primes for it.
+            assertThat(vm.uiState.value.recipient).isEqualTo("+91 98765 43210")
+            assertThat(vm.uiState.value.body).isEqualTo("see you at nine")
+            assertThat(vm.uiState.value.sendStatus).isNull() // never auto-sent
+        }
+
+    @Test
+    fun `a direct share thread whose address is a saved contact shows the name, as a picked suggestion would`() =
+        runBlocking<Unit> {
+            // The conversation header's own lookup (PhoneLookup) knows the
+            // number; the composer must show what picking that contact from
+            // the suggestions shows - name, number beneath, change affordance
+            // - and still SEND to the thread's exact address.
+            shadowOf(context as android.app.Application).grantPermissions(android.Manifest.permission.READ_CONTACTS)
+            FakePhoneLookupProvider.contacts["+91 98765 43210"] = "Asha Rao" to "content://com.android.contacts/display_photo/7"
+            Robolectric.setupContentProvider(FakePhoneLookupProvider::class.java, android.provider.ContactsContract.AUTHORITY)
+            dao.insert(
+                MessageEntity(
+                    threadId = 42L,
+                    sender = "+91 98765 43210",
+                    normalizedSender = "9876543210",
+                    body = "earlier",
+                    timestamp = 1_000L,
+                    category = Category.PERSONAL,
+                ),
+            )
+            val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "see you at nine")))
+
+            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            val picked = vm.uiState.value.picked
+            assertThat(picked).isNotNull()
+            assertThat(picked!!.name).isEqualTo("Asha Rao")
+            assertThat(picked.number).isEqualTo("+91 98765 43210")
+            assertThat(picked.photoUri).isEqualTo("content://com.android.contacts/display_photo/7")
+            // The destination is still the thread's address, untouched.
+            assertThat(vm.uiState.value.recipient).isEqualTo("+91 98765 43210")
+            assertThat(vm.uiState.value.body).isEqualTo("see you at nine")
+            // Clearing the pick returns to manual entry exactly as for a suggestion.
+            vm.clearPicked()
+            assertThat(vm.uiState.value.picked).isNull()
+            assertThat(vm.uiState.value.recipient).isEmpty()
+        }
+
+    @Test
+    fun `a direct share thread whose address is not a saved contact stays a plain number`() =
+        runBlocking<Unit> {
+            shadowOf(context as android.app.Application).grantPermissions(android.Manifest.permission.READ_CONTACTS)
+            FakePhoneLookupProvider.contacts.clear()
+            Robolectric.setupContentProvider(FakePhoneLookupProvider::class.java, android.provider.ContactsContract.AUTHORITY)
+            dao.insert(
+                MessageEntity(
+                    threadId = 42L,
+                    sender = "+91 98765 43210",
+                    normalizedSender = "9876543210",
+                    body = "earlier",
+                    timestamp = 1_000L,
+                    category = Category.PERSONAL,
+                ),
+            )
+            val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "hi")))
+
+            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            assertThat(vm.uiState.value.recipient).isEqualTo("+91 98765 43210")
+            assertThat(vm.uiState.value.picked).isNull()
+        }
+
+    /** Minimal `PhoneLookup` stand-in: answers the filter uri's number from [contacts]. */
+    class FakePhoneLookupProvider : android.content.ContentProvider() {
+        override fun onCreate(): Boolean = true
+
+        override fun query(
+            uri: android.net.Uri,
+            projection: Array<out String>?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+            sortOrder: String?,
+        ): android.database.Cursor {
+            val cursor = android.database.MatrixCursor(projection ?: emptyArray())
+            val number = uri.lastPathSegment?.let(android.net.Uri::decode) ?: return cursor
+            val (name, photo) = contacts[number] ?: return cursor
+            cursor.addRow(
+                projection!!.map { column ->
+                    when (column) {
+                        android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME -> name
+                        android.provider.ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI -> photo
+                        android.provider.ContactsContract.PhoneLookup._ID -> 1L
+                        android.provider.ContactsContract.PhoneLookup.LOOKUP_KEY -> "key"
+                        android.provider.ContactsContract.PhoneLookup.NUMBER -> number
+                        else -> null
+                    }
+                },
+            )
+            return cursor
+        }
+
+        override fun getType(uri: android.net.Uri): String? = null
+
+        override fun insert(
+            uri: android.net.Uri,
+            values: android.content.ContentValues?,
+        ): android.net.Uri? = null
+
+        override fun delete(
+            uri: android.net.Uri,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ): Int = 0
+
+        override fun update(
+            uri: android.net.Uri,
+            values: android.content.ContentValues?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ): Int = 0
+
+        companion object {
+            /** number -> (name, photo uri). */
+            val contacts = mutableMapOf<String, Pair<String, String?>>()
+        }
+    }
+
+    @Test
+    fun `an explicit recipient wins over the thread id and an unknown thread leaves the recipient empty`() =
+        runBlocking<Unit> {
+            dao.insert(
+                MessageEntity(
+                    threadId = 42L,
+                    sender = "+91 98765 43210",
+                    normalizedSender = "9876543210",
+                    body = "earlier",
+                    timestamp = 1_000L,
+                    category = Category.PERSONAL,
+                ),
+            )
+            val explicit = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "recipient" to "12345")))
+            repeat(20) { kotlinx.coroutines.delay(10) }
+            assertThat(explicit.uiState.value.recipient).isEqualTo("12345")
+
+            // The thread vanished (binned) between the share sheet and here:
+            // the composer still opens with the content, no recipient, no error.
+            val gone = viewModel(SavedStateHandle(mapOf("threadId" to 999L, "body" to "hi")))
+            repeat(20) { kotlinx.coroutines.delay(10) }
+            assertThat(gone.uiState.value.recipient).isEmpty()
+            assertThat(gone.uiState.value.body).isEqualTo("hi")
+
+            // The route's "no thread" value is simply ignored.
+            val none = viewModel(SavedStateHandle(mapOf("threadId" to Routes.COMPOSE_NO_THREAD, "body" to "hi")))
+            repeat(20) { kotlinx.coroutines.delay(10) }
+            assertThat(none.uiState.value.recipient).isEmpty()
         }
 }

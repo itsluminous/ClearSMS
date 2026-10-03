@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Static launcher shortcuts (long-press the app icon, issue #81). This file
-     holds exactly ONE shortcut; ConversationShortcutPublisher subtracts that
-     count from the system's per-activity budget before publishing the
-     dynamic conversation shortcuts, and AppShortcutsContractTest pins the
-     two numbers against each other.
+<!-- Static launcher shortcuts (long-press the app icon, issue #81) and the
+     Direct Share target. This file holds exactly ONE <shortcut>;
+     ConversationShortcutPublisher subtracts that count from the system's
+     per-activity budget before publishing the dynamic conversation
+     shortcuts, and AppShortcutsContractTest pins the two numbers against
+     each other. The <share-target> is not a shortcut and costs no budget.
 
      "New message" opens the composer EMPTY through the same path a tapped
      bare `sms:` link takes (ACTION_SENDTO on an smsto: URI with no
@@ -11,7 +12,20 @@
      composer opens with nothing prefilled and nothing is ever auto-sent.
      The target is the launcher activity itself - a static shortcut is
      always launched with NEW_TASK | CLEAR_TASK by the system, so this is a
-     fresh cold start of MainActivity, which handles it in onCreate. -->
+     fresh cold start of MainActivity, which handles it in onCreate.
+
+     <share-target>: every dynamic conversation shortcut that carries the
+     category below is offered in the system share sheet's direct-share row
+     when another app shares one of the listed mime types. The two types
+     are EXACTLY what the manifest's inbound ACTION_SEND filter accepts
+     (text/plain and a single image/*) - never advertise a type the app
+     cannot receive. Choosing a target launches targetClass with the
+     ORIGINAL share intent plus Intent.EXTRA_SHORTCUT_ID, so the share rides
+     the existing share-receiving path (IntentTriage → the composer) with
+     the recipient prefilled from the shortcut's thread. The system reads
+     share targets from API 29; API 25-28 parsers log and skip the unknown
+     tag (verified against the API 25 ShortcutParser), so nothing breaks
+     there - the conversation is simply not a share target. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     tools:targetApi="25">
@@ -28,4 +42,9 @@
             android:targetPackage="app.clearsms"
             android:targetClass="app.clearsms.MainActivity" />
     </shortcut>
+    <share-target android:targetClass="app.clearsms.MainActivity">
+        <data android:mimeType="text/plain" />
+        <data android:mimeType="image/*" />
+        <category android:name="app.clearsms.category.CONVERSATION_SHARE_TARGET" />
+    </share-target>
 </shortcuts>

@@ -102,16 +102,21 @@
                  grant handling for a niche flow; the same plumbing can
                  take it later). Distinct from the sms-scheme SEND filter
                  above, which requires a data URI and so never matches a
-                 plain share. -->
+                 plain share. The Direct Share <share-target> in
+                 res/xml/shortcuts.xml advertises EXACTLY these two types
+                 and launches this same activity with the share intent plus
+                 EXTRA_SHORTCUT_ID, so a share into a conversation rides
+                 this filter's path with the recipient prefilled. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="image/*" />
             </intent-filter>
-            <!-- Launcher shortcuts (issue #81): the static "New message"
-                 entry lives in res/xml/shortcuts.xml; the per-conversation
-                 ones are published at runtime by
+            <!-- Launcher shortcuts (issue #81) and the Direct Share target:
+                 the static "New message" entry and the <share-target> live
+                 in res/xml/shortcuts.xml; the per-conversation shortcuts are
+                 published at runtime by
                  shortcuts/ConversationShortcutPublisher against this same
                  activity (the launcher activity owns the shortcut budget).
                  Ignored below API 25, where ShortcutManager does not exist. -->
@@ -195,11 +200,13 @@
             android:name=".receiver.MmsSentReceiver"
             android:exported="false" />
 
-        <!-- Serves filesDir/mms/ and filesDir/diagnostics/share/ only (see
-             @xml/mms_file_paths): the staging file the platform MMS service
-             writes a downloaded PDU into, stored attachments handed to
-             viewers/share targets via per-URI grants, and the zipped
-             diagnostic report the user shares. Not exported; access is
+        <!-- Serves filesDir/mms/, filesDir/diagnostics/share/ and
+             filesDir/shortcuts/icons/ only (see @xml/mms_file_paths): the
+             staging file the platform MMS service writes a downloaded PDU
+             into, stored attachments handed to viewers/share targets via
+             per-URI grants, the zipped diagnostic report the user shares,
+             and the rendered conversation-shortcut avatars the system hands
+             the launcher a per-URI read grant for. Not exported; access is
              grant-based. -->
         <provider
             android:name="androidx.core.content.FileProvider"
