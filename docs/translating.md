@@ -14,6 +14,14 @@ try to attach the files to an issue; fork the repository, add your
 `values-<code>/` directory and open a PR. If git is new to you, GitHub's web
 editor can create the files in your fork directly.
 
+**A complete, real example to copy from:**
+[`app/src/main/res/values-hi/`](../app/src/main/res/values-hi/) is the Hindi
+translation - every one of the 742 items, in the same two-file layout as the
+English. You may copy that directory as your starting template instead of the
+English one: the file layout, escaping, plural blocks and placeholder handling
+are already in the shape the build expects, and the English text is one
+`name=` lookup away. The examples below are taken from it.
+
 ## 1. Create the directory
 
 Copy the English files into a new directory whose name uses Android's
@@ -21,6 +29,7 @@ Copy the English files into a new directory whose name uses Android's
 
 | Language | Directory |
 | --- | --- |
+| Hindi (shipped) | `values-hi` |
 | Russian | `values-ru` |
 | German | `values-de` |
 | Brazilian Portuguese | `values-pt-rBR` (region prefixed with `r`) |
@@ -70,7 +79,24 @@ not by English's. Supply exactly the quantities your language uses; a
 quantity your language does not use is silently ignored, and a quantity it
 does use but you did not provide falls back to `other`, which reads wrongly.
 
-Russian, for example, uses `one`, `few`, `many` and `other`:
+Hindi, like English, uses only `one` and `other` - so the shipped
+`values-hi/strings.xml` mirrors the English block item for item:
+
+```xml
+<!-- English (values/strings.xml) -->
+<plurals name="settings_muted_senders_summary">
+    <item quantity="one">%1$d muted sender - messages arrive, nothing notifies</item>
+    <item quantity="other">%1$d muted senders - messages arrive, nothing notifies</item>
+</plurals>
+
+<!-- Hindi (values-hi/strings.xml) -->
+<plurals name="settings_muted_senders_summary">
+    <item quantity="one">%1$d म्यूट किया गया भेजने वाला - संदेश आते हैं, सूचना नहीं</item>
+    <item quantity="other">%1$d म्यूट किए गए भेजने वाले - संदेश आते हैं, सूचना नहीं</item>
+</plurals>
+```
+
+Russian, by contrast, uses `one`, `few`, `many` and `other`:
 
 ```xml
 <!-- English (values/strings.xml) -->
@@ -96,13 +122,17 @@ reference is [Quantity strings (plurals)](https://developer.android.com/guide/to
 
 Placeholders such as `%1$s`, `%2$d` and `%3$s` are filled in by the app at
 runtime. **Keep every one of them, with its number and its letter**, and feel
-free to reorder them to suit your grammar:
+free to reorder them to suit your grammar. Hindi puts the total before the
+count, so the shipped translation swaps the two arguments and keeps both:
 
 ```xml
-<!-- English -->
+<!-- English (values/strings.xml) -->
+<string name="settings_sort_progress">%1$d of %2$d messages</string>
 <string name="finance_month_breakdown">%1$s in · %2$s out</string>
-<!-- A translation may put them in any order, but both must survive: -->
-<string name="finance_month_breakdown">расход %2$s · приход %1$s</string>
+
+<!-- Hindi (values-hi/strings.xml): %2$d now comes first, nothing is lost -->
+<string name="settings_sort_progress">%2$d में से %1$d संदेश</string>
+<string name="finance_month_breakdown">%1$s आया · %2$s गया</string>
 ```
 
 A missing argument, a renumbered one (`%1$s` becoming `%2$s` with no `%1$s`
@@ -146,8 +176,9 @@ language either way:
 - **Per-app language** (Android 13+): *Settings → Apps → Clear SMS →
   Language*, or long-press the app icon → *App info → Language*. Only
   languages the app ships appear here, so your new directory must be in the
-  build. (This list is driven by a `localeConfig` the project will add with
-  the first merged translation; until then, use the device-language route.)
+  build. The list is generated at build time (`generateLocaleConfig` in
+  `app/build.gradle.kts`) from the `values-<code>/` directories that exist,
+  so adding your directory is enough - nothing to register by hand.
 - **Device language**: *Settings → System → Languages & input → Languages*
   and move your language to the top. This works on every Android version
   Clear SMS supports (6.0+).
