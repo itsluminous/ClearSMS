@@ -2,6 +2,8 @@ package app.clearsms.notification
 
 import android.app.Notification
 import android.content.Context
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.test.core.app.ApplicationProvider
 import app.clearsms.data.db.MessageEntity
@@ -54,6 +56,22 @@ class OtpNotifierLockscreenTest {
             MutedSenderGate(FakeSettingsRepository()),
         ).build(message, "123456", OtpDisplaySize.DEFAULT, selected)
 
+    private fun build(displaySize: OtpDisplaySize): Notification =
+        OtpNotifier(
+            context,
+            rawResolver,
+            SenderIconFactory(context),
+            NotificationSectionGate(FakeSettingsRepository()),
+            MutedSenderGate(FakeSettingsRepository()),
+        ).build(message, "123456", displaySize, MessageNotifier.DEFAULT_SELECTED)
+
+    /** Inflates the custom (collapsed) content view and returns the code TextView. */
+    @Suppress("DEPRECATION")
+    private fun codeView(notification: Notification): TextView {
+        val view = notification.contentView.apply(context, FrameLayout(context))
+        return view.findViewById(app.clearsms.R.id.otp_code)
+    }
+
     @Test
     fun `notification is private with a public version`() {
         val notification = build()
@@ -92,5 +110,28 @@ class OtpNotifierLockscreenTest {
         // notification body a tap target - an OTP card whose tap does nothing
         // reads as broken even though its Copy action works.
         assertThat(build().contentIntent).isNotNull()
+    }
+
+    @Test
+    fun `display size changes the rendered code size - a title span would be stripped by the platform`() {
+        // Regression guard: on API 24+ Notification.safeCharSequence() drops
+        // RelativeSizeSpan/AbsoluteSizeSpan from title/text/bigText, so the
+        // only way the setting can reach the shade is a sized TextView in a
+        // DecoratedCustomViewStyle content view.
+        val sizesPx = OtpDisplaySize.entries.map { codeView(build(it)).textSize }
+        assertThat(sizesPx).isInStrictOrder()
+        assertThat(build().bigContentView).isNotNull()
+    }
+
+    @Test
+    fun `code is spaced digit by digit in both the custom view and the title`() {
+        // Spaced digits are what TalkBack reads one at a time; the title stays
+        // set for services and surfaces that ignore custom views.
+        val notification = build(OtpDisplaySize.OPTION_5)
+        assertThat(codeView(notification).text.toString()).isEqualTo("1 2 3 4 5 6")
+        assertThat(notification.extras.getCharSequence(NotificationCompat.EXTRA_TITLE).toString())
+            .isEqualTo("1 2 3 4 5 6")
+        // The clipboard payload is the unspaced code, carried by the Copy action's intent.
+        assertThat(OtpNotifier.buildTitle("123456").toString().replace(" ", "")).isEqualTo("123456")
     }
 }

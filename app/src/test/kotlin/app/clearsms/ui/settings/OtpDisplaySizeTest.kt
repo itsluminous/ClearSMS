@@ -53,9 +53,10 @@ class OtpDisplaySizeTest {
     }
 
     @Test
-    fun `notification scale increases strictly and the default is native size`() {
-        val scales = OtpDisplaySize.entries.map(OtpNotifier::scaleFor)
-        assertThat(scales).isInStrictOrder()
-        assertThat(OtpNotifier.scaleFor(OtpDisplaySize.DEFAULT)).isEqualTo(1.0f)
+    fun `notification code size increases strictly and the default is the native title size`() {
+        val sizes = OtpDisplaySize.entries.map(OtpNotifier::notificationFontSp)
+        assertThat(sizes).isInStrictOrder()
+        // 16sp is the platform notification title size: an untouched install renders as before.
+        assertThat(OtpNotifier.notificationFontSp(OtpDisplaySize.DEFAULT)).isEqualTo(16)
     }
 }
