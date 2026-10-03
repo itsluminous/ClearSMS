@@ -115,6 +115,16 @@ android {
         buildConfig = true
     }
 
+    androidResources {
+        // Android 13+ per-app language picker (Settings → Apps → Clear SMS →
+        // Language). AGP generates res/xml/_generated_res_locale_config.xml
+        // from the values-<locale>/ folders that exist plus the default locale
+        // named in res/resources.properties, and wires android:localeConfig
+        // into the merged manifest - so a new translation folder is all a
+        // translator has to add.
+        generateLocaleConfig = true
+    }
+
     lint {
         abortOnError = true
         warningsAsErrors = false
