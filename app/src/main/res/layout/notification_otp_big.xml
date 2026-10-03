@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Expanded OTP notification content: the same sized code line and sender
+    as the collapsed view, plus the full original SMS body (the BigTextStyle
+    equivalent for the custom layout). See notification_otp.xml for why the
+    size cannot be a title span.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/otp_code"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxLines="2"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+        android:textStyle="bold"
+        tools:text="4 8 2 9 1 3"
+        tools:textSize="20sp" />
+
+    <TextView
+        android:id="@+id/otp_sender"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification"
+        tools:text="OTP from HDFC Bank" />
+
+    <TextView
+        android:id="@+id/otp_body"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification"
+        tools:text="Use 482913 as your one-time code. Valid for 10 minutes" />
+</LinearLayout>

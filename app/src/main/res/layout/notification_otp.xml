@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Collapsed OTP notification content, hosted inside
+    DecoratedCustomViewStyle (the system supplies the header, large icon,
+    expand chevron and action buttons; only this column is ours).
+
+    The code line's size is set at post time (RemoteViews.setTextViewTextSize)
+    from the OTP display-size setting. It cannot be a span on the template
+    title: since API 24 Notification.safeCharSequence() strips every
+    RelativeSizeSpan/AbsoluteSizeSpan from title, text and bigText, so a
+    sized title renders at the platform's fixed size whatever the setting.
+    Both TextViews use the platform's own notification text appearances so
+    their colors come from the shade's theme (light/dark, Material You).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/otp_code"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxLines="2"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+        android:textStyle="bold"
+        tools:text="4 8 2 9 1 3"
+        tools:textSize="20sp" />
+
+    <TextView
+        android:id="@+id/otp_sender"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification"
+        tools:text="OTP from HDFC Bank" />
+</LinearLayout>
