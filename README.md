@@ -201,6 +201,7 @@ by `scripts/translation_status.py` and checked by a unit test.
 | --- | --- | ---: | ---: |
 | Hindi | `hi` | 793 / 793 | 100% |
 | Polish | `pl` | 793 / 793 | 100% |
+| Russian | `ru` | 793 / 793 | 100% |
 
 Coverage counts strings the translation defines, out of 793 translatable items in English (each plural counted once); it measures presence, not quality. Regenerate with `python3 scripts/translation_status.py`.
 <!-- translation-status:end -->
