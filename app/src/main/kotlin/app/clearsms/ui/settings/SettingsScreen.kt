@@ -1223,6 +1223,16 @@ private fun settingsRowEntries(
                     )
                 }
 
+                SettingsItem.MMS_SENDING -> {
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary = stringResource(R.string.settings_mms_sending_summary),
+                        checked = state.mmsSendingEnabled,
+                        onToggle = viewModel::setMmsSendingEnabled,
+                    )
+                }
+
                 SettingsItem.DELAYED_SEND -> {
                     toggle(
                         section = section,

@@ -105,6 +105,13 @@ class SettingsRepositoryImpl(
     override val delayedSendDelay: Flow<DelayedSendDelay> =
         dataStore.data.map { it[KEY_DELAYED_SEND_DELAY].toEnum(DelayedSendDelay.DEFAULT) }
 
+    override val mmsSendingEnabled: Flow<Boolean> =
+        dataStore.data.map { it[KEY_MMS_SENDING_ENABLED] ?: true }
+
+    override suspend fun setMmsSendingEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_MMS_SENDING_ENABLED] = value }
+    }
+
     override suspend fun setDelayedSendDelay(value: DelayedSendDelay) {
         dataStore.edit { it[KEY_DELAYED_SEND_DELAY] = value.name }
     }
@@ -411,6 +418,7 @@ class SettingsRepositoryImpl(
         val KEY_RECYCLE_BIN_ENABLED = booleanPreferencesKey("recycle_bin_enabled")
         val KEY_DELAYED_SEND_ENABLED = booleanPreferencesKey("delayed_send_enabled")
         val KEY_DELAYED_SEND_DELAY = stringPreferencesKey("delayed_send_delay")
+        val KEY_MMS_SENDING_ENABLED = booleanPreferencesKey("mms_sending_enabled")
         val KEY_SHOW_BALANCE = booleanPreferencesKey("show_balance")
         val KEY_SIGNATURE = stringPreferencesKey("signature")
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")

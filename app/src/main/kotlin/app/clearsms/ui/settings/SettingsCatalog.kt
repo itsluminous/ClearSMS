@@ -110,6 +110,7 @@ enum class SettingsItem(
     // Delayed sending (GitHub #40): the toggle, then the delay it gates -
     // both beside STRIP_ACCENTS with the other send-behaviour rows. The
     // delay row is only rendered while the toggle is on (visibleSettingsItems).
+    MMS_SENDING(SettingsSection.MESSAGES, R.string.settings_mms_sending),
     DELAYED_SEND(SettingsSection.MESSAGES, R.string.settings_delayed_send),
     DELAYED_SEND_DELAY(SettingsSection.MESSAGES, R.string.settings_delayed_send_delay),
     SHOW_EXTRACTED_DETAILS(SettingsSection.MESSAGES, R.string.settings_show_transaction_details),

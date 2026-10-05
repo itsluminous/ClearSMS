@@ -147,6 +147,7 @@ class SettingsBackupManagerTest {
         repo.setShowTransactionDetails(true)
         repo.setMessageSortOrder(MessageSortOrder.SENT)
         repo.setRecycleBinEnabled(true)
+        repo.setMmsSendingEnabled(false)
         repo.setDelayedSendEnabled(true)
         repo.setDelayedSendDelay(DelayedSendDelay.SECONDS_30)
         repo.setSignature("Sent from ClearSMS")

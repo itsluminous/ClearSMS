@@ -80,6 +80,7 @@ data class SettingsUiState(
     /** Hold each Send for a cancellable delay (GitHub #40); default OFF per the maintainer. */
     val delayedSendEnabled: Boolean = false,
     val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
+    val mmsSendingEnabled: Boolean = true,
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
     val conversationShortcuts: Boolean = true,
@@ -299,6 +300,8 @@ class SettingsViewModel
             /** Filled by the third combine stage. */
             val delayedSendEnabled: Boolean = false,
             val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
+            /** Filled by the fourth combine stage. */
+            val mmsSendingEnabled: Boolean = true,
         )
 
         private data class GestureStartupState(
@@ -344,6 +347,8 @@ class SettingsViewModel
                 combine(settings.delayedSendEnabled, settings.delayedSendDelay, ::Pair),
             ) { notifications, (enabled, delay) ->
                 notifications.copy(delayedSendEnabled = enabled, delayedSendDelay = delay)
+            }.combine(settings.mmsSendingEnabled) { notifications, mmsSending ->
+                notifications.copy(mmsSendingEnabled = mmsSending)
             }
         private val gestureStartup =
             combine(
@@ -415,6 +420,7 @@ class SettingsViewModel
                     stripAccents = notificationState.stripAccents,
                     delayedSendEnabled = notificationState.delayedSendEnabled,
                     delayedSendDelay = notificationState.delayedSendDelay,
+                    mmsSendingEnabled = notificationState.mmsSendingEnabled,
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
                     conversationShortcuts = notificationState.conversationShortcuts,
@@ -551,6 +557,8 @@ class SettingsViewModel
         fun setStripAccents(value: Boolean) = launchIo { uiPrefs.setStripAccents(value) }
 
         fun setDelayedSendEnabled(value: Boolean) = launchIo { settings.setDelayedSendEnabled(value) }
+
+        fun setMmsSendingEnabled(value: Boolean) = launchIo { settings.setMmsSendingEnabled(value) }
 
         fun setDelayedSendDelay(value: DelayedSendDelay) = launchIo { settings.setDelayedSendDelay(value) }
 

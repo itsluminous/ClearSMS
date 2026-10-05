@@ -396,6 +396,8 @@
     <string name="settings_show_transaction_details_summary">Off by default. When on, tapping a bank or OTP message in a conversation also shows the parsed card (amount, merchant, account)</string>
     <string name="settings_strip_accents">Strip accents when sending</string>
     <string name="settings_strip_accents_summary">Swap accented letters for plain ones (č→c) automatically, only when that makes a text send as fewer SMS</string>
+    <string name="settings_mms_sending">Send picture messages</string>
+    <string name="settings_mms_sending_summary">Offer the attach button so you can send pictures and files by MMS. Turn this off if your carrier no longer supports sending MMS - receiving is unaffected</string>
     <string name="settings_delayed_send">Delay before sending</string>
     <string name="settings_delayed_send_summary">Hold each message for a few seconds after you press Send, so you can cancel and fix a typo</string>
     <string name="settings_delayed_send_delay">Sending delay</string>

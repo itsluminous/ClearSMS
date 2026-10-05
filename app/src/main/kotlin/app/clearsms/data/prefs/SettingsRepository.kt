@@ -88,6 +88,27 @@ interface SettingsRepository {
 
     suspend fun setDelayedSendDelay(value: DelayedSendDelay)
 
+    /**
+     * Whether sending MMS is offered at all (issue #94). ON by default; when
+     * OFF the composer hides its attach button and sharing an image into the
+     * app has nothing to attach to, so no MMS send can be started.
+     *
+     * Exists because a carrier can discontinue MMS entirely - Germany's last
+     * network switched it off in July 2026 - leaving the attach button as an
+     * affordance that can only ever fail. Clear SMS already hides it when the
+     * carrier CONFIG declares MMS disabled, but that config reflects the
+     * carrier's config table rather than live service, so a carrier that
+     * stops the service without updating it still reads as enabled. This
+     * switch is the user's own answer for that case, and it does not depend
+     * on guessing anything from locale or region.
+     *
+     * Receiving is untouched: an MMS that still arrives is always stored and
+     * shown, and the history import keeps working.
+     */
+    val mmsSendingEnabled: Flow<Boolean>
+
+    suspend fun setMmsSendingEnabled(value: Boolean)
+
     val signature: Flow<String>
 
     suspend fun setSignature(value: String)

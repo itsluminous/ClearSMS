@@ -366,8 +366,16 @@ class ConversationViewModel
          * can only be refused (issue #94). Starts true so the button is
          * never missing while the SIM list is still loading.
          */
-        private val mmsAvailable = MutableStateFlow(true)
-        val mmsAvailableState: StateFlow<Boolean> = mmsAvailable.asStateFlow()
+        private val carrierMmsAvailable = MutableStateFlow(true)
+
+        /**
+         * The attach button is offered only when BOTH agree: the user has not
+         * switched picture messages off in Settings, and the carrier config
+         * does not declare MMS disabled for the sending SIM.
+         */
+        val mmsAvailableState: StateFlow<Boolean> =
+            combine(carrierMmsAvailable, settings.mmsSendingEnabled) { carrier, enabled -> carrier && enabled }
+                .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
         init {
             // Opening a conversation in-app means the user has now seen its
@@ -439,7 +447,7 @@ class ConversationViewModel
             // Re-read per SIM: on a dual-SIM phone one carrier can have MMS
             // while the other does not, so cycling the SIM can change the
             // answer (issue #94).
-            mmsAvailable.value = mmsCapability.isMmsAvailable(chosen)
+            carrierMmsAvailable.value = mmsCapability.isMmsAvailable(chosen)
         }
 
         /**
