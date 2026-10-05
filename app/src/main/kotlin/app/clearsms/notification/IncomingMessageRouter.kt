@@ -1,7 +1,6 @@
 package app.clearsms.notification
 
 import android.content.Context
-import android.os.Build
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.di.ApplicationScope
@@ -160,11 +159,19 @@ class IncomingMessageRouter
         ) {
             val otp = entity.extractedOtp ?: return
             val autoCopy = settingsRepository.otpAutoCopy.first()
-            // Auto-copy: before Android Q a background component may write to the
-            // clipboard directly. From Q onward background clipboard access is
-            // restricted, so auto-copy is honored through the notification's
-            // "Copy" action instead (a user-triggered foreground path).
-            if (autoCopy && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            // Auto-copy runs on every Android version. Writing to the
+            // clipboard from the background is explicitly permitted:
+            // AOSP's ClipboardService gates OP_WRITE_CLIPBOARD with
+            // "Writing is allowed without focus", and only
+            // OP_READ_CLIPBOARD is restricted to the focused app or the
+            // default IME from Android 10. An earlier gate here
+            // (SDK_INT < Q) read the platform's "limited access to
+            // clipboard data" note as covering writes too, which silently
+            // disabled this setting - on by default - for every user above
+            // Android 9 (issue #95). The copy stays best-effort: a ROM that
+            // does block the write leaves the notification's Copy action and
+            // the conversation's Copy OTP button, exactly as before.
+            if (autoCopy) {
                 OtpClipboard.copy(context, otp, applicationScope)
             }
             otpNotifier.notify(entity, otp, settingsRepository.otpDisplaySize.first(), selectedActions)
