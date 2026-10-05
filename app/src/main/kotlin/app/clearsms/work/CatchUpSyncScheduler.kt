@@ -76,10 +76,29 @@ class CatchUpSyncScheduler
                 return
             }
             withContext(ioDispatcher) {
-                val providerMax = providerMaxId() ?: return@withContext
+                val providerMax = providerMaxId()
                 val localMax = messageDao.maxSystemSmsId() ?: 0L
-                if (providerMax > localMax) {
+                if (providerMax != null && providerMax > localMax) {
                     Diag.i(TAG, "gap probe scheduling catch-up", count("providerMaxId", providerMax), count("localMaxId", localMax))
+                    InitialSyncWorker.enqueue(workManager)
+                    return@withContext
+                }
+                // The same probe for MMS, against its own provider and its
+                // own column. Needed on its own terms: the SMS probe above
+                // can never notice missing MMS, so without this an existing
+                // install whose SMS history is already complete would never
+                // run the MMS import at all - leaving exactly the invisible
+                // picture messages of issue #94 in place. It also covers MMS
+                // that arrive while another app holds the role.
+                val providerMmsMax = providerMaxMmsId() ?: return@withContext
+                val localMmsMax = messageDao.maxSystemMmsId() ?: 0L
+                if (providerMmsMax > localMmsMax) {
+                    Diag.i(
+                        TAG,
+                        "mms gap probe scheduling catch-up",
+                        count("providerMaxMmsId", providerMmsMax),
+                        count("localMaxMmsId", localMmsMax),
+                    )
                     InitialSyncWorker.enqueue(workManager)
                 }
             }
@@ -98,6 +117,26 @@ class CatchUpSyncScheduler
                     )?.use { if (it.moveToFirst()) it.getLong(0) else null }
             } catch (e: Exception) {
                 Diag.w(TAG, "cannot probe the system SMS provider", e)
+                null
+            }
+
+        /**
+         * Highest received-MMS `_id` in the system MMS provider, or null when
+         * unreadable/empty. Restricted to the inbox because that is what the
+         * importer stores, so a sent MMS cannot make the probe fire forever.
+         */
+        private fun providerMaxMmsId(): Long? =
+            try {
+                context.contentResolver
+                    .query(
+                        Telephony.Mms.CONTENT_URI,
+                        arrayOf(Telephony.Mms._ID),
+                        "${Telephony.Mms.MESSAGE_BOX} = ${Telephony.Mms.MESSAGE_BOX_INBOX}",
+                        null,
+                        "${Telephony.Mms._ID} DESC LIMIT 1",
+                    )?.use { if (it.moveToFirst()) it.getLong(0) else null }
+            } catch (e: Exception) {
+                Diag.w(TAG, "cannot probe the system MMS provider", e)
                 null
             }
 

@@ -767,6 +767,92 @@ class MessageRepositoryImpl(
 
     override suspend fun markMmsFailed(messageId: Long) = messageDao.setMmsStatus(messageId, MmsStatus.FAILED)
 
+    override suspend fun insertImportedMms(
+        systemMmsId: Long,
+        sender: String,
+        body: String,
+        timestampMs: Long,
+        dateSentMs: Long?,
+        isRead: Boolean,
+        providerThreadId: Long?,
+        subscriptionId: Int?,
+        recipients: List<String>,
+        attachments: List<MmsAttachmentDraft>,
+    ): MessageEntity? {
+        val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
+        val normalized = SenderNormalizer.normalize(sender)
+        // Imported history is never notified (the import runs over messages
+        // the user has already seen elsewhere), so unlike the live path
+        // there is no routing step here. A blocked sender's MMS is still
+        // born soft-deleted, exactly as the live path does it, so importing
+        // history cannot resurrect a conversation the user blocked.
+        val blocked = isSenderBlocked(sender)
+        val stored =
+            database.withTransaction {
+                // A group MMS is attributed to its sender and must never
+                // anchor a thread, same rule as completeMmsDownload.
+                val threadId =
+                    ThreadIdentity.resolve(
+                        messageDao,
+                        sender,
+                        normalized,
+                        providerThreadId = providerThreadId,
+                        recipientCount = recipients.size,
+                    )
+                val entity =
+                    MessageEntity(
+                        threadId = threadId,
+                        sender = sender,
+                        normalizedSender = normalized,
+                        body = body,
+                        timestamp = timestampMs,
+                        dateSent = dateSentMs,
+                        isRead = if (blocked) true else isRead,
+                        category = enriched.result.category,
+                        subCategory = enriched.result.subCategory,
+                        extractedOtp = enriched.otpCode,
+                        extractedDataJson = encodeExtracted(enriched.extracted),
+                        isBlockedSender = blocked,
+                        deletedAt = if (blocked) timestampMs else null,
+                        systemMmsId = systemMmsId,
+                        subscriptionId = subscriptionId,
+                        providerThreadId = providerThreadId,
+                        // The provider already holds the content: the row is
+                        // complete on arrival, never PENDING. No transaction
+                        // id or content location exists to retry with, and
+                        // none is invented.
+                        mmsStatus = MmsStatus.DOWNLOADED,
+                        mmsRecipients = encodeRecipients(recipients),
+                        attachmentKinds = attachmentKinds(attachments),
+                    )
+                // IGNORE on conflict: a re-run of the same page hits the
+                // unique systemMmsId index and returns -1, which is the
+                // signal that this message is already stored.
+                val id = messageDao.insertIgnore(entity)
+                if (id <= 0L) return@withTransaction null
+                if (attachments.isNotEmpty()) {
+                    attachmentDao.insertAll(
+                        attachments.map {
+                            AttachmentEntity(
+                                messageId = id,
+                                mimeType = it.mimeType,
+                                fileName = it.fileName,
+                                sizeBytes = it.sizeBytes,
+                            )
+                        },
+                    )
+                }
+                val row = entity.copy(id = id)
+                if (!blocked) persistDerived(id, timestampMs, enriched)
+                row
+            }
+        if (stored != null && blocked && !recycleBinEnabled()) {
+            deleteMessages(listOf(stored.id))
+            return null
+        }
+        return stored
+    }
+
     override suspend fun markMmsPendingForRetry(messageId: Long): MessageEntity? {
         val row = messageDao.getById(messageId) ?: return null
         if (row.mmsStatus != MmsStatus.FAILED || row.mmsContentLocation.isNullOrBlank()) return null

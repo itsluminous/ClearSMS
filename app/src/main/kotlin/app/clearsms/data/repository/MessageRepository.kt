@@ -355,6 +355,29 @@ interface MessageRepository {
     suspend fun markMmsFailed(messageId: Long) {}
 
     /**
+     * Stores one received MMS read out of the system MMS provider by the
+     * history import (issue #94), already DOWNLOADED - its content came
+     * from the provider, so there is nothing to fetch.
+     *
+     * Idempotent: [systemMmsId] is unique, so re-importing a page can never
+     * duplicate a message. Returns the stored row, or null when the id was
+     * already present (nothing written) - which also tells the caller not
+     * to write attachment files for it.
+     */
+    suspend fun insertImportedMms(
+        systemMmsId: Long,
+        sender: String,
+        body: String,
+        timestampMs: Long,
+        dateSentMs: Long?,
+        isRead: Boolean,
+        providerThreadId: Long?,
+        subscriptionId: Int?,
+        recipients: List<String>,
+        attachments: List<MmsAttachmentDraft>,
+    ): MessageEntity? = null
+
+    /**
      * Flips a FAILED MMS row back to PENDING for a user-initiated retry;
      * returns the row (carrying its stored content location) or null when
      * it is gone or has no location to retry.

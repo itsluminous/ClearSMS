@@ -21,6 +21,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
 import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.mms.SystemMmsImporter
 import app.clearsms.notification.CatchUpNotifier
 import app.clearsms.notification.Channels
 import app.clearsms.sms.SystemSmsImporter
@@ -51,6 +52,7 @@ class InitialSyncWorker
         @Assisted appContext: Context,
         @Assisted params: WorkerParameters,
         private val systemSmsImporter: SystemSmsImporter,
+        private val systemMmsImporter: SystemMmsImporter,
         private val catchUpNotifier: CatchUpNotifier,
         private val settings: SettingsRepository,
         private val simBackfill: SimBackfill,
@@ -85,6 +87,20 @@ class InitialSyncWorker
                     count("attempt", runAttemptCount),
                 )
                 catchUpNotifier.notifyFresh(result.freshMessages, result.freshCount)
+                // MMS history, after the SMS pass and inside the same run so
+                // it inherits the worker's expedited/foreground lifetime and
+                // its retry-with-backoff. Received MMS otherwise only ever
+                // arrive live over WAP push, leaving everything older
+                // invisible (issue #94). Deliberately NOT notified: these are
+                // messages the user has already seen in another app, and the
+                // SMS pass above has already decided what counts as fresh.
+                val mmsResult = systemMmsImporter.importAll()
+                Diag.i(
+                    TAG,
+                    "mms import finished",
+                    count("imported", mmsResult.imported),
+                    count("skipped", mmsResult.skipped),
+                )
                 // The INITIAL import classified the whole history with the
                 // current rules - record this version as fully sorted so the
                 // automatic post-update re-sort never runs redundantly on a

@@ -22,6 +22,11 @@ import app.clearsms.domain.model.SubCategory
         // system provider row can never create a duplicate. NULL (messages
         // that arrived live through SMS_DELIVER) is exempt from uniqueness.
         Index("systemSmsId", unique = true),
+        // The same idempotency guarantee for the MMS history import. A
+        // SEPARATE column because `content://sms` and `content://mms` number
+        // their rows independently: one `_id` space per provider, so a
+        // single column would collide an SMS with an unrelated MMS.
+        Index("systemMmsId", unique = true),
         // Serves the soft-delete filters (deletedAt IS NULL on every read
         // path) and the recycle-bin listing/purge queries.
         Index("deletedAt"),
@@ -46,6 +51,15 @@ data class MessageEntity(
     @ColumnInfo(defaultValue = "0") val isBlockedSender: Boolean = false,
     /** `_id` of the originating row in the system SMS provider, when imported. */
     val systemSmsId: Long? = null,
+    /**
+     * `_id` of the originating row in the system MMS provider
+     * (`content://mms`), when imported by the MMS history import. Null for
+     * an MMS that arrived live through `WAP_PUSH_DELIVER` (the app stores
+     * those itself and never writes them to the provider) and for every
+     * SMS. Kept apart from [systemSmsId] because the two providers number
+     * their rows independently - see the unique indices above.
+     */
+    val systemMmsId: Long? = null,
     /**
      * True for messages the user sent, false for received ones. A boolean
      * (not an enum) because SMS has exactly two directions, and the SQL

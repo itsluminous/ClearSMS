@@ -10,6 +10,7 @@ import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
 import app.clearsms.diagnostics.DiagField.Companion.flag
+import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.mms.StagedAttachment
@@ -68,6 +69,7 @@ class ComposeMessageViewModel
         private val contactsSource: ContactsSource,
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
+        private val mmsCapability: MmsCapability,
         private val messageScheduler: MessageScheduler,
         private val scheduleTipGate: ScheduleTipGate,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -120,6 +122,15 @@ class ComposeMessageViewModel
 
         private val simUi = MutableStateFlow(SimUiState())
         val simState: StateFlow<SimUiState> = simUi.asStateFlow()
+
+        /**
+         * Whether the SIM that would send supports MMS at all - the same
+         * veto the conversation screen applies, so the attach button cannot
+         * appear in a new message while being hidden in an existing thread
+         * (issue #94). Starts true: never missing while the SIM list loads.
+         */
+        private val mmsAvailable = MutableStateFlow(true)
+        val mmsAvailableState: StateFlow<Boolean> = mmsAvailable.asStateFlow()
 
         /** Fires once per install: the first send earns the long-press-to-schedule tip. */
         private val scheduleTipEvents = Channel<Unit>(Channel.BUFFERED)
@@ -290,6 +301,10 @@ class ComposeMessageViewModel
                     operatorName = chosenInfo?.displayName.orEmpty(),
                     iconTint = chosenInfo?.iconTint,
                 )
+            // Re-read per SIM: one carrier can have MMS while the other does
+            // not, so changing the recipient (or cycling the SIM) can change
+            // the answer.
+            mmsAvailable.value = mmsCapability.isMmsAvailable(chosen)
         }
 
         fun onBodyChange(value: String) {

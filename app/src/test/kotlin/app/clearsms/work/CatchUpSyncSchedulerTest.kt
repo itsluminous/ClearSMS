@@ -46,6 +46,8 @@ class CatchUpSyncSchedulerTest {
         FakeMaxIdProvider.maxId = null
         FakeMaxIdProvider.queries = 0
         Robolectric.setupContentProvider(FakeMaxIdProvider::class.java, "sms")
+        FakeMmsMaxIdProvider.maxId = null
+        Robolectric.setupContentProvider(FakeMmsMaxIdProvider::class.java, "mms")
         db =
             Room
                 .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
@@ -78,6 +80,22 @@ class CatchUpSyncSchedulerTest {
                     isRead = true,
                     category = Category.PERSONAL,
                     systemSmsId = systemSmsId,
+                ),
+            )
+        }
+
+    private fun storeLocalMms(systemMmsId: Long) =
+        runBlocking {
+            db.messageDao().insert(
+                MessageEntity(
+                    threadId = 2L,
+                    sender = "9876500000",
+                    normalizedSender = "9876500000",
+                    body = "picture",
+                    timestamp = 2L,
+                    isRead = true,
+                    category = Category.PERSONAL,
+                    systemMmsId = systemMmsId,
                 ),
             )
         }
@@ -117,6 +135,30 @@ class CatchUpSyncSchedulerTest {
         }
 
     @Test
+    fun `mms gap enqueues the import even when the sms history is complete`() =
+        runBlocking {
+            // The exact state of an existing install after the MMS import
+            // shipped (issue #94): every SMS already stored, so the SMS probe
+            // sees no gap, while the provider still holds un-imported MMS.
+            storeLocalMessage(systemSmsId = 10L)
+            FakeMaxIdProvider.maxId = 10L
+            FakeMmsMaxIdProvider.maxId = 4L
+            scheduler.onRoleChecked(held = true, regained = false)
+            assertThat(enqueued()).isEqualTo(1)
+        }
+
+    @Test
+    fun `no gap in either provider stays a no-op`() =
+        runBlocking {
+            storeLocalMessage(systemSmsId = 10L)
+            storeLocalMms(systemMmsId = 4L)
+            FakeMaxIdProvider.maxId = 10L
+            FakeMmsMaxIdProvider.maxId = 4L
+            scheduler.onRoleChecked(held = true, regained = false)
+            assertThat(enqueued()).isEqualTo(0)
+        }
+
+    @Test
     fun `probe with an empty local database but provider rows enqueues`() =
         runBlocking {
             FakeMaxIdProvider.maxId = 3L
@@ -144,6 +186,47 @@ class CatchUpSyncSchedulerTest {
         }
 
     /** `content://sms` stand-in answering only the scheduler's max-id probe. */
+    /** Fake `content://mms` serving only the probe's newest-inbox-id query. */
+    class FakeMmsMaxIdProvider : ContentProvider() {
+        override fun onCreate(): Boolean = true
+
+        override fun query(
+            uri: Uri,
+            projection: Array<out String>?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+            sortOrder: String?,
+        ): Cursor {
+            val cursor = MatrixCursor(arrayOf(Telephony.Mms._ID))
+            maxId?.let { cursor.addRow(arrayOf(it)) }
+            return cursor
+        }
+
+        override fun getType(uri: Uri): String? = null
+
+        override fun insert(
+            uri: Uri,
+            values: ContentValues?,
+        ): Uri? = null
+
+        override fun delete(
+            uri: Uri,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ): Int = 0
+
+        override fun update(
+            uri: Uri,
+            values: ContentValues?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ): Int = 0
+
+        companion object {
+            var maxId: Long? = null
+        }
+    }
+
     class FakeMaxIdProvider : ContentProvider() {
         override fun onCreate(): Boolean = true
 

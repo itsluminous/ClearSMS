@@ -57,6 +57,7 @@ fun ComposeMessageScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val simState by viewModel.simState.collectAsStateWithLifecycle()
+    val mmsAvailable by viewModel.mmsAvailableState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val notSentMessage = stringResource(R.string.message_not_sent)
     val retryLabel = stringResource(R.string.action_retry)
@@ -134,7 +135,9 @@ fun ComposeMessageScreen(
                     state.picked?.name
                         ?: state.recipient.ifBlank { stringResource(R.string.compose_title) },
                 attachments = attachments,
-                onAttachClick = { showAttachmentSheet = true },
+                // Null hides the button; only an explicit carrier "no MMS
+                // on this SIM" gets here (issue #94).
+                onAttachClick = if (mmsAvailable) ({ showAttachmentSheet = true }) else null,
                 onRemoveAttachment = viewModel::removeAttachment,
                 attachmentError = attachmentError,
                 attachmentBudgetBytes = attachmentBudgetBytes,

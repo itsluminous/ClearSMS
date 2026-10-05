@@ -46,11 +46,15 @@ handles OTPs intelligently - all completely offline, on your device.
   Personal, Unknown, OTP, and Spam using a transparent, regex-based rules engine (no ML black box).
 - **MMS receive & send** - picture messages download automatically and can be
   sent from the compose bar (attach from the photo picker, camera, or any
-  file; images are compressed to carrier limits on-device). Both directions
+  file; images are compressed to carrier limits on-device). MMS already on
+  the phone is imported too, so picture messages that arrived before Clear
+  SMS became your default app still show up. Both directions
   ride the Android system's MMS service, over the carrier network only - see
   Privacy Principles. Image bubbles, a full-screen viewer, and attachment
   files stored app-privately. You can also share an image straight from your
-  gallery into a new message. Group MMS is attributed to its sender; a
+  gallery into a new message. Where a carrier has switched MMS off entirely,
+  the attach button is hidden rather than offering a send that can only
+  fail. Group MMS is attributed to its sender; a
   dedicated group-conversation UI is not built yet, and MMS delivery reports
   are not supported (sent messages cap at "Sent").
 - **Finance dashboard** - debit/credit transactions are extracted from bank SMS into
@@ -70,7 +74,8 @@ Everything shipped, and what's on the roadmap:
 
 **Messaging**
 - [x] SMS send & receive (default-SMS-app role, catch-up import when the role is regained)
-- [x] MMS receive (auto-download, image bubbles, full-screen viewer, retry on failure)
+- [x] MMS receive (auto-download, image bubbles, full-screen viewer, retry on failure), including a catch-up import of MMS already on the phone - messages that arrived before Clear SMS became the default app, or while another app held the role, are read out of the shared system store with their text and images
+- [x] Attach button hidden on a SIM whose carrier config says MMS is switched off, so it is never offered where it can only fail
 - [x] MMS send (photo picker / camera / any file, SIM-aware; images are compressed on-device to fit the sending SIM's carrier size limit, and anything that still will not fit is refused before the carrier is ever contacted)
 - [x] Dual-SIM (per-recipient SIM memory, SIM tags on messages); the compose bar shows the slot that will send, long-press names it, and it takes the system's own SIM colour where that stays legible
 - [x] Message scheduling (long-press Send; survives reboots)

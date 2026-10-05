@@ -15,6 +15,7 @@ import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.DelayedSendDelay
+import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsDownloader
@@ -216,6 +217,7 @@ class ConversationViewModelDelayedSendTest {
                             File.createTempFile("sim_choice", ".preferences_pb")
                         },
                     ),
+                mmsCapability = MmsCapability(context),
                 messageScheduler = scheduler,
                 scheduleTipGate = ScheduleTipGate(settings),
                 attachmentDao = db.attachmentDao(),
