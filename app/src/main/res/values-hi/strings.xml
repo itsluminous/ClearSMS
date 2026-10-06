@@ -56,7 +56,7 @@
     <string name="send_failure_apn">इस SIM की कैरियर MMS सेटिंग (APN) मौजूद नहीं हैं या अस्वीकार कर दी गईं।</string>
     <string name="send_failure_http">कैरियर के MMS सर्वर ने संदेश अस्वीकार कर दिया।</string>
     <string name="send_failure_transient">एक अस्थायी नेटवर्क समस्या ने भेजना बाधित किया। पुनः प्रयास से काम बन सकता है।</string>
-    <string name="send_failure_exceeds_carrier_limit">यह संदेश इस SIM के कैरियर की MMS आकार सीमा से बड़ा है, इसलिए फ़ोन इसे भेजता ही नहीं। छोटा अटैचमेंट जा सकता है।</string>
+    <string name="send_failure_exceeds_carrier_limit">यह संदेश इस SIM के कैरियर की MMS आकार सीमा से बड़ा है, इसलिए फ़ोन ने इसे नहीं भेजा। छोटा अटैचमेंट जा सकता है।</string>
     <string name="send_failure_pdu_rejected">फ़ोन की मैसेजिंग सेवा यह संदेश पढ़ नहीं सकी और कैरियर से संपर्क करने से पहले ही हार मान ली, अक्सर इसलिए कि यह कैरियर की MMS आकार सीमा से बड़ा है। छोटा अटैचमेंट जा सकता है।</string>
     <string name="send_failure_carrier_disabled">आपके कैरियर ने इस SIM के लिए MMS बंद कर दिया है, इसलिए कोई भी ऐप MMS नहीं भेज सकता।</string>
     <string name="send_failure_sim_unavailable">जिस SIM से यह संदेश भेजा गया, वह अभी सक्रिय नहीं है।</string>
@@ -347,6 +347,8 @@
     <string name="settings_show_transaction_details_summary">डिफ़ॉल्ट रूप से बंद। चालू होने पर, बातचीत में बैंक या OTP संदेश पर टैप करने से पार्स किया गया कार्ड (राशि, मर्चेंट, खाता) भी दिखता है</string>
     <string name="settings_strip_accents">भेजते समय एक्सेंट हटाएं</string>
     <string name="settings_strip_accents_summary">एक्सेंट वाले अक्षरों को अपने आप सादे अक्षरों से बदलें (č→c), केवल तब जब इससे संदेश कम SMS में जाए</string>
+    <string name="settings_mms_sending">तस्वीर वाले संदेश भेजें</string>
+    <string name="settings_mms_sending_summary">अटैच बटन दिखाएं ताकि आप MMS से फ़ोटो और फ़ाइलें भेज सकें। अगर आपका कैरियर अब MMS भेजना सपोर्ट नहीं करता तो इसे बंद कर दें - प्राप्त करना प्रभावित नहीं होता</string>
     <string name="settings_delayed_send">भेजने से पहले देरी</string>
     <string name="settings_delayed_send_summary">भेजें दबाने के बाद हर संदेश को कुछ सेकंड रोकें, ताकि आप रद्द करके गलती सुधार सकें</string>
     <string name="settings_delayed_send_delay">भेजने में देरी</string>
