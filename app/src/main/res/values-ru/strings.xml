@@ -55,9 +55,9 @@
     <string name="send_failure_no_mms_network">MMS-соединение оператора не установилось. Проверьте, что мобильный интернет включён. Некоторые операторы больше не поддерживают MMS - тогда ни одно приложение не отправит его с этой SIM.</string>
     <string name="send_failure_apn">Настройки MMS оператора (APN) для этой SIM отсутствуют или были отклонены.</string>
     <string name="send_failure_http">MMS-сервер оператора отклонил сообщение.</string>
-    <string name="send_failure_transient">Отправку прервала временная проблема с сетью. Повтор может помочь.</string>
-    <string name="send_failure_exceeds_carrier_limit">Сообщение больше лимита размера MMS у оператора этой SIM, поэтому телефон не стал бы его отправлять. Вложение меньшего размера может пройти.</string>
-    <string name="send_failure_pdu_rejected">Служба сообщений телефона не смогла прочитать это сообщение и отказалась от отправки, не обращаясь к оператору - часто потому, что оно превышает лимит размера MMS у оператора. Вложение меньшего размера может пройти.</string>
+    <string name="send_failure_transient">Отправка прервана из-за временной проблемы с сетью. Повторите отправку.</string>
+    <string name="send_failure_exceeds_carrier_limit">Сообщение больше лимита размера MMS у оператора этой SIM, поэтому телефон не стал его отправлять. Вложение меньшего размера может пройти.</string>
+    <string name="send_failure_pdu_rejected">Служба сообщений телефона не смогла прочитать это сообщение и отказалась от отправки, не обращаясь к оператору - обычно из-за превышения лимита на размер MMS у оператора. Вложение меньшего размера может пройти.</string>
     <string name="send_failure_carrier_disabled">Ваш оператор отключил MMS для этой SIM, поэтому ни одно приложение не может их отправлять.</string>
     <string name="send_failure_sim_unavailable">SIM, с которой отправлялось это сообщение, сейчас не активна.</string>
     <string name="send_failure_no_service">При попытке отправить это сообщение у телефона не было мобильной сети.</string>
@@ -101,7 +101,7 @@
     <string name="conversation_scheduled">Запланировано</string>
     <string name="conversation_scheduled_for">Запланировано на %1$s</string>
     <string name="conversation_schedule_send">Запланировать отправку</string>
-    <string name="conversation_schedule_tip">Совет: удерживайте «Отправить», чтобы запланировать</string>
+    <string name="conversation_schedule_tip">Совет: удерживайте «Отправить», чтобы запланировать отправку</string>
     <string name="conversation_schedule_pick_time">Выберите время</string>
     <string name="conversation_scheduled_dialog_title">Запланированное сообщение</string>
     <string name="conversation_scheduled_dialog_message">Отправить это сообщение сейчас, изменить время или отменить?</string>
@@ -120,7 +120,7 @@
     <string name="compose_recipient">Кому</string>
     <string name="compose_message">Сообщение</string>
     <string name="finance_empty_title">Транзакций пока нет</string>
-    <string name="finance_empty_subtitle">Уведомления банка о списаниях и зачислениях соберут здесь вашу сводку.</string>
+    <string name="finance_empty_subtitle">Сводка уведомлений банка о списаниях и зачислениях.</string>
     <string name="finance_this_month">Этот месяц</string>
     <string name="finance_month_breakdown">%1$s получено · %2$s потрачено</string>
     <string name="finance_accounts">Счета</string>
@@ -134,7 +134,7 @@
     <string name="finance_available_limit">Доступный лимит</string>
     <string name="finance_no_limit_data">Данных о лимите пока нет</string>
     <string name="finance_utilization">Использовано %1$d%% лимита</string>
-    <string name="finance_high_usage_alert">Высокая загрузка кредита - карт выше безопасного лимита 30%%: %1$d</string>
+    <string name="finance_high_usage_alert">Высокая кредитная нагрузка - карт выше безопасного лимита 30%%: %1$d</string>
     <string name="finance_transaction">Транзакция</string>
     <string name="finance_expand_section">Развернуть раздел</string>
     <string name="finance_collapse_section">Свернуть раздел</string>
@@ -234,7 +234,7 @@
     <string name="onboarding_permissions_body">Clear SMS нужен доступ к SMS, чтобы упорядочить сообщения, и доступ к контактам, чтобы узнавать знакомых вам людей. Ничто никогда не покидает ваш телефон.</string>
     <string name="onboarding_grant_permissions">Дать разрешения</string>
     <string name="onboarding_default_sms_title">Сделать Clear SMS вашим SMS-приложением</string>
-    <string name="onboarding_default_sms_body">Чтобы получать и отправлять сообщения, Clear SMS должно быть SMS-приложением по умолчанию. Вы можете вернуть прежнее в любой момент.</string>
+    <string name="onboarding_default_sms_body">Чтобы получать и отправлять сообщения, Clear SMS должно быть SMS-приложением по умолчанию. Вы можете вернуться к умолчаниям в любой момент.</string>
     <string name="onboarding_set_default">Назначить по умолчанию</string>
     <string name="onboarding_sync_title">Упорядочиваем входящие</string>
     <string name="onboarding_sync_body">Импортируем и сортируем ваши сообщения. Это продолжится в фоне.</string>
@@ -272,7 +272,7 @@
     <string name="settings_conversation_shortcuts">Переписки в ярлыках приложения и при отправке</string>
     <string name="settings_conversation_shortcuts_on">Закреплённые и недавние переписки открываются долгим нажатием на значок приложения и предлагаются как цели прямой отправки, когда другое приложение делится текстом или изображением. Их имена контактов и фото передаются лаунчеру и меню «Поделиться», где их видит любой, кто держит телефон. Заблокированные, беззвучные, удалённые в корзину и спам-переписки никогда не включаются.</string>
     <string name="settings_conversation_shortcuts_off">Показывается только ярлык «Новое сообщение», и ни одна переписка не предлагается как цель отправки. Имена и фото переписок не передаются лаунчеру и меню «Поделиться».</string>
-    <string name="settings_mute_refused_blocked">Этот отправитель заблокирован - заблокированные отправители уже беззвучны, отключать звук нечему.</string>
+    <string name="settings_mute_refused_blocked">Этот отправитель заблокирован - заблокированные отправители уже беззвучны, звук уже отключен.</string>
     <string name="settings_section_backup">Резервные копии и восстановление</string>
     <string name="settings_backup_now">Сохранить резервную копию сообщений</string>
     <string name="settings_backup_now_summary">Сохранить все данные в локальный файл под вашим контролем</string>
@@ -318,7 +318,7 @@
     <string name="settings_finance_visible_pills_hint">Снимите отметку с фильтра, чтобы убрать его с экрана «Финансы». Если скрыть все, строка исчезнет и останется только сводка за месяц.</string>
     <string name="settings_alerts_visible_pills_hint">Снимите отметку с фильтра, чтобы убрать его с экрана «Оповещения». Если скрыть все, строка исчезнет и будут показаны все оповещения.</string>
     <string name="settings_inbox_unread_toggle">Переключатель «Непрочитанные»</string>
-    <string name="settings_inbox_unread_toggle_on">Показан рядом с заголовком, пока панель развёрнута</string>
+    <string name="settings_inbox_unread_toggle_on">Показывается рядом с заголовком, пока панель развёрнута</string>
     <string name="settings_inbox_unread_toggle_off">Скрыт - счётчики и значки непрочитанных не затронуты</string>
     <string name="settings_section_inbox">Входящие</string>
     <string name="settings_section_finance">Финансы</string>
@@ -349,10 +349,10 @@
     <string name="settings_message_sort_sent">Времени отправки (если сеть его не сообщила - по времени получения)</string>
     <string name="settings_selection_action_order">Порядок действий с сообщениями</string>
     <string name="settings_selection_action_order_summary">Выберите, какие действия показывать в панели когда вы выбираете сообщения; первые три видны, остальные - в меню «Ещё»</string>
-    <string name="selection_action_order_drag_hint">Перетащите за маркер, чтобы изменить порядок. Первые три - в панели, остальные - в меню «Ещё». Действия для одного сообщения скрываются, когда выбрано несколько, и следующее поднимается выше.</string>
+    <string name="selection_action_order_drag_hint">Перетащите за маркер, чтобы изменить порядок. Первые три - в панели, остальные - в меню «Ещё». Действия для одного сообщения скрываются, при выборе нескольких сообщений, следующее сообщение поднимается выше.</string>
     <string name="settings_show_transaction_details_summary">По умолчанию выключено. Если включено, при нажатии на банковское или OTP-сообщение в переписке также показывается разобранная карточка (сумма, продавец, счёт)</string>
     <string name="settings_strip_accents">Убирать диакритику при отправке</string>
-    <string name="settings_strip_accents_summary">Автоматически заменять буквы с диакритикой на простые (č→c), только если текст тогда уйдёт меньшим числом SMS</string>
+    <string name="settings_strip_accents_summary">Автоматически заменять буквы с диакритикой на простые (č→c), только если текст уместится в меньшее число SMS</string>
     <string name="settings_delayed_send">Задержка перед отправкой</string>
     <string name="settings_delayed_send_summary">Удерживать каждое сообщение несколько секунд после нажатия «Отправить», чтобы можно было отменить и исправить опечатку</string>
     <string name="settings_delayed_send_delay">Задержка отправки</string>
@@ -368,7 +368,7 @@
     <string name="balance_unlock_title">Разблокируйте, чтобы показать балансы</string>
     <string name="balance_unlock_subtitle">Используйте блокировку экрана - отпечаток, лицо, PIN, графический ключ или пароль</string>
     <string name="balance_no_lock_title">Блокировка экрана не настроена</string>
-    <string name="balance_no_lock_text">Чтобы показать скрытые балансы, нужна блокировка экрана устройства (PIN, графический ключ или пароль). Настройте её в системных настройках или снова включите «Показывать баланс», чтобы обойтись без блокировки.</string>
+    <string name="balance_no_lock_text">Чтобы показать скрытые балансы, нужна настроенная блокировка экрана устройства (PIN, графический ключ или пароль). Настройте её в системных настройках или снова включите «Показывать баланс», чтобы обойтись без блокировки.</string>
     <string name="balance_no_lock_open_settings">Открыть настройки безопасности</string>
     <string name="balance_unavailable_title">Сейчас не удаётся проверить</string>
     <string name="balance_unavailable_text">Аутентификация на устройстве временно недоступна. Балансы остаются скрытыми - попробуйте чуть позже.</string>
