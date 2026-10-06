@@ -767,6 +767,20 @@ interface MessageDao {
     suspend fun maxSystemSmsId(): Long?
 
     /**
+     * The same, for the MMS provider (satisfied by the unique `systemMmsId`
+     * index). Separate because the two providers number their rows
+     * independently, so one shared maximum would mask a gap in whichever
+     * provider numbers lower.
+     *
+     * Deliberately counts only IMPORTED rows: an MMS that arrived live over
+     * WAP push carries no systemMmsId (it was never written to the
+     * provider), so it cannot raise this maximum and hide un-imported
+     * history behind itself.
+     */
+    @Query("SELECT MAX(systemMmsId) FROM messages")
+    suspend fun maxSystemMmsId(): Long?
+
+    /**
      * Newest message timestamp the app has ever stored - the catch-up
      * import's notification watermark: imported rows newer than this are
      * messages the user was never notified about. NULL on a fresh install,

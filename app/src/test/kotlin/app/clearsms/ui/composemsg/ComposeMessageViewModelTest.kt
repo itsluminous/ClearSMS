@@ -15,6 +15,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
+import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsSendConditionsProbe
 import app.clearsms.mms.MmsSender
@@ -174,6 +175,7 @@ class ComposeMessageViewModelTest {
             contactsSource = ContactsSource(context),
             subscriptionSource = subscriptions,
             simChoiceStore = simChoiceStore,
+            mmsCapability = MmsCapability(context),
             messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
             scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
             ioDispatcher = Dispatchers.Unconfined,

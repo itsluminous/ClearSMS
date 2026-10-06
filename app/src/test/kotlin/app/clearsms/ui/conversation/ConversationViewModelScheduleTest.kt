@@ -14,6 +14,7 @@ import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
+import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsDownloader
@@ -223,6 +224,7 @@ class ConversationViewModelScheduleTest {
                         File.createTempFile("sim_choice", ".preferences_pb")
                     },
                 ),
+            mmsCapability = MmsCapability(context),
             messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
             scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
             attachmentDao = db.attachmentDao(),

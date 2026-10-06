@@ -149,6 +149,9 @@ class SettingsCatalogTest {
                 // that decide what the launcher may ever be shown.
                 "Conversations in app shortcuts and sharing",
                 "Strip accents when sending",
+                // Messages section (GitHub #94): the user's own MMS-sending
+                // switch, for a carrier that has dropped MMS entirely.
+                "Send picture messages",
                 "Delay before sending",
                 "Sending delay",
                 "Show extracted message details",
@@ -292,6 +295,9 @@ class SettingsCatalogTest {
                 // Messages section (GitHub #17): opt-in auto accent folding
                 // when it makes a text send as fewer SMS.
                 "Strip accents when sending",
+                // Messages section (GitHub #94): the user's own MMS-sending
+                // switch, for a carrier that has dropped MMS entirely.
+                "Send picture messages",
                 // Messages section (GitHub #40): opt-in delayed sending -
                 // the toggle plus the delay it gates.
                 "Delay before sending",

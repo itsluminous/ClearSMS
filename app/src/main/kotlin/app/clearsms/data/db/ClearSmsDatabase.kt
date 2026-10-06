@@ -29,7 +29,7 @@ import java.time.ZoneId
         ThreadPinEntity::class,
         AttachmentEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
     autoMigrations = [
         // v1 -> v2: adds the (threadId, timestamp) index for paged queries.
@@ -142,6 +142,15 @@ import java.time.ZoneId
         // than the bug. Rows are re-derived from their SMS text (with the
         // currency-aware parser) only by the ordinary post-update re-sort.
         AutoMigration(from = 22, to = 23),
+        // v23 -> v24: adds messages.systemMmsId (nullable, UNIQUE) - the
+        // idempotency key for the MMS history import (issue #94). Received
+        // MMS used to reach the app only through the live WAP-push path, so
+        // every MMS that arrived before Clear SMS became the default app was
+        // invisible; the import reads `content://mms` and needs its own
+        // de-duplication key, apart from systemSmsId because the SMS and MMS
+        // providers number rows independently. Pure addition: existing rows
+        // get NULL, which the unique index exempts.
+        AutoMigration(from = 23, to = 24),
     ],
 )
 @TypeConverters(Converters::class)

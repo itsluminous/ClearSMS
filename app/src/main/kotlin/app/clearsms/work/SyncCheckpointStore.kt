@@ -53,11 +53,27 @@ class SyncCheckpointStore
             dataStore.edit {
                 it.remove(LAST_ID_KEY)
                 it.remove(PROCESSED_KEY)
+                it.remove(LAST_MMS_ID_KEY)
             }
+        }
+
+        /**
+         * Highest system MMS provider `_id` whose import page has committed;
+         * 0 when the MMS history has not been walked yet.
+         *
+         * Separate from [Checkpoint.lastSystemSmsId] because the two
+         * providers number their rows independently - one shared cursor
+         * would skip or re-read whole stretches of the other's history.
+         */
+        suspend fun lastSystemMmsId(): Long = dataStore.data.first()[LAST_MMS_ID_KEY] ?: 0L
+
+        suspend fun setLastSystemMmsId(id: Long) {
+            dataStore.edit { it[LAST_MMS_ID_KEY] = id }
         }
 
         private companion object {
             val LAST_ID_KEY = longPreferencesKey("initial_sync_last_system_sms_id")
             val PROCESSED_KEY = intPreferencesKey("initial_sync_processed_count")
+            val LAST_MMS_ID_KEY = longPreferencesKey("initial_sync_last_system_mms_id")
         }
     }

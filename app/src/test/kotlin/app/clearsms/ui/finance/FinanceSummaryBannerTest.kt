@@ -289,6 +289,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override val recycleBinEnabled = MutableStateFlow(false)
 
+    override val mmsSendingEnabled = MutableStateFlow(true)
+
+    override suspend fun setMmsSendingEnabled(value: Boolean) = Unit
+
     override val delayedSendEnabled = MutableStateFlow(false)
 
     override suspend fun setDelayedSendEnabled(value: Boolean) = Unit

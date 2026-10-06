@@ -55,32 +55,40 @@ class AttachmentStore
             stagingFile(messageId).delete()
         }
 
-        /**
-         * A stable, safe on-disk name: the part index (collision-proof),
-         * then the declared name stripped of path separators, or a
-         * generated `part.<ext>` from the mime type.
-         */
-        private fun fileNameFor(
-            index: Int,
-            part: MmsPart,
-        ): String {
-            val declared =
-                part.fileName
-                    ?.substringAfterLast('/')
-                    ?.substringAfterLast('\\')
-                    ?.trim()
-                    ?.takeIf { it.isNotEmpty() && it != "." && it != ".." }
-            val base =
-                declared ?: run {
-                    val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(part.mimeType) ?: "bin"
-                    "part.$ext"
-                }
-            return "$index-$base"
-        }
+        companion object {
+            private const val DIR = "mms"
+            private const val STAGING_DIR = "staging"
 
-        private companion object {
-            const val DIR = "mms"
-            const val STAGING_DIR = "staging"
+            /**
+             * A stable, safe on-disk name: the part index (collision-proof),
+             * then the declared name stripped of path separators, or a
+             * generated `part.<ext>` from the mime type.
+             *
+             * Exposed because the MMS history import needs the name BEFORE
+             * the file exists: the attachment metadata row is written in the
+             * same transaction as its message (which is what makes a redone
+             * import page idempotent), while the bytes can only be written
+             * afterwards, once the row's id names the directory. Both paths
+             * go through this one function so the predicted name and the
+             * written name cannot drift apart.
+             */
+            fun fileNameFor(
+                index: Int,
+                part: MmsPart,
+            ): String {
+                val declared =
+                    part.fileName
+                        ?.substringAfterLast('/')
+                        ?.substringAfterLast('\\')
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() && it != "." && it != ".." }
+                val base =
+                    declared ?: run {
+                        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(part.mimeType) ?: "bin"
+                        "part.$ext"
+                    }
+                return "$index-$base"
+            }
         }
     }
 

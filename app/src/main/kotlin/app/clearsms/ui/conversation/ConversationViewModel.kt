@@ -30,6 +30,7 @@ import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.mms.DataSim
 import app.clearsms.mms.DataSimHint
+import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsInbound
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
@@ -278,6 +279,7 @@ class ConversationViewModel
         private val sentMessageWatcher: SentMessageWatcher,
         private val subscriptionSource: SubscriptionSource,
         private val simChoiceStore: SimChoiceStore,
+        private val mmsCapability: MmsCapability,
         private val messageScheduler: MessageScheduler,
         private val scheduleTipGate: ScheduleTipGate,
         private val attachmentDao: AttachmentDao,
@@ -357,6 +359,24 @@ class ConversationViewModel
         private val simUi = MutableStateFlow(SimUiState())
         val simState: StateFlow<SimUiState> = simUi.asStateFlow()
 
+        /**
+         * Whether the SIM that would send supports MMS at all. False only
+         * when the carrier config explicitly disables it, in which case the
+         * composer hides its attach button rather than offering a send that
+         * can only be refused (issue #94). Starts true so the button is
+         * never missing while the SIM list is still loading.
+         */
+        private val carrierMmsAvailable = MutableStateFlow(true)
+
+        /**
+         * The attach button is offered only when BOTH agree: the user has not
+         * switched picture messages off in Settings, and the carrier config
+         * does not declare MMS disabled for the sending SIM.
+         */
+        val mmsAvailableState: StateFlow<Boolean> =
+            combine(carrierMmsAvailable, settings.mmsSendingEnabled) { carrier, enabled -> carrier && enabled }
+                .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
         init {
             // Opening a conversation in-app means the user has now seen its
             // messages: the whole thread is marked read, and the repository
@@ -424,6 +444,10 @@ class ConversationViewModel
                     operatorName = chosenInfo?.displayName.orEmpty(),
                     iconTint = chosenInfo?.iconTint,
                 )
+            // Re-read per SIM: on a dual-SIM phone one carrier can have MMS
+            // while the other does not, so cycling the SIM can change the
+            // answer (issue #94).
+            carrierMmsAvailable.value = mmsCapability.isMmsAvailable(chosen)
         }
 
         /**

@@ -142,6 +142,7 @@ fun ConversationScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val simState by viewModel.simState.collectAsStateWithLifecycle()
+    val mmsAvailable by viewModel.mmsAvailableState.collectAsStateWithLifecycle()
     val items = viewModel.pagedItems.collectAsLazyPagingItems()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -595,7 +596,11 @@ fun ConversationScreen(
                         // number stays visible.
                         recipientLabel = state.title,
                         attachments = stagedAttachments,
-                        onAttachClick = { showAttachmentSheet = true },
+                        // Null hides the attach button entirely. Only the
+                        // carrier config saying "no MMS on this SIM" gets
+                        // here (issue #94): an unknown answer keeps the
+                        // button, so a working SIM never loses it.
+                        onAttachClick = if (mmsAvailable) ({ showAttachmentSheet = true }) else null,
                         onRemoveAttachment = viewModel::removeAttachment,
                         attachmentError = attachmentError,
                         attachmentBudgetBytes = attachmentBudgetBytes,
