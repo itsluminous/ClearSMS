@@ -56,7 +56,7 @@
     <string name="send_failure_apn">Brakuje ustawień MMS operatora (APN) dla tej karty SIM lub zostały odrzucone.</string>
     <string name="send_failure_http">Serwer MMS operatora odrzucił wiadomość.</string>
     <string name="send_failure_transient">Tymczasowy problem z siecią przerwał wysyłanie. Ponowienie może pomóc.</string>
-    <string name="send_failure_exceeds_carrier_limit">Ta wiadomość przekracza limit rozmiaru MMS operatora tej karty SIM, więc telefon by jej nie wysłał. Mniejszy załącznik może przejść.</string>
+    <string name="send_failure_exceeds_carrier_limit">Ta wiadomość przekracza limit rozmiaru MMS operatora tej karty SIM, więc telefon jej nie wysłał. Mniejszy załącznik może przejść.</string>
     <string name="send_failure_pdu_rejected">Usługa wiadomości telefonu nie mogła odczytać tej wiadomości i poddała się przed połączeniem z operatorem, często dlatego, że przekracza ona limit rozmiaru MMS operatora. Mniejszy załącznik może przejść.</string>
     <string name="send_failure_carrier_disabled">Twój operator wyłączył MMS dla tej karty SIM, więc żadna aplikacja nie może go wysłać.</string>
     <string name="send_failure_sim_unavailable">Karta SIM, z której wysłano tę wiadomość, nie jest teraz aktywna.</string>
@@ -353,6 +353,8 @@
     <string name="settings_show_transaction_details_summary">Domyślnie wyłączone. Gdy włączone, dotknięcie wiadomości z banku lub OTP w rozmowie pokazuje też rozpoznaną kartę (kwota, sprzedawca, konto)</string>
     <string name="settings_strip_accents">Usuwaj znaki diakrytyczne przy wysyłaniu</string>
     <string name="settings_strip_accents_summary">Automatycznie zamieniaj litery ze znakami diakrytycznymi na zwykłe (č→c), tylko gdy dzięki temu tekst wysyła się jako mniej wiadomości SMS</string>
+    <string name="settings_mms_sending">Wysyłanie wiadomości ze zdjęciami</string>
+    <string name="settings_mms_sending_summary">Pokazuj przycisk załącznika, aby wysyłać zdjęcia i pliki przez MMS. Wyłącz, jeśli Twój operator nie obsługuje już wysyłania MMS - odbieranie działa bez zmian</string>
     <string name="settings_delayed_send">Opóźnienie przed wysłaniem</string>
     <string name="settings_delayed_send_summary">Wstrzymaj każdą wiadomość na kilka sekund po naciśnięciu Wyślij, aby móc anulować i poprawić literówkę</string>
     <string name="settings_delayed_send_delay">Opóźnienie wysyłania</string>

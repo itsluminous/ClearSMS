@@ -71,7 +71,7 @@
     <string name="send_failure_apn">This SIM\'s carrier MMS settings (APN) are missing or were rejected.</string>
     <string name="send_failure_http">The carrier\'s MMS server refused the message.</string>
     <string name="send_failure_transient">A temporary network problem interrupted the send. Retrying may work.</string>
-    <string name="send_failure_exceeds_carrier_limit">This message is larger than this SIM\'s carrier MMS size limit, so the phone would not have sent it. A smaller attachment may go through.</string>
+    <string name="send_failure_exceeds_carrier_limit">This message is larger than this SIM\'s carrier MMS size limit, so the phone did not send it. A smaller attachment may go through.</string>
     <string name="send_failure_pdu_rejected">The phone\'s messaging service could not read this message and gave up before contacting the carrier, often because it exceeds the carrier\'s MMS size limit. A smaller attachment may go through.</string>
     <string name="send_failure_carrier_disabled">Your carrier has switched MMS off for this SIM, so no app can send one.</string>
     <string name="send_failure_sim_unavailable">The SIM this message was sent from is not active right now.</string>

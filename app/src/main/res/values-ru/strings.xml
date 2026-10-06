@@ -353,6 +353,8 @@
     <string name="settings_show_transaction_details_summary">По умолчанию выключено. Если включено, при нажатии на банковское или OTP-сообщение в переписке также показывается разобранная карточка (сумма, продавец, счёт)</string>
     <string name="settings_strip_accents">Убирать диакритику при отправке</string>
     <string name="settings_strip_accents_summary">Автоматически заменять буквы с диакритикой на простые (č→c), только если текст уместится в меньшее число SMS</string>
+    <string name="settings_mms_sending">Отправка сообщений с фото</string>
+    <string name="settings_mms_sending_summary">Показывать кнопку вложения, чтобы отправлять фото и файлы по MMS. Выключите, если ваш оператор больше не поддерживает отправку MMS - на получение это не влияет</string>
     <string name="settings_delayed_send">Задержка перед отправкой</string>
     <string name="settings_delayed_send_summary">Удерживать каждое сообщение несколько секунд после нажатия «Отправить», чтобы можно было отменить и исправить опечатку</string>
     <string name="settings_delayed_send_delay">Задержка отправки</string>
