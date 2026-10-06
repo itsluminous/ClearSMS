@@ -34,7 +34,11 @@
     { "match": "DOMINO", "name": "Domino's" },
     { "match": "NIMBUSPOST", "name": "Nimbuspost" },
     { "match": "SHADOWFAX", "name": "Shadowfax" },
-    { "match": "CROMA", "name": "Croma" }
+    { "match": "CROMA", "name": "Croma" },
+    { "match": "VTPOST", "name": "ViettelPost" },
+    { "match": "VIETTELPOST", "name": "ViettelPost" },
+    { "match": "XANHSM", "name": "Xanh SM" },
+    { "match": "BE GROUP", "name": "Be Group" }
   ],
   "brand_domains": [
     { "domain": "croma.com", "name": "Croma" },

@@ -1352,6 +1352,56 @@
       "aliases": [
         "VISHAL MEGA MART"
       ]
+    },
+    {
+      "key": "bidv",
+      "name": "BIDV",
+      "category": "BANK",
+      "color": "#006F66",
+      "monogram": "BIDV",
+      "senders": [
+        "BIDV"
+      ],
+      "aliases": [
+        "BIDV",
+        "BIDV BANK",
+        "NGAN HANG BIDV"
+      ],
+      "is_issuer": true
+    },
+    {
+      "key": "tpbank",
+      "name": "TPBank",
+      "category": "BANK",
+      "color": "#5A1E82",
+      "monogram": "TPB",
+      "senders": [
+        "TPBank",
+        "TPBANK"
+      ],
+      "aliases": [
+        "TPBANK",
+        "TIEN PHONG BANK",
+        "TIENPHONGBANK"
+      ],
+      "is_issuer": true
+    },
+    {
+      "key": "vinaphone",
+      "name": "VinaPhone",
+      "category": "TELCO",
+      "color": "#0082CA",
+      "monogram": "VNPT",
+      "senders": [
+        "VinaPhone",
+        "VINAPHONE",
+        "MyVNPT"
+      ],
+      "aliases": [
+        "VINAPHONE",
+        "VNPT"
+      ],
+      "is_issuer": false
     }
   ]
 }

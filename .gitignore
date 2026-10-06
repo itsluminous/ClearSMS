@@ -26,3 +26,13 @@ captures/
 
 # Logs
 *.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Local device corpora and test dumps
+*.jsonl
+adb_findings.txt
+device_corpus.jsonl
+

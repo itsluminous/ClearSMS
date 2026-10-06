@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "vinaphone-data-balance-01",
+      "name": "VinaPhone Data Quota Remaining Alert",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:VinaPhone|888|900)",
+        "body_pattern": "(?i)Dung\\s+luong\\s+Data\\s+con\\s+lai\\s+cua\\s+goi\\s+(\\w+):\\s*([\\d.]+)\\s*(MB|GB)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "package": "$1",
+          "data_remaining": "$2",
+          "operator": "VinaPhone"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vinaphone-promo-offer-01",
+      "name": "VinaPhone Data and Plan Promotion",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:VinaPhone|888|900)",
+        "body_pattern": "(?i)(?:\\(CSKH\\)|\\(TB\\)\\s+CHI\\s+[\\d.,]+d/ngay|\\(TB\\)\\s+NHAN\\s+NGAY|Moi\\s+thue\\s+bao|VinaPhone\\s+Plus|u\\s+dai)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vinaphone-service-notice-01",
+      "name": "VinaPhone Carrier Service Notification",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:VinaPhone|888|900|1539)"
+      },
+      "action": {
+        "category": "informational"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    }
+  ]
+}

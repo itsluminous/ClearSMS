@@ -965,7 +965,7 @@ class TransactionParser(
          * that must follow keeps a bare brand mention ("Apply for BOBCARD
          * today") from typing a bank-account debit as a card.
          */
-        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|\\b[A-Za-z]{0,10}card\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
+        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|the\\s+(?:tin\\s+dung|td)\\b|\\b[A-Za-z]{0,10}card\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
         val WALLET_REGEX = Regex("(?i)\\bwallet\\b")
 
         /** Money moving FROM a wallet, or a wallet that merely fronts a card. */

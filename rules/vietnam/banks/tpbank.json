@@ -1,0 +1,141 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "tpbank-debit-01",
+      "name": "TPBank Account Debit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_must_contain": [
+          "PS:-"
+        ],
+        "body_pattern": "(?i)TK:\\s*[*Xx]*\\d*(\\d{4})\\b[\\s\\S]{0,40}?\\bPS:\\s*-\\s*([\\d.,]+)\\s*([A-Z]{3})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-credit-01",
+      "name": "TPBank Account Credit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_pattern": "(?i)TK(?:\\s*TT)?:?\\s*[*Xx]*\\d*(\\d{4})\\b[\\s\\S]{0,120}?(?:PS|So tien PS):\\s*\\+\\s*([\\d.,]+)\\s*([A-Z]{3})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-creditcard-debit-01",
+      "name": "TPBank Credit Card Transaction",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_must_contain": [
+          "THE TIN DUNG"
+        ],
+        "body_pattern": "(?i)THE\\s+TIN\\s+DUNG\\s+SO\\s+[\\d*Xx]*[*Xx]+(\\d{4})\\b[\\s\\S]{0,60}?\\bPS:\\s*-\\s*([\\d.,]+)\\s*([A-Z]{3})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-statement-bill-01",
+      "name": "TPBank Credit Card Statement Due Notice",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_must_contain": [
+          "Du no:",
+          "Ngay den han TT:"
+        ],
+        "body_pattern": "(?i)The\\s+TD\\s+[\\d*Xx]*[*Xx]+(\\d{4})\\b[\\s\\S]{0,60}?Du\\s+no:\\s*([\\d.,]+)\\s*VND[\\s\\S]{0,120}?Ngay\\s+den\\s+han\\s+TT:\\s*(\\d{1,2}/\\d{1,2}/\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "due_date": "$3",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-otp-01",
+      "name": "TPBank OTP Verification",
+      "priority": 350,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_pattern": "(?i)(?:Ma\\s+OTP(?:\\s+de\\s+xac\\s+thuc)?\\s*(?:la|:)|Su\\s+dung\\s+OTP)\\s*(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-alert-01",
+      "name": "TPBank Security and Account Alert",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_pattern": "(?i)eToken\\+|DANG\\s+NHAP\\s+TK|tang\\s+han\\s+muc|tra\\s+gop"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    }
+  ]
+}

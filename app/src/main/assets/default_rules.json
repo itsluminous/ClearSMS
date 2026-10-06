@@ -8978,6 +8978,441 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "bidv-debit-01",
+      "name": "BIDV Account Debit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)BIDV",
+        "body_must_contain": [
+          "tai BIDV",
+          "-"
+        ],
+        "body_pattern": "(?i)TK\\s+[\\d*Xx]*?(\\d{4})\\s+tai\\s+BIDV\\s+-([\\d.,]+)\\s*VND",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "BIDV Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "bidv-credit-01",
+      "name": "BIDV Account Credit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)BIDV",
+        "body_must_contain": [
+          "tai BIDV",
+          "+"
+        ],
+        "body_pattern": "(?i)TK\\s+[\\d*Xx]*?(\\d{4})\\s+tai\\s+BIDV\\s+\\+([\\d.,]+)\\s*VND",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "BIDV Bank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "bidv-otp-01",
+      "name": "BIDV Transaction Verification OTP",
+      "priority": 350,
+      "match": {
+        "sender_pattern": "(?i)BIDV",
+        "body_pattern": "(?i)nhap\\s+OTP\\s+(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "bidv-otp-02",
+      "name": "BIDV SmartBanking Login OTP",
+      "priority": 350,
+      "match": {
+        "sender_pattern": "(?i)BIDV",
+        "body_pattern": "(?i)SmartBanking[\\s\\S]{0,50}?nhap\\s+(\\d{4,8})\\s+de\\s+xac\\s+thuc"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-debit-01",
+      "name": "TPBank Account Debit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_must_contain": [
+          "PS:-"
+        ],
+        "body_pattern": "(?i)TK:\\s*[*Xx]*\\d*(\\d{4})\\b[\\s\\S]{0,40}?\\bPS:\\s*-\\s*([\\d.,]+)\\s*([A-Z]{3})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-credit-01",
+      "name": "TPBank Account Credit Transaction",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_pattern": "(?i)TK(?:\\s*TT)?:?\\s*[*Xx]*\\d*(\\d{4})\\b[\\s\\S]{0,120}?(?:PS|So tien PS):\\s*\\+\\s*([\\d.,]+)\\s*([A-Z]{3})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "credit",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-creditcard-debit-01",
+      "name": "TPBank Credit Card Transaction",
+      "priority": 310,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_must_contain": [
+          "THE TIN DUNG"
+        ],
+        "body_pattern": "(?i)THE\\s+TIN\\s+DUNG\\s+SO\\s+[\\d*Xx]*[*Xx]+(\\d{4})\\b[\\s\\S]{0,60}?\\bPS:\\s*-\\s*([\\d.,]+)\\s*([A-Z]{3})",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "type": "debit",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-statement-bill-01",
+      "name": "TPBank Credit Card Statement Due Notice",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_must_contain": [
+          "Du no:",
+          "Ngay den han TT:"
+        ],
+        "body_pattern": "(?i)The\\s+TD\\s+[\\d*Xx]*[*Xx]+(\\d{4})\\b[\\s\\S]{0,60}?Du\\s+no:\\s*([\\d.,]+)\\s*VND[\\s\\S]{0,120}?Ngay\\s+den\\s+han\\s+TT:\\s*(\\d{1,2}/\\d{1,2}/\\d{2,4})"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "account_last4": "$1",
+          "amount": "$2",
+          "due_date": "$3",
+          "bank": "TPBank"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-otp-01",
+      "name": "TPBank OTP Verification",
+      "priority": 350,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_pattern": "(?i)(?:Ma\\s+OTP(?:\\s+de\\s+xac\\s+thuc)?\\s*(?:la|:)|Su\\s+dung\\s+OTP)\\s*(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "tpbank-alert-01",
+      "name": "TPBank Security and Account Alert",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)TPBank",
+        "body_pattern": "(?i)eToken\\+|DANG\\s+NHAP\\s+TK|tang\\s+han\\s+muc|tra\\s+gop"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-generic-otp-01",
+      "name": "Vietnamese Generic OTP (prefix: ma xac thuc / OTP la)",
+      "priority": 60,
+      "match": {
+        "body_pattern": "(?i)(?:ma\\s+xac\\s+(?:thuc|minh|nhan)|ma\\s+OTP|OTP)[\\s\\S]{0,35}?(?:la\\s*:?|:)\\s*(\\d{4,8})"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-generic-otp-02",
+      "name": "Vietnamese Generic OTP (digits first: ... la ma OTP / xac thuc)",
+      "priority": 59,
+      "match": {
+        "body_pattern": "(?i)(?<!\\d)(\\d{4,8})\\s*(?:la\\s+ma\\s+(?:xac\\s+(?:thuc|minh|nhan)|OTP)|\\(ma\\s+OTP|l[àa]\\s+m[ãa]\\s+x[áa]c\\s+nh[ậa]n)"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-generic-otp-03",
+      "name": "Vietnamese Generic OTP (Ma OTP co hieu luc / login OTP)",
+      "priority": 58,
+      "match": {
+        "body_pattern": "(?i)(?:OTP\\s+dang\\s+nhap:\\s*|Ma\\s+OTP\\s+)(\\d{4,8})\\s+(?:co\\s+hieu\\s+luc|dung\\s+de\\s+xac\\s+thuc)"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-gov-public-service-01",
+      "name": "Vietnam Public Service Portal (DVC) Status Update",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:DVCBOCONGAN|BO\\s*CONG\\s*AN)",
+        "body_pattern": "(?i)Cong\\s+DVC\\s+Bo\\s+Cong\\s+an\\s+Ho\\s+so\\s+(\\S+)[\\s\\S]{0,60}?(?:da\\s+co\\s+ket\\s+qua|da\\s+duoc\\s+tiep\\s+nhan)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government",
+        "extract": {
+          "reference_number": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-gov-public-advisory-01",
+      "name": "Vietnam Public Security and Safety Notice",
+      "priority": 280,
+      "match": {
+        "sender_pattern": "(?i)(?:BO\\s*CONG\\s*AN|BOCONGAN|CATP_HaNoi|BCD\\s*QUOCGIA|BCD\\s*PTDSQG|UBND_HaNoi|CHINH\\s*PHU|CUC_CSGT)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vinaphone-data-balance-01",
+      "name": "VinaPhone Data Quota Remaining Alert",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)(?:VinaPhone|888|900)",
+        "body_pattern": "(?i)Dung\\s+luong\\s+Data\\s+con\\s+lai\\s+cua\\s+goi\\s+(\\w+):\\s*([\\d.]+)\\s*(MB|GB)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "recharge",
+        "extract": {
+          "package": "$1",
+          "data_remaining": "$2",
+          "operator": "VinaPhone"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vinaphone-promo-offer-01",
+      "name": "VinaPhone Data and Plan Promotion",
+      "priority": 220,
+      "match": {
+        "sender_pattern": "(?i)(?:VinaPhone|888|900)",
+        "body_pattern": "(?i)(?:\\(CSKH\\)|\\(TB\\)\\s+CHI\\s+[\\d.,]+d/ngay|\\(TB\\)\\s+NHAN\\s+NGAY|Moi\\s+thue\\s+bao|VinaPhone\\s+Plus|u\\s+dai)"
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vinaphone-service-notice-01",
+      "name": "VinaPhone Carrier Service Notification",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:VinaPhone|888|900|1539)"
+      },
+      "action": {
+        "category": "informational"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-flight-schedule-change-01",
+      "name": "Flight Schedule Change Alert",
+      "priority": 280,
+      "match": {
+        "sender_pattern": "(?i)(?:TRAVELOKA|VTRAirlines)",
+        "body_pattern": "(?i)(?:khởi\\s+hành\\s+sớm|THAY\\s+DOI|Chuyen\\s+bay)[\\s\\S]{0,60}?(?:Xem:|HK|ly\\s+do)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "travel"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-travel-account-notice-01",
+      "name": "Travel Account Security Notification",
+      "priority": 240,
+      "match": {
+        "sender_pattern": "(?i)TRAVELOKA",
+        "body_pattern": "(?i)Traveloka\\s+thong\\s+bao"
+      },
+      "action": {
+        "category": "informational"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-generali-insurance-due-01",
+      "name": "Generali Insurance Premium Due Reminder",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)Generali-VN",
+        "body_pattern": "(?i)dong\\s+phi\\s+BH\\s+([\\d.,]+)\\s*VND\\s+cho\\s+HD\\s+(\\d+)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "biller": "Generali"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-generali-insurance-notice-01",
+      "name": "Generali Policy Status Notification",
+      "priority": 250,
+      "match": {
+        "sender_pattern": "(?i)Generali-VN"
+      },
+      "action": {
+        "category": "informational"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-service-account-notice-01",
+      "name": "App Account Lifecycle Notification",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:ShopBack|GOTIT\\.VN|Mediplus)",
+        "body_pattern": "(?i)(?:t[aà]i\\s+kho[aả]n|thong\\s+tin|c[aậ]p\\s+nh[aậ]t)"
+      },
+      "action": {
+        "category": "informational"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
     }
   ]
 }
