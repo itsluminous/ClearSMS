@@ -1357,8 +1357,8 @@
       "key": "bidv",
       "name": "BIDV",
       "category": "BANK",
-      "color": "#006F66",
-      "monogram": "BIDV",
+      "color": "#006B68",
+      "monogram": "BID",
       "senders": [
         "BIDV"
       ],
@@ -1373,7 +1373,7 @@
       "key": "tpbank",
       "name": "TPBank",
       "category": "BANK",
-      "color": "#5A1E82",
+      "color": "#702F8A",
       "monogram": "TPB",
       "senders": [
         "TPBank",
@@ -1389,9 +1389,9 @@
     {
       "key": "vinaphone",
       "name": "VinaPhone",
-      "category": "TELCO",
+      "category": "TELECOM",
       "color": "#0082CA",
-      "monogram": "VNPT",
+      "monogram": "VNP",
       "senders": [
         "VinaPhone",
         "VINAPHONE",
@@ -1400,6 +1400,352 @@
       "aliases": [
         "VINAPHONE",
         "VNPT"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "shopeepay",
+      "name": "ShopeePay",
+      "category": "WALLET",
+      "color": "#EE4D2D",
+      "monogram": "SPP",
+      "senders": [
+        "ShopeePay",
+        "SHOPEEPAY"
+      ],
+      "aliases": [
+        "SHOPEEPAY",
+        "SHOPEE PAY"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "viettelpost",
+      "name": "Viettel Post",
+      "category": "DELIVERY",
+      "color": "#EE0033",
+      "monogram": "VTP",
+      "senders": [
+        "VTPOST",
+        "VIETTELPOST"
+      ],
+      "aliases": [
+        "VTPOST",
+        "VIETTELPOST",
+        "VIETTEL POST"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "grab",
+      "name": "Grab",
+      "category": "DELIVERY",
+      "color": "#00B14F",
+      "monogram": "GRB",
+      "senders": [
+        "Grab",
+        "GRAB"
+      ],
+      "aliases": [
+        "GRAB",
+        "GRAB VIETNAM"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "begroup",
+      "name": "Be Group",
+      "category": "DELIVERY",
+      "color": "#FFCC00",
+      "monogram": "BE",
+      "senders": [
+        "BE GROUP",
+        "BEGROUP"
+      ],
+      "aliases": [
+        "BE GROUP",
+        "BE"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "xanhsm",
+      "name": "Xanh SM",
+      "category": "TRAVEL",
+      "color": "#00A896",
+      "monogram": "GSM",
+      "senders": [
+        "XANH SM",
+        "XANHSM"
+      ],
+      "aliases": [
+        "XANH SM",
+        "GSM",
+        "TAXIXANH"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "lazada",
+      "name": "Lazada",
+      "category": "ECOMMERCE",
+      "color": "#0F146D",
+      "monogram": "LAZ",
+      "senders": [
+        "LAZADA"
+      ],
+      "aliases": [
+        "LAZADA"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "chotot",
+      "name": "Cho Tot",
+      "category": "ECOMMERCE",
+      "color": "#FFBA00",
+      "monogram": "CTT",
+      "senders": [
+        "ChoTot",
+        "CHOTOT"
+      ],
+      "aliases": [
+        "CHOTOT",
+        "CHO TOT"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "shopback",
+      "name": "ShopBack",
+      "category": "ECOMMERCE",
+      "color": "#FD3C4F",
+      "monogram": "SB",
+      "senders": [
+        "ShopBack",
+        "SHOPBACK"
+      ],
+      "aliases": [
+        "SHOPBACK"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "gotit",
+      "name": "Got It",
+      "category": "ECOMMERCE",
+      "color": "#104576",
+      "monogram": "GIT",
+      "senders": [
+        "GOTIT.VN",
+        "GOTIT"
+      ],
+      "aliases": [
+        "GOTIT",
+        "GOT IT"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "guardian",
+      "name": "Guardian",
+      "category": "HEALTH",
+      "color": "#FF6600",
+      "monogram": "GUA",
+      "senders": [
+        "GUARDIAN"
+      ],
+      "aliases": [
+        "GUARDIAN"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "vietnamairlines",
+      "name": "Vietnam Airlines",
+      "category": "TRAVEL",
+      "color": "#005C8A",
+      "monogram": "VNA",
+      "senders": [
+        "VTRAirlines",
+        "VIETNAMAIRLINES"
+      ],
+      "aliases": [
+        "VIETNAM AIRLINES",
+        "VNA"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "traveloka",
+      "name": "Traveloka",
+      "category": "TRAVEL",
+      "color": "#0194F3",
+      "monogram": "TVL",
+      "senders": [
+        "TRAVELOKA"
+      ],
+      "aliases": [
+        "TRAVELOKA"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "generali",
+      "name": "Generali",
+      "category": "INVESTMENT",
+      "color": "#C41230",
+      "monogram": "GEN",
+      "senders": [
+        "Generali-VN",
+        "GENERALI"
+      ],
+      "aliases": [
+        "GENERALI",
+        "GENERALI VIETNAM"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "bocongan",
+      "name": "Bo Cong An",
+      "category": "GOVERNMENT",
+      "color": "#B71C1C",
+      "monogram": "BCA",
+      "senders": [
+        "BO CONG AN",
+        "BOCONGAN",
+        "DVCBOCONGAN",
+        "CATP_HaNoi"
+      ],
+      "aliases": [
+        "BO CONG AN",
+        "CONG AN",
+        "CATP HANOI"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "vneid",
+      "name": "VNeID",
+      "category": "GOVERNMENT",
+      "color": "#C62828",
+      "monogram": "VNE",
+      "senders": [
+        "VNeID",
+        "VNEID"
+      ],
+      "aliases": [
+        "VNEID",
+        "DINH DANH DIEN TU"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "chinhphu",
+      "name": "Chinh Phu",
+      "category": "GOVERNMENT",
+      "color": "#D32F2F",
+      "monogram": "CP",
+      "senders": [
+        "CHINH PHU",
+        "CHINHPHU"
+      ],
+      "aliases": [
+        "CHINH PHU",
+        "CONG THONG TIN DIEN TU CHINH PHU"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "cuccsgt",
+      "name": "Cuc CSGT",
+      "category": "GOVERNMENT",
+      "color": "#E65100",
+      "monogram": "CSG",
+      "senders": [
+        "CUC_CSGT",
+        "CUCCSGT"
+      ],
+      "aliases": [
+        "CUC CSGT",
+        "CANH SAT GIAO THONG"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "bcdquocgia",
+      "name": "Ban Chi Dao Quoc Gia",
+      "category": "GOVERNMENT",
+      "color": "#B71C1C",
+      "monogram": "BCD",
+      "senders": [
+        "BCD PTDSQG",
+        "BCD QUOCGIA"
+      ],
+      "aliases": [
+        "BAN CHI DAO QUOC GIA",
+        "PHONG CHONG THIEN TAI"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "ubndhanoi",
+      "name": "UBND TP Ha Noi",
+      "category": "GOVERNMENT",
+      "color": "#C2185B",
+      "monogram": "HN",
+      "senders": [
+        "UBND_HaNoi",
+        "UBND HANOI"
+      ],
+      "aliases": [
+        "UBND HA NOI",
+        "UY BAN NHAN DAN HA NOI"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "mediplus",
+      "name": "Mediplus",
+      "category": "HEALTH",
+      "color": "#0088CC",
+      "monogram": "MED",
+      "senders": [
+        "Mediplus",
+        "MEDIPLUS"
+      ],
+      "aliases": [
+        "MEDIPLUS"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "honor",
+      "name": "HONOR",
+      "category": "OTHER",
+      "color": "#000000",
+      "monogram": "HNR",
+      "senders": [
+        "HONOR"
+      ],
+      "aliases": [
+        "HONOR"
+      ],
+      "is_issuer": false
+    },
+    {
+      "key": "google",
+      "name": "Google",
+      "category": "OTHER",
+      "color": "#4285F4",
+      "monogram": "G",
+      "senders": [
+        "Google",
+        "GOOGLE"
+      ],
+      "aliases": [
+        "GOOGLE"
       ],
       "is_issuer": false
     }
