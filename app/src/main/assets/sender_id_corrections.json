@@ -41,6 +41,11 @@
       "name": "TPBank",
       "category": "important",
       "sub": "bank"
+    },
+    "BIDV": {
+      "name": "BIDV Bank",
+      "category": "important",
+      "sub": "bank"
     }
   }
 }

@@ -35,9 +35,7 @@
     "GAIL",
     "HPCL",
     "BPCL",
-    "IOCL",
-    "VINAPHONE",
-    "VNPT"
+    "IOCL"
   ],
   "insurer_name_patterns": [
     "\\bLIC\\b",
@@ -55,8 +53,7 @@
     "ICICI\\s+Lombard",
     "PNB\\s+MetLife",
     "Kotak\\s+Life",
-    "Canara\\s+HSBC",
-    "Generali"
+    "Canara\\s+HSBC"
   ],
   "bill_domain_patterns": [
     "electricity",
@@ -76,8 +73,6 @@
     "\\bfee\\b",
     "\\bfees\\b",
     "utility\\s+bill",
-    "municipal",
-    "tiền\\s+cước",
-    "phi\\s+BH"
+    "municipal"
   ]
 }
