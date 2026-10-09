@@ -8,9 +8,9 @@ import java.io.File
 /**
  * The bundled parser tables: every `app/src/main/assets/tables/` copy must be
  * byte-identical to its `rules/tables/` community master, each table must
- * load from the classpath and yield the same mappings the old Kotlin
- * constants did, and a malformed or missing table must degrade to an empty
- * table without crashing.
+ * load from the classpath and contain AT LEAST the mappings the old Kotlin
+ * constants did (a lower bound - community tables grow), and a malformed or
+ * missing table must degrade to an empty table without crashing.
  */
 class ParserTablesTest {
     // region rules/ <-> assets identity
@@ -95,21 +95,24 @@ class ParserTablesTest {
 
     // region couriers
 
+    /**
+     * The migration invariant is "the JSON table contains AT LEAST every
+     * row the deleted Kotlin constant had" - a lower bound, not an equality.
+     * Pinning the exact size here once made a contributor delete their new
+     * courier rows to get CI green (#104); community data is expected to
+     * grow, and growth must never fail this test.
+     */
     @Test
-    fun `courier table loads and yields the same merchant mapping the constant did`() {
-        val merchants = ParserTables.couriers.merchants.toMap()
-        assertThat(merchants["AMAZON"]).isEqualTo("Amazon")
-        assertThat(merchants["AMZN"]).isEqualTo("Amazon")
-        assertThat(merchants["BLUDRT"]).isEqualTo("Blue Dart")
-        assertThat(merchants["INDIAPOST"]).isEqualTo("India Post")
-        assertThat(merchants["DOMINO"]).isEqualTo("Domino's")
-        assertThat(merchants["CROMA"]).isEqualTo("Croma")
-        assertThat(ParserTables.couriers.merchants).hasSize(33)
+    fun `courier table loads and contains at least the merchant mapping the constant did`() {
+        val merchants = ParserTables.couriers.merchants
+        assertThat(merchants.toMap()["AMAZON"]).isEqualTo("Amazon")
+        assertThat(merchants.toMap()["BLUDRT"]).isEqualTo("Blue Dart")
+        assertThat(merchants).containsAtLeastElementsIn(MIGRATED_COURIER_MERCHANTS)
+        assertThat(merchants.size).isAtLeast(MIGRATED_COURIER_MERCHANTS.size)
 
-        val domains = ParserTables.couriers.brandDomains.toMap()
-        assertThat(domains["croma.com"]).isEqualTo("Croma")
-        assertThat(domains["indiapost.gov.in"]).isEqualTo("India Post")
-        assertThat(ParserTables.couriers.brandDomains).hasSize(9)
+        val domains = ParserTables.couriers.brandDomains
+        assertThat(domains).containsAtLeastElementsIn(MIGRATED_COURIER_DOMAINS)
+        assertThat(domains.size).isAtLeast(MIGRATED_COURIER_DOMAINS.size)
     }
 
     @Test
@@ -189,4 +192,58 @@ class ParserTablesTest {
             File("..", repoRelativePath),
             File(repoRelativePath.removePrefix("app/")),
         ).first(File::exists)
+
+    private companion object {
+        /** Every courier merchant row the deleted Kotlin constant carried. */
+        val MIGRATED_COURIER_MERCHANTS =
+            listOf(
+                "AMAZON" to "Amazon",
+                "AMZN" to "Amazon",
+                "FLIPKART" to "Flipkart",
+                "FLPKRT" to "Flipkart",
+                "MYNTRA" to "Myntra",
+                "MEESHO" to "Meesho",
+                "AJIO" to "AJIO",
+                "NYKAA" to "Nykaa",
+                "DELHIVERY" to "Delhivery",
+                "DLHVRY" to "Delhivery",
+                "BLUEDART" to "Blue Dart",
+                "BLUE DART" to "Blue Dart",
+                "BLUDRT" to "Blue Dart",
+                "EKART" to "Ekart",
+                "DTDC" to "DTDC",
+                "XPRESSBEES" to "XpressBees",
+                "XPRSBS" to "XpressBees",
+                "SHIPROCKET" to "Shiprocket",
+                "INDPST" to "India Post",
+                "INDPOST" to "India Post",
+                "INDIA POST" to "India Post",
+                "INDIAPOST" to "India Post",
+                "FEDEX" to "FedEx",
+                "DHL" to "DHL",
+                "ECOMEX" to "Ecom Express",
+                "SWIGGY" to "Swiggy",
+                "ZOMATO" to "Zomato",
+                "BIGBASKET" to "bigbasket",
+                "BLINKIT" to "Blinkit",
+                "DOMINO" to "Domino's",
+                "NIMBUSPOST" to "Nimbuspost",
+                "SHADOWFAX" to "Shadowfax",
+                "CROMA" to "Croma",
+            )
+
+        /** Every brand-domain row the deleted Kotlin constant carried. */
+        val MIGRATED_COURIER_DOMAINS =
+            listOf(
+                "croma.com" to "Croma",
+                "amazon.in" to "Amazon",
+                "flipkart.com" to "Flipkart",
+                "myntra.com" to "Myntra",
+                "delhivery.com" to "Delhivery",
+                "bluedart.com" to "Blue Dart",
+                "dtdc.in" to "DTDC",
+                "indiapost.gov.in" to "India Post",
+                "ekartlogistics.com" to "Ekart",
+            )
+    }
 }

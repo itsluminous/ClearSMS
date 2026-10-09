@@ -9,9 +9,15 @@ import java.io.File
  * `rules/brands/brands.json` - the single source of truth - instead of being
  * a hand-maintained Kotlin duplicate kept in sync by a test. These tests lock
  * the generation: the bundled classpath copy is the master file, the
- * generated table carries the same names / sender keys / aliases / issuer
- * flags the old constants did, and a malformed table degrades to empty
- * without crashing.
+ * generated table contains AT LEAST the names / sender keys / aliases /
+ * issuer flags the old constants did, and a malformed table degrades to
+ * empty without crashing.
+ *
+ * "At least" is deliberate. The invariant being protected is that the
+ * migration lost nothing; it is a lower bound, not an equality. An exact
+ * size pin here once made a contributor strip `is_issuer` from 25 new
+ * brands to get CI green (#104) - community brands are expected to grow,
+ * and growth must never fail these tests.
  */
 class SenderInstitutionGenerationTest {
     @Test
@@ -21,9 +27,10 @@ class SenderInstitutionGenerationTest {
     }
 
     @Test
-    fun `generation yields the same institutions the deleted constant table had`() {
+    fun `generation yields at least the institutions the deleted constant table had`() {
         val institutions = SenderNameResolver.parseInstitutions(repoFile("rules/brands/brands.json").readText())
-        assertThat(institutions).hasSize(30)
+        assertThat(institutions.map { it.name }).containsAtLeastElementsIn(MIGRATED_ISSUERS + MIGRATED_NON_ISSUERS)
+        assertThat(institutions.size).isAtLeast(MIGRATED_INSTITUTION_COUNT)
 
         val byName = institutions.associateBy { it.name }
         // Spot-check the entries the old constants pinned, including every
@@ -58,11 +65,16 @@ class SenderInstitutionGenerationTest {
             .containsAtLeast("PTNNPS", "KFNCRA")
         assertThat(npsInstitutions.all { it.isRetirementProduct }).isTrue()
 
-        // Issuer-ness must survive generation exactly.
+        // Issuer-ness must survive generation for every migrated entry:
+        // each original issuer is still an issuer and each original
+        // non-issuer is still a non-issuer. Newer brands may add to either
+        // side, so neither list is compared for equality.
         val issuers = institutions.filter { it.isIssuer }.map { it.name }
         val nonIssuers = institutions.filterNot { it.isIssuer }.map { it.name }
-        assertThat(nonIssuers).containsExactly("CRED", "Flipkart", "Airtel", "Jio", "Vi", "BSNL", "Sony LIV")
-        assertThat(issuers).hasSize(23)
+        assertThat(issuers).containsAtLeastElementsIn(MIGRATED_ISSUERS)
+        assertThat(nonIssuers).containsAtLeastElementsIn(MIGRATED_NON_ISSUERS)
+        assertThat(issuers).containsNoneIn(MIGRATED_NON_ISSUERS)
+        assertThat(nonIssuers).containsNoneIn(MIGRATED_ISSUERS)
     }
 
     @Test
@@ -115,4 +127,42 @@ class SenderInstitutionGenerationTest {
     private fun repoFile(repoRelativePath: String): File =
         sequenceOf(File(repoRelativePath), File("..", repoRelativePath))
             .first(File::exists)
+
+    private companion object {
+        /**
+         * Rows in the deleted constant table: 22 distinct issuer names (the
+         * two NPS CRAs both generate under "NPS", so 23 rows) + 7 non-issuers.
+         */
+        const val MIGRATED_INSTITUTION_COUNT = 30
+
+        /** Every `is_issuer: true` institution name the deleted constant table had. */
+        val MIGRATED_ISSUERS =
+            listOf(
+                "HDFC Bank",
+                "ICICI Bank",
+                "State Bank of India",
+                "Axis Bank",
+                "Kotak Mahindra Bank",
+                "Punjab National Bank",
+                "Bank of Baroda",
+                "Canara Bank",
+                "Union Bank of India",
+                "IDFC FIRST Bank",
+                "IndusInd Bank",
+                "Yes Bank",
+                "Federal Bank",
+                "Scapia Federal",
+                "Citi",
+                "Paytm Payments Bank",
+                "PhonePe",
+                "Amazon Pay",
+                "PayZapp",
+                "Pluxee",
+                "EPFO",
+                "NPS",
+            )
+
+        /** Every `is_issuer: false` institution the deleted constant table had. */
+        val MIGRATED_NON_ISSUERS = listOf("CRED", "Flipkart", "Airtel", "Jio", "Vi", "BSNL", "Sony LIV")
+    }
 }
