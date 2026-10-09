@@ -1366,7 +1366,8 @@
         "BIDV",
         "BIDV BANK",
         "NGAN HANG BIDV"
-      ]
+      ],
+      "is_issuer": true
     },
     {
       "key": "tpbank",
@@ -1382,7 +1383,8 @@
         "TPBANK",
         "TIEN PHONG BANK",
         "TIENPHONGBANK"
-      ]
+      ],
+      "is_issuer": true
     },
     {
       "key": "vinaphone",
@@ -1398,7 +1400,8 @@
       "aliases": [
         "VINAPHONE",
         "VNPT"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "shopeepay",
@@ -1413,7 +1416,8 @@
       "aliases": [
         "SHOPEEPAY",
         "SHOPEE PAY"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "viettelpost",
@@ -1429,7 +1433,8 @@
         "VTPOST",
         "VIETTELPOST",
         "VIETTEL POST"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "grab",
@@ -1444,7 +1449,8 @@
       "aliases": [
         "GRAB",
         "GRAB VIETNAM"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "begroup",
@@ -1457,9 +1463,9 @@
         "BEGROUP"
       ],
       "aliases": [
-        "BE GROUP",
-        "BE"
-      ]
+        "BE GROUP"
+      ],
+      "is_issuer": false
     },
     {
       "key": "xanhsm",
@@ -1473,9 +1479,9 @@
       ],
       "aliases": [
         "XANH SM",
-        "GSM",
         "TAXIXANH"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "lazada",
@@ -1488,7 +1494,8 @@
       ],
       "aliases": [
         "LAZADA"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "chotot",
@@ -1503,7 +1510,8 @@
       "aliases": [
         "CHOTOT",
         "CHO TOT"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "shopback",
@@ -1517,7 +1525,8 @@
       ],
       "aliases": [
         "SHOPBACK"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "gotit",
@@ -1532,7 +1541,8 @@
       "aliases": [
         "GOTIT",
         "GOT IT"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "guardian",
@@ -1545,7 +1555,8 @@
       ],
       "aliases": [
         "GUARDIAN"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "vietnamairlines",
@@ -1560,7 +1571,8 @@
       "aliases": [
         "VIETNAM AIRLINES",
         "VNA"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "traveloka",
@@ -1573,7 +1585,8 @@
       ],
       "aliases": [
         "TRAVELOKA"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "generali",
@@ -1588,7 +1601,8 @@
       "aliases": [
         "GENERALI",
         "GENERALI VIETNAM"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "bocongan",
@@ -1606,7 +1620,8 @@
         "BO CONG AN",
         "CONG AN",
         "CATP HANOI"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "vneid",
@@ -1621,7 +1636,8 @@
       "aliases": [
         "VNEID",
         "DINH DANH DIEN TU"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "chinhphu",
@@ -1636,7 +1652,8 @@
       "aliases": [
         "CHINH PHU",
         "CONG THONG TIN DIEN TU CHINH PHU"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "cuccsgt",
@@ -1651,7 +1668,8 @@
       "aliases": [
         "CUC CSGT",
         "CANH SAT GIAO THONG"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "bcdquocgia",
@@ -1666,7 +1684,8 @@
       "aliases": [
         "BAN CHI DAO QUOC GIA",
         "PHONG CHONG THIEN TAI"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "ubndhanoi",
@@ -1681,7 +1700,8 @@
       "aliases": [
         "UBND HA NOI",
         "UY BAN NHAN DAN HA NOI"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "mediplus",
@@ -1695,7 +1715,8 @@
       ],
       "aliases": [
         "MEDIPLUS"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "honor",
@@ -1708,7 +1729,8 @@
       ],
       "aliases": [
         "HONOR"
-      ]
+      ],
+      "is_issuer": false
     },
     {
       "key": "google",
@@ -1722,7 +1744,8 @@
       ],
       "aliases": [
         "GOOGLE"
-      ]
+      ],
+      "is_issuer": false
     }
   ]
 }

@@ -4,7 +4,7 @@
     {
       "id": "vn-generic-otp-01",
       "name": "Vietnamese Generic OTP (prefix: ma xac thuc / OTP la)",
-      "priority": 60,
+      "priority": 50,
       "match": {
         "body_pattern": "(?i)(?:ma\\s+xac\\s+(?:thuc|minh|nhan)|ma\\s+OTP|OTP)[\\s\\S]{0,35}?(?:la\\s*:?|:)\\s*(\\d{4,8})"
       },
@@ -21,7 +21,7 @@
     {
       "id": "vn-generic-otp-02",
       "name": "Vietnamese Generic OTP (digits first: ... la ma OTP / xac thuc)",
-      "priority": 59,
+      "priority": 49,
       "match": {
         "body_pattern": "(?i)(?<!\\d)(\\d{4,8})\\s*(?:la\\s+ma\\s+(?:xac\\s+(?:thuc|minh|nhan)|OTP)|\\(ma\\s+OTP|l[àa]\\s+m[ãa]\\s+x[áa]c\\s+nh[ậa]n)"
       },
@@ -38,7 +38,7 @@
     {
       "id": "vn-generic-otp-03",
       "name": "Vietnamese Generic OTP (Ma OTP co hieu luc / login OTP)",
-      "priority": 58,
+      "priority": 48,
       "match": {
         "body_pattern": "(?i)(?:OTP\\s+dang\\s+nhap:\\s*|Ma\\s+OTP\\s+)(\\d{4,8})\\s+(?:co\\s+hieu\\s+luc|dung\\s+de\\s+xac\\s+thuc)"
       },

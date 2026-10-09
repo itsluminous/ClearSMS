@@ -6,7 +6,7 @@
       "name": "VinaPhone Data Quota Remaining Alert",
       "priority": 250,
       "match": {
-        "sender_pattern": "(?i)(?:VinaPhone|888|900)",
+        "sender_pattern": "(?i)(?:VinaPhone|^(?:888|900)$)",
         "body_pattern": "(?i)Dung\\s+luong\\s+Data\\s+con\\s+lai\\s+cua\\s+goi\\s+(\\w+):\\s*([\\d.]+)\\s*(MB|GB)"
       },
       "action": {
@@ -26,8 +26,11 @@
       "name": "VinaPhone Data and Plan Promotion",
       "priority": 220,
       "match": {
-        "sender_pattern": "(?i)(?:VinaPhone|888|900)",
-        "body_pattern": "(?i)(?:\\(CSKH\\)|\\(TB\\)\\s+CHI\\s+[\\d.,]+d/ngay|\\(TB\\)\\s+NHAN\\s+NGAY|Moi\\s+thue\\s+bao|VinaPhone\\s+Plus|u\\s+dai)"
+        "sender_pattern": "(?i)(?:VinaPhone|^(?:888|900)$)",
+        "body_pattern": "(?i)(?:\\(CSKH\\)|\\(TB\\)\\s+CHI\\s+[\\d.,]+d/ngay|\\(TB\\)\\s+NHAN\\s+NGAY|Moi\\s+thue\\s+bao|VinaPhone\\s+Plus|u\\s+dai)",
+        "guards_none": [
+          "otp_mention"
+        ]
       },
       "action": {
         "category": "promotional",
@@ -41,10 +44,14 @@
       "name": "VinaPhone Carrier Service Notification",
       "priority": 200,
       "match": {
-        "sender_pattern": "(?i)(?:VinaPhone|888|900|1539)"
+        "sender_pattern": "(?i)(?:VinaPhone|^(?:888|900|1539)$)",
+        "guards_none": [
+          "otp_mention"
+        ]
       },
       "action": {
-        "category": "informational"
+        "category": "important",
+        "sub_category": "general"
       },
       "contributed_by": "clearsms",
       "created_at": "2026-10-06T00:00:00Z"

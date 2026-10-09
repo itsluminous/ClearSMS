@@ -964,8 +964,21 @@ class TransactionParser(
          * relies on, so no brand list is kept here or there. The number cue
          * that must follow keeps a bare brand mention ("Apply for BOBCARD
          * today") from typing a bank-account debit as a card.
+         *
+         * Vietnamese issuers write "the tin dung" (thẻ tín dụng, credit card)
+         * or its abbreviation "The TD", followed by the masked number -
+         * "The TD 4512****1234", "THE TIN DUNG SO 4512****1234". The same
+         * number cue is demanded here, for the same reason: this regex runs
+         * for every locale, and a bare `the\\s+td` with no boundary and no
+         * digits would type an English "transferred to the TD account
+         * ending 1234" (TD Bank) - or "bathe td" - as a credit-card spend.
          */
-        val CREDIT_CARD_REGEX = Regex("(?i)credit\\s*card|the\\s+(?:tin\\s+dung|td)\\b|\\b[A-Za-z]{0,10}card\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})")
+        val CREDIT_CARD_REGEX =
+            Regex(
+                "(?i)credit\\s*card" +
+                    "|\\bthe\\s+(?:tin\\s+dung|td)\\s+(?:so\\s+)?[\\d*Xx]{4,}" +
+                    "|\\b[A-Za-z]{0,10}card\\s+(?:no\\.?|number|ending|[Xx*]*\\d{3,4})",
+            )
         val WALLET_REGEX = Regex("(?i)\\bwallet\\b")
 
         /** Money moving FROM a wallet, or a wallet that merely fronts a card. */
