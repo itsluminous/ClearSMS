@@ -164,9 +164,14 @@ class OtpNotifier
                             .forEach(builder::addAction)
                     }
 
-                    // Planner never emits REPLY or generic SHARE for OTP notifications
-                    // (OTP has its own SHARE_OTP action above).
+                    // Planner never emits REPLY, CALL or generic SHARE for OTP
+                    // notifications (an OTP is a code to copy, not a person to
+                    // answer or phone; OTP has its own SHARE_OTP action above).
                     NotificationAction.REPLY -> {
+                        Unit
+                    }
+
+                    NotificationAction.CALL -> {
                         Unit
                     }
 
