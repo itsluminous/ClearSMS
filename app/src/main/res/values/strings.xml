@@ -747,6 +747,9 @@
     <string name="selection_count">%1$d selected</string>
     <string name="action_select_all">Select all</string>
     <string name="action_exit_selection">Exit selection</string>
+    <!-- Title of the selection bar while part of ONE selected message's text is being selected
+         (long-press an already selected message); also the long-press action label on that message. -->
+    <string name="action_select_text">Select text</string>
     <string name="action_more_options">More options</string>
     <string name="action_forward_message">Forward</string>
     <string name="action_share_message">Share</string>
