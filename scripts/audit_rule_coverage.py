@@ -55,9 +55,15 @@ import collections
 import json
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_RULES = os.path.join(REPO, "app/src/main/assets/default_rules.json")
@@ -128,11 +134,39 @@ def load_corpus_jsonl(path):
     return messages
 
 
+def find_adb(adb="adb"):
+    if shutil.which(adb):
+        return adb
+    candidates = []
+    for env in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        val = os.environ.get(env)
+        if val:
+            candidates.append(os.path.join(val, "platform-tools", "adb.exe" if sys.platform == "win32" else "adb"))
+    if sys.platform == "win32":
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app:
+            candidates.append(os.path.join(local_app, "Android", "Sdk", "platform-tools", "adb.exe"))
+    for cand in candidates:
+        if os.path.isfile(cand):
+            return cand
+    return adb
+
+
 def load_corpus_from_device(adb="adb"):
+    adb = find_adb(adb)
     cmd = [adb, "shell", "content", "query", "--uri", "content://sms",
            "--projection", "address:body:date"]
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True,
-                         errors="replace").stdout
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                             check=True, errors="replace").stdout
+    except FileNotFoundError:
+        print(f"error: adb command '{adb}' not found. Make sure adb is on PATH or pass --adb <path>",
+              file=sys.stderr)
+        sys.exit(2)
+    except subprocess.CalledProcessError as e:
+        print(f"error: adb failed (exit {e.returncode}): {e.stderr.strip()}",
+              file=sys.stderr)
+        sys.exit(2)
     return parse_adb_dump(out)
 
 

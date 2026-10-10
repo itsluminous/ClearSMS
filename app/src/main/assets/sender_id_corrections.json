@@ -31,6 +31,21 @@
       "name": "CRED",
       "category": "promotional",
       "sub": "offer"
+    },
+    "GOOGLE": {
+      "name": "Google",
+      "category": "important",
+      "sub": "otp"
+    },
+    "TPBANK": {
+      "name": "TPBank",
+      "category": "important",
+      "sub": "bank"
+    },
+    "BIDV": {
+      "name": "BIDV Bank",
+      "category": "important",
+      "sub": "bank"
     }
   }
 }

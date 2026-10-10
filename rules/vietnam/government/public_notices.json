@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "vn-gov-public-service-01",
+      "name": "Vietnam Public Service Portal (DVC) Status Update",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)(?:DVCBOCONGAN|BO\\s*CONG\\s*AN)",
+        "body_pattern": "(?i)Cong\\s+DVC\\s+Bo\\s+Cong\\s+an\\s+Ho\\s+so\\s+(\\S+)[\\s\\S]{0,60}?(?:da\\s+co\\s+ket\\s+qua|da\\s+duoc\\s+tiep\\s+nhan)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government",
+        "extract": {
+          "reference_number": "$1"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "vn-gov-public-advisory-01",
+      "name": "Vietnam Public Security and Safety Notice",
+      "priority": 280,
+      "match": {
+        "sender_pattern": "(?i)(?:BO\\s*CONG\\s*AN|BOCONGAN|CATP_HaNoi|BCD\\s*QUOCGIA|BCD\\s*PTDSQG|UBND_HaNoi|CHINH\\s*PHU|CUC_CSGT)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "government"
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-06T00:00:00Z"
+    }
+  ]
+}
