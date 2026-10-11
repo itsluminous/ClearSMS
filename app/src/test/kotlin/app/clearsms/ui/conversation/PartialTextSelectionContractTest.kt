@@ -10,9 +10,11 @@ import java.io.File
  * Source contract for partial text selection (issue #103) - the repo's
  * pattern for behaviour that has no Compose UI harness (see
  * `MessageDetailsMenuContractTest`). Pins how the two long-press meanings
- * are kept apart on the bubble, that the body is wrapped in the SAME
- * SelectionContainer the details dialog and rule wizard use, that nothing
- * but the body is selectable, and that the exit path unwinds one level.
+ * are kept apart on the bubble, that in text mode the body becomes a
+ * READ-ONLY text field with the whole message pre-selected (so the handles
+ * are on screen at once - no third long-press), that it keeps the exact look
+ * of the Text it replaces, that nothing but the body is selectable, and that
+ * the exit path unwinds one level.
  */
 class PartialTextSelectionContractTest {
     private val screen = File("src/main/kotlin/app/clearsms/ui/conversation/ConversationScreen.kt").readText()
@@ -42,29 +44,103 @@ class PartialTextSelectionContractTest {
     }
 
     @Test
-    fun `the body is wrapped in SelectionContainer - the same mechanism as the details dialog and rule wizard`() {
-        assertThat(screen).contains("import androidx.compose.foundation.text.selection.SelectionContainer")
-        assertThat(bubble).containsMatch("""if \(textSelecting\) \{[\s\S]*?SelectionContainer \{\s*Text\(\s*text = item\.body,""")
-        // Same import, same composable, in the two places that already had it.
+    fun `in text mode the body is a read-only text field with the whole message pre-selected`() {
+        // SelectionContainer only creates a selection from a long-press within
+        // the text and cannot be seeded, so it cost a THIRD long-press before
+        // the handles appeared. A TextFieldState whose selection is already
+        // non-collapsed draws both handles the moment the field has focus.
+        assertThat(bubble).containsMatch("""if \(textSelecting\) \{[\s\S]*?TextSelectionBody\(\s*body = item\.body,""")
+        val field = bubble.substringAfter("private fun TextSelectionBody(")
+        assertThat(field).contains("val fieldState = remember(body) { TextSelectionField.state(body) }")
+        assertThat(field).containsMatch("""BasicTextField\(\s*state = fieldState,\s*readOnly = true,""")
+        // Focus is what makes the handles render; it is requested on entry,
+        // and read-only means that focus opens no keyboard and draws no caret.
+        assertThat(field).contains("LaunchedEffect(fieldState) { focusRequester.requestFocus() }")
+        assertThat(field).contains(".focusRequester(focusRequester)")
+        assertThat(field).doesNotContain("KeyboardOptions")
+        assertThat(field).doesNotContain("SoftwareKeyboardController")
+        // The screen no longer uses SelectionContainer at all; the details
+        // dialog and the rule wizard keep it - their text has no handles problem.
+        assertThat(screen).doesNotContain("SelectionContainer")
         for (path in listOf("ui/conversation/MessageDetailsDialog.kt", "ui/rules/RuleWizardScreen.kt")) {
             assertThat(File("src/main/kotlin/app/clearsms/$path").readText()).contains("SelectionContainer {")
         }
     }
 
     @Test
+    fun `visual parity - the field is stretched over the undrawn original Text, same style and colour`() {
+        // The ORIGINAL body Text is still laid out with the same style and
+        // colour and only its drawing is suppressed; the field fills exactly
+        // that box, which also defeats a text field's ten-character minimum
+        // width. Same width + same style = same line breaks = no glyph moves.
+        val field = bubble.substringAfter("private fun TextSelectionBody(")
+        val ghost = field.substringAfter("Box {").substringBefore("BasicTextField(")
+        assertThat(ghost).containsMatch("""Text\(\s*text = body,\s*style = style,\s*color = color,\s*modifier = Modifier\.drawWithContent \{ \},""")
+        val fieldCall = field.substringAfter("BasicTextField(")
+        assertThat(fieldCall).contains("textStyle = style.copy(color = color),")
+        assertThat(fieldCall).contains(".matchParentSize()")
+        // The bubble passes the very style and colour the Text used to get.
+        assertThat(bubble).containsMatch(
+            """TextSelectionBody\(\s*body = item\.body,\s*style = MaterialTheme\.typography\.bodyLarge,\s*color = textColor,""",
+        )
+    }
+
+    @Test
+    fun `accessibility - the field announces nothing, the undrawn Text is still read as message text`() {
+        // A text field exposes EditableText, which Android reports as an
+        // EditText ("edit box"). Clearing the field's semantics leaves a
+        // screen reader exactly the node it had before: the body Text.
+        val field = bubble.substringAfter("private fun TextSelectionBody(")
+        assertThat(field.substringAfter("BasicTextField(")).contains(".clearAndSetSemantics { }")
+        assertThat(field.substringAfter("Box {").substringBefore("BasicTextField(")).doesNotContain("semantics")
+    }
+
+    @Test
+    fun `exit path - Back inside the focused field is routed to the dispatcher, not swallowed`() {
+        // A focused field with a selection consumes KEYCODE_BACK to collapse
+        // its selection; that would cost the user an extra press. It is routed
+        // to the OnBackPressedDispatcher so the screen's BackHandler unwinds
+        // text mode exactly as before.
+        val field = bubble.substringAfter("private fun TextSelectionBody(")
+        assertThat(field).contains("if (event.key != Key.Back) return@onPreviewKeyEvent false")
+        assertThat(field).contains("if (event.type == KeyEventType.KeyUp) backDispatcher?.onBackPressed()")
+    }
+
+    @Test
     fun `only the body is selectable - time label, status lines, OTP button and detail card stay outside`() {
-        // Exactly one SelectionContainer in the bubble, and it closes before
-        // the time-label Row begins: timestamps cannot be swept into a copy.
-        assertThat(bubble.split("SelectionContainer {").size - 1).isEqualTo(1)
-        val selectable = bubble.substringAfter("SelectionContainer {").substringBefore("LinkifiedBodyText(")
+        // Exactly one text-mode body in the bubble, and it closes before the
+        // time-label Row begins: timestamps cannot be swept into a copy.
+        assertThat(bubble.split("TextSelectionBody(").size - 1).isEqualTo(2) // the call and its declaration
+        val selectable = bubble.substringAfter("TextSelectionBody(").substringBefore("LinkifiedBodyText(")
         assertThat(selectable).doesNotContain("item.timeLabel")
         assertThat(selectable).doesNotContain("DeliveryTickIcon")
         assertThat(selectable).doesNotContain("action_copy_otp")
         assertThat(selectable).doesNotContain("ParsedDetailCard")
-        assertThat(bubble.indexOf("SelectionContainer {")).isLessThan(bubble.indexOf("text = item.timeLabel"))
-        // The linkified body is NOT inside the container: links are inert in
+        assertThat(bubble.indexOf("TextSelectionBody(")).isLessThan(bubble.indexOf("text = item.timeLabel"))
+        // The linkified body is NOT the text-mode rendering: links are inert in
         // text mode so a tap cannot open a page instead of clearing the selection.
         assertThat(selectable).doesNotContain("onLinkClick")
+        assertThat(bubble.substringAfter("private fun TextSelectionBody(")).doesNotContain("LinkifiedBodyText")
+    }
+
+    @Test
+    fun `the non-text-mode path still renders the linkified body, byte for byte`() {
+        // Only the in-text-mode rendering changed. Outside it the body is the
+        // same LinkifiedBodyText call with the same arguments, so tappable
+        // links, phone numbers and UPI links are untouched.
+        assertThat(bubble).contains(
+            """
+            |                                } else {
+            |                                    LinkifiedBodyText(
+            |                                        body = item.body,
+            |                                        onLinkClick = onLinkClick,
+            |                                        style = MaterialTheme.typography.bodyLarge,
+            |                                        color = textColor,
+            |                                    )
+            |                                }
+            """.trimMargin(),
+        )
+        assertThat(bubble.split("LinkifiedBodyText(").size - 1).isEqualTo(1)
     }
 
     @Test
