@@ -1,0 +1,25 @@
+Clear SMS now speaks five more languages, and picture messages that were already on your phone finally show up.
+
+Added
+- The app is translated into German, Spanish, Hindi, Polish and Russian. On Android 13 and newer you can set the language for Clear SMS alone, without changing the rest of your phone - useful if you want an English phone and a Hindi inbox, or the reverse. Translations are community work and partial ones are welcome; anything untranslated falls back to English.
+- Long-press the app icon for shortcuts to a new message and to your pinned and recent conversations. The same conversations appear in the share sheet when another app shares a photo or some text, so it goes straight into the right thread. Blocked, muted, binned and spam conversations are never offered, and you can turn the conversation shortcuts off in Settings - Messages.
+- Message notifications now file under the system's Conversations section, so you can give an individual thread its own priority or silence it from Android's own settings.
+- Copy part of a message instead of the whole thing. Long-press a message to select it, then long-press it again: the whole text is marked with handles you can drag inwards to whatever you want, and Copy takes exactly that. Leave the handles alone and it still copies the entire message.
+- Call is now one of the notification action buttons you can choose in Settings, so a message from a number you want to ring is one tap away. It opens the dialer with the number filled in; you still press call. A short code or a sender name like HDFCBK never gets the button, because a phone cannot ring them.
+- If you would rather skip that extra step, Settings - Messages - Direct call makes both the notification button and the one in a conversation place the call immediately. It is off by default.
+- Settings - Messages - Send picture messages lets you hide the attach button entirely, for a carrier that has stopped carrying MMS without saying so in its settings. Receiving is unaffected.
+- Vietnamese banks, carriers and services are now recognised: BIDV and TPBank transactions and OTPs, VinaPhone balance and data notices, Vietnam Airlines and Traveloka, and couriers including Viettel Post - 489 rules in total.
+
+Fixed
+- Received picture messages that were already on your phone now appear. Until now Clear SMS could only see an MMS that arrived while it was your default messaging app, so anything older - or anything that arrived while another app held the role - was invisible, even though other apps on the same phone could still show it. They are read out of the phone's own message store on first run, with their text and images.
+- Automatic OTP copying did nothing on Android 10 and newer, which is to say on almost every phone. The setting is on by default, so it had been quietly failing for most people.
+- The OTP size you choose in Settings had no effect on the notification. Android discards text sizing from a notification's title, so the setting only ever changed the in-app card; the notification now draws the code at the size you picked.
+- A long OTP no longer wraps onto a second line in the inbox banner - it shrinks to fit, and never cuts a digit off.
+- In landscape on a large font size, the compose button could sit on top of the OTP banner's dismiss and copy buttons, and swallow the tap. Compose moves into the title bar when the window is too short to hold both.
+- A long contact name in a conversation's title had too much space between its two lines, so one name read as two.
+- Tapping an ordinary word in a message that contained a link could open the link instead. A link's tappable area was being quietly enlarged to the minimum size Android wants for a touch target, which spilled it over the words above, below and beside it; a link now responds only where its own text is.
+- Amounts, dates, times and category names now follow the app's language instead of staying in English.
+- A failed picture message said the phone "would not have sent it" about something that had already failed.
+
+Changed
+- Clear SMS now lists the phone-call permission. Android gives no way to ask for it only when needed, so it appears for everyone - but it is used only by Direct call, which is off unless you turn it on. With it off, every Call button opens the dialer and the permission is never used.
