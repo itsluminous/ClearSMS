@@ -275,6 +275,12 @@ class SettingsViewModel
                 settings.directCall.collect { on ->
                     if (on && !DirectCall.isPermitted(context)) {
                         settings.setDirectCall(false)
+                        // This runs during the screen's first composition,
+                        // before its LaunchedEffect collects eventFlow; a
+                        // SharedFlow without replay drops an emit nobody is
+                        // collecting, which silenced this very explanation
+                        // on device. Wait for the audience, then speak.
+                        events.subscriptionCount.first { it > 0 }
                         events.emit(SettingsEvent.DirectCallRevoked)
                     }
                 }

@@ -156,6 +156,51 @@ class SettingsViewModelDirectCallTest {
             }
         }
 
+    // ------------------------------------------------------------------
+    // The revocation path: ON on disk, grant removed in system settings.
+    // ------------------------------------------------------------------
+
+    /**
+     * The ViewModel's init collector switches a stored ON back OFF the
+     * moment it sees the grant is gone - but the screen only starts
+     * collecting events in a LaunchedEffect AFTER its first composition,
+     * and the ViewModel is created DURING that composition. A SharedFlow
+     * without replay drops an emit nobody is collecting, so the
+     * explanation raced the subscription and lost on device: the toggle
+     * flipped off in silence - the same class of defect as a silent
+     * denial. The event must wait for its audience.
+     */
+    @Test
+    fun `a revoked grant switches OFF and the explanation survives a subscriber that arrives late`() =
+        runTest(dispatcher) {
+            app.denyPermissions(Manifest.permission.CALL_PHONE)
+            settings.directCall.value = true
+            val viewModel = viewModel()
+            // Init runs to completion with NO collector on eventFlow yet.
+            advanceUntilIdle()
+            assertThat(settings.directCall.value).isFalse()
+            // Now the screen subscribes - and must still be told.
+            viewModel.eventFlow.test {
+                advanceUntilIdle()
+                assertThat(awaitItem()).isEqualTo(SettingsEvent.DirectCallRevoked)
+                expectNoEvents()
+            }
+        }
+
+    @Test
+    fun `a stored ON with the grant still held is left alone and says nothing`() =
+        runTest(dispatcher) {
+            app.grantPermissions(Manifest.permission.CALL_PHONE)
+            settings.directCall.value = true
+            val viewModel = viewModel()
+            advanceUntilIdle()
+            assertThat(settings.directCall.value).isTrue()
+            viewModel.eventFlow.test {
+                advanceUntilIdle()
+                expectNoEvents()
+            }
+        }
+
     /**
      * The screen must feed the ViewModel the user's INTENT after the
      * permission dialog, not the dialog's answer. `setDirectCall(granted)`
