@@ -40,6 +40,7 @@ import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
@@ -78,6 +79,7 @@ import java.io.File
 class ConversationViewModelDelayedSendTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
+    private val fixture = ViewModelDatabaseFixture()
     private lateinit var dao: MessageDao
     private lateinit var repository: FakeMessageRepository
     private lateinit var settings: FakeSettingsRepository
@@ -93,8 +95,8 @@ class ConversationViewModelDelayedSendTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         db =
-            Room
-                .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
+            fixture
+                .onDatabase(Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java))
                 .allowMainThreadQueries()
                 .build()
         dao = db.messageDao()
@@ -119,7 +121,7 @@ class ConversationViewModelDelayedSendTest {
     @After
     fun tearDown() {
         jobs.forEach(Job::cancel)
-        db.close()
+        fixture.close(db)
     }
 
     private suspend fun awaitUntil(
@@ -232,7 +234,7 @@ class ConversationViewModelDelayedSendTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         jobs += scope.launch { vm.uiState.collect {} }
         jobs += scope.launch { vm.events.collect { events += it } }
-        return vm
+        return fixture.own(vm)
     }
 
     private suspend fun awaitLoaded(vm: ConversationViewModel) {

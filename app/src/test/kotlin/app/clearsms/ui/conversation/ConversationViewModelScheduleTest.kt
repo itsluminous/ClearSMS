@@ -39,6 +39,7 @@ import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
@@ -73,6 +74,7 @@ import java.io.File
 class ConversationViewModelScheduleTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
+    private val fixture = ViewModelDatabaseFixture()
     private lateinit var dao: MessageDao
     private lateinit var repository: FakeMessageRepository
     private var collectJob: Job? = null
@@ -83,8 +85,8 @@ class ConversationViewModelScheduleTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         db =
-            Room
-                .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
+            fixture
+                .onDatabase(Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java))
                 .allowMainThreadQueries()
                 .build()
         dao = db.messageDao()
@@ -107,7 +109,7 @@ class ConversationViewModelScheduleTest {
     @After
     fun tearDown() {
         collectJob?.cancel()
-        db.close()
+        fixture.close(db)
     }
 
     /** Polls [condition], draining the main looper (stateIn shares on Main). */
@@ -207,35 +209,37 @@ class ConversationViewModelScheduleTest {
                 AttachmentStore(context),
                 router,
             )
-        return ConversationViewModel(
-            savedStateHandle = SavedStateHandle(mapOf("threadId" to THREAD_ID)),
-            messageRepository = repository,
-            undoManager = UndoManager(repository, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), { true }),
-            senderIdLookup = SenderIdLookup { null },
-            contactsSource = ContactsSource(context),
-            smsSender = smsSender,
-            mmsSender = mmsSender,
-            attachmentStager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
-            sentMessageWatcher = SentMessageWatcher(dao, Dispatchers.Unconfined),
-            subscriptionSource = FakeSubscriptionSource(),
-            simChoiceStore =
-                SimChoiceStore(
-                    PreferenceDataStoreFactory.create {
-                        File.createTempFile("sim_choice", ".preferences_pb")
-                    },
-                ),
-            mmsCapability = MmsCapability(context),
-            messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
-            scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
-            attachmentDao = db.attachmentDao(),
-            mmsInbound = mmsInbound,
-            settings = FakeSettingsRepository(),
-            senderMuter = SenderMuter(FakeSettingsRepository()),
-            json = json,
-            appContext = context,
-            applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
-            ioDispatcher = Dispatchers.Unconfined,
-        )
+        val vm =
+            ConversationViewModel(
+                savedStateHandle = SavedStateHandle(mapOf("threadId" to THREAD_ID)),
+                messageRepository = repository,
+                undoManager = UndoManager(repository, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), { true }),
+                senderIdLookup = SenderIdLookup { null },
+                contactsSource = ContactsSource(context),
+                smsSender = smsSender,
+                mmsSender = mmsSender,
+                attachmentStager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
+                sentMessageWatcher = SentMessageWatcher(dao, Dispatchers.Unconfined),
+                subscriptionSource = FakeSubscriptionSource(),
+                simChoiceStore =
+                    SimChoiceStore(
+                        PreferenceDataStoreFactory.create {
+                            File.createTempFile("sim_choice", ".preferences_pb")
+                        },
+                    ),
+                mmsCapability = MmsCapability(context),
+                messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
+                scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
+                attachmentDao = db.attachmentDao(),
+                mmsInbound = mmsInbound,
+                settings = FakeSettingsRepository(),
+                senderMuter = SenderMuter(FakeSettingsRepository()),
+                json = json,
+                appContext = context,
+                applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        return fixture.own(vm)
     }
 
     /** Subscribes uiState (WhileSubscribed) and waits for the address load. */

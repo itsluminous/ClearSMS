@@ -19,6 +19,7 @@ import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.work.CatchUpSyncScheduler
 import com.google.common.truth.Truth.assertThat
@@ -66,6 +67,7 @@ class InboxColdStartTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
+    private val fixture = ViewModelDatabaseFixture()
     private lateinit var repository: FakeMessageRepository
     private lateinit var settings: FakeSettingsRepository
 
@@ -85,7 +87,11 @@ class InboxColdStartTest {
         Dispatchers.setMain(dispatcher)
         context = ApplicationProvider.getApplicationContext()
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
-        db = Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            fixture
+                .onDatabase(Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java))
+                .allowMainThreadQueries()
+                .build()
         repository = FakeMessageRepository()
         repository.unreadCounts.value = listOf(CategoryUnreadCount(Category.PERSONAL, 2), CategoryUnreadCount(Category.OTP, 1))
         settings = FakeSettingsRepository()
@@ -99,7 +105,7 @@ class InboxColdStartTest {
             .result
             .get()
         scope.cancel()
-        db.close()
+        fixture.close(db)
         Dispatchers.resetMain()
     }
 
@@ -112,19 +118,21 @@ class InboxColdStartTest {
                 override val defaultInboxFilter: Flow<Category?> = defaultFilters
             }
         val senderMuter = SenderMuter(settings)
-        return InboxViewModel(
-            context = context,
-            messageRepository = repository,
-            undoManager = UndoManager(repository, scope, { true }),
-            senderBlocker = SenderBlocker(settings, repository, senderMuter, InMemoryPreferencesDataStore(), scope),
-            senderMuter = senderMuter,
-            senderIdLookup = SenderIdLookup { null },
-            contactsSource = ContactsSource(context),
-            settings = dataStoreLike,
-            catchUpSyncScheduler = CatchUpSyncScheduler(context, db.messageDao(), WorkManager.getInstance(context), dispatcher),
-            workManager = WorkManager.getInstance(context),
-            ioDispatcher = dispatcher,
-        )
+        val vm =
+            InboxViewModel(
+                context = context,
+                messageRepository = repository,
+                undoManager = UndoManager(repository, scope, { true }),
+                senderBlocker = SenderBlocker(settings, repository, senderMuter, InMemoryPreferencesDataStore(), scope),
+                senderMuter = senderMuter,
+                senderIdLookup = SenderIdLookup { null },
+                contactsSource = ContactsSource(context),
+                settings = dataStoreLike,
+                catchUpSyncScheduler = CatchUpSyncScheduler(context, db.messageDao(), WorkManager.getInstance(context), dispatcher),
+                workManager = WorkManager.getInstance(context),
+                ioDispatcher = dispatcher,
+            )
+        return fixture.own(vm)
     }
 
     /** The DataStore read completes: one snapshot, every preference at once. */

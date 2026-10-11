@@ -17,6 +17,7 @@ import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.rules.RuleImporter
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.ui.composemsg.ContactSuggestions
@@ -60,6 +61,7 @@ import java.io.File
 class SettingsViewModelDirectCallTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
+    private val fixture = ViewModelDatabaseFixture()
     private val dispatcher = StandardTestDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     private val settings = FakeSettingsRepository()
@@ -70,14 +72,18 @@ class SettingsViewModelDirectCallTest {
         Dispatchers.setMain(dispatcher)
         context = ApplicationProvider.getApplicationContext()
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
-        db = Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            fixture
+                .onDatabase(Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java))
+                .allowMainThreadQueries()
+                .build()
     }
 
     @After
     fun tearDown() {
         WorkManager.getInstance(context).cancelAllWork().result.get()
         scope.cancel()
-        db.close()
+        fixture.close(db)
         Dispatchers.resetMain()
     }
 
@@ -85,28 +91,30 @@ class SettingsViewModelDirectCallTest {
         val json = Json { ignoreUnknownKeys = true }
         val messages = FakeMessageRepository()
         val senderMuter = SenderMuter(settings)
-        return SettingsViewModel(
-            context = context,
-            settings = settings,
-            uiPrefs = UiPrefs(InMemoryPreferencesDataStore()),
-            messageRepository = messages,
-            senderBlocker = SenderBlocker(settings, messages, senderMuter, InMemoryPreferencesDataStore(), scope),
-            senderMuter = senderMuter,
-            contactSuggestions = ContactSuggestions(context),
-            backupManager = BackupManager(db, json),
-            settingsBackupManager =
-                SettingsBackupManager(
-                    InMemoryPreferencesDataStore(),
-                    json,
-                    appVersion = "test",
-                    userRules = RoomUserRuleStore(db),
-                    ruleImporter = RuleImporter(json),
-                ),
-            workManager = WorkManager.getInstance(context),
-            balanceVisibility = BalanceVisibility(),
-            reminderAlarmScheduler = ReminderAlarmScheduler(context, db.reminderDao(), settings),
-            ioDispatcher = dispatcher,
-        )
+        val vm =
+            SettingsViewModel(
+                context = context,
+                settings = settings,
+                uiPrefs = UiPrefs(InMemoryPreferencesDataStore()),
+                messageRepository = messages,
+                senderBlocker = SenderBlocker(settings, messages, senderMuter, InMemoryPreferencesDataStore(), scope),
+                senderMuter = senderMuter,
+                contactSuggestions = ContactSuggestions(context),
+                backupManager = BackupManager(db, json),
+                settingsBackupManager =
+                    SettingsBackupManager(
+                        InMemoryPreferencesDataStore(),
+                        json,
+                        appVersion = "test",
+                        userRules = RoomUserRuleStore(db),
+                        ruleImporter = RuleImporter(json),
+                    ),
+                workManager = WorkManager.getInstance(context),
+                balanceVisibility = BalanceVisibility(),
+                reminderAlarmScheduler = ReminderAlarmScheduler(context, db.reminderDao(), settings),
+                ioDispatcher = dispatcher,
+            )
+        return fixture.own(vm)
     }
 
     // ------------------------------------------------------------------
