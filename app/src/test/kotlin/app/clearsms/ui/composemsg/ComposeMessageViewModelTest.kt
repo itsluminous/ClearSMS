@@ -27,6 +27,7 @@ import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.ui.common.ScheduleTipGate
@@ -63,6 +64,7 @@ import java.io.File
 class ComposeMessageViewModelTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
+    private val fixture = ViewModelDatabaseFixture()
     private lateinit var dao: MessageDao
     private lateinit var simChoiceStore: SimChoiceStore
     private lateinit var subscriptions: FakeSubscriptionSource
@@ -96,8 +98,8 @@ class ComposeMessageViewModelTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         db =
-            Room
-                .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
+            fixture
+                .onDatabase(Room.inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java))
                 .allowMainThreadQueries()
                 .build()
         dao = db.messageDao()
@@ -110,7 +112,7 @@ class ComposeMessageViewModelTest {
 
     @After
     fun tearDown() {
-        db.close()
+        fixture.close(db)
     }
 
     private class FakeMmsGateway : MmsGateway {
@@ -164,22 +166,24 @@ class ComposeMessageViewModelTest {
                 FakeCarrierMmsLimits(),
                 Dispatchers.Unconfined,
             )
-        return ComposeMessageViewModel(
-            savedStateHandle = savedStateHandle,
-            smsSender = smsSender,
-            mmsSender = mmsSender,
-            attachmentStager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
-            messageDao = dao,
-            settings = FakeSettingsRepository(),
-            contactSuggestions = ContactSuggestions(context),
-            contactsSource = ContactsSource(context),
-            subscriptionSource = subscriptions,
-            simChoiceStore = simChoiceStore,
-            mmsCapability = MmsCapability(context),
-            messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
-            scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
-            ioDispatcher = Dispatchers.Unconfined,
-        )
+        val vm =
+            ComposeMessageViewModel(
+                savedStateHandle = savedStateHandle,
+                smsSender = smsSender,
+                mmsSender = mmsSender,
+                attachmentStager = OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
+                messageDao = dao,
+                settings = FakeSettingsRepository(),
+                contactSuggestions = ContactSuggestions(context),
+                contactsSource = ContactsSource(context),
+                subscriptionSource = subscriptions,
+                simChoiceStore = simChoiceStore,
+                mmsCapability = MmsCapability(context),
+                messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
+                scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        return fixture.own(vm)
     }
 
     @Test

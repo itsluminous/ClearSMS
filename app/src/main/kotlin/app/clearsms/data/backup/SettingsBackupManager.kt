@@ -175,7 +175,15 @@ internal object SettingsBackupCatalog {
      *   versionCode last fully sorted THIS install's database. Restoring it
      *   onto another install would suppress (or force) the automatic
      *   post-update re-sort there, which must be decided by that device's
-     *   own sort history.
+     *   own sort history;
+     * - `direct_call` - permission-bound AND safety-relevant, like
+     *   `show_balance`: ON means "a tap places the call, no confirmation",
+     *   and it may only ever be true while THIS install holds the
+     *   CALL_PHONE runtime grant, which no backup can carry to another
+     *   device. Restoring true would either lie (a toggle reading ON with
+     *   the permission ungranted) or silently re-enable one-click calling
+     *   from a file; re-opting in on the new device is the one path that
+     *   requests the permission, so the user takes it again deliberately.
      */
     val excludedKeys: Set<String> =
         setOf(
@@ -184,6 +192,7 @@ internal object SettingsBackupCatalog {
             "handled_otp_message_id",
             "schedule_send_tip_shown",
             "last_sorted_version_code",
+            "direct_call",
         )
 }
 

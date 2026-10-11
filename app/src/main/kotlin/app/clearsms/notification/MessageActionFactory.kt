@@ -17,7 +17,10 @@ import app.clearsms.domain.model.NotificationAction
  * All action intents are explicit broadcasts to [MessageActionReceiver]
  * (not exported) with [PendingIntent.FLAG_IMMUTABLE]; the direct-reply
  * action is the single documented [PendingIntent.FLAG_MUTABLE] exception,
- * required for the system to attach the RemoteInput result.
+ * required for the system to attach the RemoteInput result. The two
+ * hand-off actions (SHARE, CALL) are immutable activity intents that
+ * delegate to another app - a chooser, and (via [CallActionActivity]) the
+ * dialer or the phone's own call screen.
  */
 internal object MessageActionFactory {
     fun build(
@@ -54,6 +57,10 @@ internal object MessageActionFactory {
                     shareAction(context, message)
                 }
 
+                NotificationAction.CALL -> {
+                    callAction(context, message)
+                }
+
                 // OTP-only actions are handled by OtpNotifier, never here.
                 NotificationAction.COPY_OTP, NotificationAction.SHARE_OTP -> {
                     null
@@ -84,6 +91,41 @@ internal object MessageActionFactory {
             )
         return NotificationCompat.Action
             .Builder(0, context.getString(R.string.notification_action_share), pending)
+            .build()
+    }
+
+    /**
+     * Call hands the sender's number to [CallActionActivity], which decides
+     * AT TAP TIME what the tap does - the dialer PREFILLED (ACTION_DIAL, the
+     * default and the maintainer's stance in GitHub #99) or, with the
+     * opt-in "Direct call" setting on and CALL_PHONE granted, the call
+     * itself - through [app.clearsms.ui.settings.DirectCall], the exact
+     * mapping the conversation title bar's call button uses, so the two
+     * can never diverge. Deciding at tap time (not here, when the
+     * notification is built) is what lets a toggle flipped or a permission
+     * revoked after posting still end in the dialer rather than a dead
+     * button.
+     *
+     * Returns null for a sender [NotificationActionPlanner.dialableAddress]
+     * (DialableNumber) refuses - a short code or an
+     * alphanumeric id: the planner already withholds CALL for those, and
+     * this second gate guarantees a non-dialable sender can never get a
+     * dead button even if a caller bypasses the planner.
+     */
+    private fun callAction(
+        context: Context,
+        message: MessageEntity,
+    ): NotificationCompat.Action? {
+        val number = NotificationActionPlanner.dialableAddress(message.sender) ?: return null
+        val pending =
+            PendingIntent.getActivity(
+                context,
+                requestCode(message.id, offset = 4),
+                CallActionActivity.intent(context, number),
+                NotificationIntents.flags(),
+            )
+        return NotificationCompat.Action
+            .Builder(0, context.getString(R.string.notification_action_call), pending)
             .build()
     }
 

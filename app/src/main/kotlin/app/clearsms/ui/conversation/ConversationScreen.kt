@@ -127,6 +127,7 @@ import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
+import app.clearsms.ui.settings.DirectCall
 import app.clearsms.ui.settings.ExternalLinks
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -512,12 +513,19 @@ fun ConversationScreen(
                     },
                     actions = {
                         if (dialableSender != null) {
-                            // ACTION_DIAL via ExternalLinks' tel: mapping -
-                            // opens the dialer prefilled, never places the
-                            // call itself (no permission, by design).
+                            // One Call behaviour everywhere: DirectCall is
+                            // the mapping the notification's Call action
+                            // uses too. Default (Direct call OFF): ACTION_DIAL
+                            // opens the dialer prefilled and never places
+                            // the call. Opted in and permitted: the call is
+                            // placed at once; permission revoked: the dialer.
                             TooltipIconButton(
                                 label = stringResource(R.string.conversation_call),
-                                onClick = { openLink("tel:$dialableSender") },
+                                onClick = {
+                                    if (!DirectCall.place(context, dialableSender, state.directCall)) {
+                                        linkScope.launch { snackbarHostState.showSnackbar(noLinkHandler) }
+                                    }
+                                },
                                 icon = Icons.Outlined.Call,
                             )
                         }

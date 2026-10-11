@@ -349,6 +349,11 @@
     <string name="settings_message_sort_sent">Czasu wysłania (gdy sieć go nie podała, używany jest czas odebrania)</string>
     <string name="settings_selection_action_order">Kolejność działań na wiadomościach</string>
     <string name="settings_selection_action_order_summary">Wybierz, które działania są na pasku po zaznaczeniu wiadomości; pierwsze trzy są widoczne, resztę znajdziesz w Więcej opcji</string>
+    <string name="settings_direct_call">Bezpośrednie dzwonienie</string>
+    <string name="settings_direct_call_summary">Przycisk Zadzwoń w rozmowie i przycisk Zadzwoń w powiadomieniu od razu nawiązują połączenie - bez aplikacji Telefon, bez potwierdzenia. Gdy wyłączone, otwiera się aplikacja Telefon z wpisanym numerem i to Ty naciskasz Zadzwoń. Wymaga uprawnienia do telefonu, o które aplikacja prosi przy włączaniu</string>
+    <string name="settings_direct_call_short_summary">Dzwoń od razu, bez potwierdzenia, zamiast otwierać aplikację Telefon</string>
+    <string name="settings_direct_call_denied">Nie przyznano uprawnienia do telefonu, więc Bezpośrednie dzwonienie pozostaje wyłączone. Połączenia otwierają aplikację Telefon</string>
+    <string name="settings_direct_call_revoked">Bezpośrednie dzwonienie zostało wyłączone, bo uprawnienie do telefonu zostało odebrane. Połączenia otwierają aplikację Telefon</string>
     <string name="selection_action_order_drag_hint">Przeciągnij uchwyt, aby zmienić kolejność. Pierwsze trzy są na pasku, reszta w Więcej opcji. Działania dla pojedynczej wiadomości znikają, gdy zaznaczysz kilka, a kolejne przesuwa się wyżej.</string>
     <string name="settings_show_transaction_details_summary">Domyślnie wyłączone. Gdy włączone, dotknięcie wiadomości z banku lub OTP w rozmowie pokazuje też rozpoznaną kartę (kwota, sprzedawca, konto)</string>
     <string name="settings_strip_accents">Usuwaj znaki diakrytyczne przy wysyłaniu</string>
@@ -407,6 +412,7 @@
     <string name="settings_default_inbox_filter">Domyślny filtr skrzynki odbiorczej</string>
     <string name="settings_filter_all">Wszystkie</string>
     <string name="notification_action_reply">Odpowiedz</string>
+    <string name="notification_action_call">Zadzwoń</string>
     <string name="notification_action_share">Udostępnij</string>
     <string name="notification_action_share_otp">Udostępnij OTP</string>
     <string name="swipe_action_none">Nic nie rób</string>
@@ -526,6 +532,7 @@
     <string name="perm_phone_body">Wymagane przez Androida do pełnienia roli domyślnej aplikacji SMS.</string>
     <string name="perm_notifications_body">Wyświetlanie powiadomień o nowych wiadomościach i OTP.</string>
     <string name="perm_boot_body">Ponowne planowanie zadań w tle (np. automatycznego usuwania OTP) po restarcie.</string>
+    <string name="perm_call_body">Nawiązywanie połączenia z przycisku Zadzwoń tylko wtedy, gdy Bezpośrednie dzwonienie jest włączone w Ustawienia → Wiadomości. Aplikacja prosi o nie przy włączaniu; gdy jest wyłączone, nigdy go nie używa - połączenia otwierają wtedy aplikację Telefon.</string>
     <string name="finance_section_empty">Nic tu jeszcze nie ma.</string>
     <string name="chart_legend_debits">Obciążenia</string>
     <string name="chart_legend_credits">Uznania</string>
@@ -670,6 +677,7 @@
     <string name="selection_count">Zaznaczono: %1$d</string>
     <string name="action_select_all">Zaznacz wszystko</string>
     <string name="action_exit_selection">Zakończ zaznaczanie</string>
+    <string name="action_select_text">Zaznacz tekst</string>
     <string name="action_more_options">Więcej opcji</string>
     <string name="action_forward_message">Przekaż</string>
     <string name="action_share_message">Udostępnij</string>

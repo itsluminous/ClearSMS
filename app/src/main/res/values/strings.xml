@@ -392,6 +392,11 @@
     <string name="settings_message_sort_sent">Time sent (falls back to received when the network reported none)</string>
     <string name="settings_selection_action_order">Message action order</string>
     <string name="settings_selection_action_order_summary">Choose which actions sit in the bar when you select messages; the first three are shown, the rest go under More options</string>
+    <string name="settings_direct_call">Direct call</string>
+    <string name="settings_direct_call_summary">The Call button in a conversation and the Call button on a notification place the call immediately - no dialer, no confirmation. When off, the dialer opens with the number filled in and you press call yourself. Needs the phone permission, which is asked for when you turn this on</string>
+    <string name="settings_direct_call_short_summary">Place the call immediately, with no confirmation, instead of opening the dialer</string>
+    <string name="settings_direct_call_denied">Phone permission not granted, so Direct call stays off. Calls open the dialer</string>
+    <string name="settings_direct_call_revoked">Direct call was turned off because the phone permission was removed. Calls open the dialer</string>
     <string name="selection_action_order_drag_hint">Drag a handle to reorder. The first three sit in the bar; the rest go under More options. Actions for a single message hide when several are selected and the next one moves up.</string>
     <string name="settings_show_transaction_details_summary">Off by default. When on, tapping a bank or OTP message in a conversation also shows the parsed card (amount, merchant, account)</string>
     <string name="settings_strip_accents">Strip accents when sending</string>
@@ -452,6 +457,7 @@
     <string name="settings_default_inbox_filter">Default inbox filter</string>
     <string name="settings_filter_all">All</string>
     <string name="notification_action_reply">Reply</string>
+    <string name="notification_action_call">Call</string>
     <string name="notification_action_share">Share</string>
     <string name="notification_action_share_otp">Share OTP</string>
     <string name="swipe_action_none">Do nothing</string>
@@ -577,6 +583,7 @@
     <string name="perm_phone_body">Required by Android for default SMS app duties.</string>
     <string name="perm_notifications_body">Show new message and OTP notifications.</string>
     <string name="perm_boot_body">Reschedule background jobs (like OTP auto-delete) after a restart.</string>
+    <string name="perm_call_body">Place a call from the Call button only when Direct call is turned on in Settings → Messages. Asked for when you turn it on; never used while it is off - calls then open the dialer instead.</string>
 
     <!-- Finance pills & monthly chart -->
     <string name="finance_section_empty">Nothing here yet.</string>

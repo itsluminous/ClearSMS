@@ -343,6 +343,11 @@
     <string name="settings_message_sort_sent">Sendezeit (Empfangszeit, wenn das Netz keine gemeldet hat)</string>
     <string name="settings_selection_action_order">Reihenfolge der Nachrichtenaktionen</string>
     <string name="settings_selection_action_order_summary">Wählen Sie, welche Aktionen in der Leiste erscheinen, wenn Sie Nachrichten auswählen; die ersten drei werden angezeigt, der Rest steht unter Weitere Optionen</string>
+    <string name="settings_direct_call">Direktanruf</string>
+    <string name="settings_direct_call_summary">Die Schaltfläche „Anrufen“ in einer Unterhaltung und die Schaltfläche „Anrufen“ in einer Benachrichtigung rufen sofort an - ohne Telefon-App, ohne Rückfrage. Ist dies aus, öffnet sich die Telefon-App mit eingetragener Nummer und Sie drücken selbst auf Anrufen. Benötigt die Telefonberechtigung, die beim Einschalten abgefragt wird</string>
+    <string name="settings_direct_call_short_summary">Sofort anrufen, ohne Rückfrage, statt die Telefon-App zu öffnen</string>
+    <string name="settings_direct_call_denied">Telefonberechtigung nicht erteilt, Direktanruf bleibt aus. Anrufe öffnen die Telefon-App</string>
+    <string name="settings_direct_call_revoked">Direktanruf wurde ausgeschaltet, weil die Telefonberechtigung entzogen wurde. Anrufe öffnen die Telefon-App</string>
     <string name="selection_action_order_drag_hint">Ziehen Sie einen Griff, um die Reihenfolge zu ändern. Die ersten drei stehen in der Leiste, der Rest unter Weitere Optionen. Aktionen für eine einzelne Nachricht werden ausgeblendet, wenn mehrere ausgewählt sind, und die nächste rückt auf.</string>
     <string name="settings_show_transaction_details_summary">Standardmäßig aus. Wenn ein, zeigt das Antippen einer Bank- oder OTP-Nachricht in einer Unterhaltung auch die ausgelesene Karte (Betrag, Händler, Konto)</string>
     <string name="settings_strip_accents">Akzente beim Senden entfernen</string>
@@ -401,6 +406,7 @@
     <string name="settings_default_inbox_filter">Standardfilter im Posteingang</string>
     <string name="settings_filter_all">Alle</string>
     <string name="notification_action_reply">Antworten</string>
+    <string name="notification_action_call">Anrufen</string>
     <string name="notification_action_share">Teilen</string>
     <string name="notification_action_share_otp">OTP teilen</string>
     <string name="swipe_action_none">Nichts tun</string>
@@ -518,6 +524,7 @@
     <string name="perm_phone_body">Von Android für die Aufgaben einer Standard-SMS-App verlangt.</string>
     <string name="perm_notifications_body">Benachrichtigungen zu neuen Nachrichten und OTPs anzeigen.</string>
     <string name="perm_boot_body">Hintergrundaufgaben (z. B. OTP-Autolöschung) nach einem Neustart neu planen.</string>
+    <string name="perm_call_body">Anruf über die Schaltfläche „Anrufen“ nur, wenn Direktanruf unter Einstellungen → Nachrichten eingeschaltet ist. Wird beim Einschalten abgefragt; solange es aus ist, nie verwendet - Anrufe öffnen dann stattdessen die Telefon-App.</string>
     <string name="finance_section_empty">Noch nichts hier.</string>
     <string name="chart_legend_debits">Abbuchungen</string>
     <string name="chart_legend_credits">Gutschriften</string>
@@ -656,6 +663,7 @@
     <string name="selection_count">%1$d ausgewählt</string>
     <string name="action_select_all">Alle auswählen</string>
     <string name="action_exit_selection">Auswahl beenden</string>
+    <string name="action_select_text">Text auswählen</string>
     <string name="action_more_options">Weitere Optionen</string>
     <string name="action_forward_message">Weiterleiten</string>
     <string name="action_share_message">Teilen</string>

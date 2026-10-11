@@ -37,6 +37,18 @@ class ManifestExportedComponentsTest {
     }
 
     @Test
+    fun `the notification Call action's trampoline activity is private and leaves no trace`() {
+        // Only this app's own PendingIntents may reach it: an exported
+        // activity would let any app place a call (Direct call on) or open
+        // the dialer under our identity. noHistory + excludeFromRecents: the
+        // user only ever sees the dialer or the call, never this activity.
+        val info = pm.getActivityInfo(ComponentName(context, "app.clearsms.notification.CallActionActivity"), 0)
+        assertThat(info.exported).isFalse()
+        assertThat(info.flags and android.content.pm.ActivityInfo.FLAG_NO_HISTORY).isNotEqualTo(0)
+        assertThat(info.flags and android.content.pm.ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS).isNotEqualTo(0)
+    }
+
+    @Test
     fun `exported sms receivers require platform signature permissions`() {
         assertThat(receiverExported("app.clearsms.receiver.SmsReceiver")).isTrue()
         assertThat(receiverPermission("app.clearsms.receiver.SmsReceiver"))

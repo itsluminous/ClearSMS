@@ -343,6 +343,11 @@
     <string name="settings_message_sort_sent">भेजने का समय (नेटवर्क ने न बताया हो तो प्राप्ति समय)</string>
     <string name="settings_selection_action_order">संदेश कार्रवाई का क्रम</string>
     <string name="settings_selection_action_order_summary">चुनें कि संदेश चुनने पर बार में कौन सी कार्रवाइयां रहें; पहली तीन दिखती हैं, बाकी अधिक विकल्प के नीचे जाती हैं</string>
+    <string name="settings_direct_call">सीधे कॉल</string>
+    <string name="settings_direct_call_summary">बातचीत में कॉल बटन और सूचना पर कॉल बटन तुरंत कॉल लगा देते हैं - न डायलर, न कोई पुष्टि। बंद होने पर डायलर नंबर भरा हुआ खुलता है और कॉल आप खुद करते हैं। इसके लिए फ़ोन अनुमति चाहिए, जो इसे चालू करते समय मांगी जाती है</string>
+    <string name="settings_direct_call_short_summary">डायलर खोलने के बजाय, बिना किसी पुष्टि के तुरंत कॉल लगाएं</string>
+    <string name="settings_direct_call_denied">फ़ोन अनुमति नहीं मिली, इसलिए सीधे कॉल बंद ही रहेगा। कॉल डायलर में खुलेंगे</string>
+    <string name="settings_direct_call_revoked">फ़ोन अनुमति हटा दी गई थी, इसलिए सीधे कॉल बंद कर दिया गया। कॉल डायलर में खुलेंगे</string>
     <string name="selection_action_order_drag_hint">क्रम बदलने के लिए हैंडल खींचें। पहले तीन बार में रहते हैं; बाकी अधिक विकल्प के नीचे जाते हैं। एक संदेश वाली कार्रवाइयां कई चुने जाने पर छिप जाती हैं और अगली ऊपर आ जाती है।</string>
     <string name="settings_show_transaction_details_summary">डिफ़ॉल्ट रूप से बंद। चालू होने पर, बातचीत में बैंक या OTP संदेश पर टैप करने से पार्स किया गया कार्ड (राशि, मर्चेंट, खाता) भी दिखता है</string>
     <string name="settings_strip_accents">भेजते समय एक्सेंट हटाएं</string>
@@ -401,6 +406,7 @@
     <string name="settings_default_inbox_filter">डिफ़ॉल्ट इनबॉक्स फ़िल्टर</string>
     <string name="settings_filter_all">सभी</string>
     <string name="notification_action_reply">जवाब दें</string>
+    <string name="notification_action_call">कॉल करें</string>
     <string name="notification_action_share">शेयर करें</string>
     <string name="notification_action_share_otp">OTP शेयर करें</string>
     <string name="swipe_action_none">कुछ न करें</string>
@@ -518,6 +524,7 @@
     <string name="perm_phone_body">डिफ़ॉल्ट SMS ऐप की ज़िम्मेदारियों के लिए Android को यह चाहिए।</string>
     <string name="perm_notifications_body">नए संदेश और OTP की सूचनाएं दिखाएं।</string>
     <string name="perm_boot_body">रीस्टार्ट के बाद बैकग्राउंड कार्य (जैसे OTP का अपने आप हटना) फिर से शेड्यूल करें।</string>
+    <string name="perm_call_body">कॉल बटन से कॉल लगाना, केवल तब जब सेटिंग → संदेश में सीधे कॉल चालू हो। इसे चालू करते समय मांगी जाती है; बंद रहते कभी इस्तेमाल नहीं होती - तब कॉल डायलर में खुलते हैं।</string>
     <string name="finance_section_empty">यहां अभी कुछ नहीं है।</string>
     <string name="chart_legend_debits">डेबिट</string>
     <string name="chart_legend_credits">क्रेडिट</string>
@@ -656,6 +663,7 @@
     <string name="selection_count">%1$d चुने गए</string>
     <string name="action_select_all">सभी चुनें</string>
     <string name="action_exit_selection">चयन से बाहर निकलें</string>
+    <string name="action_select_text">टेक्स्ट चुनें</string>
     <string name="action_more_options">अधिक विकल्प</string>
     <string name="action_forward_message">फ़ॉरवर्ड करें</string>
     <string name="action_share_message">शेयर करें</string>

@@ -85,8 +85,11 @@ class ExternalLinksTest {
     @Test
     fun `a tel link dials rather than views`() {
         // ACTION_DIAL opens the phone app with the number filled in and waits
-        // for the user; it needs no CALL_PHONE permission and cannot place the
-        // call itself - the right contract for a number from an SMS.
+        // for the user; it uses no CALL_PHONE permission and cannot place the
+        // call itself - the right contract for a number from an SMS, and the
+        // DEFAULT for every Call button. The manifest does now carry
+        // CALL_PHONE, but only the opt-in Direct call path (DirectCall, OFF
+        // by default) ever uses it; this tel: mapping never does.
         val intent = ExternalLinks.intent("tel:9871112222")
 
         assertThat(intent.action).isEqualTo(Intent.ACTION_DIAL)

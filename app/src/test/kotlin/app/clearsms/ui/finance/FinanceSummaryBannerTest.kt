@@ -365,6 +365,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setConversationShortcuts(value: Boolean) = Unit
 
+    override val directCall = MutableStateFlow(false)
+
+    override suspend fun setDirectCall(value: Boolean) = Unit
+
     override val logoBackground = MutableStateFlow(LogoBackground.WHITE)
 
     override suspend fun setLogoBackground(value: LogoBackground) = Unit

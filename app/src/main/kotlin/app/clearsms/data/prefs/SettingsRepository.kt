@@ -216,6 +216,27 @@ interface SettingsRepository {
 
     suspend fun setConversationShortcuts(value: Boolean)
 
+    /**
+     * Direct call: the Call button (conversation title bar AND the
+     * notification's Call action) PLACES the call (ACTION_CALL) instead of
+     * opening the dialer prefilled (ACTION_DIAL). Default OFF - the
+     * maintainer declined one-click calling in GitHub #99 ("to avoid mistake
+     * calls"), and today's dialer behaviour stays for everyone who does not
+     * opt in; that opt-in is the whole reason the reversal is safe.
+     *
+     * ON requires the CALL_PHONE runtime permission, requested when the
+     * toggle is switched on - never at first launch. The stored value is
+     * only ever true while the grant exists: a denied request leaves it
+     * false, and a later revocation flips it back (SettingsViewModel). The
+     * call surfaces re-check the grant at call time regardless and fall
+     * back to the dialer ([app.clearsms.ui.settings.DirectCall]), so a
+     * stale true can never produce a button that silently does nothing.
+     * Who gets a Call button at all is unchanged: DialableNumber decides.
+     */
+    val directCall: Flow<Boolean>
+
+    suspend fun setDirectCall(value: Boolean)
+
     /** Backing plate drawn behind bundled sender logos. */
     val logoBackground: Flow<LogoBackground>
 

@@ -491,6 +491,26 @@ private fun SettingsRowsHost(
             }
             viewModel.onBackupDirectoryPicked(uri?.toString())
         }
+    // Direct call: CALL_PHONE is requested HERE, when the user switches the
+    // toggle on - never at first launch. Whatever the dialog's answer, the
+    // user's intent was ON, so ON is what goes to the ViewModel: it re-reads
+    // the grant from the package manager - the ONE source of truth for
+    // whether the permission is held - stores the preference only if it is,
+    // and on a denial leaves the toggle off AND explains why
+    // (DirectCallDenied). Passing the raw result through would turn a
+    // denial into a silent "off" that never reaches the explanation.
+    // Switching off needs no permission.
+    val callPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            viewModel.setDirectCall(true)
+        }
+    val setDirectCall: (Boolean) -> Unit = { on ->
+        when {
+            !on -> viewModel.setDirectCall(false)
+            DirectCall.isPermitted(context) -> viewModel.setDirectCall(true)
+            else -> callPermissionLauncher.launch(DirectCall.PERMISSION)
+        }
+    }
     // First-time DAILY/WEEKLY selection with no directory yet: the ViewModel
     // parks the requested frequency and this launches the picker for it.
     val pendingBackupFrequency by viewModel.pendingBackupFrequency.collectAsStateWithLifecycle()
@@ -606,6 +626,14 @@ private fun SettingsRowsHost(
                     SettingsEvent.MuteRefusedBlocked -> {
                         resources.getString(R.string.settings_mute_refused_blocked)
                     }
+
+                    SettingsEvent.DirectCallDenied -> {
+                        resources.getString(R.string.settings_direct_call_denied)
+                    }
+
+                    SettingsEvent.DirectCallRevoked -> {
+                        resources.getString(R.string.settings_direct_call_revoked)
+                    }
                 },
             )
         }
@@ -630,6 +658,7 @@ private fun SettingsRowsHost(
             onShareLogs = navigation.onShareLogs,
             onOpenLink = openLink,
             onSystemNotificationSettings = openSystemNotificationSettings,
+            onDirectCall = setDirectCall,
         )
 
     content(rows, state.busy, snackbarHostState)
@@ -774,6 +803,8 @@ private fun SettingsRowsHost(
         SettingsDialog.NOTIFICATION_ACTIONS -> {
             NotificationActionsDialog(
                 selected = state.notificationActions,
+                directCall = state.directCall,
+                onDirectCall = setDirectCall,
                 onConfirm = {
                     viewModel.setNotificationActions(it)
                     dialog = null
@@ -1116,6 +1147,7 @@ private fun settingsRowEntries(
     onShareLogs: () -> Unit,
     onOpenLink: (String) -> Unit,
     onSystemNotificationSettings: () -> Unit,
+    onDirectCall: (Boolean) -> Unit,
 ): List<SettingsRowEntry> {
     // Both helpers forward the surface's leading icon, so a direct-entry
     // row (Default screen, Manage rules, Signature) shows its section icon
@@ -1270,6 +1302,22 @@ private fun settingsRowEntries(
                     row(section, title, selectionActionOrderSummary(actions.ordered)) {
                         openDialog(SettingsDialog.SELECTION_ACTION_ORDER)
                     }
+                }
+
+                // Direct call (opt-in, default OFF): governs BOTH Call
+                // surfaces - the conversation title bar and the
+                // notification action - through one DirectCall mapping.
+                // Switching on goes through the CALL_PHONE request
+                // (SettingsRowsHost); the checked state is the stored value,
+                // which the ViewModel keeps in step with the grant.
+                SettingsItem.DIRECT_CALL -> {
+                    toggle(
+                        section = section,
+                        title = title,
+                        summary = stringResource(R.string.settings_direct_call_summary),
+                        checked = state.directCall,
+                        onToggle = onDirectCall,
+                    )
                 }
 
                 SettingsItem.THEME -> {
@@ -2007,6 +2055,15 @@ private fun <T> RadioDialog(
 @Composable
 private fun NotificationActionsDialog(
     selected: Set<NotificationAction>,
+    /**
+     * The Direct call preference, surfaced under the Call entry as a NESTED
+     * control (not a second catalog row - SettingsCatalogTest pins that
+     * every row lives on one screen). It writes the same preference as the
+     * Messages row and commits immediately, independent of Save/Cancel,
+     * because switching it on may need the CALL_PHONE request.
+     */
+    directCall: Boolean,
+    onDirectCall: (Boolean) -> Unit,
     onConfirm: (Set<NotificationAction>) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -2043,6 +2100,9 @@ private fun NotificationActionsDialog(
                         Spacer(Modifier.padding(horizontal = 6.dp))
                         Text(notificationActionLabel(action))
                     }
+                    if (action == NotificationAction.CALL && checked) {
+                        DirectCallNestedSwitch(checked = directCall, onToggle = onDirectCall)
+                    }
                 }
             }
         },
@@ -2056,6 +2116,40 @@ private fun NotificationActionsDialog(
 }
 
 private const val MAX_NOTIFICATION_ACTIONS = 3
+
+/**
+ * The Direct call switch as it appears INSIDE the notification-action
+ * picker, indented under a checked Call entry: the same preference as
+ * Settings → Messages → Direct call (one stored value, one catalog row),
+ * with the short summary that names the consequence - the call is placed
+ * at once, no confirmation.
+ */
+@Composable
+private fun DirectCallNestedSwitch(
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 36.dp)
+                .heightIn(min = 48.dp)
+                .toggleable(value = checked, onValueChange = onToggle, role = Role.Switch)
+                .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.settings_direct_call), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = stringResource(R.string.settings_direct_call_short_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
 
 /**
  * OTP size picker with a live preview of the digit size: exactly five
@@ -2414,6 +2508,7 @@ private fun notificationActionLabel(action: NotificationAction): String =
         NotificationAction.MARK_READ -> stringResource(R.string.action_mark_read)
         NotificationAction.DELETE -> stringResource(R.string.ui_action_delete)
         NotificationAction.REPLY -> stringResource(R.string.notification_action_reply)
+        NotificationAction.CALL -> stringResource(R.string.notification_action_call)
         NotificationAction.SHARE -> stringResource(R.string.notification_action_share)
         NotificationAction.COPY_OTP -> stringResource(R.string.action_copy_otp)
         NotificationAction.SHARE_OTP -> stringResource(R.string.notification_action_share_otp)

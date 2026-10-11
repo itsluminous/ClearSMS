@@ -159,6 +159,12 @@ open class FakeSettingsRepository : SettingsRepository {
         conversationShortcuts.value = value
     }
 
+    override val directCall = MutableStateFlow(false)
+
+    override suspend fun setDirectCall(value: Boolean) {
+        directCall.value = value
+    }
+
     override val logoBackground = MutableStateFlow(LogoBackground.WHITE)
 
     override suspend fun setLogoBackground(value: LogoBackground) = Unit

@@ -84,6 +84,12 @@ data class SettingsUiState(
     val notificationActions: Set<NotificationAction> = setOf(NotificationAction.MARK_READ, NotificationAction.REPLY),
     val transactionNotifications: Boolean = true,
     val conversationShortcuts: Boolean = true,
+    /**
+     * Direct call (opt-in, default OFF): the Call button places the call
+     * instead of opening the dialer. Only ever true while CALL_PHONE is
+     * granted - see [SettingsViewModel.setDirectCall].
+     */
+    val directCall: Boolean = false,
     val logoBackground: LogoBackground = LogoBackground.NONE,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
@@ -176,6 +182,20 @@ sealed interface SettingsEvent {
      * section - the user is told why instead of watching a dead switch.
      */
     data object LastSectionKept : SettingsEvent
+
+    /**
+     * Direct call could not be switched on because the CALL_PHONE request
+     * was denied: the toggle stays OFF and the user is told why, instead of
+     * a switch that reads ON while the permission it needs is missing.
+     */
+    data object DirectCallDenied : SettingsEvent
+
+    /**
+     * Direct call was switched OFF because the CALL_PHONE grant had been
+     * revoked (system settings) since it was enabled - the stored value
+     * follows the grant, so the toggle never lies.
+     */
+    data object DirectCallRevoked : SettingsEvent
 }
 
 /**
@@ -246,6 +266,25 @@ class SettingsViewModel
             }
 
         init {
+            // Direct call follows the CALL_PHONE grant: a stored ON whose
+            // permission was revoked in system settings since is switched
+            // back OFF (and explained) the moment Settings observes it, so
+            // the toggle never reads ON for a call the device would refuse.
+            // The call surfaces re-check the grant at call time regardless.
+            viewModelScope.launch(ioDispatcher) {
+                settings.directCall.collect { on ->
+                    if (on && !DirectCall.isPermitted(context)) {
+                        settings.setDirectCall(false)
+                        // This runs during the screen's first composition,
+                        // before its LaunchedEffect collects eventFlow; a
+                        // SharedFlow without replay drops an emit nobody is
+                        // collecting, which silenced this very explanation
+                        // on device. Wait for the audience, then speak.
+                        events.subscriptionCount.first { it > 0 }
+                        events.emit(SettingsEvent.DirectCallRevoked)
+                    }
+                }
+            }
             // Completion snackbar: emitted once when a run observed active in
             // THIS session finishes successfully (a stale SUCCEEDED record
             // from a previous session stays silent).
@@ -302,6 +341,8 @@ class SettingsViewModel
             val delayedSendDelay: DelayedSendDelay = DelayedSendDelay.DEFAULT,
             /** Filled by the fourth combine stage. */
             val mmsSendingEnabled: Boolean = true,
+            /** Filled by the fifth combine stage. */
+            val directCall: Boolean = false,
         )
 
         private data class GestureStartupState(
@@ -349,6 +390,8 @@ class SettingsViewModel
                 notifications.copy(delayedSendEnabled = enabled, delayedSendDelay = delay)
             }.combine(settings.mmsSendingEnabled) { notifications, mmsSending ->
                 notifications.copy(mmsSendingEnabled = mmsSending)
+            }.combine(settings.directCall) { notifications, direct ->
+                notifications.copy(directCall = direct)
             }
         private val gestureStartup =
             combine(
@@ -424,6 +467,7 @@ class SettingsViewModel
                     notificationActions = notificationState.notificationActions,
                     transactionNotifications = notificationState.transactionNotifications,
                     conversationShortcuts = notificationState.conversationShortcuts,
+                    directCall = notificationState.directCall,
                     swipeActionStart = gestures.swipeStart,
                     swipeActionEnd = gestures.swipeEnd,
                     swipeDeadZone = gestures.swipeDeadZone,
@@ -475,6 +519,27 @@ class SettingsViewModel
         fun setTransactionNotifications(value: Boolean) = launchIo { settings.setTransactionNotifications(value) }
 
         fun setConversationShortcuts(value: Boolean) = launchIo { settings.setConversationShortcuts(value) }
+
+        /**
+         * Direct call may only ever be stored ON while CALL_PHONE is granted.
+         * The screen requests the permission first (Activity result API) and
+         * then calls this with the user's INTENT (true), never the dialog's
+         * answer: the grant is re-read HERE, from the package manager, so
+         * there is one source of truth and no caller can store a true the
+         * device cannot honour. A denied or missing grant leaves the
+         * preference OFF and explains why via [SettingsEvent.DirectCallDenied]
+         * - a denial must never look like a switch that does nothing. OFF is
+         * always accepted.
+         */
+        fun setDirectCall(value: Boolean) =
+            launchIo {
+                if (value && !DirectCall.isPermitted(context)) {
+                    settings.setDirectCall(false)
+                    events.emit(SettingsEvent.DirectCallDenied)
+                } else {
+                    settings.setDirectCall(value)
+                }
+            }
 
         fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
 

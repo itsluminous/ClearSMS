@@ -157,6 +157,10 @@ class SettingsCatalogTest {
                 "Show extracted message details",
                 "Sort messages by",
                 "Message action order",
+                // Direct call (GitHub #99 follow-up): what the Call button
+                // does on tap, last, beside the other "what the buttons in a
+                // conversation do" row it follows.
+                "Direct call",
             ).inOrder()
         assertThat(bySection["Appearance"])
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
@@ -337,10 +341,14 @@ class SettingsCatalogTest {
                 // Messages (GitHub #81): pinned + recent conversations as
                 // launcher shortcuts, with the honest privacy wording.
                 "Conversations in app shortcuts and sharing",
+                // Messages (GitHub #99 follow-up): the opt-in Direct call
+                // toggle - one row for one preference, also surfaced as a
+                // nested switch inside the notification-action picker.
+                "Direct call",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 26 additions = 58 rows.
+        // No row lost, none dropped: 32 survivors + 27 additions = 59 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear
@@ -402,9 +410,49 @@ class SettingsCatalogTest {
         val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
         assertThat(messagesRows.indexOf(SettingsItem.SELECTION_ACTION_ORDER))
             .isEqualTo(messagesRows.indexOf(SettingsItem.MESSAGE_SORT_ORDER) + 1)
-        assertThat(messagesRows.last()).isEqualTo(SettingsItem.SELECTION_ACTION_ORDER)
+        // Only Direct call follows it (see the test below).
+        assertThat(messagesRows.takeLast(2))
+            .containsExactly(SettingsItem.SELECTION_ACTION_ORDER, SettingsItem.DIRECT_CALL)
+            .inOrder()
         assertThat(search("message action order")).containsExactly(SettingsItem.SELECTION_ACTION_ORDER)
         assertThat(search("action order")).contains(SettingsItem.SELECTION_ACTION_ORDER)
+    }
+
+    @Test
+    fun `direct call is ONE Messages row right after Message action order and is searchable`() {
+        // The operator asked for the toggle "in the notification action
+        // setting and in Messages". The catalog contract above forbids one
+        // row on two screens, so the preference is ONE row - in Messages,
+        // where the Call button is a conversation control like the action
+        // order it follows - and the notification-action picker shows the
+        // SAME preference as a nested switch under its Call entry
+        // (DirectCallNestedSwitch), not a second row.
+        assertThat(SettingsItem.DIRECT_CALL.section).isEqualTo(SettingsSection.MESSAGES)
+        assertThat(SettingsItem.DIRECT_CALL.nested).isTrue()
+        val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
+        assertThat(messagesRows.indexOf(SettingsItem.DIRECT_CALL))
+            .isEqualTo(messagesRows.indexOf(SettingsItem.SELECTION_ACTION_ORDER) + 1)
+        assertThat(messagesRows.last()).isEqualTo(SettingsItem.DIRECT_CALL)
+        assertThat(SettingsItem.entries.count { title(it) == "Direct call" }).isEqualTo(1)
+        assertThat(SettingsItem.entries.filter { it.section == SettingsSection.NOTIFICATIONS }.map(::title))
+            .doesNotContain("Direct call")
+        assertThat(search("direct call")).containsExactly(SettingsItem.DIRECT_CALL)
+        assertThat(search("call")).contains(SettingsItem.DIRECT_CALL)
+
+        // The nested switch in the picker writes the same preference, and
+        // the summary names the consequence - placed immediately, no
+        // confirmation - so nobody opts in by accident.
+        val screen =
+            File(
+                listOf("src/main/kotlin/app/clearsms", "app/src/main/kotlin/app/clearsms").first { File(it).isDirectory },
+                "ui/settings/SettingsScreen.kt",
+            ).readText()
+        assertThat(screen).contains("DirectCallNestedSwitch(checked = directCall, onToggle = onDirectCall)")
+        assertThat(screen).contains("onDirectCall = setDirectCall")
+        val summary = context.getString(R.string.settings_direct_call_summary)
+        assertThat(summary).contains("immediately")
+        assertThat(summary).contains("no confirmation")
+        assertThat(context.getString(R.string.settings_direct_call_short_summary)).contains("no confirmation")
     }
 
     @Test

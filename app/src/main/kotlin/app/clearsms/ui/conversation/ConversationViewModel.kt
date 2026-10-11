@@ -187,6 +187,14 @@ data class ConversationUiState(
      * is shown for this screen session. Meaningless for other verdicts.
      */
     val replyAnyway: Boolean = false,
+
+    /**
+     * The user's "Direct call" setting (default OFF): whether the title
+     * bar's call button places the call or opens the dialer prefilled. Who
+     * gets the button is decided elsewhere (DialableNumber), never by this.
+     */
+    val directCall: Boolean = false,
+
     /** Mirrors Settings -> Messages -> Show extracted message details (default OFF). */
     val showTransactionDetails: Boolean = false,
     /**
@@ -629,6 +637,8 @@ class ConversationViewModel
                 .combine(activeSimsFlow) { state, sims -> state.copy(activeSims = sims) }
                 // "Reply anyway" on a short code's notice (GitHub #75).
                 .combine(replyAnywayChosen) { state, anyway -> state.copy(replyAnyway = anyway) }
+                // Direct call (opt-in): what the title bar's call button does on tap.
+                .combine(settings.directCall) { state, direct -> state.copy(directCall = direct) }
                 .flowOn(ioDispatcher)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 

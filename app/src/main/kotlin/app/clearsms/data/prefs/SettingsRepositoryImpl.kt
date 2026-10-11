@@ -265,6 +265,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_CONVERSATION_SHORTCUTS] = value }
     }
 
+    override val directCall: Flow<Boolean> =
+        dataStore.data.map { it[KEY_DIRECT_CALL] ?: false }
+
+    override suspend fun setDirectCall(value: Boolean) {
+        dataStore.edit { it[KEY_DIRECT_CALL] = value }
+    }
+
     override val logoBackground: Flow<LogoBackground> =
         dataStore.data.map { it[KEY_LOGO_BACKGROUND].toEnum(LogoBackground.NONE) }
 
@@ -439,6 +446,7 @@ class SettingsRepositoryImpl(
         const val AUTO_CURRENCY = "AUTO"
         val KEY_TRANSACTION_NOTIFICATIONS = booleanPreferencesKey("transaction_notifications")
         val KEY_CONVERSATION_SHORTCUTS = booleanPreferencesKey("conversation_shortcuts")
+        val KEY_DIRECT_CALL = booleanPreferencesKey("direct_call")
         val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
         val KEY_SCHEDULE_SEND_TIP_SHOWN = booleanPreferencesKey("schedule_send_tip_shown")

@@ -2,6 +2,7 @@ package app.clearsms.notification
 
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.sms.SenderRepliability
+import app.clearsms.ui.components.DialableNumber
 
 /**
  * Pure logic that turns the user's [NotificationAction] selection into the
@@ -12,7 +13,9 @@ import app.clearsms.sms.SenderRepliability
  * restricted to the selected entries - deterministic across processes.
  *
  * The platform renders at most three actions ([MAX_ACTIONS]); anything
- * beyond that is dropped from the end.
+ * beyond that is dropped from the end. The Settings picker already refuses
+ * a fourth selection, so this cap only bites on a hand-edited or restored
+ * selection.
  */
 object NotificationActionPlanner {
     /** Android ignores actions beyond the first three. */
@@ -21,11 +24,14 @@ object NotificationActionPlanner {
     /**
      * Actions for a plain message or transaction notification. OTP-only
      * actions never apply here. REPLY is offered only when [repliable] -
-     * see [isRepliableAddress].
+     * see [isRepliableAddress]; CALL only when [dialable] - see
+     * [dialableAddress]. An ineligible sender gets the button REMOVED, never
+     * a button that cannot work (the #78 class of bug).
      */
     fun forMessage(
         selected: Set<NotificationAction>,
         repliable: Boolean,
+        dialable: Boolean,
     ): List<NotificationAction> =
         NotificationAction.entries
             .filter { it in selected }
@@ -33,6 +39,7 @@ object NotificationActionPlanner {
                 when (it) {
                     NotificationAction.MARK_READ, NotificationAction.DELETE, NotificationAction.SHARE -> true
                     NotificationAction.REPLY -> repliable
+                    NotificationAction.CALL -> dialable
                     NotificationAction.COPY_OTP, NotificationAction.SHARE_OTP -> false
                 }
             }.take(MAX_ACTIONS)
@@ -43,7 +50,10 @@ object NotificationActionPlanner {
      * notification); the rest honor the user's selection. REPLY is skipped -
      * an OTP is something to copy, not to answer, and the three slots are
      * better spent (whether the short code behind it would accept a reply is
-     * beside the point here). SHARE is skipped too: OTP
+     * beside the point here). CALL is skipped for the same reason: an OTP
+     * comes from a service, not a person one would phone back, and nearly
+     * every OTP sender is a short code or alphanumeric id [DialableNumber]
+     * would refuse anyway. SHARE is skipped too: OTP
      * notifications already have the dedicated SHARE_OTP action, and two
      * share buttons on one notification would be confusing.
      */
@@ -54,6 +64,7 @@ object NotificationActionPlanner {
                     it in selected &&
                         it != NotificationAction.COPY_OTP &&
                         it != NotificationAction.REPLY &&
+                        it != NotificationAction.CALL &&
                         it != NotificationAction.SHARE
                 }
         ).take(MAX_ACTIONS)
@@ -67,4 +78,15 @@ object NotificationActionPlanner {
      * composer agree on one rule.
      */
     fun isRepliableAddress(sender: String): Boolean = SenderRepliability.isAddressable(sender)
+
+    /**
+     * The number the CALL action would hand to the dialer, or null when the
+     * sender is not one a person would dial - a short code ("139", "56767")
+     * or an alphanumeric id ("VM-HDFCBK"). Dialability is a STRICTER rule
+     * than repliability: a numeric short code can take an SMS reply but is
+     * not a phone number. Delegates to the shared [DialableNumber] judgement
+     * so the notification button and the conversation title bar's call
+     * button can never disagree.
+     */
+    fun dialableAddress(sender: String): String? = DialableNumber.of(sender)
 }

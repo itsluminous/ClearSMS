@@ -346,6 +346,11 @@
     <string name="settings_message_sort_sent">Hora de envío (se usa la de recepción cuando la red no informó ninguna)</string>
     <string name="settings_selection_action_order">Orden de las acciones de mensaje</string>
     <string name="settings_selection_action_order_summary">Elija qué acciones aparecen en la barra al seleccionar mensajes; se muestran las tres primeras y el resto queda en Más opciones</string>
+    <string name="settings_direct_call">Llamada directa</string>
+    <string name="settings_direct_call_summary">El botón Llamar en una conversación y el botón Llamar en una notificación realizan la llamada de inmediato: sin marcador, sin confirmación. Si está desactivado, se abre el marcador con el número ya escrito y usted toca llamar. Necesita el permiso de teléfono, que se solicita al activarlo</string>
+    <string name="settings_direct_call_short_summary">Realizar la llamada de inmediato, sin confirmación, en lugar de abrir el marcador</string>
+    <string name="settings_direct_call_denied">Permiso de teléfono no concedido, así que Llamada directa sigue desactivada. Las llamadas abren el marcador</string>
+    <string name="settings_direct_call_revoked">Llamada directa se desactivó porque se retiró el permiso de teléfono. Las llamadas abren el marcador</string>
     <string name="selection_action_order_drag_hint">Arrastre un controlador para reordenar. Las tres primeras van en la barra; el resto queda en Más opciones. Las acciones de un solo mensaje se ocultan al seleccionar varios y la siguiente sube de lugar.</string>
     <string name="settings_show_transaction_details_summary">Desactivado de forma predeterminada. Si está activado, al tocar un mensaje bancario o de OTP en una conversación también se muestra la tarjeta analizada (importe, comercio, cuenta)</string>
     <string name="settings_strip_accents">Quitar acentos al enviar</string>
@@ -404,6 +409,7 @@
     <string name="settings_default_inbox_filter">Filtro predeterminado de la bandeja</string>
     <string name="settings_filter_all">Todos</string>
     <string name="notification_action_reply">Responder</string>
+    <string name="notification_action_call">Llamar</string>
     <string name="notification_action_share">Compartir</string>
     <string name="notification_action_share_otp">Compartir OTP</string>
     <string name="swipe_action_none">No hacer nada</string>
@@ -522,6 +528,7 @@
     <string name="perm_phone_body">Requerido por Android para las funciones de app de SMS predeterminada.</string>
     <string name="perm_notifications_body">Mostrar notificaciones de mensajes nuevos y OTP.</string>
     <string name="perm_boot_body">Reprogramar tareas en segundo plano (como la eliminación automática de OTP) tras un reinicio.</string>
+    <string name="perm_call_body">Realizar una llamada desde el botón Llamar solo cuando Llamada directa está activada en Ajustes → Mensajes. Se solicita al activarla; nunca se usa mientras está desactivada: las llamadas abren entonces el marcador.</string>
     <string name="finance_section_empty">Aún no hay nada aquí.</string>
     <string name="chart_legend_debits">Débitos</string>
     <string name="chart_legend_credits">Créditos</string>
@@ -663,6 +670,7 @@
     <string name="selection_count">%1$d seleccionados</string>
     <string name="action_select_all">Seleccionar todo</string>
     <string name="action_exit_selection">Salir de la selección</string>
+    <string name="action_select_text">Seleccionar texto</string>
     <string name="action_more_options">Más opciones</string>
     <string name="action_forward_message">Reenviar</string>
     <string name="action_share_message">Compartir</string>
