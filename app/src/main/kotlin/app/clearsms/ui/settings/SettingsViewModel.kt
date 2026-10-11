@@ -517,10 +517,13 @@ class SettingsViewModel
         /**
          * Direct call may only ever be stored ON while CALL_PHONE is granted.
          * The screen requests the permission first (Activity result API) and
-         * calls this with the outcome; the grant is re-checked HERE so no
-         * caller can store a true the device cannot honour - a denied or
-         * missing grant leaves the preference OFF and explains why via
-         * [SettingsEvent.DirectCallDenied]. OFF is always accepted.
+         * then calls this with the user's INTENT (true), never the dialog's
+         * answer: the grant is re-read HERE, from the package manager, so
+         * there is one source of truth and no caller can store a true the
+         * device cannot honour. A denied or missing grant leaves the
+         * preference OFF and explains why via [SettingsEvent.DirectCallDenied]
+         * - a denial must never look like a switch that does nothing. OFF is
+         * always accepted.
          */
         fun setDirectCall(value: Boolean) =
             launchIo {

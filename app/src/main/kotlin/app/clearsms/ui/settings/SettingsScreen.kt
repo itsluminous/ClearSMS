@@ -492,12 +492,17 @@ private fun SettingsRowsHost(
             viewModel.onBackupDirectoryPicked(uri?.toString())
         }
     // Direct call: CALL_PHONE is requested HERE, when the user switches the
-    // toggle on - never at first launch - and the preference is written only
-    // with the outcome. A denial leaves the toggle off and the ViewModel
-    // explains why (DirectCallDenied); switching off needs no permission.
+    // toggle on - never at first launch. Whatever the dialog's answer, the
+    // user's intent was ON, so ON is what goes to the ViewModel: it re-reads
+    // the grant from the package manager - the ONE source of truth for
+    // whether the permission is held - stores the preference only if it is,
+    // and on a denial leaves the toggle off AND explains why
+    // (DirectCallDenied). Passing the raw result through would turn a
+    // denial into a silent "off" that never reaches the explanation.
+    // Switching off needs no permission.
     val callPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            viewModel.setDirectCall(granted)
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            viewModel.setDirectCall(true)
         }
     val setDirectCall: (Boolean) -> Unit = { on ->
         when {
