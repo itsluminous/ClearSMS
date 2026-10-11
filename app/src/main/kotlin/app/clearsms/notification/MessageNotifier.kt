@@ -73,7 +73,9 @@ class MessageNotifier
          * [selected] is the user's notification-action choice (defaults to
          * the settings default for callers without settings access). REPLY
          * is offered only for repliable
-         * addresses - see [NotificationActionPlanner.isRepliableAddress].
+         * addresses - see [NotificationActionPlanner.isRepliableAddress] -
+         * and CALL only for dialable ones - see
+         * [NotificationActionPlanner.dialableAddress].
          */
         suspend fun notify(
             message: MessageEntity,
@@ -135,6 +137,7 @@ class MessageNotifier
                 NotificationActionPlanner.forMessage(
                     selected,
                     repliable = NotificationActionPlanner.isRepliableAddress(message.sender),
+                    dialable = NotificationActionPlanner.dialableAddress(message.sender) != null,
                 )
             val builder =
                 NotificationCompat

@@ -131,6 +131,7 @@ class TransactionNotifier
                 NotificationActionPlanner.forMessage(
                     selected,
                     repliable = NotificationActionPlanner.isRepliableAddress(message.sender),
+                    dialable = NotificationActionPlanner.dialableAddress(message.sender) != null,
                 )
             val amountColor = ContextCompat.getColor(context, amountColorRes(content.kind))
             // Bank identity via the shared avatar chain (logo / brand tile) -
