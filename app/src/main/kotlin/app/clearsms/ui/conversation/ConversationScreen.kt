@@ -2,6 +2,7 @@ package app.clearsms.ui.conversation
 
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -28,8 +29,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Forward
@@ -75,13 +77,23 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -382,6 +394,19 @@ fun ConversationScreen(
     BackHandler(enabled = selectionMode.textSelecting) { viewModel.exitTextSelection() }
     BackHandler(enabled = selection.active && !selectionMode.textSelecting) { viewModel.exitSelection() }
 
+    // Issue #103: the SCREEN owns the text-mode field, not the bubble, so the
+    // selection bar's Copy can read the LIVE selection - whatever the handles
+    // enclose right now. Compose's own floating toolbar cannot be relied on:
+    // under programmatic focus it starts in its None state and a handle drag
+    // never promotes it, so on a fresh entry it simply does not appear. One
+    // state per entry (keyed on the message), created from the body that is
+    // on screen; it is null only while that bubble is not loaded.
+    val textSelectionId = selectionMode.textSelectionId
+    val textSelectionBody =
+        textSelectionId?.let { id -> items.itemSnapshotList.items.firstOrNull { it.id == id }?.body }
+    val textSelectionField =
+        remember(textSelectionId, textSelectionBody) { textSelectionBody?.let(TextSelectionField::state) }
+
     Scaffold(
         topBar = {
             if (selection.active) {
@@ -395,6 +420,7 @@ fun ConversationScreen(
                 ConversationSelectionBar(
                     selection = selection,
                     textSelecting = selectionMode.textSelecting,
+                    textSelectionField = textSelectionField,
                     singleItem = singleSelected,
                     order = state.selectionActionOrder,
                     onClose = viewModel::exitSelection,
@@ -402,6 +428,12 @@ fun ConversationScreen(
                     onDelete = { confirmDelete = true },
                     onCopy = {
                         viewModel.selectedText { text -> clipboard.setText(AnnotatedString(text)) }
+                    },
+                    onCopySelectedText = { text ->
+                        // Text mode: exactly what the handles enclose, then
+                        // out of selection mode as a whole-message Copy does.
+                        clipboard.setText(AnnotatedString(text))
+                        viewModel.exitSelection()
                     },
                     onForward = { viewModel.selectedText(onForward) },
                     onShare = {
@@ -659,7 +691,7 @@ fun ConversationScreen(
                         item = item,
                         highlighted = item.id == highlightedItemId,
                         selected = selection.isSelected(item.id),
-                        textSelecting = selectionMode.isTextSelecting(item.id),
+                        textSelectionField = textSelectionField?.takeIf { selectionMode.isTextSelecting(item.id) },
                         // The long-press label tells a screen reader what the
                         // SECOND long-press does (issue #103): "Select text"
                         // on a selected message with text, the usual
@@ -948,6 +980,8 @@ private data class SelectionActionSpec(
     val label: String,
     val icon: ImageVector,
     val onClick: () -> Unit,
+    /** False only for text mode's Copy with nothing highlighted (see [TextSelectionField.CopyAction.Nothing]). */
+    val enabled: Boolean = true,
 )
 
 /**
@@ -964,12 +998,14 @@ private data class SelectionActionSpec(
 private fun ConversationSelectionBar(
     selection: SelectionState<Long>,
     textSelecting: Boolean,
+    textSelectionField: TextFieldState?,
     singleItem: ConversationItem?,
     order: List<MessageSelectionAction>,
     onClose: () -> Unit,
     onExitTextSelection: () -> Unit,
     onDelete: () -> Unit,
     onCopy: () -> Unit,
+    onCopySelectedText: (String) -> Unit,
     onForward: () -> Unit,
     onShare: () -> Unit,
     onSelectAll: () -> Unit,
@@ -989,7 +1025,28 @@ private fun ConversationSelectionBar(
     fun specFor(action: MessageSelectionAction): SelectionActionSpec =
         when (action) {
             MessageSelectionAction.COPY -> {
-                SelectionActionSpec(stringResource(R.string.action_copy_message), Icons.Outlined.ContentCopy, onCopy)
+                // In text mode (issue #103) Copy reads the field's LIVE
+                // selection - reading it here is what re-labels the button
+                // as the handles move: "Copy message" only while they still
+                // enclose the whole body, "Copy selected text" once a drag
+                // narrowed it, and DISABLED when a tap collapsed it (nothing
+                // highlighted must never quietly copy the whole message).
+                val textCopy =
+                    if (textSelecting && textSelectionField != null) {
+                        TextSelectionField.copyAction(textSelectionField.text, textSelectionField.selection)
+                    } else {
+                        null
+                    }
+                if (textCopy == null) {
+                    SelectionActionSpec(stringResource(R.string.action_copy_message), Icons.Outlined.ContentCopy, onCopy)
+                } else {
+                    SelectionActionSpec(
+                        label = stringResource(TextSelectionField.labelRes(textCopy)),
+                        icon = Icons.Outlined.ContentCopy,
+                        onClick = { textCopy.text?.let(onCopySelectedText) },
+                        enabled = textCopy.text != null,
+                    )
+                }
             }
 
             MessageSelectionAction.DELETE -> {
@@ -1013,15 +1070,19 @@ private fun ConversationSelectionBar(
             }
 
             MessageSelectionAction.COPY_OTP -> {
-                SelectionActionSpec(stringResource(R.string.action_copy_otp), Icons.Outlined.Password) {
-                    singleItem?.message?.extractedOtp?.let(onCopyOtp)
-                }
+                SelectionActionSpec(
+                    label = stringResource(R.string.action_copy_otp),
+                    icon = Icons.Outlined.Password,
+                    onClick = { singleItem?.message?.extractedOtp?.let(onCopyOtp) },
+                )
             }
 
             MessageSelectionAction.ADD_RULE -> {
-                SelectionActionSpec(stringResource(R.string.action_add_rule), Icons.Outlined.AddCircleOutline) {
-                    singleItem?.let { onCreateRule(it.body) }
-                }
+                SelectionActionSpec(
+                    label = stringResource(R.string.action_add_rule),
+                    icon = Icons.Outlined.AddCircleOutline,
+                    onClick = { singleItem?.let { onCreateRule(it.body) } },
+                )
             }
         }
 
@@ -1063,6 +1124,7 @@ private fun ConversationSelectionBar(
                     label = spec.label,
                     onClick = spec.onClick,
                     icon = spec.icon,
+                    enabled = spec.enabled,
                 )
             }
             TooltipIconButton(
@@ -1076,6 +1138,7 @@ private fun ConversationSelectionBar(
                     DropdownMenuItem(
                         text = { Text(spec.label) },
                         leadingIcon = { Icon(spec.icon, contentDescription = null) },
+                        enabled = spec.enabled,
                         onClick = {
                             menuOpen = false
                             spec.onClick()
@@ -1124,7 +1187,7 @@ private fun MessageBubble(
     showDetails: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    textSelecting: Boolean = false,
+    textSelectionField: TextFieldState? = null,
     offersTextSelection: Boolean = false,
     onCopyOtp: (String) -> Unit = {},
     expanded: Boolean = false,
@@ -1133,6 +1196,9 @@ private fun MessageBubble(
     onImageTap: (AttachmentEntity) -> Unit = {},
     onLinkClick: (BodyLink) -> Unit = {},
 ) {
+    // In text-selection mode (issue #103) the screen hands the bubble the
+    // field whose selection the bar's Copy reads; its presence IS the mode.
+    val textSelecting = textSelectionField != null
     val alignment = if (item.outgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor =
         when {
@@ -1221,9 +1287,9 @@ private fun MessageBubble(
                             // THE gesture separation for issue #103: a bubble
                             // is either clickable OR text-selectable, never
                             // both. In text-selection mode this bubble drops
-                            // its combinedClickable entirely, so Compose's
-                            // SelectionContainer gestures (long-press to
-                            // start, drag the handles, tap to clear) are the
+                            // its combinedClickable entirely, so the text
+                            // field's selection gestures (drag the handles,
+                            // tap to clear, long-press to re-select) are the
                             // only pointer handlers on it - nothing competes
                             // for the long-press. Every other bubble keeps
                             // its tap / long-press exactly as before.
@@ -1285,26 +1351,23 @@ private fun MessageBubble(
                             }
 
                             item.body.isNotBlank() || attachments.isEmpty() -> {
-                                if (textSelecting) {
-                                    // Issue #103: partial text selection, the
-                                    // SAME SelectionContainer the details
-                                    // dialog and the rule wizard use. It wraps
-                                    // the BODY only - time label, delivery
-                                    // state, OTP button and detail card stay
-                                    // outside, so a drag cannot sweep "12:04"
-                                    // into the clipboard and the bubble keeps
-                                    // its shape. Plain Text, not the linkified
-                                    // body: in this mode the user is picking
-                                    // characters, and a live link under the
-                                    // finger would hijack the tap-to-clear
-                                    // and long-press-to-select gestures.
-                                    SelectionContainer {
-                                        Text(
-                                            text = item.body,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = textColor,
-                                        )
-                                    }
+                                if (textSelectionField != null) {
+                                    // Issue #103: partial text selection. The
+                                    // BODY only becomes selectable - time
+                                    // label, delivery state, OTP button and
+                                    // detail card stay outside, so a drag
+                                    // cannot sweep "12:04" into the clipboard
+                                    // and the bubble keeps its shape. Plain
+                                    // text, not the linkified body: in this
+                                    // mode the user is picking characters, and
+                                    // a live link under the finger would
+                                    // hijack the tap and long-press gestures.
+                                    TextSelectionBody(
+                                        body = item.body,
+                                        fieldState = textSelectionField,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = textColor,
+                                    )
                                 } else {
                                     LinkifiedBodyText(
                                         body = item.body,
@@ -1441,6 +1504,69 @@ private fun MessageBubble(
                 }
             }
         }
+    }
+}
+
+/**
+ * The message body while its bubble is in text-selection mode (issue #103):
+ * a READ-ONLY text field with the whole message pre-selected, so both
+ * selection handles are on screen the moment the mode starts and the user
+ * drags one inward to narrow the range - no further long-press needed (see
+ * [TextSelectionField] for why a field, and why the whole message). The
+ * [fieldState] is owned by the screen, which is how the selection bar's Copy
+ * reads the live selection instead of the whole body.
+ *
+ * Visual parity with the [Text] it replaces is guaranteed structurally, not
+ * by matching numbers: the ORIGINAL body [Text] is still laid out here, with
+ * the same [style] and [color], and only its drawing is suppressed; the
+ * field is stretched to exactly that box ([matchParentSize]). A text field
+ * otherwise imposes a ten-character minimum width (a short "OK" would widen
+ * its bubble) - exact constraints neutralise it - and at the same width and
+ * style the field's text breaks on the same lines, so no glyph moves.
+ *
+ * - No keyboard, no caret: `readOnly` means the field never starts an input
+ *   session on focus and never draws a cursor; focus is requested only so
+ *   the handles render.
+ * - Accessibility: a text field announces itself as an editable field. The
+ *   field's semantics are cleared, so a screen reader finds exactly what it
+ *   found before - the (undrawn) [Text], read as message text.
+ * - Exit path: a focused field with a selection would consume the Back key
+ *   to collapse its selection, costing the user an extra press. Back is
+ *   routed to the OnBackPressedDispatcher instead, so the screen's
+ *   `BackHandler` unwinds text mode as it always has.
+ */
+@Composable
+private fun TextSelectionBody(
+    body: String,
+    fieldState: TextFieldState,
+    style: TextStyle,
+    color: Color,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    LaunchedEffect(fieldState) { focusRequester.requestFocus() }
+    Box {
+        Text(
+            text = body,
+            style = style,
+            color = color,
+            modifier = Modifier.drawWithContent { },
+        )
+        BasicTextField(
+            state = fieldState,
+            readOnly = true,
+            textStyle = style.copy(color = color),
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .focusRequester(focusRequester)
+                    .onPreviewKeyEvent { event ->
+                        if (event.key != Key.Back) return@onPreviewKeyEvent false
+                        if (event.type == KeyEventType.KeyUp) backDispatcher?.onBackPressed()
+                        true
+                    }
+                    .clearAndSetSemantics { },
+        )
     }
 }
 

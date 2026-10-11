@@ -38,13 +38,16 @@ fun TooltipIconButton(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     tint: Color? = null,
+    enabled: Boolean = true,
 ) {
     TooltipBox(
         positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
         tooltip = { PlainTooltip { Text(label) } },
         state = rememberTooltipState(),
     ) {
-        IconButton(onClick = onClick, modifier = modifier) {
+        // A disabled button keeps its tooltip and description: the user can
+        // still learn what the greyed icon WOULD do.
+        IconButton(onClick = onClick, modifier = modifier, enabled = enabled) {
             // The same label is the accessibility description - single source.
             Icon(icon, contentDescription = label, tint = tint ?: LocalContentColor.current)
         }
