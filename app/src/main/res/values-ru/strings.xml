@@ -349,6 +349,11 @@
     <string name="settings_message_sort_sent">Времени отправки (если сеть его не сообщила - по времени получения)</string>
     <string name="settings_selection_action_order">Порядок действий с сообщениями</string>
     <string name="settings_selection_action_order_summary">Выберите, какие действия показывать в панели когда вы выбираете сообщения; первые три видны, остальные - в меню «Ещё»</string>
+    <string name="settings_direct_call">Прямой вызов</string>
+    <string name="settings_direct_call_summary">Кнопка «Позвонить» в переписке и кнопка «Позвонить» в уведомлении сразу звонят по номеру - без приложения «Телефон», без подтверждения. Когда выключено, открывается приложение «Телефон» с уже введённым номером, и вы сами нажимаете «Позвонить». Требуется разрешение на звонки, которое запрашивается при включении</string>
+    <string name="settings_direct_call_short_summary">Звонить сразу, без подтверждения, вместо открытия приложения «Телефон»</string>
+    <string name="settings_direct_call_denied">Разрешение на звонки не выдано, поэтому «Прямой вызов» остаётся выключенным. Звонки открывают приложение «Телефон»</string>
+    <string name="settings_direct_call_revoked">«Прямой вызов» выключен, потому что разрешение на звонки было отозвано. Звонки открывают приложение «Телефон»</string>
     <string name="selection_action_order_drag_hint">Перетащите за маркер, чтобы изменить порядок. Первые три - в панели, остальные - в меню «Ещё». Действия для одного сообщения скрываются, при выборе нескольких сообщений, следующее сообщение поднимается выше.</string>
     <string name="settings_show_transaction_details_summary">По умолчанию выключено. Если включено, при нажатии на банковское или OTP-сообщение в переписке также показывается разобранная карточка (сумма, продавец, счёт)</string>
     <string name="settings_strip_accents">Убирать диакритику при отправке</string>
@@ -407,6 +412,7 @@
     <string name="settings_default_inbox_filter">Фильтр входящих по умолчанию</string>
     <string name="settings_filter_all">Все</string>
     <string name="notification_action_reply">Ответить</string>
+    <string name="notification_action_call">Позвонить</string>
     <string name="notification_action_share">Поделиться</string>
     <string name="notification_action_share_otp">Поделиться OTP</string>
     <string name="swipe_action_none">Ничего не делать</string>
@@ -526,6 +532,7 @@
     <string name="perm_phone_body">Требуется Android для работы в роли SMS-приложения по умолчанию.</string>
     <string name="perm_notifications_body">Показ уведомлений о новых сообщениях и OTP.</string>
     <string name="perm_boot_body">Перезапуск фоновых задач (например, автоудаления OTP) после перезагрузки.</string>
+    <string name="perm_call_body">Звонок по кнопке «Позвонить», только если в разделе «Настройки → Сообщения» включён «Прямой вызов». Запрашивается при включении; пока выключено, не используется - звонки тогда открывают приложение «Телефон».</string>
     <string name="finance_section_empty">Здесь пока ничего нет.</string>
     <string name="chart_legend_debits">Списания</string>
     <string name="chart_legend_credits">Зачисления</string>
@@ -670,6 +677,7 @@
     <string name="selection_count">Выбрано: %1$d</string>
     <string name="action_select_all">Выбрать все</string>
     <string name="action_exit_selection">Выйти из режима выбора</string>
+    <string name="action_select_text">Выделить текст</string>
     <string name="action_more_options">Ещё</string>
     <string name="action_forward_message">Переслать</string>
     <string name="action_share_message">Поделиться</string>
