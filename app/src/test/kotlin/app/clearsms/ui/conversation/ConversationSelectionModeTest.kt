@@ -66,6 +66,61 @@ class ConversationSelectionModeTest {
     }
 
     @Test
+    fun `exit path with FIVE selected - leaving text mode on one keeps all five selected`() {
+        // The operator's question: "If I have 5 messages selected and enter
+        // partial selection on one, then press Back, do all 5 stay
+        // selected?" Yes. ConversationScreen's first BackHandler (enabled
+        // while textSelecting) calls exitTextSelection(), which only clears
+        // textSelectionId and never touches `selection`. Pinned here so the
+        // single-message exit test above cannot hide a regression that only
+        // bites a multi-selection.
+        val five = (1L..5L).fold(fresh) { mode, id -> mode.longPress(id, selectableText = true) }
+        assertThat(five.selection.selected).containsExactly(1L, 2L, 3L, 4L, 5L)
+        assertThat(five.textSelecting).isFalse()
+
+        // Text mode on the FIRST selected message...
+        val textOnFirst = five.longPress(1L, selectableText = true)
+        assertThat(textOnFirst.isTextSelecting(1L)).isTrue()
+        assertThat(textOnFirst.selection.selected).containsExactly(1L, 2L, 3L, 4L, 5L)
+        val backFromFirst = textOnFirst.exitTextSelection()
+        assertThat(backFromFirst.textSelecting).isFalse()
+        assertThat(backFromFirst.selection.active).isTrue()
+        assertThat(backFromFirst.selection.selected).containsExactly(1L, 2L, 3L, 4L, 5L)
+        // ...and exiting text mode changes NOTHING but text mode: the
+        // result is exactly the five-message selection it started from.
+        assertThat(backFromFirst).isEqualTo(five)
+
+        // ...and on a message that is NOT the first selected (the middle one):
+        // the same guarantee, whichever bubble the user zoomed into.
+        val textOnMiddle = five.longPress(3L, selectableText = true)
+        assertThat(textOnMiddle.isTextSelecting(3L)).isTrue()
+        assertThat(textOnMiddle.isTextSelecting(1L)).isFalse()
+        val backFromMiddle = textOnMiddle.exitTextSelection()
+        assertThat(backFromMiddle.textSelecting).isFalse()
+        assertThat(backFromMiddle.selection.selected).containsExactly(1L, 2L, 3L, 4L, 5L)
+        assertThat(backFromMiddle).isEqualTo(five)
+
+        // The second Back then leaves selection mode entirely, as it always has.
+        assertThat(backFromMiddle.exit()).isEqualTo(fresh)
+    }
+
+    @Test
+    fun `exit path after select all - leaving text mode keeps every message selected`() {
+        // Select one, Select all (text mode survives, its message is still
+        // selected), enter text mode on one of the swept-in messages, Back:
+        // the whole selection the sweep built is intact and still active.
+        val all = fresh.longPress(2L, selectableText = true).withAll(listOf(1L, 2L, 3L, 4L, 5L))
+        assertThat(all.selection.selected).containsExactly(1L, 2L, 3L, 4L, 5L)
+        val textMode = all.longPress(5L, selectableText = true)
+        assertThat(textMode.isTextSelecting(5L)).isTrue()
+        val back = textMode.exitTextSelection()
+        assertThat(back.textSelecting).isFalse()
+        assertThat(back.selection.active).isTrue()
+        assertThat(back.selection.selected).containsExactly(1L, 2L, 3L, 4L, 5L)
+        assertThat(back).isEqualTo(all)
+    }
+
+    @Test
     fun `touching another bubble leaves text mode and then toggles as selection mode would`() {
         val textMode = fresh.longPress(1L, true).longPress(1L, true)
         val tapped = textMode.tap(2L)
