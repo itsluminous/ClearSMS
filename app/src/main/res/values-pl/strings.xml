@@ -24,6 +24,7 @@
     <string name="action_change_category">Zmień kategorię</string>
     <string name="action_always_sort_as">Zawsze sortuj jako…</string>
     <string name="action_copy_message">Kopiuj wiadomość</string>
+    <string name="action_copy_selected_text">Kopiuj zaznaczony tekst</string>
     <string name="action_copy_otp">Kopiuj OTP</string>
     <string name="action_add_rule">Dodaj regułę</string>
     <string name="inbox_empty_title">Brak wiadomości</string>

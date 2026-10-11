@@ -13,8 +13,10 @@ import java.io.File
  * are kept apart on the bubble, that in text mode the body becomes a
  * READ-ONLY text field with the whole message pre-selected (so the handles
  * are on screen at once - no third long-press), that it keeps the exact look
- * of the Text it replaces, that nothing but the body is selectable, and that
- * the exit path unwinds one level.
+ * of the Text it replaces, that nothing but the body is selectable, that the
+ * exit path unwinds one level, and that the selection bar's Copy reads the
+ * field's LIVE selection (the screen owns the field) rather than copying the
+ * whole message behind a narrowed highlight.
  */
 class PartialTextSelectionContractTest {
     private val screen = File("src/main/kotlin/app/clearsms/ui/conversation/ConversationScreen.kt").readText()
@@ -49,9 +51,13 @@ class PartialTextSelectionContractTest {
         // the text and cannot be seeded, so it cost a THIRD long-press before
         // the handles appeared. A TextFieldState whose selection is already
         // non-collapsed draws both handles the moment the field has focus.
-        assertThat(bubble).containsMatch("""if \(textSelecting\) \{[\s\S]*?TextSelectionBody\(\s*body = item\.body,""")
+        assertThat(bubble).containsMatch(
+            """if \(textSelectionField != null\) \{[\s\S]*?TextSelectionBody\(\s*body = item\.body,\s*fieldState = textSelectionField,""",
+        )
+        // The bubble is in text mode exactly when the screen handed it a field.
+        assertThat(bubble).contains("val textSelecting = textSelectionField != null")
         val field = bubble.substringAfter("private fun TextSelectionBody(")
-        assertThat(field).contains("val fieldState = remember(body) { TextSelectionField.state(body) }")
+        assertThat(field).doesNotContain("remember(body)")
         assertThat(field).containsMatch("""BasicTextField\(\s*state = fieldState,\s*readOnly = true,""")
         // Focus is what makes the handles render; it is requested on entry,
         // and read-only means that focus opens no keyboard and draws no caret.
@@ -81,7 +87,7 @@ class PartialTextSelectionContractTest {
         assertThat(fieldCall).contains(".matchParentSize()")
         // The bubble passes the very style and colour the Text used to get.
         assertThat(bubble).containsMatch(
-            """TextSelectionBody\(\s*body = item\.body,\s*style = MaterialTheme\.typography\.bodyLarge,\s*color = textColor,""",
+            """TextSelectionBody\(\s*body = item\.body,\s*fieldState = textSelectionField,\s*style = MaterialTheme\.typography\.bodyLarge,\s*color = textColor,""",
         )
     }
 
@@ -153,8 +159,49 @@ class PartialTextSelectionContractTest {
     }
 
     @Test
+    fun `the screen owns the text-mode field, keyed on the message, and hands it to bubble and bar`() {
+        // One TextFieldState per entry into text mode, created by the screen
+        // from the body on screen - the bubble no longer remembers its own,
+        // because the bar could not have read a selection held there.
+        assertThat(screen).contains("val textSelectionId = selectionMode.textSelectionId")
+        assertThat(screen).containsMatch(
+            """val textSelectionField =\s*remember\(textSelectionId, textSelectionBody\) \{ textSelectionBody\?\.let\(TextSelectionField::state\) \}""",
+        )
+        assertThat(screen).contains("textSelectionField = textSelectionField?.takeIf { selectionMode.isTextSelecting(item.id) },")
+        assertThat(screen.split("TextSelectionField.state(").size - 1).isEqualTo(0) // only via the reference above
+        assertThat(screen).contains("textSelectionField = textSelectionField,") // into the bar
+    }
+
+    @Test
+    fun `in text mode the bar's Copy reads the field's LIVE selection, labelled truthfully, disabled when collapsed`() {
+        val bar = screen.substringAfter("private fun ConversationSelectionBar(").substringBefore("private fun DateSeparator(")
+        val copy = bar.substringAfter("MessageSelectionAction.COPY -> {").substringBefore("MessageSelectionAction.DELETE -> {")
+        // Derived from the field's current text + selection, never from the
+        // message body alone; reading them in composition is what re-labels
+        // the button as the handles move.
+        assertThat(copy).contains("TextSelectionField.copyAction(textSelectionField.text, textSelectionField.selection)")
+        assertThat(copy).contains("label = stringResource(TextSelectionField.labelRes(textCopy)),")
+        assertThat(copy).contains("enabled = textCopy.text != null,")
+        assertThat(copy).contains("onClick = { textCopy.text?.let(onCopySelectedText) },")
+        // Outside text mode the whole-selection Copy is byte for byte what it was.
+        assertThat(copy).contains(
+            "SelectionActionSpec(stringResource(R.string.action_copy_message), Icons.Outlined.ContentCopy, onCopy)",
+        )
+        // The disabled state reaches both placements of the action.
+        assertThat(bar).containsMatch("""TooltipIconButton\(\s*label = spec\.label,\s*onClick = spec\.onClick,\s*icon = spec\.icon,\s*enabled = spec\.enabled,""")
+        assertThat(bar).containsMatch("""DropdownMenuItem\([\s\S]*?enabled = spec\.enabled,""")
+        // The screen's handler copies that exact text and leaves selection
+        // mode, as a whole-message Copy does.
+        val handler = screen.substringAfter("onCopySelectedText = { text ->").substringBefore("},")
+        assertThat(handler).contains("clipboard.setText(AnnotatedString(text))")
+        assertThat(handler).contains("viewModel.exitSelection()")
+        assertThat(handler).doesNotContain("selectedText")
+    }
+
+    @Test
     fun `the bar names the mode and the bubble's long-press label says what the second press does`() {
         assertThat(DefaultStrings.ui).contains("<string name=\"action_select_text\">Select text</string>")
+        assertThat(DefaultStrings.ui).contains("<string name=\"action_copy_selected_text\">Copy selected text</string>")
         val bar = screen.substringAfter("private fun ConversationSelectionBar(").substringBefore("private fun DateSeparator(")
         assertThat(bar).contains("stringResource(R.string.action_select_text)")
         assertThat(bar).contains("stringResource(R.string.selection_count, selection.count)")

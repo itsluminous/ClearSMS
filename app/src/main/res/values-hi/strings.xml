@@ -24,6 +24,7 @@
     <string name="action_change_category">श्रेणी बदलें</string>
     <string name="action_always_sort_as">हमेशा इस श्रेणी में रखें…</string>
     <string name="action_copy_message">संदेश कॉपी करें</string>
+    <string name="action_copy_selected_text">चुना हुआ टेक्स्ट कॉपी करें</string>
     <string name="action_copy_otp">OTP कॉपी करें</string>
     <string name="action_add_rule">नियम जोड़ें</string>
     <string name="inbox_empty_title">अभी कोई संदेश नहीं</string>

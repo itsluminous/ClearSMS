@@ -28,6 +28,9 @@
     <!-- Inbox selection overflow entry for the one-step sender rule; reads like the dialog it opens (sender_rule_title). -->
     <string name="action_always_sort_as">Always sort as…</string>
     <string name="action_copy_message">Copy message</string>
+    <!-- The selection bar's Copy while part of ONE message's text is highlighted (Select text mode,
+         issue #103): it copies exactly the highlighted range, so it must not claim "Copy message". -->
+    <string name="action_copy_selected_text">Copy selected text</string>
     <string name="action_copy_otp">Copy OTP</string>
     <string name="action_add_rule">Add rule</string>
 

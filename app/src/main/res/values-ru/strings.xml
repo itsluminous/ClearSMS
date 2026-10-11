@@ -24,6 +24,7 @@
     <string name="action_change_category">Изменить категорию</string>
     <string name="action_always_sort_as">Всегда относить к…</string>
     <string name="action_copy_message">Копировать сообщение</string>
+    <string name="action_copy_selected_text">Копировать выделенный текст</string>
     <string name="action_copy_otp">Копировать OTP</string>
     <string name="action_add_rule">Добавить правило</string>
     <string name="inbox_empty_title">Сообщений пока нет</string>
