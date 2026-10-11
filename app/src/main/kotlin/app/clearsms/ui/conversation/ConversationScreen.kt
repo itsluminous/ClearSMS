@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Forward
@@ -145,6 +146,7 @@ fun ConversationScreen(
     val mmsAvailable by viewModel.mmsAvailableState.collectAsStateWithLifecycle()
     val items = viewModel.pagedItems.collectAsLazyPagingItems()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val selectionMode by viewModel.selectionMode.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     // Draft lives in the ViewModel (persisted per thread): leaving and
@@ -374,7 +376,10 @@ fun ConversationScreen(
     // (see MessageMetadata.onTap); survives rotation.
     var expandedId by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    BackHandler(enabled = selection.active) { viewModel.exitSelection() }
+    // Back unwinds one level at a time: text selection -> message selection
+    // -> normal. The message selection survives the first step (issue #103).
+    BackHandler(enabled = selectionMode.textSelecting) { viewModel.exitTextSelection() }
+    BackHandler(enabled = selection.active && !selectionMode.textSelecting) { viewModel.exitSelection() }
 
     Scaffold(
         topBar = {
@@ -388,9 +393,11 @@ fun ConversationScreen(
                     }
                 ConversationSelectionBar(
                     selection = selection,
+                    textSelecting = selectionMode.textSelecting,
                     singleItem = singleSelected,
                     order = state.selectionActionOrder,
                     onClose = viewModel::exitSelection,
+                    onExitTextSelection = viewModel::exitTextSelection,
                     onDelete = { confirmDelete = true },
                     onCopy = {
                         viewModel.selectedText { text -> clipboard.setText(AnnotatedString(text)) }
@@ -638,10 +645,20 @@ fun ConversationScreen(
                     }
                 Column {
                     if (showSeparator) DateSeparator(item.timestamp)
+                    val selectableText =
+                        ConversationSelectionMode.hasSelectableText(item.body, item.message?.mmsStatus)
                     MessageBubble(
                         item = item,
                         highlighted = item.id == highlightedItemId,
                         selected = selection.isSelected(item.id),
+                        textSelecting = selectionMode.isTextSelecting(item.id),
+                        // The long-press label tells a screen reader what the
+                        // SECOND long-press does (issue #103): "Select text"
+                        // on a selected message with text, the usual
+                        // "Message actions" everywhere else.
+                        offersTextSelection =
+                            selectionMode.longPressAction(item.id, selectableText) ==
+                                ConversationSelectionMode.LongPress.SELECT_TEXT,
                         showDetails = state.showTransactionDetails,
                         expanded = expandedId == item.id,
                         attachments = attachmentsByMessage[item.id].orEmpty(),
@@ -687,7 +704,11 @@ fun ConversationScreen(
                                 }
                             }
                         },
-                        onLongClick = { viewModel.enterSelection(item.id) },
+                        // First long-press: enter selection, as always. On an
+                        // ALREADY selected message with text: text selection
+                        // inside that bubble (issue #103). The ViewModel routes
+                        // it through ConversationSelectionMode.longPressAction.
+                        onLongClick = { viewModel.longPressMessage(item.id, selectableText) },
                         onCopyOtp = copyOtp,
                         selectionActive = selection.active,
                     )
@@ -934,9 +955,11 @@ private data class SelectionActionSpec(
 @Composable
 private fun ConversationSelectionBar(
     selection: SelectionState<Long>,
+    textSelecting: Boolean,
     singleItem: ConversationItem?,
     order: List<MessageSelectionAction>,
     onClose: () -> Unit,
+    onExitTextSelection: () -> Unit,
     onDelete: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -999,16 +1022,29 @@ private fun ConversationSelectionBar(
             // titleMedium + single line: at the default titleLarge a
             // six-digit "999999 selected" wrapped out of view next to the
             // four action slots (measured on a 411dp-wide display).
+            //
+            // While one message is in text-selection mode (issue #103) the
+            // title names that mode instead of the count: it is the only
+            // on-screen cue that the bubble's long-press has changed hands,
+            // and the Close beneath it now steps back to message selection.
             Text(
-                text = stringResource(R.string.selection_count, selection.count),
+                text =
+                    if (textSelecting) {
+                        stringResource(R.string.action_select_text)
+                    } else {
+                        stringResource(R.string.selection_count, selection.count)
+                    },
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
             )
         },
         navigationIcon = {
+            // Text mode unwinds ONE level: back to the message selection the
+            // user built, whole-message Copy still a tap away. Plain
+            // selection mode closes as it always has.
             TooltipIconButton(
-                label = stringResource(R.string.action_exit_selection),
-                onClick = onClose,
+                label = stringResource(if (textSelecting) R.string.ui_action_close else R.string.action_exit_selection),
+                onClick = if (textSelecting) onExitTextSelection else onClose,
                 icon = Icons.Outlined.Close,
             )
         },
@@ -1080,6 +1116,8 @@ private fun MessageBubble(
     showDetails: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    textSelecting: Boolean = false,
+    offersTextSelection: Boolean = false,
     onCopyOtp: (String) -> Unit = {},
     expanded: Boolean = false,
     selectionActive: Boolean = false,
@@ -1172,18 +1210,40 @@ private fun MessageBubble(
                             .then(if (showOtpCopy) Modifier.fillMaxWidth() else Modifier)
                             // Comfortable touch target for the tap-to-reveal gesture.
                             .defaultMinSize(minHeight = 48.dp)
-                            .combinedClickable(
-                                onClick = onClick,
-                                onClickLabel =
-                                    stringResource(
-                                        if (expanded) {
-                                            R.string.conversation_hide_message_details
-                                        } else {
-                                            R.string.conversation_show_message_details
-                                        },
-                                    ),
-                                onLongClick = onLongClick,
-                                onLongClickLabel = stringResource(R.string.inbox_row_actions),
+                            // THE gesture separation for issue #103: a bubble
+                            // is either clickable OR text-selectable, never
+                            // both. In text-selection mode this bubble drops
+                            // its combinedClickable entirely, so Compose's
+                            // SelectionContainer gestures (long-press to
+                            // start, drag the handles, tap to clear) are the
+                            // only pointer handlers on it - nothing competes
+                            // for the long-press. Every other bubble keeps
+                            // its tap / long-press exactly as before.
+                            .then(
+                                if (textSelecting) {
+                                    Modifier
+                                } else {
+                                    Modifier.combinedClickable(
+                                        onClick = onClick,
+                                        onClickLabel =
+                                            stringResource(
+                                                if (expanded) {
+                                                    R.string.conversation_hide_message_details
+                                                } else {
+                                                    R.string.conversation_show_message_details
+                                                },
+                                            ),
+                                        onLongClick = onLongClick,
+                                        // Screen readers get the long-press as a
+                                        // named custom action; on an already
+                                        // selected message with text it says
+                                        // what the second long-press now does.
+                                        onLongClickLabel =
+                                            stringResource(
+                                                if (offersTextSelection) R.string.action_select_text else R.string.inbox_row_actions,
+                                            ),
+                                    )
+                                },
                             ),
                 ) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
@@ -1217,12 +1277,34 @@ private fun MessageBubble(
                             }
 
                             item.body.isNotBlank() || attachments.isEmpty() -> {
-                                LinkifiedBodyText(
-                                    body = item.body,
-                                    onLinkClick = onLinkClick,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = textColor,
-                                )
+                                if (textSelecting) {
+                                    // Issue #103: partial text selection, the
+                                    // SAME SelectionContainer the details
+                                    // dialog and the rule wizard use. It wraps
+                                    // the BODY only - time label, delivery
+                                    // state, OTP button and detail card stay
+                                    // outside, so a drag cannot sweep "12:04"
+                                    // into the clipboard and the bubble keeps
+                                    // its shape. Plain Text, not the linkified
+                                    // body: in this mode the user is picking
+                                    // characters, and a live link under the
+                                    // finger would hijack the tap-to-clear
+                                    // and long-press-to-select gestures.
+                                    SelectionContainer {
+                                        Text(
+                                            text = item.body,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = textColor,
+                                        )
+                                    }
+                                } else {
+                                    LinkifiedBodyText(
+                                        body = item.body,
+                                        onLinkClick = onLinkClick,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = textColor,
+                                    )
+                                }
                             }
 
                             // Image/file-only MMS: the attachments ARE the message.

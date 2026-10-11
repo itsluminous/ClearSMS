@@ -511,9 +511,16 @@ class ConversationViewModel
         private val scrollToBottomSignal = Channel<Unit>(Channel.CONFLATED)
         val scrollToBottom: Flow<Unit> = scrollToBottomSignal.receiveAsFlow()
 
-        /** Multi-select over message ids within the thread. */
-        private val selectionState = MutableStateFlow(SelectionState<Long>())
-        val selection: StateFlow<SelectionState<Long>> = selectionState.asStateFlow()
+        /**
+         * Multi-select over message ids within the thread, plus the nested
+         * text-selection mode of one selected message (issue #103). ONE
+         * state so the invariant "text mode only on a selected message"
+         * lives in the pure [ConversationSelectionMode], not in call order.
+         */
+        private val modeState = MutableStateFlow(ConversationSelectionMode())
+        val selectionMode: StateFlow<ConversationSelectionMode> = modeState.asStateFlow()
+        val selection: StateFlow<SelectionState<Long>> =
+            modeState.map { it.selection }.stateIn(viewModelScope, SharingStarted.Eagerly, SelectionState())
 
         /**
          * Paged thread messages, newest first (the screen renders them with
@@ -874,29 +881,43 @@ class ConversationViewModel
 
         // region selection
 
-        fun enterSelection(messageId: Long) {
-            selectionState.update { if (it.active) it.toggle(messageId) else it.enter(messageId) }
+        /**
+         * A bubble long-press. The first one enters selection mode; one on
+         * an ALREADY selected message with text enters text-selection mode
+         * for that message (issue #103); anything else toggles - see
+         * [ConversationSelectionMode.longPressAction].
+         */
+        fun longPressMessage(
+            messageId: Long,
+            selectableText: Boolean,
+        ) {
+            modeState.update { it.longPress(messageId, selectableText) }
         }
 
         fun toggleSelection(messageId: Long) {
-            selectionState.update { it.toggle(messageId) }
+            modeState.update { it.tap(messageId) }
+        }
+
+        /** Back from text selection to plain message selection; the selection is kept. */
+        fun exitTextSelection() {
+            modeState.update { it.exitTextSelection() }
         }
 
         fun exitSelection() {
-            selectionState.value = SelectionState()
+            modeState.value = ConversationSelectionMode()
         }
 
         /** Selects every stored message of the thread (queried, not just loaded pages). */
         fun selectAll() {
             viewModelScope.launch(ioDispatcher) {
                 val ids = messageRepository.messageIdsInThread(threadId)
-                selectionState.update { it.withAll(ids) }
+                modeState.update { it.withAll(ids) }
             }
         }
 
         /** Deletes the selected messages undoably (staged; provider commit deferred). */
         fun deleteSelected() {
-            val ids = selectionState.value.selected.toList()
+            val ids = modeState.value.selection.selected.toList()
             exitSelection()
             viewModelScope.launch(ioDispatcher) {
                 val staged = undoManager.stageDeleteMessages(ids)
@@ -920,7 +941,7 @@ class ConversationViewModel
          * (compose prefill) - one text-of-selection rule for all three.
          */
         fun selectedText(onReady: (String) -> Unit) {
-            val ids = selectionState.value.selected.toList()
+            val ids = modeState.value.selection.selected.toList()
             exitSelection()
             viewModelScope.launch {
                 val text =
