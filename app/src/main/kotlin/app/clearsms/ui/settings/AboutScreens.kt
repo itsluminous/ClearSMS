@@ -115,6 +115,7 @@ fun PermissionsInfoScreen(onBack: () -> Unit) {
                 "READ_PHONE_STATE" to stringResource(R.string.perm_phone_body),
                 "POST_NOTIFICATIONS" to stringResource(R.string.perm_notifications_body),
                 "RECEIVE_BOOT_COMPLETED" to stringResource(R.string.perm_boot_body),
+                "CALL_PHONE" to stringResource(R.string.perm_call_body),
             ),
     )
 }

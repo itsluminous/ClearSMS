@@ -99,7 +99,10 @@ class SelectionActionOrderContractTest {
         val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
         assertThat(messagesRows.indexOf(SettingsItem.SELECTION_ACTION_ORDER))
             .isEqualTo(messagesRows.indexOf(SettingsItem.MESSAGE_SORT_ORDER) + 1)
-        assertThat(messagesRows.last()).isEqualTo(SettingsItem.SELECTION_ACTION_ORDER)
+        // Only the Direct call toggle (what the Call button does) follows it.
+        assertThat(messagesRows.takeLast(2))
+            .containsExactly(SettingsItem.SELECTION_ACTION_ORDER, SettingsItem.DIRECT_CALL)
+            .inOrder()
         // Searchability (needs resources) is pinned in SettingsCatalogTest.
         // The row opens the dialog and summarises the inline trio.
         assertThat(settings).contains("SettingsItem.SELECTION_ACTION_ORDER -> {")

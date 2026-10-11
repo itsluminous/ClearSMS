@@ -288,6 +288,7 @@ class SettingsBackupManagerTest {
             repo.setHandledOtpMessageId(42L)
             repo.setScheduleSendTipShown(true)
             repo.setLastSortedVersionCode(3)
+            repo.setDirectCall(true)
 
             val storedKeys =
                 dataStore.data
@@ -312,6 +313,7 @@ class SettingsBackupManagerTest {
             repo.setHandledOtpMessageId(42L)
             repo.setScheduleSendTipShown(true)
             repo.setLastSortedVersionCode(3)
+            repo.setDirectCall(true)
 
             val settings = exportedSettings(export(dataStore))
             SettingsBackupCatalog.excludedKeys.forEach { key ->
@@ -328,7 +330,7 @@ class SettingsBackupManagerTest {
                 """
                 {"type":"clearsms-settings","formatVersion":1,
                  "settings":{"show_balance":true,"onboarding_complete":true,
-                             "handled_otp_message_id":42,"theme":"DARK"}}
+                             "handled_otp_message_id":42,"direct_call":true,"theme":"DARK"}}
                 """.trimIndent()
             val result = manager(dataStore).importFrom(ByteArrayInputStream(crafted.toByteArray()))
 
@@ -336,9 +338,12 @@ class SettingsBackupManagerTest {
             assertThat(repo.showBalance.first()).isFalse()
             assertThat(repo.onboardingComplete.first()).isFalse()
             assertThat(repo.handledOtpMessageId.first()).isEqualTo(0L)
+            // Direct call is permission-bound: a file can never switch
+            // one-click calling on; the user opts in again on this device.
+            assertThat(repo.directCall.first()).isFalse()
             assertThat(repo.theme.first()).isEqualTo(ThemeMode.DARK)
             assertThat(result.applied).isEqualTo(1)
-            assertThat(result.skipped).isEqualTo(3)
+            assertThat(result.skipped).isEqualTo(4)
         }
 
     @Test

@@ -23,6 +23,16 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- Optional: exact alarms for bill payment reminders -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Opt-in "Direct call" (Settings → Messages, default OFF): lets the
+         Call button place the call (ACTION_CALL) instead of opening the
+         dialer prefilled. A dangerous runtime permission that cannot be
+         declared conditionally, so every install lists "make and manage
+         phone calls" even though it is REQUESTED only when the user switches
+         the toggle on, and never used while the toggle is off - with it
+         off, or the grant missing or revoked, calls go through ACTION_DIAL
+         exactly as before (ui/settings/DirectCall). No privileged call
+         permission is declared. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <!-- Package visibility (Android 11+): lets FrameworkMmsGateway ask the
          platform WHICH package will read a staged outgoing MMS PDU (the
@@ -234,6 +244,20 @@
         <receiver
             android:name=".notification.MessageActionReceiver"
             android:exported="false" />
+
+        <!-- The Call action on message and transaction notifications: an
+             invisible activity that decides AT TAP TIME between the dialer
+             (ACTION_DIAL) and, with Direct call on and CALL_PHONE granted,
+             the call itself - then finishes. An activity (not a receiver)
+             because Android 12+ blocks notification trampolines. NOT
+             exported: only this app's own PendingIntents reach it. -->
+        <activity
+            android:name=".notification.CallActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- AlarmManager target for bill-due reminders. -->
         <receiver

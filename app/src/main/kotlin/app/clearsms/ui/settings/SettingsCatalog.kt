@@ -126,6 +126,19 @@ enum class SettingsItem(
     // about the Inbox list. Order only - no hiding, every action stays
     // reachable (ConversationSelectionBarLayout).
     SELECTION_ACTION_ORDER(SettingsSection.MESSAGES, R.string.settings_selection_action_order),
+
+    // Direct call (GitHub #99 follow-up): whether the Call button - the
+    // conversation title bar's AND the notification's Call action - places
+    // the call at once or opens the dialer prefilled (default). ONE row for
+    // ONE preference: the notification-action picker surfaces the same
+    // switch as a nested control under its Call entry, writing this same
+    // preference, because the catalog contract (SettingsCatalogTest) is
+    // that every row lives on exactly one screen. It sits in Messages, last,
+    // right after the message-action order: both are "what the buttons in
+    // a conversation do", and the Call button is a conversation control
+    // first (the notification action is its mirror), whereas Notifications
+    // holds what a notification SHOWS, not what a tap does.
+    DIRECT_CALL(SettingsSection.MESSAGES, R.string.settings_direct_call),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),
     SHOW_RICH_AVATARS(SettingsSection.APPEARANCE, R.string.settings_show_rich_avatars),

@@ -56,8 +56,10 @@ class SenderContactActionTest {
 
     @Test
     fun `no action ever places a call by itself`() {
-        // ACTION_CALL needs CALL_PHONE and dials unprompted - the contract
-        // for numbers that arrived in an SMS is ACTION_DIAL/VIEW/INSERT only.
+        // ACTION_CALL needs CALL_PHONE and dials unprompted. The manifest now
+        // declares CALL_PHONE for the OPT-IN Direct call toggle (default OFF),
+        // but that lives in DirectCall alone: the name-tap actions here stay
+        // ACTION_VIEW/INSERT only and never place a call, opted in or not.
         listOf(
             SenderContactAction.onNameTap("9876543210", "content://c/1"),
             SenderContactAction.onNameTap("9876543210", null),
