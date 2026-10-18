@@ -32,9 +32,9 @@ handles OTPs intelligently - all completely offline, on your device.
 | :---: | :---: | :---: |
 | ![Inbox](docs/screenshots/inbox.png) | ![Finance dashboard](docs/screenshots/finance.png) | ![Alerts](docs/screenshots/alerts.png) |
 
-| Account detail | Extracted transaction | Search |
+| Account detail | Settings | Search |
 | :---: | :---: | :---: |
-| ![Account detail](docs/screenshots/account-detail.png) | ![Extracted transaction](docs/screenshots/extracted-transaction.png) | ![Search](docs/screenshots/search.png) |
+| ![Account detail](docs/screenshots/account-detail.png) | ![Settings](docs/screenshots/settings.png) | ![Search](docs/screenshots/search.png) |
 
 | Parsed notifications | OTP notification | Balance lock | Dark theme |
 | :---: | :---: | :---: | :---: |
