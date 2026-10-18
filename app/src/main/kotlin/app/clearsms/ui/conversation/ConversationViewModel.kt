@@ -39,6 +39,7 @@ import app.clearsms.mms.StagedAttachment
 import app.clearsms.notification.MutedSenderGate
 import app.clearsms.notification.OtpClipboard
 import app.clearsms.sms.ContactsSource
+import app.clearsms.sms.OutgoingSendDispatcher
 import app.clearsms.sms.SenderRepliability
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
@@ -47,6 +48,7 @@ import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.common.ComposerAttachments
+import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.displayLocaleChanges
@@ -84,7 +86,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 /** One bubble in the conversation, mapped 1:1 from its persisted row. */
@@ -289,6 +290,8 @@ class ConversationViewModel
         private val simChoiceStore: SimChoiceStore,
         private val mmsCapability: MmsCapability,
         private val messageScheduler: MessageScheduler,
+        private val sendDispatcher: OutgoingSendDispatcher,
+        composerHandOffs: ComposerHandOffs,
         private val scheduleTipGate: ScheduleTipGate,
         private val attachmentDao: AttachmentDao,
         private val mmsInbound: MmsInbound,
@@ -302,12 +305,23 @@ class ConversationViewModel
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
 
         /**
+         * What the new-message composer handed over when it routed the user
+         * into this existing conversation (issue #119): typed text, staged
+         * chips, unstaged shared content, or the delayed send it just
+         * started. Taken exactly once, here, at creation; null on every
+         * other way into a thread.
+         */
+        private val handOff = composerHandOffs.take(threadId)
+
+        /**
          * Per-thread draft: restores the saved compose text on open and
          * persists edits, so leaving the thread (or process death) never
-         * loses unsent text. Sending or scheduling consumes it.
+         * loses unsent text. Sending or scheduling consumes it. Text handed
+         * over by the composer is shown but not persisted until edited
+         * (see [ConversationDraft]).
          */
         private val conversationDraft =
-            ConversationDraft(threadId, messageRepository, viewModelScope, ioDispatcher)
+            ConversationDraft(threadId, messageRepository, viewModelScope, ioDispatcher, seed = handOff?.draft)
         val draft: StateFlow<String> = conversationDraft.text
 
         /** Compose-field edit; blank text clears the saved draft. */
@@ -522,6 +536,34 @@ class ConversationViewModel
         private val scrollToBottomSignal = Channel<Unit>(Channel.CONFLATED)
         val scrollToBottom: Flow<Unit> = scrollToBottomSignal.receiveAsFlow()
 
+        // Declared AFTER the event channels it feeds: init blocks run in
+        // textual order, and this one sends on them synchronously under an
+        // unconfined dispatcher.
+        init {
+            // The composer's hand-off (issue #119): its chips arrive as
+            // independent copies when the composer stays beneath for Back
+            // (it keeps its own files), or as-is when it was replaced; and a
+            // Send that delayed sending turned into a pending schedule gets
+            // its Cancel bar HERE, for whatever is left of the delay,
+            // through the same SendEvent the conversation's own delayed
+            // sends use - one bar, one Cancel.
+            handOff?.let { inherited ->
+                if (inherited.attachmentsOwned) {
+                    composerAttachments.adopt(inherited.attachments)
+                } else {
+                    composerAttachments.adoptCopies(inherited.attachments)
+                }
+                viewModelScope.launch(ioDispatcher) {
+                    inherited.delayedMessageId?.let { messageId ->
+                        sendDispatcher.pendingDelaySeconds(messageId)?.let { seconds ->
+                            scrollToBottomSignal.trySend(Unit)
+                            sendEvents.send(SendEvent.Delayed(messageId, seconds))
+                        }
+                    }
+                }
+            }
+        }
+
         /**
          * Multi-select over message ids within the thread, plus the nested
          * text-selection mode of one selected message (issue #103). ONE
@@ -657,12 +699,15 @@ class ConversationViewModel
         }
 
         /**
-         * Dispatches [body]: with attachments staged the message goes out as
-         * an MMS through [MmsSender], otherwise as an SMS through
-         * [SmsSender]. Either way the outgoing row is persisted (Sending)
-         * before dispatch, so the bubble appears immediately through paging
-         * invalidation; its status and the snackbar [SendEvent] then resolve
-         * from the persisted [DeliveryStatus].
+         * Dispatches [body] through [OutgoingSendDispatcher] - the ONE send
+         * decision shared with the new-message composer: with attachments
+         * staged the message goes out as an MMS now, otherwise delayed
+         * sending (GitHub #40, opt-in) turns it into a short durable
+         * schedule with a Cancel bar, otherwise it is an SMS now. Either
+         * way the outgoing row is persisted before dispatch, so the bubble
+         * appears immediately through paging invalidation; its status and
+         * the snackbar [SendEvent] then resolve from the persisted
+         * [DeliveryStatus].
          */
         fun send(body: String) {
             val destination = uiState.value.address
@@ -674,47 +719,9 @@ class ConversationViewModel
             conversationDraft.consume()
             val attachments = composerAttachments.consume()
             viewModelScope.launch(ioDispatcher) {
-                // Delayed sending (GitHub #40, opt-in via Settings): a plain
-                // Send becomes a short SCHEDULE - the same durable
-                // AlarmManager + SCHEDULED-row machinery as long-press
-                // scheduling, so the message still goes out if the user
-                // leaves the thread or the process dies mid-delay
-                // (rearmAll fires overdue rows after a reboot). MMS bypasses
-                // the delay: scheduling is SMS-only today (see
-                // scheduleHintVisible), so attachments send immediately
-                // rather than silently losing their files.
-                if (attachments.isEmpty() && settings.delayedSendEnabled.first()) {
-                    val delay = settings.delayedSendDelay.first()
-                    val messageId =
-                        try {
-                            messageScheduler.schedule(
-                                destination,
-                                body,
-                                chosenSim.value,
-                                System.currentTimeMillis() + delay.millis,
-                            )
-                        } catch (e: Exception) {
-                            // The user sees "Message not sent" with no row
-                            // to tap: the report must say what threw.
-                            Diag.e(TAG, "delayed send scheduling failed", e)
-                            sendEvents.send(SendEvent.Failed(NO_MESSAGE))
-                            return@launch
-                        }
-                    // Kept for cancel: the composer gets back EXACTLY what
-                    // was typed, not the accent-folded wire body the
-                    // scheduler persisted.
-                    pendingDelayedOriginals[messageId] = body
-                    scrollToBottomSignal.trySend(Unit)
-                    sendEvents.send(SendEvent.Delayed(messageId, delay.seconds))
-                    return@launch
-                }
-                val messageId =
+                val outcome =
                     try {
-                        if (attachments.isEmpty()) {
-                            smsSender.send(destination, body, chosenSim.value)
-                        } else {
-                            mmsSender.send(destination, body, attachments, chosenSim.value)
-                        }
+                        sendDispatcher.send(destination, body, attachments, chosenSim.value)
                     } catch (e: Exception) {
                         // Persisting the message itself failed - nothing to
                         // retry against, and the only trace is this line.
@@ -732,8 +739,16 @@ class ConversationViewModel
                         return@launch
                     }
                 scrollToBottomSignal.trySend(Unit)
-                if (scheduleTipGate.shouldShowTip()) scheduleTipEvents.send(Unit)
-                resolve(messageId)
+                when (outcome) {
+                    is OutgoingSendDispatcher.Outcome.Delayed -> {
+                        sendEvents.send(SendEvent.Delayed(outcome.messageId, outcome.delaySeconds))
+                    }
+
+                    is OutgoingSendDispatcher.Outcome.Dispatched -> {
+                        if (scheduleTipGate.shouldShowTip()) scheduleTipEvents.send(Unit)
+                        resolve(outcome.messageId)
+                    }
+                }
             }
         }
 
@@ -825,30 +840,20 @@ class ConversationViewModel
         }
 
         /**
-         * The exact text the user typed for each still-pending delayed send,
-         * so Cancel restores what was typed rather than the accent-folded
-         * body the scheduler persisted. In-memory on purpose: the snackbar
-         * (the only caller of [cancelDelayedSend]) dies with this ViewModel
-         * anyway, and the message itself stays durable in Room regardless.
-         */
-        private val pendingDelayedOriginals = ConcurrentHashMap<Long, String>()
-
-        /**
-         * Cancel tapped on the delayed-send snackbar. Exactly one of two
-         * outcomes, decided by the DAO's compare-and-set (never both):
-         * - cancel won: the row is gone, nothing was ever sent, and the
-         *   text goes BACK into the composer ready to edit - a cancel that
-         *   discarded the text would be data loss;
+         * Cancel tapped on the delayed-send snackbar. The dispatcher resolves
+         * the cancel/fire race exactly-once (never both):
+         * - cancel won: the row is gone, nothing was ever sent, and the text
+         *   the user TYPED goes BACK into the composer ready to edit - a
+         *   cancel that discarded the text would be data loss;
          * - the fire won (the delay expired in the same instant): nothing
          *   is restored - the message is on its way, and an honest
          *   "Message sent" replaces the pending bar instead of a lie.
          */
         fun cancelDelayedSend(messageId: Long) {
             viewModelScope.launch(ioDispatcher) {
-                val persistedBody = messageScheduler.cancelDelayed(messageId)
-                val original = pendingDelayedOriginals.remove(messageId)
-                if (persistedBody != null) {
-                    conversationDraft.restore(original ?: persistedBody)
+                val restored = sendDispatcher.cancelDelayed(messageId)
+                if (restored != null) {
+                    conversationDraft.restore(restored)
                 } else {
                     sendEvents.send(SendEvent.Sent)
                 }

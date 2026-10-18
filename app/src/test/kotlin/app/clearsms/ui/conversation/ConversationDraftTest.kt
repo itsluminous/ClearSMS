@@ -15,12 +15,16 @@ class ConversationDraftTest {
 
     // A standalone scope on the shared scheduler: backgroundScope does not
     // reliably run collectors under advanceUntilIdle in coroutines 1.9.
-    private fun TestScope.draft(threadId: Long = 7L): ConversationDraft =
+    private fun TestScope.draft(
+        threadId: Long = 7L,
+        seed: String? = null,
+    ): ConversationDraft =
         ConversationDraft(
             threadId = threadId,
             repository = repository,
             scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
             ioDispatcher = StandardTestDispatcher(testScheduler),
+            seed = seed,
         )
 
     @Test
@@ -102,5 +106,46 @@ class ConversationDraftTest {
 
             assertThat(draft.text.value).isEqualTo("fresh typing")
             assertThat(repository.drafts[7L]).isEqualTo("fresh typing")
+        }
+
+    // --- text inherited from the new-message composer (issue #119) ---------
+
+    @Test
+    fun `an inherited seed is shown but NOT persisted until the user edits it`() =
+        runTest {
+            val draft = draft(seed = "carried over")
+            advanceUntilIdle()
+
+            assertThat(draft.text.value).isEqualTo("carried over")
+            assertThat(repository.drafts).doesNotContainKey(7L)
+
+            draft.set("carried over!")
+            advanceUntilIdle()
+            assertThat(repository.drafts[7L]).isEqualTo("carried over!")
+        }
+
+    @Test
+    fun `an inherited seed follows the thread's own saved draft - neither text is lost`() =
+        runTest {
+            repository.drafts[7L] = "half a thought"
+            val draft = draft(seed = "carried over")
+            advanceUntilIdle()
+
+            assertThat(draft.text.value).isEqualTo("half a thought\ncarried over")
+            // The saved draft stays exactly as it was saved.
+            assertThat(repository.drafts[7L]).isEqualTo("half a thought")
+        }
+
+    @Test
+    fun `sending an inherited seed consumes it like any text - no leftover draft`() =
+        runTest {
+            val draft = draft(seed = "carried over")
+            advanceUntilIdle()
+
+            draft.consume()
+            advanceUntilIdle()
+
+            assertThat(draft.text.value).isEmpty()
+            assertThat(repository.drafts).doesNotContainKey(7L)
         }
 }

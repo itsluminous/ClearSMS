@@ -33,6 +33,7 @@ import app.clearsms.notification.OtpNotifier
 import app.clearsms.notification.SenderIconFactory
 import app.clearsms.notification.TransactionNotifier
 import app.clearsms.sms.ContactsSource
+import app.clearsms.sms.OutgoingSendDispatcher
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SmsSender
@@ -42,6 +43,8 @@ import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
+import app.clearsms.ui.common.ComposerHandOff
+import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.work.MessageScheduler
@@ -86,6 +89,7 @@ class ConversationViewModelDelayedSendTest {
     private lateinit var gateway: FakeSmsGateway
     private lateinit var scheduler: MessageScheduler
     private lateinit var smsSender: SmsSender
+    private val handOffs = ComposerHandOffs()
 
     // CopyOnWrite: appended by the collector coroutine while awaitUntil iterates.
     private val events = java.util.concurrent.CopyOnWriteArrayList<SendEvent>()
@@ -221,6 +225,8 @@ class ConversationViewModelDelayedSendTest {
                     ),
                 mmsCapability = MmsCapability(context),
                 messageScheduler = scheduler,
+                sendDispatcher = OutgoingSendDispatcher(settings, scheduler, smsSender, mmsSender, dao),
+                composerHandOffs = handOffs,
                 scheduleTipGate = ScheduleTipGate(settings),
                 attachmentDao = db.attachmentDao(),
                 mmsInbound = mmsInbound,
@@ -337,6 +343,72 @@ class ConversationViewModelDelayedSendTest {
             assertThat(vm.draft.value).isEmpty()
             assertThat(gateway.sends).hasSize(1)
             assertThat(dao.getById(pending.messageId)?.deliveryStatus).isEqualTo(DeliveryStatus.SENDING)
+        }
+
+    // --- inherited from the new-message composer (issue #119) ---------------
+
+    @Test
+    fun `a delayed send handed over by the composer gets its Cancel bar HERE, for the time left`() =
+        runBlocking<Unit> {
+            settings.delayedSendEnabled.value = true
+            // The composer's send: the SAME dispatcher persisted the pending
+            // row and navigated here with the hand-off.
+            val uiPrefs = UiPrefs(PreferenceDataStoreFactory.create { File.createTempFile("ui_settings", ".preferences_pb") })
+            val sender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.Unconfined, gateway)
+            val pendingId =
+                MessageScheduler(dao, sender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined)
+                    .schedule("+15550001234", "from the composer", null, System.currentTimeMillis() + 10_000L)
+            handOffs.stash(THREAD_ID, ComposerHandOff(delayedMessageId = pendingId))
+
+            val vm = viewModel()
+
+            awaitUntil { events.any { it is SendEvent.Delayed } }
+            val pending = events.filterIsInstance<SendEvent.Delayed>().single()
+            assertThat(pending.messageId).isEqualTo(pendingId)
+            assertThat(pending.delaySeconds).isIn(1..10)
+            // Taken exactly once: a second conversation open inherits nothing.
+            assertThat(handOffs.take(THREAD_ID)).isNull()
+
+            // And its Cancel is the conversation's own: row gone, text back.
+            vm.cancelDelayedSend(pendingId)
+            awaitUntil { vm.draft.value == "from the composer" }
+            assertThat(dao.getById(pendingId)).isNull()
+            assertThat(gateway.sends).isEmpty()
+        }
+
+    @Test
+    fun `a delayed send that already fired before the hand-off landed shows no bar`() =
+        runBlocking<Unit> {
+            val uiPrefs = UiPrefs(PreferenceDataStoreFactory.create { File.createTempFile("ui_settings", ".preferences_pb") })
+            val sender = SmsSender(context, dao, TelephonyWriter(context), uiPrefs, Dispatchers.Unconfined, gateway)
+            val pendingId =
+                MessageScheduler(dao, sender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined)
+                    .schedule("+15550001234", "already gone", null, System.currentTimeMillis() + 1_000L)
+            assertThat(sender.sendScheduled(pendingId)).isTrue()
+            handOffs.stash(THREAD_ID, ComposerHandOff(delayedMessageId = pendingId))
+
+            viewModel()
+
+            delay(200)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertThat(events.filterIsInstance<SendEvent.Delayed>()).isEmpty()
+        }
+
+    @Test
+    fun `text carried from the composer is in the compose bar but not saved as this thread's draft until edited`() =
+        runBlocking<Unit> {
+            handOffs.stash(THREAD_ID, ComposerHandOff(draft = "typed in the composer"))
+
+            val vm = viewModel()
+
+            awaitUntil { vm.draft.value == "typed in the composer" }
+            // Untouched, it is not this thread's draft: Back out after a
+            // mis-tap leaves no stale "Draft" on the wrong conversation.
+            delay(100)
+            assertThat(repository.drafts).doesNotContainKey(THREAD_ID)
+            // Edited here, it becomes the thread's draft like any typing.
+            vm.setDraft("typed in the composer, and more")
+            awaitUntil { repository.drafts[THREAD_ID] == "typed in the composer, and more" }
         }
 
     private companion object {

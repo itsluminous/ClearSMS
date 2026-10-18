@@ -17,11 +17,14 @@ import app.clearsms.mms.StagedAttachment
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SimSelector
-import app.clearsms.sms.SmsSender
 import app.clearsms.sms.ContactsSource
+import app.clearsms.sms.ExistingThreadResolver
+import app.clearsms.sms.OutgoingSendDispatcher
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.common.ComposerAttachments
+import app.clearsms.ui.common.ComposerHandOff
+import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.components.SimUiState
 import app.clearsms.ui.conversation.SendStatus
@@ -61,11 +64,13 @@ class ComposeMessageViewModel
     @Inject
     constructor(
         savedStateHandle: SavedStateHandle,
-        private val smsSender: SmsSender,
+        private val sendDispatcher: OutgoingSendDispatcher,
         private val mmsSender: MmsSender,
         attachmentStager: OutgoingAttachmentStager,
         private val messageDao: MessageDao,
         private val settings: SettingsRepository,
+        private val existingThreads: ExistingThreadResolver,
+        private val composerHandOffs: ComposerHandOffs,
         private val contactSuggestions: ContactSuggestions,
         private val contactsSource: ContactsSource,
         private val subscriptionSource: SubscriptionSource,
@@ -147,10 +152,31 @@ class ComposeMessageViewModel
 
         /**
          * A successful dispatch created (or found) the thread: the screen
-         * navigates into it, where the Sending bubble is the send feedback.
+         * navigates into it, REPLACING this one, where the Sending (or
+         * scheduled, or pending-with-Cancel) bubble is the send feedback.
+         * Also the route a recipient this screen was OPENED with takes to
+         * their existing conversation (issue #119): nothing to come back
+         * to, so Back from there lands on the inbox.
          */
         private val openThreadEvents = Channel<Long>(Channel.BUFFERED)
         val openThreadFlow: Flow<Long> = openThreadEvents.receiveAsFlow()
+
+        /**
+         * A PICKED recipient already has a conversation (issue #119): the
+         * screen pushes that conversation ON TOP of this one, with the typed
+         * text and chips carried along (see [ComposerHandOff]). A push, not
+         * a replacement, on purpose: a mis-tapped suggestion is one Back
+         * away from this composer with everything still in it.
+         */
+        private val showThreadEvents = Channel<Long>(Channel.BUFFERED)
+        val showThreadFlow: Flow<Long> = showThreadEvents.receiveAsFlow()
+
+        /**
+         * The inbound share's staging, awaited before a hand-off so the
+         * shared image is in the chips it carries. Null when nothing was
+         * shared in.
+         */
+        private var shareStagingJob: Job? = null
 
         /**
          * The in-flight per-recipient SIM lookup. Tracked so a manual
@@ -188,11 +214,22 @@ class ComposeMessageViewModel
             // share would otherwise be the one way left to start an MMS the
             // user has said they cannot send.
             savedStateHandle.get<String>("imageUri")?.takeIf { it.isNotBlank() }?.let { raw ->
-                viewModelScope.launch {
-                    if (settings.mmsSendingEnabled.first()) {
-                        composerAttachments.add(listOf(Uri.parse(raw)))
+                shareStagingJob =
+                    viewModelScope.launch {
+                        if (settings.mmsSendingEnabled.first()) {
+                            composerAttachments.add(listOf(Uri.parse(raw)))?.join()
+                        }
                     }
-                }
+            }
+            // A recipient this screen was OPENED with (an `sms:` link - the
+            // contacts app's own "message" shortcut arrives this way, issue
+            // #119) who already has a conversation goes straight to it, the
+            // prefilled text and shared image carried along; the composer
+            // is replaced, so Back lands on the inbox - there is no choice
+            // here to undo. A recipient with no history stays in the
+            // composer exactly as before.
+            state.value.recipient.takeIf { it.isNotBlank() }?.let { address ->
+                routeToExistingThread(address, replaceComposer = true)
             }
             // A Direct Share pick names a conversation, not an address: the
             // `threadId` argument is resolved to the thread's sender and set
@@ -218,9 +255,59 @@ class ComposeMessageViewModel
                         val address = messageDao.firstInThread(threadId)?.sender?.trim().orEmpty()
                         if (address.isNotEmpty() && state.value.recipient.isBlank()) {
                             applySelection(resolvedSelection(address))
+                            // The pick NAMED this conversation, and it has
+                            // history by construction: go there (issue
+                            // #119), shared content carried along.
+                            handOff(threadId, address, replaceComposer = true)
                         }
                     }
                 }
+        }
+
+        /**
+         * Issue #119: a recipient who already has a conversation is taken to
+         * it. The thread is the one a message to [address] WOULD JOIN - the
+         * platform-thread-anchored identity every insert uses
+         * ([ExistingThreadResolver]), never a raw number match that would
+         * route a #42-merged person to the wrong place. No history: nothing
+         * happens and the composer stays as it is.
+         */
+        private fun routeToExistingThread(
+            address: String,
+            replaceComposer: Boolean,
+        ) {
+            viewModelScope.launch(ioDispatcher) {
+                val threadId = existingThreads.threadFor(address) ?: return@launch
+                handOff(threadId, address, replaceComposer)
+            }
+        }
+
+        /**
+         * Carries what the user has here - typed text, staged chips, the
+         * shared image once staged - into [threadId] and asks the screen to
+         * show it. Dropped silently when the recipient changed while the
+         * thread was being resolved: the hand-off would name the wrong
+         * person. Replacing the composer MOVES the chips (nothing is left to
+         * show them in); pushing over it copies them, so Back finds them.
+         */
+        private suspend fun handOff(
+            threadId: Long,
+            address: String,
+            replaceComposer: Boolean,
+        ) {
+            shareStagingJob?.join()
+            if (state.value.recipient.trim() != address.trim()) return
+            val attachments =
+                if (replaceComposer) composerAttachments.consume() else composerAttachments.attachments.value
+            composerHandOffs.stash(
+                threadId,
+                ComposerHandOff(
+                    draft = state.value.body,
+                    attachments = attachments,
+                    attachmentsOwned = replaceComposer,
+                ),
+            )
+            if (replaceComposer) openThreadEvents.send(threadId) else showThreadEvents.send(threadId)
         }
 
         val suggestions: StateFlow<List<ContactSuggestion>> =
@@ -236,6 +323,10 @@ class ComposeMessageViewModel
         fun pickSuggestion(suggestion: ContactSuggestion) {
             applySelection(currentSelection.pick(suggestion))
             recipientQuery.value = ""
+            // Picked, not typed: a contact with history opens their
+            // conversation (issue #119). Typing a number never does - a
+            // half-typed number is not a choice.
+            routeToExistingThread(state.value.recipient, replaceComposer = false)
         }
 
         /** Removes the picked contact and returns to manual entry. */
@@ -332,19 +423,24 @@ class ComposeMessageViewModel
         }
 
         /**
-         * Dispatches the message. The compose box is consumed OPTIMISTICALLY -
-         * body and attachment chips clear the moment Send is tapped, exactly
-         * like the conversation compose bar - and, once the outgoing row is
-         * persisted (Sending), the screen navigates INTO the new thread via
-         * [openThreadFlow]: the Sending->Sent bubble there is the send
-         * feedback, so no delayed snackbar is ever the only response to the
-         * tap. Double-taps are idempotent twice over: the synchronous
-         * SENDING guard and the already-consumed (blank) body both drop the
-         * second tap. Only a dispatch failure (nothing persisted, or an MMS
-         * row left behind to resend) keeps the user here: the body is
-         * RESTORED and [ComposeUiState.sendStatus] reports FAILED so Retry
-         * has something to retry. The chosen SIM rides along exactly like a
-         * conversation reply.
+         * Dispatches the message through [OutgoingSendDispatcher] - the ONE
+         * send decision shared with the conversation screen (issue #119: the
+         * delay used to be skipped here), so delayed sending applies to a
+         * plain text exactly as it does there, and an MMS goes out at once.
+         * The compose box is consumed OPTIMISTICALLY - body and attachment
+         * chips clear the moment Send is tapped, exactly like the
+         * conversation compose bar - and, once the outgoing row is persisted
+         * (Sending, or Scheduled when delayed), the screen navigates INTO
+         * the thread via [openThreadFlow]: the bubble there is the send
+         * feedback, and a delayed send's Cancel bar is shown THERE (handed
+         * over through [ComposerHandOff]), so no delayed snackbar is ever
+         * the only response to the tap. Double-taps are idempotent twice
+         * over: the synchronous SENDING guard and the already-consumed
+         * (blank) body both drop the second tap. Only a dispatch failure
+         * (nothing persisted, or an MMS row left behind to resend) keeps the
+         * user here: the body is RESTORED and [ComposeUiState.sendStatus]
+         * reports FAILED so Retry has something to retry. The chosen SIM
+         * rides along exactly like a conversation reply.
          */
         fun send() {
             val current = state.value
@@ -359,25 +455,17 @@ class ComposeMessageViewModel
             val attachments = if (staged.isNotEmpty()) composerAttachments.consume() else emptyList()
             viewModelScope.launch(ioDispatcher) {
                 if (scheduleTipGate.shouldShowTip()) scheduleTipEvents.send(Unit)
-                val messageId =
+                val outcome =
                     try {
-                        when {
-                            attachments.isNotEmpty() -> {
-                                mmsSender
-                                    .send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)
-                                    .also { failedMmsMessageId = it }
-                            }
-
-                            retryMmsId != null -> {
-                                // Attachments already live on the failed
-                                // row; Retry re-dispatches THAT row.
-                                mmsSender.resend(retryMmsId)
-                                retryMmsId
-                            }
-
-                            else -> {
-                                smsSender.send(current.recipient.trim(), signedBody(current.body), chosenSim.value)
-                            }
+                        if (retryMmsId != null && attachments.isEmpty()) {
+                            // Attachments already live on the failed row;
+                            // Retry re-dispatches THAT row.
+                            mmsSender.resend(retryMmsId)
+                            OutgoingSendDispatcher.Outcome.Dispatched(retryMmsId)
+                        } else {
+                            sendDispatcher
+                                .send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)
+                                .also { if (attachments.isNotEmpty()) failedMmsMessageId = it.messageId }
                         }
                     } catch (e: Exception) {
                         // Nothing (new) was persisted: give the text back so
@@ -398,11 +486,15 @@ class ComposeMessageViewModel
                         return@launch
                     }
                 failedMmsMessageId = null
-                // The thread exists with its Sending bubble - go there. The
-                // radio's Sent/Failed report resolves on that bubble (and on
-                // the row's Retry affordance), not on this screen.
-                val threadId = messageDao.getById(messageId)?.threadId
+                // The thread exists with its Sending (or pending) bubble - go
+                // there. The radio's Sent/Failed report resolves on that
+                // bubble (and on the row's Retry affordance), not on this
+                // screen; a delayed send's Cancel bar is shown there too.
+                val threadId = messageDao.getById(outcome.messageId)?.threadId
                 if (threadId != null) {
+                    if (outcome is OutgoingSendDispatcher.Outcome.Delayed) {
+                        composerHandOffs.stash(threadId, ComposerHandOff(delayedMessageId = outcome.messageId))
+                    }
                     openThreadEvents.send(threadId)
                 } else {
                     // Row vanished between persist and lookup (never in

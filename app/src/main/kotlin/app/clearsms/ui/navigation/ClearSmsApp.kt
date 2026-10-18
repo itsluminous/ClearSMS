@@ -540,6 +540,10 @@ private fun MainScaffold(
                             popUpTo(Routes.COMPOSE) { inclusive = true }
                         }
                     },
+                    // A picked recipient's EXISTING conversation (issue
+                    // #119): the plain push a notification tap uses, over
+                    // the composer, so Back returns to it intact.
+                    onShowConversation = { threadId -> navController.navigate(Routes.conversation(threadId)) },
                 )
             }
             composable(

@@ -32,6 +32,7 @@ import app.clearsms.notification.OtpNotifier
 import app.clearsms.notification.SenderIconFactory
 import app.clearsms.notification.TransactionNotifier
 import app.clearsms.sms.ContactsSource
+import app.clearsms.sms.OutgoingSendDispatcher
 import app.clearsms.sms.SimChoiceStore
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SmsSender
@@ -41,6 +42,7 @@ import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
+import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.work.MessageScheduler
@@ -209,6 +211,7 @@ class ConversationViewModelScheduleTest {
                 AttachmentStore(context),
                 router,
             )
+        val scheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined)
         val vm =
             ConversationViewModel(
                 savedStateHandle = SavedStateHandle(mapOf("threadId" to THREAD_ID)),
@@ -228,7 +231,9 @@ class ConversationViewModelScheduleTest {
                         },
                     ),
                 mmsCapability = MmsCapability(context),
-                messageScheduler = MessageScheduler(dao, smsSender, ScheduledSendAlarms(context), uiPrefs, Dispatchers.Unconfined),
+                messageScheduler = scheduler,
+                sendDispatcher = OutgoingSendDispatcher(FakeSettingsRepository(), scheduler, smsSender, mmsSender, dao),
+                composerHandOffs = ComposerHandOffs(),
                 scheduleTipGate = ScheduleTipGate(FakeSettingsRepository()),
                 attachmentDao = db.attachmentDao(),
                 mmsInbound = mmsInbound,

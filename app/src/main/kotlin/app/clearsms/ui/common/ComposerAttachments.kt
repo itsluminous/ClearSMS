@@ -7,6 +7,7 @@ import app.clearsms.mms.StagedAttachment
 import app.clearsms.mms.StagingResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,10 +68,14 @@ class ComposerAttachments(
     /** Camera capture in flight, if any (armed by [cameraUri]). */
     private var pendingCapture: File? = null
 
-    /** Stages every [uris] entry (pickers may return several). */
-    fun add(uris: List<Uri>) {
-        if (uris.isEmpty()) return
-        scope.launch(dispatcher) {
+    /**
+     * Stages every [uris] entry (pickers may return several). Returns the
+     * staging job (null when there was nothing to stage) so a caller that
+     * must hand the chips on can wait for them to exist first.
+     */
+    fun add(uris: List<Uri>): Job? {
+        if (uris.isEmpty()) return null
+        return scope.launch(dispatcher) {
             uris.forEach { uri ->
                 val budget = currentBudget()
                 accept(stager.stage(uri, budget, usedBytes = list.value.sumOf { it.sizeBytes }))
@@ -108,6 +113,31 @@ class ComposerAttachments(
         list.value = list.value.filterNot { it.id == attachment.id }
         errorFlow.value = null
         scope.launch(dispatcher) { stager.discard(attachment) }
+    }
+
+    /**
+     * Inherits another compose bar's chips as independent copies (issue
+     * #119: the composer's attachments follow the user into the existing
+     * conversation they are routed to). Copies, not a move, so the composer
+     * beneath keeps its own files and Back finds them intact; a source that
+     * vanished in between is skipped, never an error.
+     */
+    fun adoptCopies(originals: List<StagedAttachment>) {
+        if (originals.isEmpty()) return
+        scope.launch(dispatcher) {
+            val copies = originals.mapNotNull(stager::duplicate)
+            if (copies.isNotEmpty()) list.value = list.value + copies
+        }
+    }
+
+    /**
+     * Takes ownership of chips another compose bar [consume]d for this one
+     * (the composer that is being REPLACED by the conversation has nothing
+     * left to show them in): no copy, the files are simply ours now.
+     */
+    fun adopt(owned: List<StagedAttachment>) {
+        if (owned.isEmpty()) return
+        list.value = list.value + owned
     }
 
     /**
