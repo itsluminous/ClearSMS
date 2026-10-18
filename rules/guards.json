@@ -112,6 +112,22 @@
       ]
     },
     {
+      "id": "sales_offer",
+      "description": "Sales-OFFER markers ('offer valid till', '20% off', 'save 15%', 'cashback', 'discount', 'buy now', 'apply now', 'hurry', 'limited period offer'). A dated pitch for a product the user does not yet hold ('Buy health insurance, offer valid till 31-10') can satisfy the reminder parser's due-date anchor and type evidence, so the categorizer consults this guard before promoting a promotional result as a BILL: an offer stays promotional. Consulted ONLY there - the reminder pipeline itself is untouched, because genuine bills do append upsells ('Recharge offer of INR 239 available') and 'T&C apply' and must still reach Alerts.",
+      "patterns": [
+        "(?i)\\boffers?\\s+(?:is\\s+)?valid\\b",
+        "(?i)\\b(?:limited|special|exclusive|festive|introductory)\\s+(?:period\\s+|time\\s+)?offer\\b",
+        "(?i)\\b\\d{1,2}\\s*%\\s+(?:off|discount|cashback)\\b",
+        "(?i)\\bsave\\s+(?:up\\s+to\\s+)?(?:\\d{1,2}\\s*%|(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+)",
+        "(?i)\\bcashback\\b",
+        "(?i)\\bdiscount(?:s|ed)?\\b",
+        "(?i)\\bbuy\\s+(?:now|online|today)\\b",
+        "(?i)\\bapply\\s+now\\b",
+        "(?i)\\bhurry\\b",
+        "(?i)\\bgrab\\s+(?:the|this|your)\\s+(?:offer|deal)\\b"
+      ]
+    },
+    {
       "id": "tier_premium",
       "description": "'Premium' as a PRODUCT TIER ('<Brand> Premium subscription/plan') rather than an insurance premium. Suppresses premium-based insurance evidence in reminder typing.",
       "patterns": [
@@ -174,7 +190,9 @@
         "(?i)\\bpayment\\s+of\\s+(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?[^\\n]{0,80}?\\brecorded\\b",
         "(?i)\\border\\b[^\\n]{0,30}?(?:no\\.?|number|#|id)\\s*[:#-]?\\s*[A-Za-z0-9-]{4,20}\\b[^\\n]{0,80}?(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?",
         "(?i)\\bstatement\\b[^\\n]{0,60}?\\b(?:is\\s+)?generated\\b",
-        "(?i)\\bmin(?:imum)?\\s+due\\s*[:#-]?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?"
+        "(?i)\\bmin(?:imum)?\\.?\\s+due\\s*[:#-]?\\s*(?:INR|Rs\\.?|\\u20b9)\\s*[\\d,]+(?:\\.\\d{1,2})?",
+        "(?i)\\bstatement\\s+for\\b[^\\n]{0,40}?\\bis\\s+(?:now\\s+)?ready\\b",
+        "(?i)\\bno\\s+payment\\s+due\\b"
       ]
     }
   ]

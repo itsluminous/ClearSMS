@@ -144,6 +144,24 @@ class GuardLibraryTest {
     }
 
     @Test
+    fun `sales offer guard fires on dated pitches but not on bills that append an upsell`() {
+        assertThat(matches(GuardId.SALES_OFFER, "Buy health insurance online and save 20%! Offer valid till 31-10-2026.")).isTrue()
+        assertThat(matches(GuardId.SALES_OFFER, "Renew today and get 10% off! Hurry, limited period offer.")).isTrue()
+        assertThat(matches(GuardId.SALES_OFFER, "Get Rs 500 cashback on your first bill payment")).isTrue()
+        // Genuine obligations - including the upsell line a biller appends -
+        // carry no sales marker.
+        assertThat(
+            matches(
+                GuardId.SALES_OFFER,
+                "Premium for your health insurance policy no 1122334455 is amount of Rs.17350. " +
+                    "Click https://example.invalid/pay to make the payment before 05 Nov 2026",
+            ),
+        ).isFalse()
+        assertThat(matches(GuardId.SALES_OFFER, "Your bill for JUL-26 is ready. Recharge offer of INR 239.00 available. Due date:15-JUL-26")).isFalse()
+        assertThat(matches(GuardId.SALES_OFFER, "Kindly ignore if paid. T&C apply.")).isFalse()
+    }
+
+    @Test
     fun `tier premium guard fires on product tiers not insurance premiums`() {
         assertThat(matches(GuardId.TIER_PREMIUM, "Your LIV Premium subscription is confirmed")).isTrue()
         assertThat(matches(GuardId.TIER_PREMIUM, "YouTube Premium plan renews on 05-08-26")).isTrue()
@@ -341,6 +359,10 @@ class GuardLibraryTest {
 
             GuardId.LIMIT_OFFER -> {
                 listOf("you are eligible for an increase")
+            }
+
+            GuardId.SALES_OFFER -> {
+                listOf("Offer valid till 31-10-2026")
             }
 
             GuardId.TIER_PREMIUM -> {

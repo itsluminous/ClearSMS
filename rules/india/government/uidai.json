@@ -7,7 +7,7 @@
       "priority": 270,
       "match": {
         "sender_pattern": "(?i)(?:UIDAI|ADHAAR)",
-        "body_pattern": "(?i)aadha?ar[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)"
+        "body_pattern": "(?i)(?:aadha?ar|demographics?|biometrics?)[\\s\\S]{0,80}?(?:updated|update\\s+request|generated|downloaded)|\\bSRN\\s*[:#-]?\\s*[A-Z]?\\d{6,20}\\b"
       },
       "action": {
         "category": "important",

@@ -44,7 +44,7 @@
       "name": "BOBCARD Credit Card Statement Generated (total/min due)",
       "priority": 320,
       "match": {
-        "sender_pattern": "(?i)BOBCRD",
+        "sender_pattern": "(?i)BOBCA?RD",
         "body_pattern": "(?i)\\bstatement\\s+for\\s+BOBCARD\\s+[Xx*]*(\\d{2,4})\\b[\\s\\S]{0,40}?\\bgenerated\\b[\\s\\S]{0,20}?\\btotal\\s*[:\\s]\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)[\\s\\S]{0,20}?\\bmin(?:imum)?\\s+due\\s*[:\\s]\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+by\\s+(\\d{1,2}-\\d{1,2}-\\d{2,4})"
       },
       "action": {
@@ -60,6 +60,27 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-08-28T00:00:00Z"
+    },
+    {
+      "id": "bobcard-stmt-02",
+      "name": "BOBCARD Credit Card Statement Ready (no payment due)",
+      "priority": 320,
+      "match": {
+        "sender_pattern": "(?i)BOBCA?RD",
+        "body_pattern": "(?i)\\bBOBCARD\\s+[Xx*]*(\\d{2,4})\\s+statement\\s+for\\s+[^\\n]{0,30}?\\bis\\s+ready\\b[^\\n]{0,10}?\\bno\\s+payment\\s+due\\b[^\\n]{0,40}?\\bmin\\.?\\s+due\\s*:\\s*(?:INR|Rs\\.?|\\u20b9)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bill",
+        "extract": {
+          "total_due": "$2",
+          "min_due": "$2",
+          "account_last4": "$1",
+          "bank": "BOBCARD"
+        }
+      },
+      "contributed_by": "clearsms",
+      "created_at": "2026-10-18T00:00:00Z"
     },
     {
       "id": "bobcard-dispatch-01",
