@@ -14,7 +14,7 @@ import java.io.File
  * Mechanism, confirmed in the shell: the bar's AnimatedVisibility slot is
  * keyed on the TARGET route and its exit snaps, so a forward navigation
  * zeroes the scaffold's content padding while the inbox is still on the
- * glass for its 700 ms fade-out. Its list grows by the bar's height, a list
+ * glass for its whole fade-out. Its list grows by the bar's height, a list
  * scrolled to its end fills the space by scrolling BACK, and NavHost saves
  * that shifted position with the entry. Coming back, the slot expands from
  * zero, so the restored list measures a full-height viewport first and is

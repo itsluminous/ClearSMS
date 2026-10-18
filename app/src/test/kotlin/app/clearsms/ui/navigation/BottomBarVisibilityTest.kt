@@ -1,5 +1,6 @@
 package app.clearsms.ui.navigation
 
+import androidx.compose.animation.core.TweenSpec
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.StartDestination
 import com.google.common.truth.Truth.assertThat
@@ -15,8 +16,12 @@ import java.io.File
  *    started (the entry flips to the tab route at pop time, a full
  *    crossfade before the conversation leaves the glass);
  *  - the follow-up: gating composition on NavController.visibleEntries made
- *    the bar wait for the WHOLE 700 ms exit fade, so the settled inbox sat
- *    bare for a beat - too late instead of too early.
+ *    the bar wait for the WHOLE exit fade (then 700 ms), so the settled
+ *    inbox sat bare for a beat - too late instead of too early.
+ *  - issue #115: that shared clock was navigation-compose's 700 ms default,
+ *    Material's extra-long tier, and every screen change in the app felt
+ *    slow. The length is now Material's medium band; the sync argument only
+ *    ever needed ONE number, not the library's.
  *
  * The pinned resolution: [BottomBarVisibility.isVisible] answers only WHO
  * owns the bar (the transition's TARGET destination), and the shell answers
@@ -189,10 +194,40 @@ class BottomBarVisibilityTest {
     @Test
     fun `no timers or ad-hoc durations - the only clock is the named shared spec`() {
         // The bar must not be "tuned" into sync: no delay() and no literal
-        // duration anywhere in the shell; the single 700 lives in
-        // BottomBarVisibility as the named navigation-compose default.
+        // duration anywhere in the shell; the single number lives in
+        // BottomBarVisibility, where both animations read it.
         assertThat(shell).doesNotContain("delay(")
         assertThat(shell).doesNotContain("tween(")
         assertThat(shell).doesNotContain("700")
+        assertThat(shell).doesNotContain("$CROSSFADE_MS")
+    }
+
+    // ------------------------------------------------------------------
+    // HOW LONG (issue #115, "the transition motion effect is too long").
+    // ------------------------------------------------------------------
+
+    @Test
+    fun `the shared crossfade is a plain tween in Material's medium band, not the library's extra-long default`() {
+        val spec = BottomBarVisibility.contentTransitionSpec<Float>()
+        assertThat(spec).isInstanceOf(TweenSpec::class.java)
+        val duration = (spec as TweenSpec<Float>).durationMillis
+        // Material duration tokens: medium1..medium4 = 250..400 ms, the band
+        // for a transition of this size. navigation-compose's own 700 is
+        // extraLong1 - the regression this pins against. Both the NavHost
+        // and the bar read this one spec (pinned above), so one assertion
+        // covers both clocks.
+        assertThat(duration).isEqualTo(CROSSFADE_MS)
+        assertThat(duration).isAtLeast(250)
+        assertThat(duration).isAtMost(400)
+        // No start delay: the bar and the content must begin on the same frame.
+        assertThat(spec.delay).isEqualTo(0)
+    }
+
+    private companion object {
+        /**
+         * Material motionDurationMedium2, and Compose's own
+         * AnimationConstants.DefaultDurationMillis (the Crossfade default).
+         */
+        const val CROSSFADE_MS = 300
     }
 }
