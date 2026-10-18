@@ -26,7 +26,7 @@
       "priority": 215,
       "match": {
         "sender_pattern": "(?i)(?:BLDART|BLUDRT|BLUEDART)",
-        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|delivery\\s+(?:attempted|rescheduled))"
+        "body_pattern": "(?i)(?:out\\s+for\\s+delivery|will\\s+be\\s+delivered|has\\s+been\\s+delivered|arriving\\s+today|\\barriving\\s*:|will\\s+deliver\\s+your\\s+(?:shipment|parcel|package|consignment)\\b|delivery\\s+(?:attempted|rescheduled))"
       },
       "action": {
         "category": "important",

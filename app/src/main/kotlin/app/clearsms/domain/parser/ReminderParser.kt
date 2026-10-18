@@ -389,7 +389,14 @@ class ReminderParser(
                 "\\bdue\\s+(?:on|by)\\s*:?\\s*(?:date\\s+)?($DATE)",
                 "\\bdue\\s+date\\s*(?:is|:)?\\s*($DATE)",
                 "\\bdue\\s*:?\\s*($DATE)",
-                "\\bpay(?:able)?\\s+(?:by|before|till|until|on\\s+or\\s+before)\\s*:?\\s*($DATE)",
+                // "pay by <date>", "payable before <date>" and the noun form
+                // insurers favour - "make the payment before 05 Nov 2026" -
+                // all state a payment DEADLINE, which is the due date. The
+                // renewal shape ("due for renewal on <date>") below was
+                // already anchored; its sibling "payment before <date>" was
+                // not, so one insurer's two reminder templates split across
+                // categories.
+                "\\bpay(?:able|ment)?\\s+(?:by|before|till|until|on\\s+or\\s+before)\\s*:?\\s*($DATE)",
                 "\\b(?:to\\s+be\\s+)?paid\\s+by\\s+($DATE)",
                 "\\blast\\s+date\\s+(?:for\\s+payment\\s+|of\\s+payment\\s+|to\\s+pay\\s+)?(?:is\\s+)?:?\\s*($DATE)",
                 "\\brenew(?:al)?\\s+(?:on|by|before)\\s+($DATE)",

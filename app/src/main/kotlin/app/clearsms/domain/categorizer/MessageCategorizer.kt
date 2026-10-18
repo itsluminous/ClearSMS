@@ -124,6 +124,17 @@ class MessageCategorizer(
      *    summaries, recorded payments, order-number-plus-amount) demote a
      *    promotional result to IMPORTANT, unless the body is a marketing
      *    pitch (the `marketing_pitch` guard vetoes the rescue).
+     *    A parseable PAYMENT OBLIGATION is such an artifact too: when
+     *    [ReminderParser] reads a due date anchored to a bill / premium /
+     *    EMI / statement (the very parse the repository turns into an
+     *    Alerts reminder), the message is a BILL and is promoted. Before
+     *    this clause an insurer or card issuer whose header the directory
+     *    files as promotional (most do - their marketing arm registers the
+     *    same header) produced PROMOTIONAL with a BILL sub-category: the
+     *    reminder reached Alerts while the message sat under Promotional.
+     *    The parser vetoes investment pitches and voucher expiries; the
+     *    `sales_offer` guard additionally keeps a dated sales pitch ("Buy
+     *    health insurance, offer valid till <date>") promotional.
      * 5. [Category.SPAM] ranks exactly like PROMOTIONAL under invariants 1,
      *    2 and 4: whatever produced it - a bundled bait rule, the heuristic
      *    fallback, or a user's "always sort this sender as Spam" rule - an
@@ -197,6 +208,22 @@ class MessageCategorizer(
             )
         }
 
+        // Invariant 4, obligation clause: a parseable payment obligation is
+        // financial content. The directory path tags it BILL via
+        // contentSubCategory but keeps the directory's category; a rule or
+        // bare directory result without the tag still parses here. The
+        // reminder parser rejects investment pitches, vouchers and settled
+        // payments, but a dated SALES offer ("Buy health insurance, offer
+        // valid till 31-10") can still satisfy its anchor and type evidence
+        // - the `sales_offer` guard keeps such a pitch promotional. The
+        // guard only ever forgoes a rescue, never demotes, so a genuine
+        // bill that appends an upsell merely stays where it was.
+        if ((result.subCategory == SubCategory.BILL || reminderParser.parse(sender, evalBody, anchor) != null) &&
+            !GuardLibrary.matches(GuardId.SALES_OFFER, evalBody)
+        ) {
+            return result.copy(category = Category.IMPORTANT, subCategory = SubCategory.BILL)
+        }
+
         // Invariant 4: financial content is never PROMOTIONAL, even when no
         // transaction derives. Evidence is a body of POSITIVE knowledge in
         // data (the `financial_evidence` guard): transactional artifacts -
@@ -206,16 +233,14 @@ class MessageCategorizer(
         // number with its amount - never amounts alone, so a cashback pitch
         // or a loan offer quoting money cannot qualify. A marketing pitch
         // (the `marketing_pitch` guard) vetoes the rescue outright: pitch
-        // phrasing that name-drops an artifact stays promotional. The
-        // sub-category is refined where derivable (a parseable payment
-        // obligation is a BILL); everything else lands as GENERAL financial
-        // correspondence.
+        // phrasing that name-drops an artifact stays promotional. A
+        // parseable payment obligation was already promoted as a BILL by the
+        // obligation clause above, so what reaches here lands as GENERAL
+        // financial correspondence.
         if (GuardLibrary.matches(GuardId.FINANCIAL_EVIDENCE, evalBody) &&
             !GuardLibrary.matches(GuardId.MARKETING_PITCH, evalBody)
         ) {
-            val subCategory =
-                if (reminderParser.parse(sender, evalBody, anchor) != null) SubCategory.BILL else SubCategory.GENERAL
-            return result.copy(category = Category.IMPORTANT, subCategory = subCategory)
+            return result.copy(category = Category.IMPORTANT, subCategory = SubCategory.GENERAL)
         }
         return result
     }

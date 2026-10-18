@@ -6,7 +6,7 @@
       "name": "Generic Delivery Status Keywords",
       "priority": 31,
       "match": {
-        "body_pattern": "(?i)(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow))"
+        "body_pattern": "(?i)(?:delivered|shipped|dispatched|out\\s+for\\s+delivery|arriving\\s+(?:today|tomorrow)|will\\s+deliver\\s+your\\s+(?:shipment|parcel|consignment)\\s+(?:today|tomorrow)\\b)"
       },
       "action": {
         "category": "important",

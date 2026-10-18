@@ -57,6 +57,9 @@ enum class GuardId(
     /** Credit-limit increase offers - never a card's total limit. */
     LIMIT_OFFER("limit_offer"),
 
+    /** Sales-offer markers - a dated pitch is never promoted as a bill. */
+    SALES_OFFER("sales_offer"),
+
     /** "Premium" as a product tier - suppresses insurance evidence. */
     TIER_PREMIUM("tier_premium"),
 
