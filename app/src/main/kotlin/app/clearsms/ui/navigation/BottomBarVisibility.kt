@@ -36,19 +36,41 @@ import app.clearsms.domain.model.EnabledSections
  *     overlaps nothing, which is the forward behaviour both earlier
  *     versions already had and nobody reported against.
  *
- * No timers, no delays, no tuned durations: the one number below is
- * navigation-compose's own default crossfade, named so the two animations
- * share a single clock (see [contentTransitionSpec]).
+ * No timers, no delays, no tuned offsets: the one number below is the
+ * length of the route crossfade, named ONCE so the two animations share a
+ * single clock (see [contentTransitionSpec]).
  */
 object BottomBarVisibility {
     /**
-     * navigation-compose's NavHost default enter/exit is
-     * `fadeIn/fadeOut(tween(700))` (verified against 2.x bytecode). This is
-     * NOT a tuning knob: it names the library default in one place so the
-     * NavHost's content crossfade and the bar's arrival provably run on the
-     * same spec - change it and both move together, in sync by definition.
+     * The route crossfade's length, and therefore the bar's (issue #115,
+     * "the transition motion effect is too long").
+     *
+     * Until v0.23 this was 700 ms: navigation-compose's own NavHost default,
+     * `fadeIn/fadeOut(tween(700))` (verified against the 2.8.5 bytecode),
+     * adopted so the bar and the content provably ran on one spec. The
+     * synchronisation argument only ever needed the two to share ONE
+     * number, not that number to be the library's - and 700 ms is Material's
+     * `motionDurationExtraLong1`, the longest tier, meant for ambient or
+     * very large expressive movement, not a tab switch. Every navigation in
+     * the app (tab to tab, into and out of a conversation) wore it.
+     *
+     * 300 ms is `motionDurationMedium2`, inside the 250-400 ms medium band
+     * Material gives transitions of this size, and is Compose's own default
+     * for exactly this gesture: `AnimationConstants.DefaultDurationMillis`
+     * (what `Crossfade` uses) and, within 10 ms, `AnimatedContent`'s default
+     * fade-through (90 ms out, 220 ms in). It is still a plain symmetric
+     * crossfade, so nothing about the bar's construction above changes.
+     *
+     * Change it here and ONLY here: the NavHost's enter/exit and the bar's
+     * fade/expand all read [contentTransitionSpec], so they move together
+     * by definition. The system's animator duration scale (Developer
+     * options, or Accessibility > Remove animations, which sets it to 0)
+     * scales this too - Compose feeds Settings.Global.animator_duration_scale
+     * into every animation - so a user who wants less or none already has a
+     * device-wide knob; this constant is the DEFAULT they should not need it
+     * for.
      */
-    private const val CONTENT_CROSSFADE_MS = 700
+    private const val CONTENT_CROSSFADE_MS = 300
 
     /** The single shared clock: route content and bar animate on this spec. */
     fun <T> contentTransitionSpec(): FiniteAnimationSpec<T> = tween(CONTENT_CROSSFADE_MS)
@@ -94,7 +116,7 @@ object BottomBarVisibility {
      * scaffold's content padding followed it - so a tab's viewport changed
      * during both halves of a conversation round trip:
      *  - forward, the slot snaps to zero while the inbox is still on the
-     *    glass for its 700 ms fade-out; the list grows by the bar's height,
+     *    glass for its whole fade-out; the list grows by the bar's height,
      *    a list scrolled to its END fills the new space by scrolling BACK,
      *    and that shifted position is what NavHost saves for the entry;
      *  - back, the slot expands from zero, so the restored list first

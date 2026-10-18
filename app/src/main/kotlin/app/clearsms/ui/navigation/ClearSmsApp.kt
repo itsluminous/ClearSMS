@@ -381,9 +381,11 @@ private fun MainScaffold(
             navController = navController,
             startDestination = startDestination.toRoute(),
             // The route crossfade, explicitly on the SAME spec the bottom
-            // bar's enter animation uses (these are navigation-compose's own
-            // defaults, just named): the bar's arrival is synchronised with
-            // the content transition by sharing one clock, not by tuning.
+            // bar's enter animation uses - and no longer navigation-compose's
+            // own default, which is what made every screen change feel slow
+            // (issue #115); the length lives in BottomBarVisibility. The
+            // bar's arrival is synchronised with the content transition by
+            // sharing one clock, not by tuning.
             enterTransition = { fadeIn(BottomBarVisibility.contentTransitionSpec()) },
             exitTransition = { fadeOut(BottomBarVisibility.contentTransitionSpec()) },
             // padding is the bottom bar's SLOT height (which already includes
