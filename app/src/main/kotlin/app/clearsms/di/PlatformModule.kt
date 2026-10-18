@@ -17,8 +17,10 @@ import app.clearsms.shortcuts.ShortcutSystem
 import app.clearsms.sms.ContactLookupImpl
 import app.clearsms.sms.DeviceSubscriptionSource
 import app.clearsms.sms.FrameworkSmsGateway
+import app.clearsms.sms.ProviderThreadLookup
 import app.clearsms.sms.SmsGateway
 import app.clearsms.sms.SubscriptionSource
+import app.clearsms.sms.SystemProviderThreadLookup
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -83,6 +85,10 @@ internal interface PlatformBindings {
     /** Framework-backed SIM subscription access for the dual-SIM send UI. */
     @Binds
     fun subscriptionSource(impl: DeviceSubscriptionSource): SubscriptionSource
+
+    /** The platform's conversation id for a composer recipient (issue #119). */
+    @Binds
+    fun providerThreadLookup(impl: SystemProviderThreadLookup): ProviderThreadLookup
 
     /** Framework-backed radio access for [app.clearsms.sms.SmsSender]. */
     @Binds

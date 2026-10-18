@@ -70,9 +70,32 @@ object ThreadIdentity {
     }
 
     /**
+     * The app thread a message to [sender] would JOIN - anchor first, then
+     * sender key - or null when no such thread exists yet. The lookup half
+     * of [resolve], shared with it so "which conversation is this person"
+     * has exactly one answer whether a row is being inserted or a screen
+     * is being opened (issue #119: the composer routes a picked recipient
+     * to their existing conversation through this, never through a raw
+     * number match that would split a #42-merged person again).
+     */
+    suspend fun existing(
+        dao: MessageDao,
+        sender: String,
+        normalized: String,
+        providerThreadId: Long?,
+        recipientCount: Int = 1,
+    ): Long? {
+        val anchor = anchorFor(sender, providerThreadId, recipientCount)
+        if (anchor != null) {
+            threadFromAnchor(normalized, dao.threadsAnchoredTo(anchor))?.let { return it }
+        }
+        return dao.threadIdFor(normalized)
+    }
+
+    /**
      * Resolves the thread for a message about to be inserted: anchor, then
-     * sender key, then a fresh id. Must run inside the insert's transaction
-     * (the fresh id is `MAX(threadId) + 1`).
+     * sender key ([existing]), then a fresh id. Must run inside the
+     * insert's transaction (the fresh id is `MAX(threadId) + 1`).
      */
     suspend fun resolve(
         dao: MessageDao,
@@ -80,11 +103,7 @@ object ThreadIdentity {
         normalized: String,
         providerThreadId: Long?,
         recipientCount: Int = 1,
-    ): Long {
-        val anchor = anchorFor(sender, providerThreadId, recipientCount)
-        if (anchor != null) {
-            threadFromAnchor(normalized, dao.threadsAnchoredTo(anchor))?.let { return it }
-        }
-        return dao.threadIdFor(normalized) ?: ((dao.maxThreadId() ?: 0L) + 1L)
-    }
+    ): Long =
+        existing(dao, sender, normalized, providerThreadId, recipientCount)
+            ?: ((dao.maxThreadId() ?: 0L) + 1L)
 }

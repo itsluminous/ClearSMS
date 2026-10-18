@@ -54,8 +54,37 @@ class DelayedSendContractTest {
 
     @Test
     fun `cancelling restores the ORIGINAL typed text, not the accent-folded wire body`() {
+        val dispatcher = source("sms/OutgoingSendDispatcher.kt")
+        assertThat(dispatcher).contains("pendingOriginals[messageId] = body")
+        assertThat(dispatcher).contains("return persisted?.let { original ?: it }")
         val vm = source("ui/conversation/ConversationViewModel.kt")
-        assertThat(vm).contains("pendingDelayedOriginals[messageId] = body")
-        assertThat(vm).contains("conversationDraft.restore(original ?: persistedBody)")
+        assertThat(vm).contains("val restored = sendDispatcher.cancelDelayed(messageId)")
+        assertThat(vm).contains("conversationDraft.restore(restored)")
+    }
+
+    @Test
+    fun `BOTH compose bars send through the one dispatcher - the composer can never skip the delay again (issue #119)`() {
+        val conversation = source("ui/conversation/ConversationViewModel.kt")
+        val composer = source("ui/composemsg/ComposeMessageViewModel.kt")
+        assertThat(conversation).contains("sendDispatcher.send(destination, body, attachments, chosenSim.value)")
+        assertThat(composer).contains("sendDispatcher\n")
+        assertThat(composer).contains(".send(current.recipient.trim(), signedBody(current.body), attachments, chosenSim.value)")
+        // Neither screen reaches the radio directly for a fresh send any
+        // more: the only direct sender calls left are the per-row retries.
+        assertThat(composer).doesNotContain("smsSender")
+        assertThat(conversation).doesNotContain("smsSender.send(")
+        assertThat(conversation).doesNotContain("mmsSender.send(")
+        // The delay stays SMS-only: attachments short-circuit to MMS first.
+        val dispatcher = source("sms/OutgoingSendDispatcher.kt")
+        assertThat(dispatcher.indexOf("if (attachments.isNotEmpty())")).isLessThan(dispatcher.indexOf("settings.delayedSendEnabled.first()"))
+    }
+
+    @Test
+    fun `the composer's delayed send hands its Cancel bar to the conversation it opens`() {
+        val composer = source("ui/composemsg/ComposeMessageViewModel.kt")
+        assertThat(composer).contains("ComposerHandOff(delayedMessageId = outcome.messageId)")
+        val conversation = source("ui/conversation/ConversationViewModel.kt")
+        assertThat(conversation).contains("sendDispatcher.pendingDelaySeconds(messageId)")
+        assertThat(conversation).contains("sendEvents.send(SendEvent.Delayed(messageId, seconds))")
     }
 }

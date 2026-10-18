@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -14,6 +15,13 @@ import kotlinx.coroutines.launch
  * write-through persists every edit (so the draft survives process death,
  * not just navigation), and [consume] clears it the moment the text is
  * handed to a send or a schedule - neither may leave a leftover draft.
+ *
+ * [seed] is text INHERITED from the new-message composer that routed the
+ * user here (issue #119). It is shown immediately, after any saved draft
+ * (the saved text is older), but NOT persisted as this thread's draft
+ * until the user edits or sends it: the same text still sits in the
+ * composer beneath for Back, and a mis-tapped contact must not end up
+ * with a stale "Draft" preview from text that was never meant for them.
  *
  * Persistence uses `collectLatest`, so a burst of keystrokes collapses to
  * the newest value and a stale write can never overtake a newer one.
@@ -23,11 +31,16 @@ class ConversationDraft(
     private val repository: MessageRepository,
     scope: CoroutineScope,
     ioDispatcher: CoroutineDispatcher,
+    seed: String? = null,
 ) {
     private val draftText = MutableStateFlow("")
 
     /** Current compose text, restored from the saved draft on open. */
     val text: StateFlow<String> = draftText.asStateFlow()
+
+    /** The one value the collector must not write: the untouched inherited seed. */
+    @Volatile
+    private var transient: String? = null
 
     init {
         scope.launch(ioDispatcher) {
@@ -35,9 +48,16 @@ class ConversationDraft(
             // compareAndSet: text typed before the load lands is never
             // clobbered by the (older) saved draft.
             if (saved.isNotEmpty()) draftText.compareAndSet("", saved)
+            if (!seed.isNullOrBlank()) {
+                // The inherited text is the NEWEST: it follows whatever is
+                // already here (a saved draft, or text typed meanwhile).
+                draftText.update { current -> if (current.isBlank()) seed else "$current\n$seed" }
+                transient = draftText.value
+            }
             // The first collected emission re-saves the loaded value - a
-            // deliberate no-op that keeps the collector logic trivial.
-            draftText.collectLatest { repository.saveDraft(threadId, it) }
+            // deliberate no-op that keeps the collector logic trivial. An
+            // untouched seed is the one exception: it stays in memory only.
+            draftText.collectLatest { if (it != transient) repository.saveDraft(threadId, it) }
         }
     }
 

@@ -52,6 +52,7 @@ import app.clearsms.ui.conversation.SendStatus
 fun ComposeMessageScreen(
     onBack: () -> Unit,
     onOpenConversation: (Long) -> Unit,
+    onShowConversation: (Long) -> Unit,
     viewModel: ComposeMessageViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,6 +86,12 @@ fun ComposeMessageScreen(
     // affordance.
     LaunchedEffect(Unit) {
         viewModel.openThreadFlow.collect { threadId -> onOpenConversation(threadId) }
+    }
+    // A picked recipient who already has a conversation is taken to it
+    // (issue #119) - pushed over this screen, so a mis-tap is one Back away
+    // from the composer with the text still in it.
+    LaunchedEffect(Unit) {
+        viewModel.showThreadFlow.collect { threadId -> onShowConversation(threadId) }
     }
     LaunchedEffect(state.sendStatus) {
         if (state.sendStatus == SendStatus.FAILED) {

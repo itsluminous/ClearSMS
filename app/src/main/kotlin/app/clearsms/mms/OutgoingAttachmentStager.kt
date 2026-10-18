@@ -200,6 +200,28 @@ class OutgoingAttachmentStager
         }
 
         /**
+         * An independent staged copy of [attachment] - same bytes, type and
+         * name under a fresh id - for a second compose bar that inherits it
+         * (issue #119: the composer's chips follow the user into the
+         * conversation they are routed to, while the composer keeps its own
+         * so Back finds them intact). Already sized to the budget, so no
+         * re-compression. Null when the source is gone.
+         */
+        fun duplicate(attachment: StagedAttachment): StagedAttachment? {
+            val id = UUID.randomUUID().toString()
+            val copy = File(dir, "$id-${attachment.file.name.substringAfter('-', attachment.file.name)}")
+            return try {
+                if (!attachment.file.isFile) return null
+                attachment.file.copyTo(copy, overwrite = true)
+                attachment.copy(id = id, file = copy, sizeBytes = copy.length())
+            } catch (e: Exception) {
+                Diag.e(TAG, "staged attachment copy failed", e, mimeField(attachment.mimeType))
+                copy.delete()
+                null
+            }
+        }
+
+        /**
          * How large a source of [mimeType] may be to enter staging when
          * [targetBytes] of the carrier budget remain. Recompressible images
          * get [MmsSizeLimits.MAX_STAGED_IMAGE_BYTES] (compression judges
