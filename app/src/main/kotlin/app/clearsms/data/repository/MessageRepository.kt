@@ -355,9 +355,15 @@ interface MessageRepository {
     suspend fun markMmsFailed(messageId: Long) {}
 
     /**
-     * Stores one received MMS read out of the system MMS provider by the
-     * history import (issue #94), already DOWNLOADED - its content came
-     * from the provider, so there is nothing to fetch.
+     * Stores one MMS read out of the system MMS provider by the history
+     * import (issues #94, #112), already DOWNLOADED - its content came from
+     * the provider, so there is nothing to fetch.
+     *
+     * [address] is the other party and names the thread: the sender of a
+     * received row, the recipient of a sent one. [isOutgoing] is true for a
+     * row from the provider's SENT box; it is stored as the user's own
+     * message at [app.clearsms.data.db.DeliveryStatus.SENT] - another app
+     * sent it and no delivery report exists, so DELIVERED is never claimed.
      *
      * Idempotent: [systemMmsId] is unique, so re-importing a page can never
      * duplicate a message. Returns the stored row, or null when the id was
@@ -366,7 +372,8 @@ interface MessageRepository {
      */
     suspend fun insertImportedMms(
         systemMmsId: Long,
-        sender: String,
+        address: String,
+        isOutgoing: Boolean,
         body: String,
         timestampMs: Long,
         dateSentMs: Long?,

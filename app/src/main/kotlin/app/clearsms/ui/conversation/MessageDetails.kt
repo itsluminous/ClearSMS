@@ -133,9 +133,10 @@ object MessageDetails {
     }
 
     /**
-     * SMS vs MMS from the row's own denormalized markers: incoming MMS rows
-     * carry an [MessageEntity.mmsStatus]; outgoing MMS rows carry
-     * [MessageEntity.attachmentKinds] (SMS rows never set either).
+     * SMS vs MMS from the row's own denormalized markers: incoming and
+     * imported MMS rows carry an [MessageEntity.mmsStatus]; MMS sent from
+     * this app carry [MessageEntity.attachmentKinds] (SMS rows never set
+     * either).
      */
     fun transportOf(message: MessageEntity): Transport =
         if (message.mmsStatus != null || message.attachmentKinds != null) Transport.MMS else Transport.SMS

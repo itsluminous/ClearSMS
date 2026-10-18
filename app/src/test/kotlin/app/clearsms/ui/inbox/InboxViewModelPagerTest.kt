@@ -25,6 +25,7 @@ import app.clearsms.testing.FakeSettingsRepository
 import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.InMemoryPreferencesDataStore
 import app.clearsms.work.CatchUpSyncScheduler
+import app.clearsms.work.SyncCheckpointStore
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -132,7 +133,14 @@ class InboxViewModelPagerTest {
                 senderIdLookup = SenderIdLookup { null },
                 contactsSource = ContactsSource(context),
                 settings = dataStoreLike,
-                catchUpSyncScheduler = CatchUpSyncScheduler(context, db.messageDao(), WorkManager.getInstance(context), dispatcher),
+                catchUpSyncScheduler =
+                    CatchUpSyncScheduler(
+                        context,
+                        db.messageDao(),
+                        WorkManager.getInstance(context),
+                        SyncCheckpointStore(InMemoryPreferencesDataStore()),
+                        dispatcher,
+                    ),
                 workManager = WorkManager.getInstance(context),
                 ioDispatcher = dispatcher,
             )
