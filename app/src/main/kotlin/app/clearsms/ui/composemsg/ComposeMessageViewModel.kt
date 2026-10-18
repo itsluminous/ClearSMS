@@ -286,7 +286,10 @@ class ComposeMessageViewModel
             composerAttachments.refreshBudget()
             val address = state.value.recipient.trim()
             if (address.isNotBlank()) {
-                viewModelScope.launch(ioDispatcher) { simChoiceStore.remember(address, next) }
+                // Persisting the memory is best-effort: the switch above already
+                // took effect, and a write failure must never crash the app
+                // (issue #111 - a SIM tap used to be fatal).
+                viewModelScope.launch(ioDispatcher) { simChoiceStore.rememberOrLog(address, next) }
             }
             return simUi.value
         }
