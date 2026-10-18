@@ -704,9 +704,11 @@ internal fun simIndicatorTint(
  * whose chip-contact dots competed with the slot digit and made it
  * unreadable (GitHub #7). Stroke-only, so [Icon]'s tint colors just the
  * outline and the digit sits directly on the bar surface. No dots, no chip
- * contacts - the overlaid slot digit is the glyph's only content.
+ * contacts - the overlaid slot digit is the glyph's only content. Internal
+ * so the bubble's SIM mark (GitHub #109) draws the SAME outline - one SIM
+ * glyph across the app, never two.
  */
-private val SimOutlineGlyph: ImageVector by lazy {
+internal val SimOutlineGlyph: ImageVector by lazy {
     ImageVector
         .Builder(
             name = "SimOutlineGlyph",

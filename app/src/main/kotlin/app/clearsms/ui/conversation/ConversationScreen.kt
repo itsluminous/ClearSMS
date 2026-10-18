@@ -90,6 +90,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
@@ -111,6 +112,7 @@ import app.clearsms.domain.model.CurrencyCatalog
 import app.clearsms.mms.DataSimHint
 import app.clearsms.mms.SendFailureReason
 import app.clearsms.notification.OtpClipboard
+import app.clearsms.sms.SimInfo
 import app.clearsms.ui.common.DeleteConfirmationText
 import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
@@ -132,6 +134,7 @@ import app.clearsms.ui.components.ReplyNoticeBar
 import app.clearsms.ui.components.ScheduleTimePicker
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderAvatar
+import app.clearsms.ui.components.SimOutlineGlyph
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
@@ -701,6 +704,7 @@ fun ConversationScreen(
                                 ConversationSelectionMode.LongPress.SELECT_TEXT,
                         showDetails = state.showTransactionDetails,
                         expanded = expandedId == item.id,
+                        activeSims = state.activeSims,
                         attachments = attachmentsByMessage[item.id].orEmpty(),
                         onImageTap = { viewedImage = it },
                         onLinkClick = { link ->
@@ -1192,6 +1196,7 @@ private fun MessageBubble(
     onCopyOtp: (String) -> Unit = {},
     expanded: Boolean = false,
     selectionActive: Boolean = false,
+    activeSims: List<SimInfo> = emptyList(),
     attachments: List<AttachmentEntity> = emptyList(),
     onImageTap: (AttachmentEntity) -> Unit = {},
     onLinkClick: (BodyLink) -> Unit = {},
@@ -1385,13 +1390,14 @@ private fun MessageBubble(
                         }
                         // Time label with, for outgoing messages, the delivery
                         // tick beside it (one tick = left the phone, two = a
-                        // real delivery report). Same row so the tick never
-                        // crowds the time; the SIM tag lives in the revealed
-                        // metadata line, so nothing else competes for the
-                        // corner. Failed / sending / scheduled rows get NO
-                        // tick - their explicit line beneath says what is
-                        // happening, and a failed message must never read as
-                        // a tick state.
+                        // real delivery report), and on a dual-SIM device the
+                        // SIM mark (GitHub #109) after that. Same row so
+                        // neither crowds the time; the full "SIM 1 - Airtel"
+                        // tag still lives in the revealed metadata line, so
+                        // nothing else competes for the corner. Failed /
+                        // sending / scheduled rows get NO tick - their
+                        // explicit line beneath says what is happening, and a
+                        // failed message must never read as a tick state.
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
@@ -1403,6 +1409,10 @@ private fun MessageBubble(
                             )
                             DeliveryTickIcon(
                                 tick = DeliveryTicks.tickFor(item),
+                                tint = textColor.copy(alpha = 0.7f),
+                            )
+                            BubbleSimIcon(
+                                sim = BubbleSimIndicators.forItem(item, activeSims),
                                 tint = textColor.copy(alpha = 0.7f),
                             )
                         }
@@ -1640,6 +1650,57 @@ internal fun DeliveryTickIcon(
         tint = tint,
         modifier = Modifier.size(iconSize),
     )
+}
+
+/**
+ * The SIM mark beside a bubble's time label (GitHub #109): the compose bar's
+ * own SIM-card outline ([SimOutlineGlyph]) with the slot digit inside it,
+ * the one glyph the user already knows from the bar. Drawn only when
+ * [BubbleSimIndicators] resolved a SIM - a single-SIM device, a message
+ * with no recorded subscription and a removed SIM all return before the
+ * spacer, so the bubble is byte-for-byte what it was. Sized from the time
+ * label's font in sp (its line height, so the row does not grow and the
+ * body text above never shifts) and tinted with the same on-bubble colour
+ * as the time label and tick: legible on both themes' bubble colours and
+ * under Material You by construction, where a system SIM colour would pass
+ * the contrast bar on one bubble and fall back on the next. The content
+ * description is the row's own label ("SIM 1 - Airtel"), identical to the
+ * details dialog's, merged into the bubble's announcement - never a bare
+ * glyph.
+ */
+@Composable
+internal fun BubbleSimIcon(
+    sim: MessageDetails.Row.Sim?,
+    tint: Color,
+) {
+    if (sim == null) return
+    val labelSize = MaterialTheme.typography.labelSmall.fontSize
+    val density = LocalDensity.current
+    // ~16dp at the default 11sp label: the label's own line height.
+    val iconSize = with(density) { (labelSize * 1.45f).toDp() }
+    // The outline's interior is ~45% of its width; the digit must fit it.
+    val digitSize = labelSize * 0.75f
+    Spacer(Modifier.width(4.dp))
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(iconSize),
+    ) {
+        Icon(
+            imageVector = SimOutlineGlyph,
+            contentDescription = sim.label,
+            tint = tint,
+            modifier = Modifier.size(iconSize),
+        )
+        Text(
+            text = sim.slot.toString(),
+            fontSize = digitSize,
+            lineHeight = digitSize,
+            fontWeight = FontWeight.Bold,
+            color = tint,
+            // Decorative: the Icon's description already names the SIM.
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+    }
 }
 
 /** Expandable card showing parsed transaction / OTP fields under a bubble. */
