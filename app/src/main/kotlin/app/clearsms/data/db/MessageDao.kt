@@ -781,6 +781,16 @@ interface MessageDao {
     suspend fun maxSystemMmsId(): Long?
 
     /**
+     * Every imported MMS's provider id (soft-deleted rows included - they
+     * still hold their id, and re-importing them would be a duplicate the
+     * unique index rejects anyway). Lets a widened re-walk of the provider
+     * skip the addr/part reads for rows it already has. MMS counts are
+     * small, so the whole set fits comfortably in memory.
+     */
+    @Query("SELECT systemMmsId FROM messages WHERE systemMmsId IS NOT NULL")
+    suspend fun allSystemMmsIds(): List<Long>
+
+    /**
      * Newest message timestamp the app has ever stored - the catch-up
      * import's notification watermark: imported rows newer than this are
      * messages the user was never notified about. NULL on a fresh install,

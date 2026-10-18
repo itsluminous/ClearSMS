@@ -54,6 +54,7 @@ class SyncCheckpointStore
                 it.remove(LAST_ID_KEY)
                 it.remove(PROCESSED_KEY)
                 it.remove(LAST_MMS_ID_KEY)
+                it.remove(MMS_SCOPE_KEY)
             }
         }
 
@@ -71,9 +72,46 @@ class SyncCheckpointStore
             dataStore.edit { it[LAST_MMS_ID_KEY] = id }
         }
 
-        private companion object {
-            val LAST_ID_KEY = longPreferencesKey("initial_sync_last_system_sms_id")
-            val PROCESSED_KEY = intPreferencesKey("initial_sync_processed_count")
-            val LAST_MMS_ID_KEY = longPreferencesKey("initial_sync_last_system_mms_id")
+        /**
+         * Which provider boxes the MMS walk behind [lastSystemMmsId] has
+         * covered - one of the `MMS_SCOPE_*` constants; 0 when never recorded.
+         *
+         * Why a checkpoint needs a scope: the walk is by `_id`, and the
+         * import that shipped in 0.23.0 read the INBOX only. A sent MMS sits
+         * at an id the checkpoint has long since passed, so simply widening
+         * the query would never reach it on an existing install (issue
+         * #112). A scope below [MMS_SCOPE_CURRENT] tells the importer to
+         * walk again from the start, and tells the catch-up gap probe that
+         * such a walk is owed.
+         */
+        suspend fun mmsImportScope(): Int = dataStore.data.first()[MMS_SCOPE_KEY] ?: MMS_SCOPE_NONE
+
+        /**
+         * Starts a fresh MMS walk under the current scope: the checkpoint
+         * returns to 0 and the scope is recorded in the SAME write, so a
+         * walk interrupted half-way resumes from its checkpoint instead of
+         * starting over on every attempt - exactly as the first import did.
+         */
+        suspend fun beginMmsWalk() {
+            dataStore.edit {
+                it[LAST_MMS_ID_KEY] = 0L
+                it[MMS_SCOPE_KEY] = MMS_SCOPE_CURRENT
+            }
+        }
+
+        companion object {
+            private val LAST_ID_KEY = longPreferencesKey("initial_sync_last_system_sms_id")
+            private val PROCESSED_KEY = intPreferencesKey("initial_sync_processed_count")
+            private val LAST_MMS_ID_KEY = longPreferencesKey("initial_sync_last_system_mms_id")
+            private val MMS_SCOPE_KEY = intPreferencesKey("initial_sync_mms_scope")
+
+            /** No scope recorded: the 0.23.0 inbox-only walk, or no walk yet. */
+            const val MMS_SCOPE_NONE = 0
+
+            /** Inbox + sent (issue #112). */
+            const val MMS_SCOPE_INBOX_AND_SENT = 2
+
+            /** The scope every complete walk must have covered. */
+            const val MMS_SCOPE_CURRENT = MMS_SCOPE_INBOX_AND_SENT
         }
     }

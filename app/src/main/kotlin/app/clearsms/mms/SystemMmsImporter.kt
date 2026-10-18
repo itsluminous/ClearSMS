@@ -1,5 +1,6 @@
 package app.clearsms.mms
 
+import app.clearsms.data.db.MessageDao
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.MmsAttachmentDraft
 import app.clearsms.di.IoDispatcher
@@ -12,9 +13,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Bulk-imports received MMS history from the system MMS provider
- * (`content://mms`) into the local database - the other half of the
- * catch-up import, alongside [app.clearsms.sms.SystemSmsImporter].
+ * Bulk-imports MMS history - received AND sent - from the system MMS
+ * provider (`content://mms`) into the local database - the other half of
+ * the catch-up import, alongside [app.clearsms.sms.SystemSmsImporter].
  *
  * Why this exists (issue #94): an MMS only reaches the app live, as a WAP
  * push, while Clear SMS holds the default-SMS role. Every MMS that arrived
@@ -25,12 +26,25 @@ import javax.inject.Singleton
  * path can never fire again, which made *every* MMS on such a device
  * permanently unreachable.
  *
+ * Why it reads the SENT box too (issue #112): an MMS sent from another app
+ * is written to the provider by that app and nowhere else - Clear SMS only
+ * stores the MMS it sends itself. The first import read the inbox only, so
+ * a history moved over from another phone showed every received picture
+ * and none of the user's replies. Which boxes are read, and why the rest
+ * are not, is decided in [SystemMmsSource].
+ *
  * Shares the SMS import's durability properties:
  * - **Resumable** - rows are read in `_id` order in pages of [PAGE_SIZE];
  *   the [SyncCheckpointStore] MMS checkpoint advances after each page.
  * - **Idempotent** - every row carries its provider `_id` in
  *   `messages.systemMmsId`, guarded by a unique index, so redoing a page
  *   cannot duplicate a message.
+ * - **Scoped** - the checkpoint records which boxes its walk covered
+ *   ([SyncCheckpointStore.mmsImportScope]). An install whose walk predates
+ *   the sent-box import has a checkpoint already past every sent row, so
+ *   the walk is restarted from 0 once; rows it already holds are skipped
+ *   by id before any provider read, so the restart costs one light query
+ *   per page, not a second copy of every attachment.
  *
  * Unlike the SMS import this is deliberately NOT parallelised: the cost per
  * message is provider I/O (an addr query, a parts query and a stream read
@@ -43,6 +57,7 @@ class SystemMmsImporter
     constructor(
         private val source: SystemMmsSource,
         private val repository: MessageRepository,
+        private val messageDao: MessageDao,
         private val attachmentStore: AttachmentStore,
         private val checkpointStore: SyncCheckpointStore,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -54,8 +69,9 @@ class SystemMmsImporter
         )
 
         /**
-         * Imports every received MMS not yet stored, resuming from the
-         * durable checkpoint.
+         * Imports every received or sent MMS not yet stored, resuming from
+         * the durable checkpoint - or from the start, once, when the
+         * checkpoint's recorded scope predates the sent-box import.
          *
          * @param onProgress called after each committed page with
          *   (imported so far, total known) - total is 0 when the provider
@@ -63,15 +79,34 @@ class SystemMmsImporter
          */
         suspend fun importAll(onProgress: suspend (Int, Int) -> Unit = { _, _ -> }): Result =
             withContext(ioDispatcher) {
-                val total = source.inboxCount() ?: 0
+                val total = source.importableCount() ?: 0
                 var imported = 0
                 var skipped = 0
+                val scope = checkpointStore.mmsImportScope()
+                if (scope < SyncCheckpointStore.MMS_SCOPE_CURRENT) {
+                    // The walk behind the checkpoint never looked at sent
+                    // rows (0.23.0), or there was no walk yet. Either way the
+                    // checkpoint cannot be trusted to lie past every
+                    // importable row: start over, under the current scope.
+                    Diag.i(TAG, "mms import scope widened, walking from the start", count("scope", scope.toLong()))
+                    checkpointStore.beginMmsWalk()
+                }
                 var lastId = checkpointStore.lastSystemMmsId()
-                Diag.i(TAG, "mms import starting", count("providerInbox", total.toLong()), count("fromId", lastId))
+                // Ids already stored are skipped before any provider read -
+                // what keeps the widened re-walk from re-reading every
+                // attachment the first walk already copied.
+                val alreadyStored = messageDao.allSystemMmsIds().toHashSet()
+                Diag.i(
+                    TAG,
+                    "mms import starting",
+                    count("providerImportable", total.toLong()),
+                    count("fromId", lastId),
+                    count("alreadyStored", alreadyStored.size.toLong()),
+                )
                 while (true) {
-                    val page = source.inboxAfter(afterId = lastId, limit = PAGE_SIZE)
-                    if (page.isEmpty()) break
-                    for (message in page) {
+                    val page = source.messagesAfter(afterId = lastId, limit = PAGE_SIZE, alreadyStored = alreadyStored)
+                    val pageLastId = page.lastId ?: break
+                    for (message in page.messages) {
                         if (store(message)) imported++ else skipped++
                     }
                     // The checkpoint advances past the WHOLE page, including
@@ -79,10 +114,10 @@ class SystemMmsImporter
                     // they would be skipped again on every future run, and
                     // re-reading them forever would make the import never
                     // settle.
-                    lastId = page.last().systemMmsId
+                    lastId = pageLastId
                     checkpointStore.setLastSystemMmsId(lastId)
                     onProgress(imported, total)
-                    if (page.size < PAGE_SIZE) break
+                    if (page.rowCount < PAGE_SIZE) break
                 }
                 Diag.i(
                     TAG,
@@ -106,11 +141,11 @@ class SystemMmsImporter
             // user could read - a bare delivery record. Importing it would
             // add an empty bubble to the conversation.
             if (!message.hasContent()) return false
-            // The sender is the one field the app cannot do without: it
-            // decides the thread. A provider row whose addr table has no
-            // FROM entry cannot be placed, so it is left alone rather than
-            // filed under a fabricated sender.
-            val sender = message.sender?.takeIf { it.isNotBlank() } ?: return false
+            // The other party is the one field the app cannot do without:
+            // it decides the thread. A received row whose addr table has no
+            // FROM entry, or a sent row with no TO entry, cannot be placed,
+            // so it is left alone rather than filed under a fabricated party.
+            val address = message.address?.takeIf { it.isNotBlank() } ?: return false
             val drafts =
                 message.attachments.mapIndexed { index, part ->
                     MmsAttachmentDraft(
@@ -122,7 +157,8 @@ class SystemMmsImporter
             val stored =
                 repository.insertImportedMms(
                     systemMmsId = message.systemMmsId,
-                    sender = sender,
+                    address = address,
+                    isOutgoing = message.isOutgoing,
                     body = message.body,
                     timestampMs = message.timestampMs,
                     dateSentMs = message.sentAtMs,

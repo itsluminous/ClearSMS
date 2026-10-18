@@ -14,6 +14,7 @@ import androidx.work.testing.WorkManagerTestInitHelper
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.domain.model.Category
+import app.clearsms.testing.InMemoryPreferencesDataStore
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -36,6 +37,7 @@ class CatchUpSyncSchedulerTest {
     private lateinit var context: Context
     private lateinit var db: ClearSmsDatabase
     private lateinit var workManager: WorkManager
+    private lateinit var checkpoints: SyncCheckpointStore
     private lateinit var scheduler: CatchUpSyncScheduler
 
     @Before
@@ -47,13 +49,18 @@ class CatchUpSyncSchedulerTest {
         FakeMaxIdProvider.queries = 0
         Robolectric.setupContentProvider(FakeMaxIdProvider::class.java, "sms")
         FakeMmsMaxIdProvider.maxId = null
+        FakeMmsMaxIdProvider.lastSelection = null
         Robolectric.setupContentProvider(FakeMmsMaxIdProvider::class.java, "mms")
         db =
             Room
                 .inMemoryDatabaseBuilder(context, ClearSmsDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        scheduler = CatchUpSyncScheduler(context, db.messageDao(), workManager, Dispatchers.IO)
+        checkpoints = SyncCheckpointStore(InMemoryPreferencesDataStore())
+        // Unless a test says otherwise, the MMS walk is up to date: the
+        // scope probe stays quiet and the max-id probes are what is tested.
+        runBlocking { checkpoints.beginMmsWalk() }
+        scheduler = CatchUpSyncScheduler(context, db.messageDao(), workManager, checkpoints, Dispatchers.IO)
     }
 
     @After
@@ -98,6 +105,13 @@ class CatchUpSyncSchedulerTest {
                     systemMmsId = systemMmsId,
                 ),
             )
+        }
+
+    /** The checkpoint state of an install upgraded from 0.23.0: inbox-only walk, no scope recorded. */
+    private fun inboxOnlyWalk(lastSystemMmsId: Long) =
+        runBlocking {
+            checkpoints.clear()
+            checkpoints.setLastSystemMmsId(lastSystemMmsId)
         }
 
     @Test
@@ -159,6 +173,58 @@ class CatchUpSyncSchedulerTest {
         }
 
     @Test
+    fun `mms probe asks the provider for sent rows as well as received ones`() =
+        runBlocking {
+            // Without this, an MMS sent from another app while it held the
+            // role (a newer id than anything stored) could never trigger a
+            // catch-up, and the walk would only ever learn of received MMS.
+            storeLocalMessage(systemSmsId = 10L)
+            FakeMaxIdProvider.maxId = 10L
+            scheduler.onRoleChecked(held = true, regained = false)
+            val selection = FakeMmsMaxIdProvider.lastSelection
+            assertThat(selection).isNotNull()
+            assertThat(selection).contains(Telephony.Mms.MESSAGE_BOX_INBOX.toString())
+            assertThat(selection).contains(Telephony.Mms.MESSAGE_BOX_SENT.toString())
+            // Drafts and the outbox are not imported, so they must not be
+            // probed either - a stranded draft would fire the probe forever.
+            assertThat(selection).doesNotContain(Telephony.Mms.MESSAGE_BOX_DRAFTS.toString())
+            assertThat(selection).doesNotContain(Telephony.Mms.MESSAGE_BOX_OUTBOX.toString())
+        }
+
+    @Test
+    fun `an inbox-only walk is re-run even when the newest mms is already stored`() =
+        runBlocking {
+            // Issue #112 on an upgraded install: every SMS stored, the newest
+            // MMS (a received one, id 4) stored by the 0.23.0 import, so both
+            // max-id probes agree - yet the sent rows at ids 1..3 were never
+            // read, because that walk looked at the inbox only. The max-id
+            // probe is structurally blind to this; the recorded scope is not.
+            storeLocalMessage(systemSmsId = 10L)
+            storeLocalMms(systemMmsId = 4L)
+            FakeMaxIdProvider.maxId = 10L
+            FakeMmsMaxIdProvider.maxId = 4L
+            inboxOnlyWalk(lastSystemMmsId = 4L)
+            scheduler.onRoleChecked(held = true, regained = false)
+            assertThat(enqueued()).isEqualTo(1)
+        }
+
+    @Test
+    fun `a walk under the current scope is not re-run`() =
+        runBlocking {
+            // The same device after the re-walk ran: the importer recorded
+            // the scope, so the probe must settle - it fires once per
+            // install, never once per resume.
+            storeLocalMessage(systemSmsId = 10L)
+            storeLocalMms(systemMmsId = 4L)
+            FakeMaxIdProvider.maxId = 10L
+            FakeMmsMaxIdProvider.maxId = 4L
+            checkpoints.beginMmsWalk()
+            checkpoints.setLastSystemMmsId(4L)
+            scheduler.onRoleChecked(held = true, regained = false)
+            assertThat(enqueued()).isEqualTo(0)
+        }
+
+    @Test
     fun `probe with an empty local database but provider rows enqueues`() =
         runBlocking {
             FakeMaxIdProvider.maxId = 3L
@@ -185,8 +251,7 @@ class CatchUpSyncSchedulerTest {
             assertThat(enqueued()).isEqualTo(1)
         }
 
-    /** `content://sms` stand-in answering only the scheduler's max-id probe. */
-    /** Fake `content://mms` serving only the probe's newest-inbox-id query. */
+    /** Fake `content://mms` serving only the probe's newest-importable-id query. */
     class FakeMmsMaxIdProvider : ContentProvider() {
         override fun onCreate(): Boolean = true
 
@@ -197,6 +262,7 @@ class CatchUpSyncSchedulerTest {
             selectionArgs: Array<out String>?,
             sortOrder: String?,
         ): Cursor {
+            lastSelection = selection
             val cursor = MatrixCursor(arrayOf(Telephony.Mms._ID))
             maxId?.let { cursor.addRow(arrayOf(it)) }
             return cursor
@@ -224,9 +290,13 @@ class CatchUpSyncSchedulerTest {
 
         companion object {
             var maxId: Long? = null
+
+            /** The `msg_box` selection the probe sent, for the box-coverage test. */
+            var lastSelection: String? = null
         }
     }
 
+    /** `content://sms` stand-in answering only the scheduler's max-id probe. */
     class FakeMaxIdProvider : ContentProvider() {
         override fun onCreate(): Boolean = true
 

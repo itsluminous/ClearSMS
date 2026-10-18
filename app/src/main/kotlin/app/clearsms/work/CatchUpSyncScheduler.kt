@@ -7,6 +7,7 @@ import app.clearsms.data.db.MessageDao
 import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
+import app.clearsms.mms.SystemMmsSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -58,6 +59,7 @@ class CatchUpSyncScheduler
         @ApplicationContext private val context: Context,
         private val messageDao: MessageDao,
         private val workManager: WorkManager,
+        private val checkpointStore: SyncCheckpointStore,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         /**
@@ -90,15 +92,29 @@ class CatchUpSyncScheduler
                 // run the MMS import at all - leaving exactly the invisible
                 // picture messages of issue #94 in place. It also covers MMS
                 // that arrive while another app holds the role.
-                val providerMmsMax = providerMaxMmsId() ?: return@withContext
+                val providerMmsMax = providerMaxMmsId()
                 val localMmsMax = messageDao.maxSystemMmsId() ?: 0L
-                if (providerMmsMax > localMmsMax) {
+                if (providerMmsMax != null && providerMmsMax > localMmsMax) {
                     Diag.i(
                         TAG,
                         "mms gap probe scheduling catch-up",
                         count("providerMaxMmsId", providerMmsMax),
                         count("localMaxMmsId", localMmsMax),
                     )
+                    InitialSyncWorker.enqueue(workManager)
+                    return@withContext
+                }
+                // A max-id gap cannot see a SENT row that an inbox-only walk
+                // stepped over (issue #112): on an install upgraded from
+                // 0.23.0 the newest MMS is typically a received one that IS
+                // stored, so the two maxima agree while every sent MMS is
+                // missing. The checkpoint's recorded scope is the signal
+                // instead: a walk under an older scope (or none recorded)
+                // is owed one re-walk, which the importer performs and then
+                // records, so this fires once per install, not per resume.
+                val scope = checkpointStore.mmsImportScope()
+                if (scope < SyncCheckpointStore.MMS_SCOPE_CURRENT) {
+                    Diag.i(TAG, "mms import scope widened, scheduling catch-up", count("scope", scope.toLong()))
                     InitialSyncWorker.enqueue(workManager)
                 }
             }
@@ -121,9 +137,10 @@ class CatchUpSyncScheduler
             }
 
         /**
-         * Highest received-MMS `_id` in the system MMS provider, or null when
-         * unreadable/empty. Restricted to the inbox because that is what the
-         * importer stores, so a sent MMS cannot make the probe fire forever.
+         * Highest importable (received or sent) MMS `_id` in the system MMS
+         * provider, or null when unreadable/empty. Restricted to the boxes
+         * the importer stores, so a draft or a stranded outbox row cannot
+         * make the probe fire forever.
          */
         private fun providerMaxMmsId(): Long? =
             try {
@@ -131,7 +148,7 @@ class CatchUpSyncScheduler
                     .query(
                         Telephony.Mms.CONTENT_URI,
                         arrayOf(Telephony.Mms._ID),
-                        "${Telephony.Mms.MESSAGE_BOX} = ${Telephony.Mms.MESSAGE_BOX_INBOX}",
+                        SystemMmsSource.IMPORTED_BOXES,
                         null,
                         "${Telephony.Mms._ID} DESC LIMIT 1",
                     )?.use { if (it.moveToFirst()) it.getLong(0) else null }

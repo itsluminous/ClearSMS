@@ -769,7 +769,8 @@ class MessageRepositoryImpl(
 
     override suspend fun insertImportedMms(
         systemMmsId: Long,
-        sender: String,
+        address: String,
+        isOutgoing: Boolean,
         body: String,
         timestampMs: Long,
         dateSentMs: Long?,
@@ -779,22 +780,27 @@ class MessageRepositoryImpl(
         recipients: List<String>,
         attachments: List<MmsAttachmentDraft>,
     ): MessageEntity? {
-        val enriched = classify(rulesSnapshot(), sender, body, timestampMs)
-        val normalized = SenderNormalizer.normalize(sender)
+        // Only a received message is classified: the user's own words are
+        // PERSONAL by definition, never a promotion or a transaction - the
+        // same rule the SMS import applies to sent SMS.
+        val enriched = if (isOutgoing) null else classify(rulesSnapshot(), address, body, timestampMs)
+        val normalized = SenderNormalizer.normalize(address)
         // Imported history is never notified (the import runs over messages
         // the user has already seen elsewhere), so unlike the live path
-        // there is no routing step here. A blocked sender's MMS is still
+        // there is no routing step here. A blocked party's MMS is still
         // born soft-deleted, exactly as the live path does it, so importing
-        // history cannot resurrect a conversation the user blocked.
-        val blocked = isSenderBlocked(sender)
+        // history cannot resurrect a conversation the user blocked - a sent
+        // row included, since blocking bins the whole conversation.
+        val blocked = isSenderBlocked(address)
         val stored =
             database.withTransaction {
-                // A group MMS is attributed to its sender and must never
-                // anchor a thread, same rule as completeMmsDownload.
+                // A group MMS is attributed to one party (its sender, or for
+                // a sent row its first recipient) and must never anchor a
+                // thread, same rule as completeMmsDownload.
                 val threadId =
                     ThreadIdentity.resolve(
                         messageDao,
-                        sender,
+                        address,
                         normalized,
                         providerThreadId = providerThreadId,
                         recipientCount = recipients.size,
@@ -802,25 +808,35 @@ class MessageRepositoryImpl(
                 val entity =
                     MessageEntity(
                         threadId = threadId,
-                        sender = sender,
+                        sender = address,
                         normalizedSender = normalized,
                         body = body,
                         timestamp = timestampMs,
-                        dateSent = dateSentMs,
-                        isRead = if (blocked) true else isRead,
-                        category = enriched.result.category,
-                        subCategory = enriched.result.subCategory,
-                        extractedOtp = enriched.otpCode,
-                        extractedDataJson = encodeExtracted(enriched.extracted),
+                        // A sent row's send time IS its date; the sender
+                        // timestamp only means something on a received row.
+                        dateSent = if (isOutgoing) null else dateSentMs,
+                        isRead = if (blocked || isOutgoing) true else isRead,
+                        category = enriched?.result?.category ?: Category.PERSONAL,
+                        subCategory = enriched?.result?.subCategory,
+                        extractedOtp = enriched?.otpCode,
+                        extractedDataJson = enriched?.let { encodeExtracted(it.extracted) },
                         isBlockedSender = blocked,
                         deletedAt = if (blocked) timestampMs else null,
                         systemMmsId = systemMmsId,
+                        isOutgoing = isOutgoing,
+                        // Another app sent it and the provider keeps no MMS
+                        // delivery report, so SENT is all that is known:
+                        // never DELIVERED on a guess, never SENDING (the box
+                        // says the send completed).
+                        deliveryStatus = if (isOutgoing) DeliveryStatus.SENT else null,
                         subscriptionId = subscriptionId,
                         providerThreadId = providerThreadId,
                         // The provider already holds the content: the row is
                         // complete on arrival, never PENDING. No transaction
                         // id or content location exists to retry with, and
-                        // none is invented.
+                        // none is invented. Set on a sent row too, so the
+                        // details dialog can call a text-only sent MMS what
+                        // it is.
                         mmsStatus = MmsStatus.DOWNLOADED,
                         mmsRecipients = encodeRecipients(recipients),
                         attachmentKinds = attachmentKinds(attachments),
@@ -843,7 +859,7 @@ class MessageRepositoryImpl(
                     )
                 }
                 val row = entity.copy(id = id)
-                if (!blocked) persistDerived(id, timestampMs, enriched)
+                if (!blocked && enriched != null) persistDerived(id, timestampMs, enriched)
                 row
             }
         if (stored != null && blocked && !recycleBinEnabled()) {
