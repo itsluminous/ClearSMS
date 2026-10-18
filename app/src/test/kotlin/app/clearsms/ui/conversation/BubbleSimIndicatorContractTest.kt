@@ -1,6 +1,7 @@
 package app.clearsms.ui.conversation
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
 
@@ -9,7 +10,8 @@ import java.io.File
  * [DeliveryTickContractTest] style because the repo has no Compose UI
  * harness: the bubble and the "More details" dialog resolve a message's
  * SIM through ONE rule ([MessageDetails.simRowFor]); the mark is rendered
- * in exactly one place, beside the time label after the delivery tick;
+ * in exactly one place, beside the time label and BEFORE the delivery
+ * tick, so the sent/delivered tick remains the last icon on the row;
  * it draws the compose bar's own SIM outline; it is gated on the live
  * SIM list the dialog uses; and it is announced as the SIM's label, never
  * as a bare glyph. No new string: the label is the shared [app.clearsms.sms.SimLabel] text.
@@ -32,12 +34,22 @@ class BubbleSimIndicatorContractTest {
     }
 
     @Test
-    fun `rendered once, in the time row after the tick, from the pure decision`() {
+    fun `rendered once, in the time row before the tick, from the pure decision`() {
         val screen = source("ui/conversation/ConversationScreen.kt")
         assertThat(screen).contains("sim = BubbleSimIndicators.forItem(item, activeSims),")
-        // Same row as the time label and the tick, directly after the tick.
-        val afterTick = screen.substringAfter("tick = DeliveryTicks.tickFor(item),").substringBefore("BubbleSimIcon(")
-        assertThat(afterTick.length).isLessThan(200)
+        // Same row as the time label and the tick, directly BEFORE the tick:
+        // the delivery tick is deliberately the last icon on the row.
+        // Anchored on the call site's own argument, not a file-global
+        // indexOf: the composables are also DECLARED in this file, and the
+        // declarations would satisfy a naive ordering check.
+        val betweenIcons =
+            screen
+                .substringAfter("sim = BubbleSimIndicators.forItem(item, activeSims),")
+                .substringBefore("tick = DeliveryTicks.tickFor(item),")
+        assertThat(betweenIcons.length).isLessThan(200)
+        assertWithMessage("the delivery tick must be the LAST icon on the time row")
+            .that(betweenIcons)
+            .contains("DeliveryTickIcon(")
         // Exactly one render site.
         assertThat(screen.split("BubbleSimIcon(").size - 1).isEqualTo(2) // call + definition
         assertThat(screen).contains("fun BubbleSimIcon(")

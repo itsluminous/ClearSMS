@@ -1407,12 +1407,12 @@ private fun MessageBubble(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = textColor.copy(alpha = 0.7f),
                             )
-                            DeliveryTickIcon(
-                                tick = DeliveryTicks.tickFor(item),
-                                tint = textColor.copy(alpha = 0.7f),
-                            )
                             BubbleSimIcon(
                                 sim = BubbleSimIndicators.forItem(item, activeSims),
+                                tint = textColor.copy(alpha = 0.7f),
+                            )
+                            DeliveryTickIcon(
+                                tick = DeliveryTicks.tickFor(item),
                                 tint = textColor.copy(alpha = 0.7f),
                             )
                         }
@@ -1663,7 +1663,9 @@ internal fun DeliveryTickIcon(
  * body text above never shifts) and tinted with the same on-bubble colour
  * as the time label and tick: legible on both themes' bubble colours and
  * under Material You by construction, where a system SIM colour would pass
- * the contrast bar on one bubble and fall back on the next. The content
+ * the contrast bar on one bubble and fall back on the next. It sits
+ * between the time label and the delivery tick, so the tick stays the
+ * last thing on the row. The content
  * description is the row's own label ("SIM 1 - Airtel"), identical to the
  * details dialog's, merged into the bubble's announcement - never a bare
  * glyph.

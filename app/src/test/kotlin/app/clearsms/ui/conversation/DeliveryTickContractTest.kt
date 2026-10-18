@@ -22,9 +22,12 @@ class DeliveryTickContractTest {
         val screen = source("ui/conversation/ConversationScreen.kt")
         assertThat(screen).contains("tick = DeliveryTicks.tickFor(item)")
         // Time and tick share one Row so the tick never crowds the time
+        // label. The budget allows ONE sibling icon between them - the SIM
+        // indicator renders there, with the tick deliberately last - while
+        // staying far too small for the tick to have left the row at all.
         // label; the SIM tag stays in the metadata line beneath.
         val timeRow = screen.substringAfter("text = item.timeLabel,").substringBefore("DeliveryTickIcon(")
-        assertThat(timeRow.length).isLessThan(300)
+        assertThat(timeRow.length).isLessThan(600)
         assertThat(screen).contains("fun DeliveryTickIcon(")
     }
 
