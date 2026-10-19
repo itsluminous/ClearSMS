@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -507,6 +506,11 @@ fun ConversationScreen(
                             // the bar's fixed height so, at large font
                             // scales, ellipsis drops the line that would not
                             // fit instead of the bar clipping or growing.
+                            // The sizer is ConversationTitleFit's own, not
+                            // TextAutoSize.StepBased: StepBased searches a
+                            // px grid that non-linear font scaling (1.03+)
+                            // keeps from ever reaching the 22sp ceiling, so
+                            // it shrank EVERY name at large font scales.
                             // See ConversationTitleFit.
                             val titleStyle = ConversationTitleFit.style(LocalTextStyle.current)
                             val titleColor = LocalContentColor.current
@@ -516,12 +520,7 @@ fun ConversationScreen(
                                 color = { titleColor },
                                 maxLines = ConversationTitleFit.MaxLines,
                                 overflow = TextOverflow.Ellipsis,
-                                autoSize =
-                                    TextAutoSize.StepBased(
-                                        minFontSize = ConversationTitleFit.MinFontSize,
-                                        maxFontSize = ConversationTitleFit.maxFontSize(titleStyle.fontSize),
-                                        stepSize = ConversationTitleFit.StepSize,
-                                    ),
+                                autoSize = ConversationTitleFit.autoSize(titleStyle.fontSize),
                                 modifier =
                                     Modifier
                                         .weight(1f, fill = false)

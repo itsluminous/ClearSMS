@@ -4,13 +4,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.File
+import kotlin.math.floor
 
 /**
  * Pins how the sender name fits the fixed-height conversation top bar (see
@@ -53,12 +57,23 @@ class ConversationTitleFitTest {
         assertThat(ConversationTitleFit.MinFontSize).isEqualTo(16.sp)
         assertThat(ConversationTitleFit.MinFontSize.type).isEqualTo(16.sp.type)
         assertThat(ConversationTitleFit.StepSize).isEqualTo(1.sp)
-        // And the screen feeds THAT floor to the auto-sizer, no literal of its own.
+        // And the screen draws with THE contract's auto-sizer - built from
+        // the bar's style, no literal of its own - which carries that floor.
         val text = nameText()
-        assertThat(text).contains("TextAutoSize.StepBased(")
-        assertThat(text).contains("minFontSize = ConversationTitleFit.MinFontSize,")
-        assertThat(text).contains("stepSize = ConversationTitleFit.StepSize,")
+        assertThat(text).contains("autoSize = ConversationTitleFit.autoSize(titleStyle.fontSize),")
         assertThat(text).doesNotContainMatch("minFontSize = \\d")
+        val sizer = ConversationTitleFit.autoSize(22.sp) as TitleAutoSize
+        assertThat(sizer.minFontSize).isEqualTo(ConversationTitleFit.MinFontSize)
+        assertThat(sizer.stepSize).isEqualTo(ConversationTitleFit.StepSize)
+        // Not TextAutoSize.StepBased: its px-grid search cannot reach the
+        // ceiling under non-linear font scaling (see the test below), so the
+        // title must never go back to it.
+        assertThat(titleSlot()).doesNotContain("TextAutoSize.StepBased(")
+        // Value equality, as TextAutoSize requires: the same style yields an
+        // equal sizer, so recomposition does not invalidate the text layout.
+        assertThat(ConversationTitleFit.autoSize(22.sp)).isEqualTo(ConversationTitleFit.autoSize(22.sp))
+        assertThat(ConversationTitleFit.autoSize(22.sp).hashCode()).isEqualTo(ConversationTitleFit.autoSize(22.sp).hashCode())
+        assertThat(ConversationTitleFit.autoSize(22.sp)).isNotEqualTo(ConversationTitleFit.autoSize(28.sp))
     }
 
     @Test
@@ -73,7 +88,11 @@ class ConversationTitleFitTest {
         assertThat(ConversationTitleFit.maxFontSize(1.5.em)).isEqualTo(22.sp)
         // A style smaller than the floor cannot be used to sneak under it.
         assertThat(ConversationTitleFit.maxFontSize(12.sp)).isEqualTo(ConversationTitleFit.MinFontSize)
-        assertThat(nameText()).contains("maxFontSize = ConversationTitleFit.maxFontSize(titleStyle.fontSize),")
+        // The auto-sizer's ceiling IS maxFontSize of the style it is built from.
+        assertThat((ConversationTitleFit.autoSize(22.sp) as TitleAutoSize).maxFontSize).isEqualTo(22.sp)
+        assertThat((ConversationTitleFit.autoSize(28.sp) as TitleAutoSize).maxFontSize).isEqualTo(28.sp)
+        assertThat((ConversationTitleFit.autoSize(TextUnit.Unspecified) as TitleAutoSize).maxFontSize).isEqualTo(22.sp)
+        assertThat((ConversationTitleFit.autoSize(12.sp) as TitleAutoSize).maxFontSize).isEqualTo(ConversationTitleFit.MinFontSize)
     }
 
     @Test
@@ -136,6 +155,20 @@ class ConversationTitleFitTest {
         assertThat(nameText()).doesNotContainMatch("lineHeight\\s*=")
     }
 
+    /**
+     * Compose's own sp-to-dp conversion for a font scale: linear at 1.0,
+     * and from 1.03 up the platform's non-linear curve (Compose carries the
+     * tables itself, so this holds on every API level). The screen density
+     * is irrelevant to dp arithmetic; 2.625 (a 420dpi phone) is used so px
+     * figures in comments are reproducible.
+     */
+    private fun density(fontScale: Float) = Density(2.625f, fontScale)
+
+    private fun spToDp(
+        sp: Float,
+        fontScale: Float,
+    ): Float = with(density(fontScale)) { sp.sp.toDp().value }
+
     @Test
     fun `two lines fit the fixed bar at font scale 1, larger scales shrink first and keep to the lines that fit`() {
         // TopAppBar's container is 64dp and does not grow; the name's layout
@@ -144,55 +177,174 @@ class ConversationTitleFitTest {
         assertThat(ConversationTitleFit.MaxHeight).isEqualTo(64.dp)
         assertThat(nameText()).contains(".heightIn(max = ConversationTitleFit.MaxHeight)")
         // The line height is 1.2 x the auto-sized font (see the test above),
-        // so the height question is font size x font scale. Two lines are
-        // AT MOST 2 x line height: with Trim.Both they are one line height
-        // plus one glyph box, which is smaller still, so these figures are
-        // the conservative bound.
-        val ratio = ConversationTitleFit.LineHeight.value
-        val ceilingSp = ConversationTitleFit.maxFontSize(22.sp).value
-        val floorSp = ConversationTitleFit.MinFontSize.value
-        val maxHeight = ConversationTitleFit.MaxHeight.value
+        // so the height question is 1.2 x the font's dp size x lines. Two
+        // lines are AT MOST 2 x line height: with Trim.Both they are one
+        // line height plus one glyph box, which is smaller still, so
+        // linesFit is the conservative bound (a size it passes certainly
+        // fits; the real layout may pass one step more at the margin).
+        //
+        // The font's dp size is NOT sp x scale: Android's non-linear font
+        // scaling (Compose applies the same curve on every API level, from
+        // scale 1.03) grows large text less than small text - at 1.5, 16sp
+        // is 23dp and 22sp is 27dp, not 24 and 33. All figures below come
+        // from Compose's own conversion, never from a scale multiplication.
+        val ceiling = ConversationTitleFit.maxFontSize(22.sp)
+        val floor = ConversationTitleFit.MinFontSize
+        fun fits(
+            size: TextUnit,
+            lines: Int,
+            scale: Float,
+        ) = ConversationTitleFit.linesFit(size, lines, density(scale))
 
-        fun lineHeightDp(
-            fontSp: Float,
-            fontScale: Float,
-        ) = ratio * fontSp * fontScale
-
-        fun linesThatFit(
-            fontSp: Float,
-            fontScale: Float,
-        ) = (maxHeight / lineHeightDp(fontSp, fontScale)).toInt().coerceAtMost(ConversationTitleFit.MaxLines)
-        // At scale 1.0 the ceiling's two lines take 52.8dp of 64dp (11.2dp
-        // to spare; the old fixed 28sp line left only 4dp).
-        assertThat(lineHeightDp(ceilingSp, 1.0f)).isWithin(0.01f).of(26.4f)
-        assertThat(linesThatFit(ceilingSp, 1.0f)).isEqualTo(2)
-        // At 1.15 two lines now fit at the FULL title size (60.7dp); with
-        // the fixed 28sp line they no longer did (64.4dp).
-        assertThat(linesThatFit(ceilingSp, 1.15f)).isEqualTo(2)
-        assertThat(28f * 2 * 1.15f).isGreaterThan(maxHeight)
-        // At 1.3 the ceiling's two lines overflow (68.6dp), so the
-        // auto-sizer shrinks - two lines fit from 20sp down (62.4dp), well
-        // above the floor - instead of dropping a line at once.
-        assertThat(linesThatFit(ceilingSp, 1.3f)).isEqualTo(1)
-        assertThat(linesThatFit(20f, 1.3f)).isEqualTo(2)
-        assertThat(20f).isAtLeast(floorSp)
-        // Two lines keep fitting, at the floor, up to scale 1.66; past it
-        // (Android's 2.0 maximum included) even the floor's two lines
-        // overflow (76.8dp), so ellipsis keeps the name to one line rather
-        // than shrinking below the floor.
-        assertThat(linesThatFit(floorSp, 1.66f)).isEqualTo(2)
-        assertThat(linesThatFit(floorSp, 1.67f)).isEqualTo(1)
-        assertThat(linesThatFit(floorSp, 2.0f)).isEqualTo(1)
-        // Even at 2.0 one line of the FULL title size fits (52.8dp), so the
+        // Scale 1.0 is linear: the ceiling's line is 26.4dp and its two
+        // lines take 52.8dp of 64dp (11.2dp to spare; the old fixed 28sp
+        // line left only 4dp).
+        assertThat(ConversationTitleFit.lineHeight(ceiling, density(1.0f)).value).isWithin(0.01f).of(26.4f)
+        assertThat(fits(ceiling, 2, 1.0f)).isTrue()
+        // The non-linear curve, pinned where the arithmetic depends on it.
+        assertThat(spToDp(16f, 1.5f)).isWithin(0.01f).of(23f)
+        assertThat(spToDp(22f, 1.5f)).isWithin(0.01f).of(27f)
+        assertThat(spToDp(16f, 2.0f)).isWithin(0.01f).of(28f)
+        assertThat(spToDp(22f, 2.0f)).isWithin(0.01f).of(35f)
+        // A ONE-line name fits at the full title size at EVERY scale: even
+        // at Android's 2.0 maximum its line is 42dp of 64. This is the
+        // promise the defect broke - see the next test for how.
+        for (scale in listOf(1.0f, 1.15f, 1.3f, 1.5f, 1.8f, 2.0f)) {
+            assertWithMessage("one line at the ceiling, scale $scale").that(fits(ceiling, 1, scale)).isTrue()
+        }
+        assertThat(ConversationTitleFit.lineHeight(ceiling, density(2.0f)).value).isWithin(0.01f).of(42f)
+        // Two lines keep fitting at the full title size through 1.3 (22sp is
+        // 25dp there: 60dp of 64) - with linear scaling they would already
+        // have overflowed at 1.3 (68.6dp), so large-font users keep the full
+        // size longer than the old arithmetic claimed.
+        assertThat(fits(ceiling, 2, 1.15f)).isTrue()
+        assertThat(fits(ceiling, 2, 1.3f)).isTrue()
+        assertThat(spToDp(22f, 1.3f)).isWithin(0.01f).of(25f)
+        // At 1.5 the ceiling's two lines overflow (64.8dp), so the
+        // auto-sizer shrinks - ONE step: two lines of 21sp (26.5dp) are
+        // 63.6dp - well above the floor, instead of dropping a line at once.
+        assertThat(fits(ceiling, 2, 1.5f)).isFalse()
+        assertThat(fits(21.sp, 2, 1.5f)).isTrue()
+        assertThat(21f).isAtLeast(floor.value)
+        // Two lines keep fitting, at the floor, through 1.8 (16sp is 26dp
+        // there: 62.4dp); at Android's 2.0 maximum even the floor's two
+        // lines overflow (16sp is 28dp: 67.2dp), so ellipsis keeps the name
+        // to one line rather than shrinking below the floor.
+        assertThat(fits(floor, 2, 1.8f)).isTrue()
+        assertThat(fits(floor, 2, 2.0f)).isFalse()
+        // Even at 2.0 one line of the FULL title size fits (42dp), so the
         // name is never dropped entirely.
-        assertThat(lineHeightDp(ceilingSp, 2.0f)).isAtMost(maxHeight)
+        assertThat(fits(ceiling, 1, 2.0f)).isTrue()
         // What the floor means at those scales: the smallest rendered glyph
-        // is floor x scale, so a large-font user is never handed less than
-        // their setting's share of 16sp - the auto-sizer stops there and
-        // ellipsises instead.
-        val floorDp = { scale: Float -> floorSp * scale }
-        assertThat(floorDp(1.3f)).isWithin(0.01f).of(20.8f)
-        assertThat(floorDp(2.0f)).isWithin(0.01f).of(32f)
+        // is 16sp AS THE SETTING RENDERS IT, so a large-font user is never
+        // handed less than their setting's share of 16sp - the auto-sizer
+        // stops there and ellipsises instead.
+        assertThat(spToDp(floor.value, 1.3f)).isWithin(0.01f).of(20.2f)
+        assertThat(spToDp(floor.value, 2.0f)).isWithin(0.01f).of(28f)
+        // The available height is a parameter so the bound is one function
+        // of (scale, size, lines, height), not a 64dp special case.
+        assertThat(ConversationTitleFit.linesFit(ceiling, 2, density(1.5f), available = 65.dp)).isTrue()
+        assertThat(ConversationTitleFit.linesFit(ceiling, 2, density(1.5f), available = 64.dp)).isFalse()
+    }
+
+    /**
+     * The search [ConversationTitleFit.autoSize] runs, held against the
+     * height model at the three scales: a one-line name takes the ceiling
+     * everywhere, a two-line name shrinks only when its two lines do not
+     * fit, and never past the floor.
+     */
+    @Test
+    fun `the auto-sizer picks the largest sp step that fits, from the ceiling down, never below the floor`() {
+        val floor = ConversationTitleFit.MinFontSize
+        val ceiling = ConversationTitleFit.maxFontSize(22.sp)
+        val step = ConversationTitleFit.StepSize
+        fun pick(
+            lines: Int,
+            scale: Float,
+        ) = ConversationTitleFit.largestFittingSize(floor, ceiling, step) { size ->
+            ConversationTitleFit.linesFit(size, lines, density(scale))
+        }
+        // One-line name: full size at every scale - the regression this file
+        // guards (before the fix: 22sp at 1.0, but 20sp at 1.5 and 2.0).
+        assertThat(pick(lines = 1, scale = 1.0f)).isEqualTo(22.sp)
+        assertThat(pick(lines = 1, scale = 1.5f)).isEqualTo(22.sp)
+        assertThat(pick(lines = 1, scale = 2.0f)).isEqualTo(22.sp)
+        // Two-line name: full size at 1.0, one step down at 1.5, and at 2.0
+        // nothing fits two lines so the floor is returned - the sizer never
+        // goes under it; ellipsis takes over there.
+        assertThat(pick(lines = 2, scale = 1.0f)).isEqualTo(22.sp)
+        assertThat(pick(lines = 2, scale = 1.5f)).isEqualTo(21.sp)
+        assertThat(pick(lines = 2, scale = 2.0f)).isEqualTo(floor)
+        // Every candidate the search hands out is sp - the floor's unit.
+        val seen = mutableListOf<TextUnit>()
+        ConversationTitleFit.largestFittingSize(floor, ceiling, step) {
+            seen += it
+            false
+        }
+        assertThat(seen.map { it.value }).containsExactly(22f, 21f, 20f, 19f, 18f, 17f, 16f).inOrder()
+        assertThat(seen.all { it.isSp }).isTrue()
+        // The ceiling is tried first, so a name that fits at full size costs
+        // one layout; the floor is returned without a further try.
+        var tries = 0
+        assertThat(ConversationTitleFit.largestFittingSize(floor, ceiling, step) { tries++; true }).isEqualTo(ceiling)
+        assertThat(tries).isEqualTo(1)
+        // Only sp is accepted: a dp or em bound would let the floor be
+        // re-expressed in a unit the font setting does not scale.
+        assertThrows(IllegalArgumentException::class.java) {
+            ConversationTitleFit.largestFittingSize(floor, 1.5.em, step) { true }
+        }
+    }
+
+    /**
+     * WHY the title has its own sizer: `TextAutoSize.StepBased` searches in
+     * PIXELS, and under non-linear font scaling that search cannot reach
+     * the ceiling. This mirrors StepBased's algorithm (Compose foundation
+     * 1.10: floor, ceiling and step converted to px, a binary search, the
+     * result snapped to the px grid anchored at the floor, then one step
+     * up if it still fits) against a predicate that says EVERYTHING fits,
+     * so the only thing under test is which sizes the search can produce.
+     */
+    @Test
+    fun `StepBased's px-grid search cannot reach the ceiling under non-linear font scaling - the defect`() {
+        fun stepBasedMirror(scale: Float): Float {
+            val density = density(scale)
+            with(density) {
+                val step = ConversationTitleFit.StepSize.toPx()
+                val smallest = ConversationTitleFit.MinFontSize.toPx()
+                val largest = ConversationTitleFit.maxFontSize(22.sp).toPx()
+                var min = smallest
+                var max = largest
+                var current = (min + max) / 2
+                while ((max - min) >= step) {
+                    min = current // every size "fits"
+                    current = (min + max) / 2
+                }
+                current = floor((min - smallest) / step) * step + smallest
+                if (current + step <= largest) current += step
+                return current.toSp().value
+            }
+        }
+        // Linear scaling: the px grid is the sp grid and the ceiling is on it.
+        assertThat(stepBasedMirror(1.0f)).isWithin(0.01f).of(22f)
+        // Non-linear scaling: 16..22sp compresses to 23..27dp while the 1sp
+        // step converts to 1.5dp, so the grid from the floor is 23, 24.5,
+        // 26dp and the next point overshoots 27dp - 22sp is NEVER tried and
+        // the 26dp point, 20sp, is returned for every name. (The measured
+        // defect: a 10-character name at 20sp -> 26dp -> 68px -> a 49px cap
+        // height on a 420dpi screen.)
+        assertThat(stepBasedMirror(1.5f)).isWithin(0.01f).of(20f)
+        assertThat(spToDp(20f, 1.5f)).isWithin(0.01f).of(26f)
+        assertThat(stepBasedMirror(2.0f)).isWithin(0.01f).of(20f)
+        // The contract's sizer reaches it at the same scales.
+        for (scale in listOf(1.0f, 1.5f, 2.0f)) {
+            val picked =
+                ConversationTitleFit.largestFittingSize(
+                    ConversationTitleFit.MinFontSize,
+                    ConversationTitleFit.maxFontSize(22.sp),
+                    ConversationTitleFit.StepSize,
+                ) { true }
+            assertWithMessage("scale $scale").that(picked).isEqualTo(22.sp)
+        }
     }
 
     @Test
