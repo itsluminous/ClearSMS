@@ -16,7 +16,8 @@ import kotlinx.coroutines.flow.map
  * which is why no permission handling appears here. Whatever [search]
  * returns is passed through [dedupeSuggestions]: the lists this feed drives
  * are keyed per row, and a contact stored twice must never become two rows
- * with one key (that is a hard crash in a lazy list).
+ * with one key (that is a hard crash in a lazy list) - nor two rows showing
+ * one number in two formattings (issue #127).
  */
 @OptIn(FlowPreview::class)
 internal fun contactSuggestionFeed(
