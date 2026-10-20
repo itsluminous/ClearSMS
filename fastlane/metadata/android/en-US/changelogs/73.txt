@@ -1,0 +1,13 @@
+Maintenance release.
+
+Fixed
+- Switching the SIM for a conversation crashed the app
+- Sent MMS should now show up
+- The compose screen ignored the "delay before sending" setting
+- A contact could appear more times than it has numbers.
+- Promotional message rule update
+- Moving between tabs and opening a conversation are quicker. Changed animation from 700ms to 300ms
+
+Added
+- Picking a contact you already have a conversation with now opens that conversation instead of leaving you on an empty screen with no history
+- On a dual-SIM phone each message now carries a small SIM mark beside its timestamp
