@@ -21,7 +21,7 @@ class BubbleSimIndicatorContractTest {
 
     @Test
     fun `the bubble resolves the SIM through the details dialog's rule - never its own`() {
-        val decision = source("ui/conversation/BubbleSimIndicator.kt")
+        val decision = source("ui/conversation/BubbleSimIndicators.kt")
         assertThat(decision).contains("return MessageDetails.simRowFor(activeSims, subscriptionId)")
         assertThat(decision).contains("): MessageDetails.Row.Sim?")
         // The one extra gate is the compose bar's dual-SIM gate, by name.
@@ -58,7 +58,7 @@ class BubbleSimIndicatorContractTest {
         val callers =
             root
                 .walkTopDown()
-                .filter { it.extension == "kt" && it.name != "BubbleSimIndicator.kt" }
+                .filter { it.extension == "kt" && it.name != "BubbleSimIndicators.kt" }
                 .filter { "BubbleSimIndicators." in it.readText() }
                 .map { it.name }
                 .toList()
