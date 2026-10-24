@@ -49,7 +49,7 @@ import javax.inject.Singleton
  *
  * DIAGNOSTICS: every hand-over logs, through [Diag], what the platform is
  * being asked to send (part count, each attachment's byte size and MIME
- * type, PDU size) and what the radio looked like ([MmsSendConditions]);
+ * type, PDU size) and what the radio looked like ([MmsRadioConditions]);
  * a synchronous failure logs the exception class chain. Together with the
  * result code `MmsSentReceiver` logs, that tells "this app built a bad
  * MMS" apart from "the platform or carrier refused". NEVER logged: the
@@ -75,7 +75,7 @@ class MmsSender
         private val attachmentStore: AttachmentStore,
         private val stager: OutgoingAttachmentStager,
         private val gateway: MmsGateway,
-        private val conditions: MmsSendConditionsProbe,
+        private val conditions: MmsRadioConditionsProbe,
         private val carrierLimits: CarrierMmsLimits,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {

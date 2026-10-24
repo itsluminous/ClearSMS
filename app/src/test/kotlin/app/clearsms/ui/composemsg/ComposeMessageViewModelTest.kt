@@ -17,7 +17,7 @@ import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
 import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsGateway
-import app.clearsms.mms.MmsSendConditionsProbe
+import app.clearsms.mms.MmsRadioConditionsProbe
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.sms.ContactsSource
@@ -174,7 +174,7 @@ class ComposeMessageViewModelTest {
                 AttachmentStore(context),
                 OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
                 FakeMmsGateway(),
-                MmsSendConditionsProbe(context, FakeSubscriptionSource()),
+                MmsRadioConditionsProbe(context, FakeSubscriptionSource()),
                 FakeCarrierMmsLimits(),
                 Dispatchers.Unconfined,
             )

@@ -16,17 +16,19 @@ import javax.inject.Singleton
 
 /**
  * What the radio looked like at the instant an MMS was handed to the
- * platform - the half of an MMS bug report the result code cannot carry.
- * Every value is a yes/no or a slot number: nothing here names a carrier,
- * a network or a subscription id, and each is null when the platform would
+ * platform (send) or its result came back (download) - the half of an MMS
+ * bug report the result code cannot carry. One probe serves both paths
+ * (issue #135: the download report once carried the code alone). Every
+ * value is a yes/no or a slot number: nothing here names a carrier, a
+ * network or a subscription id, and each is null when the platform would
  * not say (no telephony, permission declined, older API).
  */
-data class MmsSendConditions(
+data class MmsRadioConditions(
     /** Some network was up (any transport). */
     val networkConnected: Boolean?,
     /** That network was the mobile one - MMS can only ride cellular. */
     val cellular: Boolean?,
-    /** Mobile data is switched on for the sending subscription. */
+    /** Mobile data is switched on for the subscription in question. */
     val mobileDataEnabled: Boolean?,
     /** 1-based SIM slot the subscription sits in; null when unknown or system default. */
     val slot: Int?,
@@ -46,20 +48,20 @@ data class MmsSendConditions(
     val onDataSim: Boolean? = null,
 )
 
-/** Reads [MmsSendConditions] from the platform; failures read as "unknown", never throw. */
+/** Reads [MmsRadioConditions] from the platform; failures read as "unknown", never throw. */
 @Singleton
-class MmsSendConditionsProbe
+class MmsRadioConditionsProbe
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
         private val subscriptionSource: SubscriptionSource,
     ) {
-        fun probe(subscriptionId: Int?): MmsSendConditions {
+        fun probe(subscriptionId: Int?): MmsRadioConditions {
             val network = network()
             val sims = runCatching { subscriptionSource.activeSims() }.getOrDefault(emptyList())
             val dataSubscription = runCatching { subscriptionSource.defaultDataSubscriptionId() }.getOrNull()
             val sending = subscriptionId ?: runCatching { subscriptionSource.defaultSmsSubscriptionId() }.getOrNull()
-            return MmsSendConditions(
+            return MmsRadioConditions(
                 networkConnected = network?.first,
                 cellular = network?.second,
                 mobileDataEnabled = mobileDataEnabled(subscriptionId),

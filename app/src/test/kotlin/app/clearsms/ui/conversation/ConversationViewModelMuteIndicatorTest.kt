@@ -19,7 +19,7 @@ import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsInbound
-import app.clearsms.mms.MmsSendConditionsProbe
+import app.clearsms.mms.MmsRadioConditionsProbe
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.notification.IncomingMessageRouter
@@ -165,7 +165,7 @@ class ConversationViewModelMuteIndicatorTest {
                 AttachmentStore(context),
                 OutgoingAttachmentStager(context, FakeCarrierMmsLimits()),
                 FakeMmsGateway(),
-                MmsSendConditionsProbe(context, FakeSubscriptionSource()),
+                MmsRadioConditionsProbe(context, FakeSubscriptionSource()),
                 FakeCarrierMmsLimits(),
                 Dispatchers.Unconfined,
             )

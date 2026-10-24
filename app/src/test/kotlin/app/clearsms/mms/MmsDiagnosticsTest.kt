@@ -110,7 +110,7 @@ class MmsDiagnosticsTest {
                 AttachmentStore(context),
                 stager,
                 gateway,
-                MmsSendConditionsProbe(context, subscriptions),
+                MmsRadioConditionsProbe(context, subscriptions),
                 FakeCarrierMmsLimits(),
                 Dispatchers.IO,
             )
@@ -373,15 +373,66 @@ class MmsDiagnosticsTest {
         MmsDownloadReport.of(MmsDownloadReceiver.intent(context, 13L, attempt = 0), Activity.RESULT_OK, attempt = 0).log(13L)
 
         val log = log()
-        assertThat(
-            log,
-        ).contains(
-            "W MmsDownload mms download failed message=11 result=4 attempt=1 startFailed=false httpStatusPresent=true httpStatus=404",
+        // An intent predating the grant extras, and no probe: counts read 0
+        // and every condition reads UNKNOWN rather than being omitted.
+        assertThat(log).contains(
+            "W MmsDownload mms download failed message=11 result=4 attempt=1 startFailed=false httpStatusPresent=true httpStatus=404 " +
+                "grantsAttempted=0 grantsLanded=0 network=UNKNOWN cellular=UNKNOWN mobileData=UNKNOWN slot=0 dataSlot=0 onDataSim=UNKNOWN",
         )
         // RESULT_OK with the start-failed marker is still a failure.
-        assertThat(
-            log,
-        ).contains("W MmsDownload mms download failed message=12 result=-1 attempt=0 startFailed=true httpStatusPresent=false httpStatus=0")
+        assertThat(log).contains(
+            "W MmsDownload mms download failed message=12 result=-1 attempt=0 startFailed=true httpStatusPresent=false httpStatus=0",
+        )
         assertThat(log).contains("I MmsDownload mms downloaded message=13 result=-1 attempt=0")
+    }
+
+    @Test
+    fun `a failed download says what the write grant reached and what the radio looked like - issue 135`() {
+        val intent =
+            MmsDownloadReceiver
+                .intent(context, 21L, attempt = 0)
+                .putExtra(MmsDownloadReceiver.EXTRA_GRANTS_ATTEMPTED, 3)
+                .putExtra(MmsDownloadReceiver.EXTRA_GRANTS_LANDED, 2)
+                .putExtra(
+                    MmsDownloadReceiver.EXTRA_GRANTED_PACKAGES,
+                    arrayOf("com.verizon.messaging.service", "com.android.phone"),
+                )
+        val radio =
+            MmsRadioConditions(
+                networkConnected = true,
+                cellular = false,
+                mobileDataEnabled = true,
+                slot = 1,
+                dataSlot = 2,
+                onDataSim = false,
+            )
+
+        val report = MmsDownloadReport.of(intent, SmsManager.MMS_ERROR_IO_ERROR, attempt = 0, conditions = radio)
+        report.log(21L)
+
+        assertThat(report.grantsAttempted).isEqualTo(3)
+        assertThat(report.grantsLanded).isEqualTo(2)
+        assertThat(report.grantedPackages).containsExactly("com.verizon.messaging.service", "com.android.phone").inOrder()
+        val line = log().lines().single { "mms download failed" in it }
+        assertThat(line).contains(
+            "message=21 result=5 attempt=0 startFailed=false httpStatusPresent=false httpStatus=0 grantsAttempted=3 grantsLanded=2 " +
+                "network=YES cellular=NO mobileData=YES slot=1 dataSlot=2 onDataSim=NO " +
+                "package=com.verizon.messaging.service package=com.android.phone",
+        )
+        assertNothingPersonal(line)
+    }
+
+    @Test
+    fun `the receiver probes the radio with the send path's own probe and the result is loggable`() {
+        // The same probe class the sender uses; on Robolectric the platform
+        // answers "unknown" for most of it, which must still render.
+        val radio = MmsRadioConditionsProbe(context, subscriptions).probe(subscriptionId = null)
+        MmsDownloadReport.of(MmsDownloadReceiver.intent(context, 31L, attempt = 1), SmsManager.MMS_ERROR_UNSPECIFIED, attempt = 1, radio)
+            .log(31L)
+
+        val line = log().lines().single { "mms download failed" in it }
+        assertThat(line).containsMatch("network=(YES|NO|UNKNOWN) cellular=(YES|NO|UNKNOWN) mobileData=(YES|NO|UNKNOWN)")
+        // Default SMS subscription 3 sits in slot 1 and IS the data SIM.
+        assertThat(line).contains("slot=0 dataSlot=1 onDataSim=YES")
     }
 }

@@ -46,7 +46,7 @@ class FrameworkMmsGatewayTest {
                 .let { (it as MutableMap<*, *>).clear() }
         }
         context = ApplicationProvider.getApplicationContext()
-        gateway = FrameworkMmsGateway(context, FrameworkCarrierMmsLimits(context))
+        gateway = FrameworkMmsGateway(context, FrameworkCarrierMmsLimits(context), PduGrantTargets(context))
         store = AttachmentStore(context)
         logStart = System.currentTimeMillis()
     }
