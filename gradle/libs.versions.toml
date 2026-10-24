@@ -25,7 +25,7 @@ truth = "1.4.5"
 robolectric = "4.17"
 androidxTestCore = "1.7.0"
 turbine = "1.2.1"
-ktlintPlugin = "12.1.2"
+ktlintPlugin = "14.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
