@@ -98,7 +98,7 @@ class MmsSenderTest {
                 AttachmentStore(context),
                 stager,
                 gateway,
-                MmsSendConditionsProbe(context, TwoSimSubscriptionSource()),
+                MmsRadioConditionsProbe(context, TwoSimSubscriptionSource()),
                 carrier,
                 Dispatchers.IO,
             )

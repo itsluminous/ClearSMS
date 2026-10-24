@@ -55,14 +55,38 @@ class MmsDiagnosticsContractTest {
     }
 
     @Test
-    fun `the gateway resolves the PDU reader instead of guessing, and logs grants, staged file and carrier limit by name and count`() {
+    fun `send and download resolve their grant targets through ONE shared resolver - neither guesses`() {
+        // Issue #135: the send path resolved its readers (issue #51) while the
+        // download path kept a hardcoded pair and drifted. The resolution now
+        // lives in exactly one place and BOTH hand-overs go through it.
+        val resolver = source("mms/PduGrantTargets.kt")
+        assertThat(resolver).contains("CarrierMessagingService.SERVICE_INTERFACE")
+        assertThat(resolver).contains("getPackagesForUid(Process.PHONE_UID)")
         val gateway = source("mms/MmsGateway.kt")
-        // Who reads the PDU is asked of the platform; the two AOSP names are fallbacks, not the list.
-        assertThat(gateway).contains("CarrierMessagingService.SERVICE_INTERFACE")
-        assertThat(gateway).contains("getPackagesForUid(Process.PHONE_UID)")
-        assertThat(gateway).contains("PduReadGrant(")
-        assertThat(gateway).doesNotContain("""for (pkg in listOf("com.android.phone", "com.android.mms.service"))""")
+        val downloader = source("mms/MmsDownloader.kt")
+        listOf("mms/MmsGateway.kt" to gateway, "mms/MmsDownloader.kt" to downloader).forEach { (path, text) ->
+            assertWithMessage(path).that(text).contains("PduGrant(grantTargets::resolve)")
+            assertWithMessage(path).that(text).contains(".grantAll()")
+            // Neither path resolves on its own, and neither carries a hardcoded list.
+            assertWithMessage(path).that(text).doesNotContain("CarrierMessagingService")
+            assertWithMessage(path).that(text).doesNotContain("PHONE_UID")
+            assertWithMessage(path).that(text).doesNotContain("""listOf("com.android.phone", "com.android.mms.service")""")
+            assertWithMessage(path).that(text).doesNotContain("""for (pkg in listOf(""")
+        }
+        // The two AOSP names survive in exactly one place, as the fallback.
         assertThat(source("mms/PduHandover.kt")).contains("""listOf("com.android.phone", "com.android.mms.service")""")
+        // The download grant is a WRITE: the platform fills the staging slot.
+        assertThat(downloader).contains("Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION")
+        // The downloader names each grant the same way the gateway does.
+        assertThat(downloader).contains(""""mms pdu grant"""")
+        assertThat(downloader).contains("""packageName(outcome.packageName)""")
+        assertThat(downloader).contains("""flag("granted", outcome.granted)""")
+    }
+
+    @Test
+    fun `the gateway logs grants, staged file and carrier limit by name and count`() {
+        val gateway = source("mms/MmsGateway.kt")
+        assertThat(gateway).contains("PduGrant(")
         // The next report says which grant landed and whether the file was there and readable.
         assertThat(gateway).contains(""""mms pdu grant"""")
         assertThat(gateway).contains("""packageName(outcome.packageName)""")
@@ -122,11 +146,30 @@ class MmsDiagnosticsContractTest {
     }
 
     @Test
-    fun `the download receiver gets the same treatment`() {
+    fun `the download receiver gets the same treatment - raw code, radio conditions and what the grant reached`() {
         val receiver = source("receiver/MmsDownloadReceiver.kt")
         assertThat(receiver).contains("""code("result", resultCode)""")
         assertThat(receiver).contains("""flag("startFailed", startFailed)""")
         assertThat(receiver).contains("SmsManager.EXTRA_MMS_HTTP_STATUS")
+        // Issue #135: the failure line carries the same radio conditions the
+        // send path records, probed through the SAME probe...
+        assertThat(receiver).contains("MmsDownloadReport.of(intent, resultCode, attempt, conditions.probe(subscriptionId = null))")
+        assertThat(receiver).contains("lateinit var conditions: MmsRadioConditionsProbe")
+        assertThat(receiver).contains("""label("network", TriState.of(conditions?.networkConnected))""")
+        assertThat(receiver).contains("""label("cellular", TriState.of(conditions?.cellular))""")
+        assertThat(receiver).contains("""label("mobileData", TriState.of(conditions?.mobileDataEnabled))""")
+        assertThat(receiver).contains("""count("slot", conditions?.slot ?: 0)""")
+        assertThat(receiver).contains("""count("dataSlot", conditions?.dataSlot ?: 0)""")
+        assertThat(receiver).contains("""label("onDataSim", TriState.of(conditions?.onDataSim))""")
+        // ...and what the write grant reached: counts plus the names, each
+        // through the package-name factory (never a free string).
+        assertThat(receiver).contains("""count("grantsAttempted", grantsAttempted)""")
+        assertThat(receiver).contains("""count("grantsLanded", grantsLanded)""")
+        assertThat(receiver).contains("""*grantedPackages.map { packageName(it) }.toTypedArray()""")
+        assertThat(source("mms/MmsDownloader.kt")).contains("MmsDownloadReceiver.EXTRA_GRANTED_PACKAGES")
+        assertThat(source("mms/MmsDownloader.kt")).contains("MmsDownloadReceiver.EXTRA_GRANTS_LANDED")
+        // The send path's probe is the one class, not a copy.
+        assertThat(source("mms/MmsSender.kt")).contains("private val conditions: MmsRadioConditionsProbe")
     }
 
     @Test

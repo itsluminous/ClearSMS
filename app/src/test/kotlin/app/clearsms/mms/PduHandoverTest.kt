@@ -15,10 +15,10 @@ class PduHandoverTest {
     private fun grant(
         resolved: () -> List<String>,
         failing: Set<String> = emptySet(),
-    ): Pair<PduReadGrant, MutableList<String>> {
+    ): Pair<PduGrant, MutableList<String>> {
         val attempted = mutableListOf<String>()
         val grant =
-            PduReadGrant(resolved) { pkg ->
+            PduGrant(resolved) { pkg ->
                 attempted += pkg
                 if (pkg in failing) throw IllegalArgumentException("Unknown package: $pkg")
             }
@@ -60,7 +60,7 @@ class PduHandoverTest {
 
         val outcomes = grant.grantAll()
 
-        assertThat(attempted).isEqualTo(PduReadGrant.FALLBACK_PACKAGES)
+        assertThat(attempted).isEqualTo(PduGrant.FALLBACK_PACKAGES)
         assertThat(outcomes.none { it.resolved }).isTrue()
     }
 
@@ -70,7 +70,7 @@ class PduHandoverTest {
 
         val outcomes = grant.grantAll()
 
-        assertThat(attempted).isEqualTo(PduReadGrant.FALLBACK_PACKAGES)
+        assertThat(attempted).isEqualTo(PduGrant.FALLBACK_PACKAGES)
         assertThat(outcomes).hasSize(2)
     }
 
@@ -97,9 +97,9 @@ class PduHandoverTest {
         grant.grantAll()
 
         assertThat(attempted).containsExactly("com.oem.telephony", "com.android.phone", "com.android.mms.service").inOrder()
-        assertThat(PduReadGrant.isPackageName("com.android.phone")).isTrue()
-        assertThat(PduReadGrant.isPackageName("phone")).isFalse()
-        assertThat(PduReadGrant.isPackageName("com.1x.y")).isFalse()
+        assertThat(PduGrant.isPackageName("com.android.phone")).isTrue()
+        assertThat(PduGrant.isPackageName("phone")).isFalse()
+        assertThat(PduGrant.isPackageName("com.1x.y")).isFalse()
     }
 
     @Test

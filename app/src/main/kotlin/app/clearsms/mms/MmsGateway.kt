@@ -3,10 +3,7 @@ package app.clearsms.mms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Process
-import android.service.carrier.CarrierMessagingService
 import android.telephony.SmsManager
 import androidx.core.content.FileProvider
 import app.clearsms.BuildConfig
@@ -48,8 +45,9 @@ interface MmsGateway {
 
 /**
  * Production [MmsGateway]: grants the packages that will read the staged
- * PDU access to it, verifies we can read it ourselves the way the platform
- * will, and delegates to the framework [SmsManager].
+ * PDU access to it (resolved by [PduGrantTargets], the resolver the
+ * download path shares), verifies we can read it ourselves the way the
+ * platform will, and delegates to the framework [SmsManager].
  *
  * DIAGNOSTICS (issue #51): one `mms pdu grant` line per package the grant
  * was attempted for (resolved by the platform or a fallback name) saying
@@ -60,7 +58,7 @@ interface MmsGateway {
  * check). The PDU is sized to fit upstream ([MmsSizeBudget]) - no config
  * override travels: one mechanism decides the limit. Package names are
  * software identifiers, never personal; the file NAME is never logged.
- * See [PduReadGrant] and [StagedPduCheck] for the decisions.
+ * See [PduGrant] and [StagedPduCheck] for the decisions.
  *
  * PRIVACY NOTE: like MMS retrieval, submission is a transaction the
  * Android system's MMS service performs with the carrier's MMSC over the
@@ -74,6 +72,7 @@ class FrameworkMmsGateway
     constructor(
         @ApplicationContext private val context: Context,
         private val carrierLimits: CarrierMmsLimits,
+        private val grantTargets: PduGrantTargets,
     ) : MmsGateway {
         override fun sendMultimediaMessage(
             messageId: Long,
@@ -100,7 +99,7 @@ class FrameworkMmsGateway
                     )
                     throw StagedPduUnreadableException(e)
                 }
-            val grants = PduReadGrant(::resolvePduReaders) { pkg -> grantRead(pkg, contentUri) }.grantAll()
+            val grants = PduGrant(grantTargets::resolve) { pkg -> grantRead(pkg, contentUri) }.grantAll()
             grants.forEach { outcome ->
                 Diag.i(
                     TAG,
@@ -137,7 +136,7 @@ class FrameworkMmsGateway
             lengthBytes: Long,
             readableBytes: Long?,
             carrierMax: Int?,
-            grants: List<PduReadGrant.Outcome>,
+            grants: List<PduGrant.Outcome>,
         ) {
             Diag.i(
                 TAG,
@@ -152,26 +151,6 @@ class FrameworkMmsGateway
                 count("grantsAttempted", grants.size),
                 count("grantsLanded", grants.count { it.granted }),
             )
-        }
-
-        /**
-         * Who will read the PDU on THIS device, asked of the platform rather
-         * than assumed: every package offering the documented
-         * [CarrierMessagingService] (the carrier/OEM override point the
-         * framework hands the PDU to first) and every package sharing the
-         * telephony uid (where the AOSP MMS service lives). Requires the
-         * `<queries>` declaration in the manifest on Android 11+.
-         */
-        private fun resolvePduReaders(): List<String> {
-            val pm = context.packageManager
-            val carrierServices =
-                runCatching {
-                    pm
-                        .queryIntentServices(Intent(CarrierMessagingService.SERVICE_INTERFACE), PackageManager.MATCH_ALL)
-                        .mapNotNull { it.serviceInfo?.packageName }
-                }.getOrDefault(emptyList())
-            val telephony = runCatching { pm.getPackagesForUid(Process.PHONE_UID)?.toList() }.getOrNull().orEmpty()
-            return carrierServices + telephony
         }
 
         private fun grantRead(

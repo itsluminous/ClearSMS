@@ -12,7 +12,7 @@ package app.clearsms.mms
  * returned null, BEFORE any network activity. That read returns null when
  *
  *  1. `ContentResolver.openFileDescriptor` threw - the reading uid holds no
- *     read grant on our FileProvider URI ([PduReadGrant]);
+ *     read grant on our FileProvider URI ([PduGrant]);
  *  2. the file was empty ([StagedPduCheck]);
  *  3. the PDU is larger than the carrier config `maxMessageSize`
  *     (AOSP default 300 KiB = 307 200 bytes) - "PDU read is too large".
@@ -32,18 +32,22 @@ package app.clearsms.mms
  */
 
 /**
- * Decides WHICH packages get a read grant on the staged PDU and records
- * how each grant went. The platform resolves the reader for us
- * ([resolvedReaders]: the `CarrierMessagingService` packages - the OEM /
- * carrier override point - and the packages sharing the telephony uid);
- * the two historical AOSP homes of the MMS service stay as fallbacks so a
- * stock build behaves exactly as before. A failed grant (package absent,
- * or refused) is recorded, never thrown: the send goes ahead and the
- * platform's own verdict is the datum.
+ * Decides WHICH packages get a URI grant on a staged PDU and records how
+ * each grant went. Shared by both platform hand-overs: the send path grants
+ * a READ on the `m-send-req` it staged, the download path a WRITE on the
+ * slot the retrieved `m-retrieve-conf` lands in (issue #135: the download
+ * path once kept its own hardcoded pair and drifted). The platform resolves
+ * the targets for us ([resolvedTargets], see [PduGrantTargets]: the
+ * `CarrierMessagingService` packages - the OEM / carrier override point -
+ * and the packages sharing the telephony uid); the two historical AOSP
+ * homes of the MMS service stay as fallbacks so a stock build behaves
+ * exactly as before. A failed grant (package absent, or refused) is
+ * recorded, never thrown: the hand-over goes ahead and the platform's own
+ * verdict is the datum.
  */
-class PduReadGrant(
-    private val resolvedReaders: () -> List<String>,
-    private val grantRead: (packageName: String) -> Unit,
+class PduGrant(
+    private val resolvedTargets: () -> List<String>,
+    private val grant: (packageName: String) -> Unit,
 ) {
     /** One attempted grant. [resolved] is false for a fallback name. */
     data class Outcome(
@@ -60,7 +64,7 @@ class PduReadGrant(
     fun grantAll(): List<Outcome> {
         val resolved =
             try {
-                resolvedReaders().filter(::isPackageName).distinct()
+                resolvedTargets().filter(::isPackageName).distinct()
             } catch (_: Exception) {
                 emptyList()
             }
@@ -68,7 +72,7 @@ class PduReadGrant(
         return targets.map { (pkg, wasResolved) ->
             val granted =
                 try {
-                    grantRead(pkg)
+                    grant(pkg)
                     true
                 } catch (_: Exception) {
                     false
