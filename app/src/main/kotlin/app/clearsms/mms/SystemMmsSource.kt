@@ -271,13 +271,19 @@ class SystemMmsSource
                             // party, so it is not a sender or a recipient.
                             if (address.isEmpty() || address == INSERT_ADDRESS_TOKEN) continue
                             when (if (typeIdx >= 0) cursor.longOrNull(typeIdx) else null) {
-                                PDU_HEADER_FROM -> if (sender == null) sender = address
+                                PDU_HEADER_FROM -> {
+                                    if (sender == null) sender = address
+                                }
+
                                 PDU_HEADER_TO -> {
                                     if (firstTo == null) firstTo = address
                                     recipients += address
                                 }
+
                                 // CC / BCC: part of the group, never the thread party.
-                                else -> recipients += address
+                                else -> {
+                                    recipients += address
+                                }
                             }
                         }
                     }

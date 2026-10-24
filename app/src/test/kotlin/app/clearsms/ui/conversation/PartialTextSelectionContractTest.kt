@@ -81,7 +81,9 @@ class PartialTextSelectionContractTest {
         // width. Same width + same style = same line breaks = no glyph moves.
         val field = bubble.substringAfter("private fun TextSelectionBody(")
         val ghost = field.substringAfter("Box {").substringBefore("BasicTextField(")
-        assertThat(ghost).containsMatch("""Text\(\s*text = body,\s*style = style,\s*color = color,\s*modifier = Modifier\.drawWithContent \{ \},""")
+        assertThat(
+            ghost,
+        ).containsMatch("""Text\(\s*text = body,\s*style = style,\s*color = color,\s*modifier = Modifier\.drawWithContent \{ \},""")
         val fieldCall = field.substringAfter("BasicTextField(")
         assertThat(fieldCall).contains("textStyle = style.copy(color = color),")
         assertThat(fieldCall).contains(".matchParentSize()")
@@ -188,7 +190,11 @@ class PartialTextSelectionContractTest {
             "SelectionActionSpec(stringResource(R.string.action_copy_message), Icons.Outlined.ContentCopy, onCopy)",
         )
         // The disabled state reaches both placements of the action.
-        assertThat(bar).containsMatch("""TooltipIconButton\(\s*label = spec\.label,\s*onClick = spec\.onClick,\s*icon = spec\.icon,\s*enabled = spec\.enabled,""")
+        assertThat(
+            bar,
+        ).containsMatch(
+            """TooltipIconButton\(\s*label = spec\.label,\s*onClick = spec\.onClick,\s*icon = spec\.icon,\s*enabled = spec\.enabled,""",
+        )
         assertThat(bar).containsMatch("""DropdownMenuItem\([\s\S]*?enabled = spec\.enabled,""")
         // The screen's handler copies that exact text and leaves selection
         // mode, as a whole-message Copy does.

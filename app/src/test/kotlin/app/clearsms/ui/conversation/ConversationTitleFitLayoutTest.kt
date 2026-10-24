@@ -122,6 +122,7 @@ class ConversationTitleFitLayoutTest {
         // Needs two lines at every size in a 260dp slot, so the fit is purely
         // the height question - the case the arithmetic test models.
         val name = "Krishnamurthy Venkataraman"
+
         fun lines(
             size: TextUnit,
             scale: Float,

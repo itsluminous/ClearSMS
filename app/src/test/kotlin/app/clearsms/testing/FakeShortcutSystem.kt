@@ -59,7 +59,12 @@ class FakeShortcutSystem(
     override fun setDynamicShortcuts(shortcuts: List<ShortcutInfoCompat>): Boolean {
         if (rateLimited) return false
         deleteAllDynamic()
-        shortcuts.forEach { s -> held.getOrPut(s.id) { Held(s) }.apply { info = s; dynamic = true } }
+        shortcuts.forEach { s ->
+            held.getOrPut(s.id) { Held(s) }.apply {
+                info = s
+                dynamic = true
+            }
+        }
         return true
     }
 
@@ -157,7 +162,11 @@ class FakeShortcutSystem(
 
     private companion object {
         /** A hidden `ShortcutInfo.FLAG_*` constant, read off the framework class Robolectric runs. */
-        fun flag(name: String): Int = ShortcutInfo::class.java.getDeclaredField(name).apply { isAccessible = true }.getInt(null)
+        fun flag(name: String): Int =
+            ShortcutInfo::class.java
+                .getDeclaredField(name)
+                .apply { isAccessible = true }
+                .getInt(null)
 
         fun isLongLived(info: ShortcutInfo): Boolean = info.javaClass.getMethod("isLongLived").invoke(info) as Boolean
     }

@@ -35,7 +35,9 @@ class ComposeExistingThreadContractTest {
         // ThreadIdentity.resolve (inserts) and .existing (lookups) are one
         // decision: resolve is defined on top of existing.
         val identity = source("data/repository/ThreadIdentity.kt")
-        assertThat(identity).contains("existing(dao, sender, normalized, providerThreadId, recipientCount)\n            ?: ((dao.maxThreadId() ?: 0L) + 1L)")
+        assertThat(
+            identity,
+        ).contains("existing(dao, sender, normalized, providerThreadId, recipientCount)\n            ?: ((dao.maxThreadId() ?: 0L) + 1L)")
         val composer = source("ui/composemsg/ComposeMessageViewModel.kt")
         assertThat(composer).contains("existingThreads.threadFor(address)")
         assertThat(composer).doesNotContain("messageDao.threadIdFor(")

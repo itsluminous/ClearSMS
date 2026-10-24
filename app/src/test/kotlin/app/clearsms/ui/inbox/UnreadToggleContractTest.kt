@@ -2,10 +2,10 @@ package app.clearsms.ui.inbox
 
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.InboxPill
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for the "Unread only" control after its move out of the pill row.

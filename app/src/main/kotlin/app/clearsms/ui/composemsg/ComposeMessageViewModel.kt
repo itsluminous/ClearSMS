@@ -14,12 +14,12 @@ import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
 import app.clearsms.mms.StagedAttachment
-import app.clearsms.sms.SimChoiceStore
-import app.clearsms.sms.SimInfo
-import app.clearsms.sms.SimSelector
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.ExistingThreadResolver
 import app.clearsms.sms.OutgoingSendDispatcher
+import app.clearsms.sms.SimChoiceStore
+import app.clearsms.sms.SimInfo
+import app.clearsms.sms.SimSelector
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.ui.common.AttachmentError
 import app.clearsms.ui.common.ComposerAttachments
@@ -37,9 +37,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -252,7 +252,12 @@ class ComposeMessageViewModel
                 ?.takeIf { it >= 0L && state.value.recipient.isBlank() }
                 ?.let { threadId ->
                     viewModelScope.launch(ioDispatcher) {
-                        val address = messageDao.firstInThread(threadId)?.sender?.trim().orEmpty()
+                        val address =
+                            messageDao
+                                .firstInThread(threadId)
+                                ?.sender
+                                ?.trim()
+                                .orEmpty()
                         if (address.isNotEmpty() && state.value.recipient.isBlank()) {
                             applySelection(resolvedSelection(address))
                             // The pick NAMED this conversation, and it has

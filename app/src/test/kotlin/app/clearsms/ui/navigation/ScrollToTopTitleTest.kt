@@ -3,11 +3,11 @@ package app.clearsms.ui.navigation
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Item 2 + issue #46: the unread switch shares the title line and leaves

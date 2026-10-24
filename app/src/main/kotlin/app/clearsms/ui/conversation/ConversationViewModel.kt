@@ -51,8 +51,8 @@ import app.clearsms.ui.common.ComposerAttachments
 import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.ScheduleTipGate
-import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.common.UndoUiEvent
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
@@ -188,14 +188,12 @@ data class ConversationUiState(
      * is shown for this screen session. Meaningless for other verdicts.
      */
     val replyAnyway: Boolean = false,
-
     /**
      * The user's "Direct call" setting (default OFF): whether the title
      * bar's call button places the call or opens the dialer prefilled. Who
      * gets the button is decided elsewhere (DialableNumber), never by this.
      */
     val directCall: Boolean = false,
-
     /** Mirrors Settings -> Messages -> Show extracted message details (default OFF). */
     val showTransactionDetails: Boolean = false,
     /**
@@ -935,7 +933,9 @@ class ConversationViewModel
 
         /** Deletes the selected messages undoably (staged; provider commit deferred). */
         fun deleteSelected() {
-            val ids = modeState.value.selection.selected.toList()
+            val ids =
+                modeState.value.selection.selected
+                    .toList()
             exitSelection()
             viewModelScope.launch(ioDispatcher) {
                 val staged = undoManager.stageDeleteMessages(ids)
@@ -959,7 +959,9 @@ class ConversationViewModel
          * (compose prefill) - one text-of-selection rule for all three.
          */
         fun selectedText(onReady: (String) -> Unit) {
-            val ids = modeState.value.selection.selected.toList()
+            val ids =
+                modeState.value.selection.selected
+                    .toList()
             exitSelection()
             viewModelScope.launch {
                 val text =

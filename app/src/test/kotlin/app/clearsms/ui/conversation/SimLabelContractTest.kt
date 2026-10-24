@@ -2,11 +2,11 @@ package app.clearsms.ui.conversation
 
 import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SimLabel
+import app.clearsms.testing.DefaultStrings
 import app.clearsms.ui.components.SimUiState
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract: the compose bar's SIM hint and the "More details" SIM row name

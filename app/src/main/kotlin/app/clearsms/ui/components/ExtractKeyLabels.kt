@@ -75,13 +75,17 @@ fun extractValueLabelRes(
     value: String,
 ): Int? =
     when (key) {
-        "type" ->
+        "type" -> {
             when (value.lowercase()) {
                 "debit" -> R.string.transaction_type_debit
                 "credit" -> R.string.transaction_type_credit
                 else -> null
             }
-        else -> null
+        }
+
+        else -> {
+            null
+        }
     }
 
 /** [extractValueLabelRes] resolved in the app's language, else the value as stored. */

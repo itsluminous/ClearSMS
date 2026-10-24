@@ -1,9 +1,9 @@
 package app.clearsms.ui.components
 
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Convention tests (source scan, the repo pattern) for the setting-only

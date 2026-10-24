@@ -98,7 +98,12 @@ class NoTranslateStringsConventionTest {
 
     private fun elements(file: File): List<org.w3c.dom.Element> {
         assertWithMessage("${file.path} must exist").that(file.isFile).isTrue()
-        val root = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).documentElement
+        val root =
+            DocumentBuilderFactory
+                .newInstance()
+                .newDocumentBuilder()
+                .parse(file)
+                .documentElement
         val children = root.childNodes
         return (0 until children.length)
             .mapNotNull { children.item(it) as? org.w3c.dom.Element }

@@ -121,8 +121,7 @@ class OtpNotifier
                     .setCustomBigContentView(
                         codeView(R.layout.notification_otp_big, title, senderName, displaySize)
                             .apply { setTextViewText(R.id.otp_body, message.body) },
-                    )
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    ).setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                     .setPublicVersion(publicVersion)

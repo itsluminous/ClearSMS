@@ -89,12 +89,12 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -118,8 +118,6 @@ import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.common.rememberDisplayLocale
 import app.clearsms.ui.common.rememberRelativeTimeStrings
-import app.clearsms.ui.components.extractKeyLabel
-import app.clearsms.ui.components.extractValueLabel
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
 import app.clearsms.ui.components.AttachmentPickerSheet
@@ -138,6 +136,8 @@ import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.amountKindOf
 import app.clearsms.ui.components.displayName
+import app.clearsms.ui.components.extractKeyLabel
+import app.clearsms.ui.components.extractValueLabel
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
@@ -405,7 +405,11 @@ fun ConversationScreen(
     // on screen; it is null only while that bubble is not loaded.
     val textSelectionId = selectionMode.textSelectionId
     val textSelectionBody =
-        textSelectionId?.let { id -> items.itemSnapshotList.items.firstOrNull { it.id == id }?.body }
+        textSelectionId?.let { id ->
+            items.itemSnapshotList.items
+                .firstOrNull { it.id == id }
+                ?.body
+        }
     val textSelectionField =
         remember(textSelectionId, textSelectionBody) { textSelectionBody?.let(TextSelectionField::state) }
 
@@ -1573,8 +1577,7 @@ private fun TextSelectionBody(
                         if (event.key != Key.Back) return@onPreviewKeyEvent false
                         if (event.type == KeyEventType.KeyUp) backDispatcher?.onBackPressed()
                         true
-                    }
-                    .clearAndSetSemantics { },
+                    }.clearAndSetSemantics { },
         )
     }
 }

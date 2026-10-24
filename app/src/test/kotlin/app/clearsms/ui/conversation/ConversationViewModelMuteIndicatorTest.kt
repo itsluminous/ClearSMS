@@ -13,9 +13,9 @@ import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
-import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.AttachmentStore
 import app.clearsms.mms.FakeCarrierMmsLimits
+import app.clearsms.mms.MmsCapability
 import app.clearsms.mms.MmsDownloader
 import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsInbound
@@ -39,8 +39,8 @@ import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
-import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs

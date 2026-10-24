@@ -47,10 +47,14 @@ internal object TextSelectionField {
         val text: String?
 
         /** The handles still enclose the whole message: Copy means "Copy message", as before. */
-        data class Whole(override val text: String) : CopyAction
+        data class Whole(
+            override val text: String,
+        ) : CopyAction
 
         /** A handle was dragged inward: Copy copies exactly the highlighted range. */
-        data class Partial(override val text: String) : CopyAction
+        data class Partial(
+            override val text: String,
+        ) : CopyAction
 
         /**
          * A tap collapsed the selection: nothing is highlighted, so Copy is

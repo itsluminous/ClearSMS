@@ -2,11 +2,11 @@ package app.clearsms.ui.conversation
 
 import app.clearsms.R
 import app.clearsms.mms.SendFailureReason
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * The user-facing side of a failed send: every reason (and no reason) has

@@ -250,7 +250,11 @@ fun InboxScreen(
     // orientation (a tablet in landscape is not short; a phone in portrait
     // split-screen is) - see InboxFabPlacement for the measured geometry.
     // containerSize is the app's own window, so multi-window is covered.
-    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val windowHeight =
+        with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height
+                .toDp()
+        }
     val fabPlacement = InboxFabPlacement.placement(windowHeight)
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

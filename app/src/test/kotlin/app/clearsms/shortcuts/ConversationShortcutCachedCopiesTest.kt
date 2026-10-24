@@ -118,7 +118,13 @@ class ConversationShortcutCachedCopiesTest {
 
     private fun dynamicIds(): Set<String> = system.getShortcuts(ShortcutManagerCompat.FLAG_MATCH_DYNAMIC).map { it.id }.toSet()
 
-    private fun avatarFiles(): List<String> = icons.fileFor(0L).parentFile?.list()?.sorted().orEmpty()
+    private fun avatarFiles(): List<String> =
+        icons
+            .fileFor(0L)
+            .parentFile
+            ?.list()
+            ?.sorted()
+            .orEmpty()
 
     @Test
     fun `the model reproduces the defect - a dynamic-only removal leaves the cached copy in the system`() {

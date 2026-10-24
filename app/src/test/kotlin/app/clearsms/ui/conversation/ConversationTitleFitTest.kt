@@ -190,6 +190,7 @@ class ConversationTitleFitTest {
         // from Compose's own conversion, never from a scale multiplication.
         val ceiling = ConversationTitleFit.maxFontSize(22.sp)
         val floor = ConversationTitleFit.MinFontSize
+
         fun fits(
             size: TextUnit,
             lines: Int,
@@ -258,6 +259,7 @@ class ConversationTitleFitTest {
         val floor = ConversationTitleFit.MinFontSize
         val ceiling = ConversationTitleFit.maxFontSize(22.sp)
         val step = ConversationTitleFit.StepSize
+
         fun pick(
             lines: Int,
             scale: Float,
@@ -286,7 +288,12 @@ class ConversationTitleFitTest {
         // The ceiling is tried first, so a name that fits at full size costs
         // one layout; the floor is returned without a further try.
         var tries = 0
-        assertThat(ConversationTitleFit.largestFittingSize(floor, ceiling, step) { tries++; true }).isEqualTo(ceiling)
+        assertThat(
+            ConversationTitleFit.largestFittingSize(floor, ceiling, step) {
+                tries++
+                true
+            },
+        ).isEqualTo(ceiling)
         assertThat(tries).isEqualTo(1)
         // Only sp is accepted: a dp or em bound would let the floor be
         // re-expressed in a unit the font setting does not scale.

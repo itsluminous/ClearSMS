@@ -234,7 +234,13 @@ class AppShortcutsContractTest {
         assertThat(icons.fileFor(42L).isFile).isTrue()
         assertThat(icons.fileFor(43L).isFile).isTrue()
         // No temp file lingers: the write is temp + rename.
-        assertThat(icons.fileFor(42L).parentFile!!.list()!!.toList()).containsExactly("thread-42.png", "thread-43.png")
+        assertThat(
+            icons
+                .fileFor(42L)
+                .parentFile!!
+                .list()!!
+                .toList(),
+        ).containsExactly("thread-42.png", "thread-43.png")
 
         icons.retainOnly(setOf(43L))
         assertThat(icons.fileFor(42L).exists()).isFalse()
@@ -242,7 +248,13 @@ class AppShortcutsContractTest {
 
         icons.deleteAll()
         assertThat(icons.fileFor(43L).exists()).isFalse()
-        assertThat(icons.fileFor(43L).parentFile!!.list()!!.toList()).isEmpty()
+        assertThat(
+            icons
+                .fileFor(43L)
+                .parentFile!!
+                .list()!!
+                .toList(),
+        ).isEmpty()
     }
 
     @Test
@@ -334,7 +346,9 @@ class AppShortcutsContractTest {
         for (junk in listOf("compose", "thread:", "thread:-5", "thread:abc", "", "other:42")) {
             val send =
                 IntentTriage.extractSendIntent(
-                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "hi")
+                    Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, "hi")
                         .putExtra(Intent.EXTRA_SHORTCUT_ID, junk),
                 )
             assertWithMessage(junk).that(send.shareThreadId).isNull()
@@ -512,8 +526,13 @@ class AppShortcutsContractTest {
                         categories = mutableListOf()
                     }
 
-                    "data" -> if (inTarget) parser.getAttributeValue(ANDROID_NS, "mimeType")?.let(mimeTypes::add)
-                    "category" -> if (inTarget) parser.getAttributeValue(ANDROID_NS, "name")?.let(categories::add)
+                    "data" -> {
+                        if (inTarget) parser.getAttributeValue(ANDROID_NS, "mimeType")?.let(mimeTypes::add)
+                    }
+
+                    "category" -> {
+                        if (inTarget) parser.getAttributeValue(ANDROID_NS, "name")?.let(categories::add)
+                    }
                 }
             } else if (event == XmlPullParser.END_TAG && parser.name == "share-target") {
                 result += ShareTarget(targetClass, mimeTypes.toList(), categories.toList())

@@ -2,10 +2,10 @@ package app.clearsms.ui.inbox
 
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.rules.SenderRule
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for "Always sort as…" in the inbox selection overflow. Source-level

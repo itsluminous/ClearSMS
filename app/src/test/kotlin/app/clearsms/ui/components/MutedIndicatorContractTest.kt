@@ -1,10 +1,10 @@
 package app.clearsms.ui.components
 
 import androidx.compose.ui.unit.dp
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Contract for the muted glyph. The repo deliberately has no Compose UI

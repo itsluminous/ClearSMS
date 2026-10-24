@@ -1,10 +1,10 @@
 package app.clearsms.ui.common
 
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Source-level contract (the repo has no Compose UI harness, same style as

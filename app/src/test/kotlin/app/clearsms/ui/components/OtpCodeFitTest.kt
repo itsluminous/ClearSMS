@@ -57,12 +57,18 @@ class OtpCodeFitTest {
         }
         // ...and wherever the spaced code fits at the ceiling, the plan IS the ceiling, spaced: no visual change.
         var untouched = 0
-        for (code in codes) for (ceiling in ceilings) for (scale in scales) for (screen in screens) {
-            val width = slot(screen)
-            if (mono(scale)(OtpCodeFit.spaced(code), ceiling) <= width) {
-                val p = OtpCodeFit.plan(code, ceiling, width, mono(scale))
-                assertThat(p).isEqualTo(OtpCodeFit.Plan(OtpCodeFit.spaced(code), true, 20, ceiling, ceiling, true))
-                untouched++
+        for (code in codes) {
+            for (ceiling in ceilings) {
+                for (scale in scales) {
+                    for (screen in screens) {
+                        val width = slot(screen)
+                        if (mono(scale)(OtpCodeFit.spaced(code), ceiling) <= width) {
+                            val p = OtpCodeFit.plan(code, ceiling, width, mono(scale))
+                            assertThat(p).isEqualTo(OtpCodeFit.Plan(OtpCodeFit.spaced(code), true, 20, ceiling, ceiling, true))
+                            untouched++
+                        }
+                    }
+                }
             }
         }
         assertThat(untouched).isGreaterThan(100)
@@ -70,12 +76,18 @@ class OtpCodeFitTest {
 
     @Test
     fun `the chosen size never exceeds the user's ceiling, and the range handed to the auto-sizer is sane`() {
-        for (code in codes) for (ceiling in ceilings) for (scale in scales) for (screen in screens) {
-            val plan = OtpCodeFit.plan(code, ceiling, slot(screen), mono(scale))
-            assertThat(plan.fontSp).isAtMost(ceiling)
-            assertThat(plan.maxFontSp).isEqualTo(ceiling)
-            assertThat(plan.minFontSp).isAtMost(plan.fontSp)
-            assertThat(plan.fontSp).isAtLeast(OtpCodeFit.LastResortMinFontSize.value.toInt())
+        for (code in codes) {
+            for (ceiling in ceilings) {
+                for (scale in scales) {
+                    for (screen in screens) {
+                        val plan = OtpCodeFit.plan(code, ceiling, slot(screen), mono(scale))
+                        assertThat(plan.fontSp).isAtMost(ceiling)
+                        assertThat(plan.maxFontSp).isEqualTo(ceiling)
+                        assertThat(plan.minFontSp).isAtMost(plan.fontSp)
+                        assertThat(plan.fontSp).isAtLeast(OtpCodeFit.LastResortMinFontSize.value.toInt())
+                    }
+                }
+            }
         }
         // A ceiling under the floor cannot produce an inverted range.
         assertThat(OtpCodeFit.plan("482910", 10, 1000f, mono(1.0f)).maxFontSp).isEqualTo(20)
@@ -84,11 +96,17 @@ class OtpCodeFitTest {
     @Test
     fun `the result never drops a character - not even when nothing fits`() {
         val widths = listOf(0f, 1f, 50f, 100f, slot(320), slot(360), 10_000f)
-        for (code in codes) for (ceiling in ceilings) for (scale in scales) for (width in widths) {
-            val plan = OtpCodeFit.plan(code, ceiling, width, mono(scale))
-            assertThat(plan.code).isEqualTo(code)
-            assertThat(plan.text.replace(" ", "")).isEqualTo(code)
-            assertThat(plan.text.length).isAnyOf(code.length, 2 * code.length - 1)
+        for (code in codes) {
+            for (ceiling in ceilings) {
+                for (scale in scales) {
+                    for (width in widths) {
+                        val plan = OtpCodeFit.plan(code, ceiling, width, mono(scale))
+                        assertThat(plan.code).isEqualTo(code)
+                        assertThat(plan.text.replace(" ", "")).isEqualTo(code)
+                        assertThat(plan.text.length).isAnyOf(code.length, 2 * code.length - 1)
+                    }
+                }
+            }
         }
         // The most extreme case: a zero-width slot. The plan still carries
         // the whole code, at the last-resort size, flagged as not fitting -
@@ -128,14 +146,18 @@ class OtpCodeFitTest {
         // The extractor yields \d{4,8}; the narrowest Android phone is 320dp;
         // the largest font scale 2.0. Nothing in that envelope fails to fit.
         for (code in codes.filter { it.length in 4..8 && it.all(Char::isDigit) }) {
-            for (ceiling in ceilings) for (scale in scales) for (screen in screens) {
-                val plan = OtpCodeFit.plan(code, ceiling, slot(screen), mono(scale))
-                assertThat(plan.fitsOnOneLine).isTrue()
-                assertThat(plan.fontSp).isAtLeast(12)
-                // Up to 7 digits, or any phone from 360dp, never even crosses the floor.
-                if (code.length <= 7 || screen >= 360) {
-                    assertThat(plan.minFontSp).isEqualTo(20)
-                    assertThat(plan.fontSp).isAtLeast(20)
+            for (ceiling in ceilings) {
+                for (scale in scales) {
+                    for (screen in screens) {
+                        val plan = OtpCodeFit.plan(code, ceiling, slot(screen), mono(scale))
+                        assertThat(plan.fitsOnOneLine).isTrue()
+                        assertThat(plan.fontSp).isAtLeast(12)
+                        // Up to 7 digits, or any phone from 360dp, never even crosses the floor.
+                        if (code.length <= 7 || screen >= 360) {
+                            assertThat(plan.minFontSp).isEqualTo(20)
+                            assertThat(plan.fontSp).isAtLeast(20)
+                        }
+                    }
                 }
             }
         }

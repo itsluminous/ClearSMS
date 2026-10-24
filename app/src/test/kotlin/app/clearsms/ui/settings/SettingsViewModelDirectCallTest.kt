@@ -17,8 +17,8 @@ import app.clearsms.data.repository.SenderMuter
 import app.clearsms.data.rules.RuleImporter
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
-import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.InMemoryPreferencesDataStore
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.ui.common.UiPrefs
 import app.clearsms.ui.composemsg.ContactSuggestions
 import app.clearsms.ui.finance.BalanceVisibility
@@ -81,7 +81,11 @@ class SettingsViewModelDirectCallTest {
 
     @After
     fun tearDown() {
-        WorkManager.getInstance(context).cancelAllWork().result.get()
+        WorkManager
+            .getInstance(context)
+            .cancelAllWork()
+            .result
+            .get()
         scope.cancel()
         fixture.close(db)
         Dispatchers.resetMain()

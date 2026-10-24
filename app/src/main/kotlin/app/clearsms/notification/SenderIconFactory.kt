@@ -173,19 +173,21 @@ class SenderIconFactory internal constructor(
      */
     internal fun tileKeyFor(sender: NotificationSender): TileKey =
         when (tileStyleFor(sender)) {
-            AvatarStyle.PLAIN ->
+            AvatarStyle.PLAIN -> {
                 TileKey(
                     monogram = plainAvatarInitial(sender.name),
                     colorArgb = plainAvatarColorArgb(sender.name, PLAIN_AVATAR_SURFACE_ARGB),
                     badge = badgeCharFor(sender.brandCategory),
                 )
+            }
 
-            AvatarStyle.BRAND, AvatarStyle.BRAND_MARK, AvatarStyle.PHOTO, AvatarStyle.BUNDLED ->
+            AvatarStyle.BRAND, AvatarStyle.BRAND_MARK, AvatarStyle.PHOTO, AvatarStyle.BUNDLED -> {
                 TileKey(
                     monogram = sender.monogram,
                     colorArgb = sender.colorArgb ?: fallbackColorFor(sender.name),
                     badge = badgeCharFor(sender.brandCategory),
                 )
+            }
         }
 
     /** [styleFor] with the photo and bundled-logo tiers taken away: the tier the generated tile stands in for. */
