@@ -2,12 +2,12 @@ package app.clearsms.ui.common
 
 import app.clearsms.R
 import app.clearsms.sms.SenderRepliability.Repliability
+import app.clearsms.testing.DefaultStrings
 import app.clearsms.ui.conversation.ConversationUiState
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * The wording of the conversation's reply notice, per verdict (GitHub #75).

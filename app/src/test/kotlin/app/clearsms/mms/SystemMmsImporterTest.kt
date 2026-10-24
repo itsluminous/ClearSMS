@@ -399,12 +399,13 @@ class SystemMmsImporterTest {
 
     @Test
     fun `drafts outbox and failed rows are never imported`() {
-        for ((id, box) in
-            listOf(
-                41L to Telephony.Mms.MESSAGE_BOX_DRAFTS,
-                42L to Telephony.Mms.MESSAGE_BOX_OUTBOX,
-                43L to Telephony.Mms.MESSAGE_BOX_FAILED,
-            )
+        for (
+        (id, box) in
+        listOf(
+            41L to Telephony.Mms.MESSAGE_BOX_DRAFTS,
+            42L to Telephony.Mms.MESSAGE_BOX_OUTBOX,
+            43L to Telephony.Mms.MESSAGE_BOX_FAILED,
+        )
         ) {
             FakeMmsProvider.add(
                 FakeMmsProvider.Message(

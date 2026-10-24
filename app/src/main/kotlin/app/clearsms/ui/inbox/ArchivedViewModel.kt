@@ -11,8 +11,8 @@ import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
-import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.common.UndoUiEvent
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay
 import app.clearsms.ui.components.brandGlyphFor

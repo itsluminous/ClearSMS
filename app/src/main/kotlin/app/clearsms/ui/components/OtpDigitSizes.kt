@@ -143,6 +143,7 @@ object OtpCodeFit {
         val ceiling = maxOf(ceilingSp, floor)
         val stepSp = StepSize.value.toInt()
         val spacedText = spaced(code)
+
         fun fits(
             text: String,
             fontSp: Int,

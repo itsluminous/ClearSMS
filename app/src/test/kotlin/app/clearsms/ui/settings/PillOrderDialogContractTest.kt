@@ -1,9 +1,9 @@
 package app.clearsms.ui.settings
 
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Source-level contracts for the pill-order dialog, in the repo's convention

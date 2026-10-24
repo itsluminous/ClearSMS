@@ -427,7 +427,8 @@ class MmsDiagnosticsTest {
         // The same probe class the sender uses; on Robolectric the platform
         // answers "unknown" for most of it, which must still render.
         val radio = MmsRadioConditionsProbe(context, subscriptions).probe(subscriptionId = null)
-        MmsDownloadReport.of(MmsDownloadReceiver.intent(context, 31L, attempt = 1), SmsManager.MMS_ERROR_UNSPECIFIED, attempt = 1, radio)
+        MmsDownloadReport
+            .of(MmsDownloadReceiver.intent(context, 31L, attempt = 1), SmsManager.MMS_ERROR_UNSPECIFIED, attempt = 1, radio)
             .log(31L)
 
         val line = log().lines().single { "mms download failed" in it }

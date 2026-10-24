@@ -157,7 +157,9 @@ class GuardLibraryTest {
                     "Click https://example.invalid/pay to make the payment before 05 Nov 2026",
             ),
         ).isFalse()
-        assertThat(matches(GuardId.SALES_OFFER, "Your bill for JUL-26 is ready. Recharge offer of INR 239.00 available. Due date:15-JUL-26")).isFalse()
+        assertThat(
+            matches(GuardId.SALES_OFFER, "Your bill for JUL-26 is ready. Recharge offer of INR 239.00 available. Due date:15-JUL-26"),
+        ).isFalse()
         assertThat(matches(GuardId.SALES_OFFER, "Kindly ignore if paid. T&C apply.")).isFalse()
     }
 

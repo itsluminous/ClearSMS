@@ -2,11 +2,11 @@ package app.clearsms.ui.common
 
 import app.clearsms.R
 import app.clearsms.data.repository.UndoManager
+import app.clearsms.testing.DefaultStrings
 import app.clearsms.ui.common.DeleteConfirmationText.Target
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.util.concurrent.TimeUnit
-import app.clearsms.testing.DefaultStrings
 
 /**
  * The delete dialog must promise exactly what the repository then does:

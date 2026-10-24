@@ -247,7 +247,13 @@ class ConversationShortcutPublisherTest {
     }
 
     /** Names of the avatar files under the provider's shortcut-icon root. */
-    private fun avatarFiles(): List<String> = icons.fileFor(0L).parentFile!!.list()?.sorted().orEmpty()
+    private fun avatarFiles(): List<String> =
+        icons
+            .fileFor(0L)
+            .parentFile!!
+            .list()
+            ?.sorted()
+            .orEmpty()
 
     @Test
     fun `a home-screen-pinned shortcut to a thread that became excluded is disabled`() {
@@ -312,11 +318,18 @@ class ConversationShortcutPublisherTest {
 
     /** The publisher's own "stale pinned ... disabled" diagnostic lines since [sinceMs]. */
     private fun disableLogLines(sinceMs: Long) =
-        Diag.buffer.snapshot(sinceMs = sinceMs).map { it.text }.filter { "stale pinned conversation shortcuts disabled" in it }
+        Diag.buffer
+            .snapshot(sinceMs = sinceMs)
+            .map { it.text }
+            .filter { "stale pinned conversation shortcuts disabled" in it }
 
     /** Sets the framework's hidden `FLAG_DISABLED` on [info], as `disableShortcuts` does on a device. */
     private fun markDisabled(info: ShortcutInfo) {
-        val flagDisabled = ShortcutInfo::class.java.getDeclaredField("FLAG_DISABLED").apply { isAccessible = true }.getInt(null)
+        val flagDisabled =
+            ShortcutInfo::class.java
+                .getDeclaredField("FLAG_DISABLED")
+                .apply { isAccessible = true }
+                .getInt(null)
         ShortcutInfo::class.java
             .getDeclaredMethod("addFlags", Int::class.javaPrimitiveType)
             .apply { isAccessible = true }

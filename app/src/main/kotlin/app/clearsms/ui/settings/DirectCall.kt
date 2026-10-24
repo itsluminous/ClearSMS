@@ -40,8 +40,7 @@ object DirectCall {
     const val PERMISSION: String = Manifest.permission.CALL_PHONE
 
     /** Whether THIS install currently holds [PERMISSION] - re-checked at every call, never cached. */
-    fun isPermitted(context: Context): Boolean =
-        ContextCompat.checkSelfPermission(context, PERMISSION) == PackageManager.PERMISSION_GRANTED
+    fun isPermitted(context: Context): Boolean = ContextCompat.checkSelfPermission(context, PERMISSION) == PackageManager.PERMISSION_GRANTED
 
     /**
      * The intent a Call button fires, as a pure mapping so tests can pin it:

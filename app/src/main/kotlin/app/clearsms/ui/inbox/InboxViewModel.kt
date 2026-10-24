@@ -29,8 +29,8 @@ import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.notification.MutedSenderGate
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
-import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.common.UndoUiEvent
+import app.clearsms.ui.common.displayLocaleChanges
 import app.clearsms.ui.components.BrandGlyph
 import app.clearsms.ui.components.SelectionState
 import app.clearsms.ui.components.SenderDisplay

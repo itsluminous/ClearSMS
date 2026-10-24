@@ -76,7 +76,9 @@ class DelayedSendContractTest {
         assertThat(conversation).doesNotContain("mmsSender.send(")
         // The delay stays SMS-only: attachments short-circuit to MMS first.
         val dispatcher = source("sms/OutgoingSendDispatcher.kt")
-        assertThat(dispatcher.indexOf("if (attachments.isNotEmpty())")).isLessThan(dispatcher.indexOf("settings.delayedSendEnabled.first()"))
+        assertThat(
+            dispatcher.indexOf("if (attachments.isNotEmpty())"),
+        ).isLessThan(dispatcher.indexOf("settings.delayedSendEnabled.first()"))
     }
 
     @Test

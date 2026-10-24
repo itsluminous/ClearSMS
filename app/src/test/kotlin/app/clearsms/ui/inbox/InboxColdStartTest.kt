@@ -19,8 +19,8 @@ import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
-import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.InMemoryPreferencesDataStore
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.work.CatchUpSyncScheduler
 import app.clearsms.work.SyncCheckpointStore
 import com.google.common.truth.Truth.assertThat

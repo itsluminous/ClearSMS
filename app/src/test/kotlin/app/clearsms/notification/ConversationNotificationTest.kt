@@ -116,9 +116,19 @@ class ConversationNotificationTest {
         assertThat(n.extras.getString(Notification.EXTRA_TEMPLATE))
             .isEqualTo(Notification.MessagingStyle::class.java.name)
         val restored = requireNotNull(NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(n))
-        assertThat(restored.messages.single().text.toString()).isEqualTo("see you at nine")
+        assertThat(
+            restored.messages
+                .single()
+                .text
+                .toString(),
+        ).isEqualTo("see you at nine")
         // Same Person key as the shortcut's Person: one identity to the system.
-        assertThat(restored.messages.single().person?.key).isEqualTo("9876543210")
+        assertThat(
+            restored.messages
+                .single()
+                .person
+                ?.key,
+        ).isEqualTo("9876543210")
         assertThat(n.channelId).isEqualTo(Channels.MESSAGES)
         assertThat(n.contentIntent).isNotNull()
     }

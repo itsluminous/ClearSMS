@@ -1,9 +1,9 @@
 package app.clearsms.ui.conversation
 
+import app.clearsms.testing.DefaultStrings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Source-level contract for the bubble delivery ticks (GitHub #44). The

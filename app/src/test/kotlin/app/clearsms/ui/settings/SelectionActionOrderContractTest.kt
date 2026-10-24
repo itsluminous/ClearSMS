@@ -1,5 +1,6 @@
 package app.clearsms.ui.settings
 
+import app.clearsms.testing.DefaultStrings
 import app.clearsms.ui.conversation.ConversationSelectionBarLayout
 import app.clearsms.ui.conversation.MessageSelectionAction
 import app.clearsms.ui.inbox.SelectionAction
@@ -8,7 +9,6 @@ import app.clearsms.ui.navigation.PillConfig
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.io.File
-import app.clearsms.testing.DefaultStrings
 
 /**
  * Contracts for the user-ordered conversation selection-bar actions (issue

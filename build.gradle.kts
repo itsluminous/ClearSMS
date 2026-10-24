@@ -34,3 +34,35 @@ allprojects {
         }
     }
 }
+
+// Guard: ktlint must actually be inspecting the app's Kotlin sources.
+//
+// After the AGP 9 migration (PR #84) plugin 12.1.2 could no longer discover
+// the Kotlin source sets - the `kotlin.android` plugin it looked for was
+// gone - so `ktlintCheck` registered no per-source-set task, inspected
+// nothing, and still exited 0. That stayed invisible for two weeks of
+// merged PRs. A lint check that passes vacuously is worse than none, so
+// fail the build at configuration time unless the plugin has registered a
+// check for every source set we expect and wired it into `ktlintCheck`.
+gradle.projectsEvaluated {
+    val app = project(":app")
+    val expected = listOf("ktlintMainSourceSetCheck", "ktlintTestSourceSetCheck")
+    val missing = expected.filter { app.tasks.findByName(it) == null }
+    if (missing.isNotEmpty()) {
+        throw GradleException(
+            "ktlint is not inspecting the app sources: ${missing.joinToString()} not registered. " +
+                "The ktlint Gradle plugin failed to discover the Kotlin source sets (as 12.1.2 did " +
+                "under AGP 9), so ktlintCheck would pass without reading a file. " +
+                "Registered ktlint tasks: ${app.tasks.names.filter { it.startsWith("ktlint") }.sorted()}",
+        )
+    }
+    val aggregate = app.tasks.getByName("ktlintCheck")
+    val wired = aggregate.taskDependencies.getDependencies(aggregate).map { it.name }
+    val unwired = expected.filter { it !in wired }
+    if (unwired.isNotEmpty()) {
+        throw GradleException(
+            "ktlintCheck no longer depends on ${unwired.joinToString()}; it would pass without " +
+                "inspecting those sources. Wired: $wired",
+        )
+    }
+}

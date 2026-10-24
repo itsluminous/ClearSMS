@@ -76,7 +76,10 @@ class TranslationStatusTest {
 
     @Test
     fun `a plurals counts as one item regardless of its quantities`() {
-        val dir = java.nio.file.Files.createTempDirectory("values-xx").toFile()
+        val dir =
+            java.nio.file.Files
+                .createTempDirectory("values-xx")
+                .toFile()
         try {
             dir.resolve("strings.xml").writeText(
                 """
@@ -121,11 +124,11 @@ class TranslationStatusTest {
     private val legacyLocale = Regex("^[a-z]{2}(-r[A-Z]{2})?$")
     private val bcp47Locale = Regex("^b\\+[a-zA-Z]{2,3}(\\+[a-zA-Z0-9]{1,8})*$")
 
-    private fun isLocaleQualifier(qualifier: String) =
-        legacyLocale.matches(qualifier) || bcp47Locale.matches(qualifier)
+    private fun isLocaleQualifier(qualifier: String) = legacyLocale.matches(qualifier) || bcp47Locale.matches(qualifier)
 
     private fun localeDirs(res: File): List<Pair<String, File>> =
-        res.listFiles()!!
+        res
+            .listFiles()!!
             .filter { it.isDirectory && it.name.startsWith("values-") }
             .map { it.name.removePrefix("values-") to it }
             .filter { isLocaleQualifier(it.first) }
@@ -192,17 +195,50 @@ class TranslationStatusTest {
         /** Display names the script knows; anything else renders as its code. Keep in sync. */
         val LANGUAGE_NAMES =
             mapOf(
-                "ar" to "Arabic", "bn" to "Bengali", "cs" to "Czech", "da" to "Danish", "de" to "German",
-                "el" to "Greek", "es" to "Spanish", "fa" to "Persian", "fi" to "Finnish", "fr" to "French",
-                "gu" to "Gujarati", "he" to "Hebrew", "hi" to "Hindi", "hu" to "Hungarian", "id" to "Indonesian",
-                "in" to "Indonesian", "it" to "Italian", "iw" to "Hebrew", "ja" to "Japanese", "kn" to "Kannada",
-                "ko" to "Korean", "ml" to "Malayalam", "mr" to "Marathi", "nb" to "Norwegian Bokmål",
-                "nl" to "Dutch", "pl" to "Polish", "pt" to "Portuguese", "pt-rBR" to "Portuguese (Brazil)",
-                "pt-rPT" to "Portuguese (Portugal)", "ro" to "Romanian", "ru" to "Russian", "sk" to "Slovak",
-                "sv" to "Swedish", "ta" to "Tamil", "te" to "Telugu", "th" to "Thai", "tr" to "Turkish",
-                "uk" to "Ukrainian", "vi" to "Vietnamese", "zh-rCN" to "Chinese (Simplified)",
-                "zh-rTW" to "Chinese (Traditional)", "b+sr+Latn" to "Serbian (Latin)",
-                "b+zh+Hans" to "Chinese (Simplified)", "b+zh+Hant" to "Chinese (Traditional)",
+                "ar" to "Arabic",
+                "bn" to "Bengali",
+                "cs" to "Czech",
+                "da" to "Danish",
+                "de" to "German",
+                "el" to "Greek",
+                "es" to "Spanish",
+                "fa" to "Persian",
+                "fi" to "Finnish",
+                "fr" to "French",
+                "gu" to "Gujarati",
+                "he" to "Hebrew",
+                "hi" to "Hindi",
+                "hu" to "Hungarian",
+                "id" to "Indonesian",
+                "in" to "Indonesian",
+                "it" to "Italian",
+                "iw" to "Hebrew",
+                "ja" to "Japanese",
+                "kn" to "Kannada",
+                "ko" to "Korean",
+                "ml" to "Malayalam",
+                "mr" to "Marathi",
+                "nb" to "Norwegian Bokmål",
+                "nl" to "Dutch",
+                "pl" to "Polish",
+                "pt" to "Portuguese",
+                "pt-rBR" to "Portuguese (Brazil)",
+                "pt-rPT" to "Portuguese (Portugal)",
+                "ro" to "Romanian",
+                "ru" to "Russian",
+                "sk" to "Slovak",
+                "sv" to "Swedish",
+                "ta" to "Tamil",
+                "te" to "Telugu",
+                "th" to "Thai",
+                "tr" to "Turkish",
+                "uk" to "Ukrainian",
+                "vi" to "Vietnamese",
+                "zh-rCN" to "Chinese (Simplified)",
+                "zh-rTW" to "Chinese (Traditional)",
+                "b+sr+Latn" to "Serbian (Latin)",
+                "b+zh+Hans" to "Chinese (Simplified)",
+                "b+zh+Hant" to "Chinese (Traditional)",
             )
 
         /** Locates a repo file whether the test runs from the module (`app/`) or the repo root. */

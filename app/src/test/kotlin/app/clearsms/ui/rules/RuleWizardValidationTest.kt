@@ -5,6 +5,7 @@ import app.clearsms.data.rules.RuleEngine
 import app.clearsms.domain.rules.RuleSuggester
 import app.clearsms.domain.rules.SenderRule
 import app.clearsms.domain.rules.TokenKind
+import app.clearsms.testing.DefaultStrings
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeRuleRepository
 import com.google.common.truth.Truth.assertThat
@@ -19,7 +20,6 @@ import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import app.clearsms.testing.DefaultStrings
 
 /**
  * "The rule was rejected, but I couldn't figure out why" (issue #38): every

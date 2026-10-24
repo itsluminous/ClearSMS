@@ -20,19 +20,19 @@ import app.clearsms.mms.MmsGateway
 import app.clearsms.mms.MmsRadioConditionsProbe
 import app.clearsms.mms.MmsSender
 import app.clearsms.mms.OutgoingAttachmentStager
-import app.clearsms.sms.SimChoiceStore
-import app.clearsms.sms.SimInfo
 import app.clearsms.sms.ContactsSource
 import app.clearsms.sms.ExistingThreadResolver
 import app.clearsms.sms.OutgoingSendDispatcher
 import app.clearsms.sms.ProviderThreadLookup
+import app.clearsms.sms.SimChoiceStore
+import app.clearsms.sms.SimInfo
 import app.clearsms.sms.SmsSender
 import app.clearsms.sms.SubscriptionSource
 import app.clearsms.sms.TelephonyWriter
 import app.clearsms.testing.FakeSettingsRepository
-import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.testing.FakeSmsGateway
 import app.clearsms.testing.InMemoryPreferencesDataStore
+import app.clearsms.testing.ViewModelDatabaseFixture
 import app.clearsms.ui.common.ComposerHandOffs
 import app.clearsms.ui.common.ScheduleTipGate
 import app.clearsms.ui.common.UiPrefs
@@ -567,7 +567,10 @@ class ComposeMessageViewModelTest {
             )
             val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "see you at nine")))
 
-            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            awaitUntil {
+                vm.uiState.value.recipient
+                    .isNotBlank()
+            }
             // The thread's own address, through the same selection path a
             // picked suggestion takes - the SIM memory re-primes for it.
             assertThat(vm.uiState.value.recipient).isEqualTo("+91 98765 43210")
@@ -597,7 +600,10 @@ class ComposeMessageViewModelTest {
             )
             val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "see you at nine")))
 
-            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            awaitUntil {
+                vm.uiState.value.recipient
+                    .isNotBlank()
+            }
             val picked = vm.uiState.value.picked
             assertThat(picked).isNotNull()
             assertThat(picked!!.name).isEqualTo("Asha Rao")
@@ -630,7 +636,10 @@ class ComposeMessageViewModelTest {
             )
             val vm = viewModel(SavedStateHandle(mapOf("threadId" to 42L, "body" to "hi")))
 
-            awaitUntil { vm.uiState.value.recipient.isNotBlank() }
+            awaitUntil {
+                vm.uiState.value.recipient
+                    .isNotBlank()
+            }
             assertThat(vm.uiState.value.recipient).isEqualTo("+91 98765 43210")
             assertThat(vm.uiState.value.picked).isNull()
         }
@@ -732,7 +741,9 @@ class ComposeMessageViewModelTest {
             MessageEntity(
                 threadId = threadId,
                 sender = sender,
-                normalizedSender = app.clearsms.data.repository.SenderNormalizer.normalize(sender),
+                normalizedSender =
+                    app.clearsms.data.repository.SenderNormalizer
+                        .normalize(sender),
                 body = "earlier",
                 timestamp = 1_000L,
                 isRead = true,
@@ -773,7 +784,14 @@ class ComposeMessageViewModelTest {
             image.writeBytes(ByteArray(64) { 3 })
             val vm =
                 viewModel(
-                    SavedStateHandle(mapOf("imageUri" to android.net.Uri.fromFile(image).toString())),
+                    SavedStateHandle(
+                        mapOf(
+                            "imageUri" to
+                                android.net.Uri
+                                    .fromFile(image)
+                                    .toString(),
+                        ),
+                    ),
                     settings = settings,
                 )
             awaitUntil { vm.attachments.value.isNotEmpty() }
@@ -808,7 +826,10 @@ class ComposeMessageViewModelTest {
             // ...and the composer beneath still has everything: Back after a
             // mis-tap lands on the same text and the same picked contact.
             assertThat(vm.uiState.value.body).isEqualTo("typed before picking")
-            assertThat(vm.uiState.value.picked?.number).isEqualTo("+15550005555")
+            assertThat(
+                vm.uiState.value.picked
+                    ?.number,
+            ).isEqualTo("+15550005555")
             // Nothing was sent or scheduled by merely picking.
             assertThat(dao.observeThread(42L).first()).hasSize(1)
         }

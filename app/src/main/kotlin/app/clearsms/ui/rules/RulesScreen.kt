@@ -57,9 +57,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.data.rules.RuleEngine
 import app.clearsms.ui.components.EmptyState
-import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
+import app.clearsms.ui.components.displayName
 
 /** Rule management: builtin/user groups, enable toggles, SAF import/export, share. */
 @OptIn(ExperimentalMaterial3Api::class)

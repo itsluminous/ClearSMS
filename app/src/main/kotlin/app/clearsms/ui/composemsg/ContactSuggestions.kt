@@ -51,7 +51,9 @@ data class ContactSuggestion(
  * bidi marks a text layer wraps a number in. Whitespace (all of Unicode's,
  * including the non-breaking spaces formatters favour) is handled alongside.
  */
-private const val NUMBER_FORMATTING_CHARS = "-.()/\u2010\u2011\u2012\u2013\u2014\u2212\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069"
+private const val NUMBER_FORMATTING_CHARS =
+    "-.()/\u2010\u2011\u2012\u2013\u2014\u2212" +
+        "\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069"
 
 private fun Char.isNumberFormatting(): Boolean = isWhitespace() || this in NUMBER_FORMATTING_CHARS
 
