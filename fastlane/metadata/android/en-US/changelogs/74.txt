@@ -1,0 +1,4 @@
+Minor release.
+- Fixed picture messages failing to download on some phones.
+- A failed download now records why in the diagnostic report
+- Lint fixes for maintaining code better
