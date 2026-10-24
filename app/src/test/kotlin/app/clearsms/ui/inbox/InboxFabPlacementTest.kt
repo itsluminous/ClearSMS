@@ -141,7 +141,9 @@ class InboxFabPlacementTest {
 
     @Test
     fun `the screen decides by window height, never by orientation`() {
-        assertThat(inbox).contains("LocalWindowInfo.current.containerSize.height.toDp()")
+        // The window's own height, in dp. Whitespace-agnostic: ktlint wraps the
+        // call chain, so bind the receiver and the conversion, not the layout.
+        assertThat(inbox).containsMatch("""LocalWindowInfo\.current\.containerSize\.height\s*\.toDp\(\)""")
         assertThat(inbox).contains("InboxFabPlacement.placement(windowHeight)")
         val uiSources =
             File("src/main/kotlin/app/clearsms/ui").walkTopDown().filter { it.extension == "kt" }.joinToString("\n") { it.readText() }
