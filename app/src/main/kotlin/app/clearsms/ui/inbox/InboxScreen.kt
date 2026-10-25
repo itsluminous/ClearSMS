@@ -100,6 +100,7 @@ import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.MessageTextDirection
 import app.clearsms.ui.components.MutedIndicator
 import app.clearsms.ui.components.MutedIndicatorIcon
 import app.clearsms.ui.components.OtpBanner
@@ -986,7 +987,8 @@ private fun InboxRow(
                         // helper labels image-only messages ("📷 Photo") and
                         // pending/failed downloads.
                         text = MmsSnippet.overrideRes(message)?.let { stringResource(it) } ?: message.body,
-                        style = MaterialTheme.typography.bodyMedium,
+                        // The snippet reads in its own direction (GitHub #139).
+                        style = MaterialTheme.typography.bodyMedium.merge(MessageTextDirection.style),
                         fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,

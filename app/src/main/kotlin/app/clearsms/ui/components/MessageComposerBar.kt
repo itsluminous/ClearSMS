@@ -352,10 +352,19 @@ fun MessageComposerBar(
                                     minWidth = OutlinedTextFieldDefaults.MinWidth,
                                     minHeight = OutlinedTextFieldDefaults.MinHeight,
                                 ),
+                        // Direction follows what is being TYPED (GitHub
+                        // #139): the field re-lays its text out on every
+                        // edit, so the paragraph - with caret, alignment and
+                        // selection handles - flips to RTL on the first
+                        // Persian letter and back when the text is cleared,
+                        // whatever language the UI is in. Same mechanism as
+                        // the bubbles (MessageTextDirection), so a message
+                        // reads in the field as it will in the thread.
                         textStyle =
-                            LocalTextStyle.current.merge(
-                                TextStyle(color = if (focused) colors.focusedTextColor else colors.unfocusedTextColor),
-                            ),
+                            LocalTextStyle.current
+                                .merge(
+                                    TextStyle(color = if (focused) colors.focusedTextColor else colors.unfocusedTextColor),
+                                ).merge(MessageTextDirection.style),
                         // Height-in-lines cap, NOT a layout line cap: the text
                         // lays out in full (so lineCount is the real count) and
                         // scrolls within the capped window.

@@ -125,6 +125,7 @@ import app.clearsms.ui.components.BodyLink
 import app.clearsms.ui.components.DialableNumber
 import app.clearsms.ui.components.LinkifiedBodyText
 import app.clearsms.ui.components.MessageComposerBar
+import app.clearsms.ui.components.MessageTextDirection
 import app.clearsms.ui.components.MutedIndicator
 import app.clearsms.ui.components.MutedIndicatorIcon
 import app.clearsms.ui.components.ReplyNoticeBar
@@ -1359,6 +1360,14 @@ private fun MessageBubble(
                             }
 
                             item.body.isNotBlank() || attachments.isEmpty() -> {
+                                // Per-message direction (GitHub #139): the
+                                // body's paragraph direction and alignment
+                                // follow ITS text - Persian reads RTL and
+                                // right-aligned inside a bubble that stays
+                                // on its usual side. One merged style for
+                                // both branches, so entering text-selection
+                                // mode cannot re-flow a single glyph.
+                                val bodyStyle = MaterialTheme.typography.bodyLarge.merge(MessageTextDirection.style)
                                 if (textSelectionField != null) {
                                     // Issue #103: partial text selection. The
                                     // BODY only becomes selectable - time
@@ -1373,14 +1382,14 @@ private fun MessageBubble(
                                     TextSelectionBody(
                                         body = item.body,
                                         fieldState = textSelectionField,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = bodyStyle,
                                         color = textColor,
                                     )
                                 } else {
                                     LinkifiedBodyText(
                                         body = item.body,
                                         onLinkClick = onLinkClick,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = bodyStyle,
                                         color = textColor,
                                     )
                                 }

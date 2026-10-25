@@ -52,6 +52,7 @@ import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.rememberRelativeTimeStrings
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.MessageTextDirection
 import app.clearsms.ui.components.PagedRowPlaceholder
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.TooltipIconButton
@@ -211,7 +212,8 @@ fun SearchScreen(
                     supportingContent = {
                         Text(
                             text = highlight(message.body, query),
-                            style = MaterialTheme.typography.bodyMedium,
+                            // The snippet reads in its own direction (GitHub #139).
+                            style = MaterialTheme.typography.bodyMedium.merge(MessageTextDirection.style),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

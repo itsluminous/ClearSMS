@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.clearsms.R
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.MessageTextDirection
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 
@@ -169,7 +170,8 @@ fun BinScreen(
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     CategoryBadge(category = message.category)
                     Spacer(Modifier.height(8.dp))
-                    Text(text = message.body, style = MaterialTheme.typography.bodyMedium)
+                    // The body reads in its own direction (GitHub #139).
+                    Text(text = message.body, style = MaterialTheme.typography.bodyMedium.merge(MessageTextDirection.style))
                 }
             },
             confirmButton = {
@@ -248,7 +250,8 @@ private fun BinRow(
             Column {
                 Text(
                     text = message.body,
-                    style = MaterialTheme.typography.bodyMedium,
+                    // The snippet reads in its own direction (GitHub #139).
+                    style = MaterialTheme.typography.bodyMedium.merge(MessageTextDirection.style),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -56,6 +56,7 @@ import app.clearsms.ui.components.AvatarDefaults
 import app.clearsms.ui.components.CategoryBadge
 import app.clearsms.ui.components.DeleteConfirmationDialog
 import app.clearsms.ui.components.EmptyState
+import app.clearsms.ui.components.MessageTextDirection
 import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 
@@ -280,7 +281,8 @@ private fun ArchivedRow(
             Column {
                 Text(
                     text = message.body,
-                    style = MaterialTheme.typography.bodyMedium,
+                    // The snippet reads in its own direction (GitHub #139).
+                    style = MaterialTheme.typography.bodyMedium.merge(MessageTextDirection.style),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
