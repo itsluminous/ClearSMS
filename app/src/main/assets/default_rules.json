@@ -9450,6 +9450,353 @@
       },
       "contributed_by": "clearsms",
       "created_at": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "hbl-otp-01",
+      "name": "HBL OTP (card, online transaction, TPIN)",
+      "priority": 350,
+      "match": {
+        "sender_pattern": "(?i)^1?4250$|HBL",
+        "body_pattern": "(?i)\\b(\\d{4,8})\\s+is\\s+your\\s+(?:OTP|On\\s+Time\\s+Password)"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "bank": "HBL"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "hbl-service-notice-01",
+      "name": "HBL account / card / cheque book service notice",
+      "priority": 150,
+      "match": {
+        "sender_pattern": "(?i)^1?4250$|HBL",
+        "body_pattern": "(?i)\\b(?:cheque\\s+book|has\\s+been\\s+(?:successfully\\s+)?activated|TPIN\\s+has\\s+been|RAAST\\s+ID|CNIC\\s+expiry|successfully\\s+registered|bill\\s+payment\\s+request\\s+has\\s+been\\s+processed|Direct\\s+Transfer\\s+service)",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "bank": "HBL"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-card-purchase-01",
+      "name": "Meezan Bank card / online purchase",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "charged at"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+charged\\s+at\\s+([^\\n]{1,30}?)\\s+(?:as\\s+internet\\s+purchase|for\\s+card\\s+used),\\s+from\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "debit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-bill-payment-01",
+      "name": "Meezan Bank bill / top-up payment via internet banking",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "debited as"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:is\\s+)?debited\\s+as\\s+([A-Za-z][A-Za-z .&-]{1,30}?)\\s+(?:[\\d/]{3,20}\\s+)?(?:FROM\\s+[A-Z]{2}\\s+)?from\\s+your\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "debit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-transfer-out-01",
+      "name": "Meezan Bank funds transfer sent (IBFT / RAAST / within Meezan)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "sent to"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+sent\\s+to\\s+([A-Za-z][A-Za-z .]{1,45}?)\\s*(?:\\(|\\b[A-Z0-9]{1,20}-|\\bAC#|from\\s+your)[^\\n]{0,60}?from\\s+your\\s+A/?C#?\\s*[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "debit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-transfer-in-01",
+      "name": "Meezan Bank funds received (IBFT / RAAST / within Meezan)",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "received from"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+received\\s+from\\s+([A-Za-z][A-Za-z .]{1,45}?)\\s*(?:\\(|\\b[A-Z0-9]{1,20}-|\\bAC#)[^\\n]{0,80}?\\bto\\s+(?:your\\s+)?A/?C#?\\s*[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "credit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-atm-withdrawal-01",
+      "name": "Meezan Bank ATM cash withdrawal",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "cash withdrawn"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+cash\\s+withdrawn\\s+from\\s+[^\\n]{1,30}?\\s+from\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "ATM withdrawal",
+          "type": "debit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-profit-credit-01",
+      "name": "Meezan Bank Mudarba profit distribution",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "PFT"
+        ],
+        "body_pattern": "(?i)MUDARBA\\s+PFT\\s+DST:\\s*PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+WHT:\\s*[\\d,.]{1,15}\\s+A/C\\s*[Xx*]*\\d{0,12}?(\\d{4})\\b"
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "Mudarba profit",
+          "type": "credit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-credit-01",
+      "name": "Meezan Bank merchant credit / IBFT reversal",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "credited as"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+credited\\s+as\\s+(?:\\d{1,8}-)?([A-Za-z][A-Za-z .&-]{1,40}?)\\s+(?:to|in)\\b[^\\n]{0,60}?A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "merchant": "$2",
+          "account_last4": "$3",
+          "type": "credit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-reversal-01",
+      "name": "Meezan Bank transaction reversed into account",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "reversed into"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+is\\s+reversed\\s+into\\s+your\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "Reversal",
+          "type": "credit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-cash-deposit-01",
+      "name": "Meezan Bank branch cash deposit",
+      "priority": 300,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_must_contain": [
+          "CASH DEPOSIT"
+        ],
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+CASH\\s+DEPOSIT[^\\n]{0,60}?\\bin\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "transaction",
+        "extract": {
+          "amount": "$1",
+          "account_last4": "$2",
+          "merchant": "Cash deposit",
+          "type": "credit",
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-ecommerce-otp-01",
+      "name": "Meezan Bank e-commerce OTP",
+      "priority": 350,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_pattern": "(?i)OTP\\s+is\\s+(\\d{4,8})\\b"
+      },
+      "action": {
+        "category": "otp",
+        "extract": {
+          "otp_code": "$1",
+          "bank": "Meezan Bank"
+        },
+        "notification": "otp_popup"
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "meezan-service-notice-01",
+      "name": "Meezan Bank service notice",
+      "priority": 150,
+      "match": {
+        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "body_pattern": "(?i)\\b(?:Zakat\\s+Declaration|complaints?@meezanbank|Push\\s+Notification|activated\\s+for\\s+Google\\s+Pay|T&Cs\\s+and\\s+Schedule|Schedule\\s+of\\s+Charges|card\\s+is\\s+suspended|device\\s+[^\\n]{1,40}?has\\s+been\\s+(?:registered|deleted)|ATM\\s+transaction\\s+charges|Funds\\s+Transfer\\s+and\\s+ATM|transaction\\s+was\\s+declined|Your\\s+username\\s+is|Request\\s+\\S{1,20}\\s+against\\s+transaction)",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "important",
+        "sub_category": "bank_alert",
+        "extract": {
+          "bank": "Meezan Bank"
+        }
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    },
+    {
+      "id": "jazzcash-loan-offer-01",
+      "name": "JazzCash cash-loan promotion",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)^8558$|JAZZCASH",
+        "body_pattern": "(?i)\\bloan\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
     }
   ]
 }
