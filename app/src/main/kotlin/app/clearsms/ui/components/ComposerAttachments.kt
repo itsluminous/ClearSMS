@@ -69,8 +69,10 @@ fun rememberAttachmentLaunchers(
         rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
             onPicked(uris)
         }
+    // Not the stock TakePicture: see CameraCapture for why an installed but
+    // non-system camera needs an explicit intent (issue #140).
     val camera =
-        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        rememberLauncherForActivityResult(TakePictureWithAnyCamera()) { success ->
             onCameraDone(success)
         }
     val documents =

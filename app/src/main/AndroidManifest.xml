@@ -43,6 +43,23 @@
         <intent>
             <action android:name="android.service.carrier.CarrierMessagingService" />
         </intent>
+        <!-- Package visibility (Android 11+): lets the compose bar's Camera
+             option FIND a camera the user installed (ui/components/
+             CameraCapture, issue #140). The platform answers an implicit
+             IMAGE_CAPTURE with pre-installed system cameras only, so on a
+             de-Googled Pixel or a ROM without a stock camera the capture
+             must be addressed to the installed camera app explicitly - and
+             querying which packages are camera apps (APP_CAMERA) and whether
+             each handles IMAGE_CAPTURE is exactly what visibility gates.
+             Neither entry is needed to merely START a camera; nothing is
+             queried beyond "which camera apps exist". -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CAMERA" />
+        </intent>
     </queries>
 
     <!-- allowBackup is deliberately FALSE: the database holds the user's
