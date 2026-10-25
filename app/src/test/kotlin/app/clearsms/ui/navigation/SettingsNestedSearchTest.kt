@@ -60,13 +60,17 @@ class SettingsNestedSearchTest {
 
     @Test
     fun `a term matching a nested row finds it, with the section it belongs to`() {
-        // "Sort inbox again" moved from the long root list onto the Inbox
-        // sub-screen. The search must still surface it, and say where it is.
-        val hits = search("sort inbox")
+        // "Sort messages again" (ex "Sort inbox again") moved from the long
+        // root list onto a sub-screen - first Inbox, now Messages, since it
+        // re-reads every message rather than the Inbox list. The search must
+        // still surface it under its new title, and say where it is.
+        val hits = search("sort messages again")
         assertThat(hits).containsExactly(SettingsItem.SORT_AGAIN)
-        assertThat(hits.single().section).isEqualTo(SettingsSection.INBOX)
-        assertThat(sectionTitle(hits.single().section)).isEqualTo("Inbox")
+        assertThat(hits.single().section).isEqualTo(SettingsSection.MESSAGES)
+        assertThat(sectionTitle(hits.single().section)).isEqualTo("Messages")
         assertThat(hits.single().nested).isTrue()
+        // The old title no longer matches anything: no ghost "inbox" hit.
+        assertThat(search("sort inbox")).isEmpty()
     }
 
     @Test
@@ -116,9 +120,11 @@ class SettingsNestedSearchTest {
         val target = Routes.settingsPath(SettingsItem.SORT_AGAIN).last()
         val (section, highlight) = parseSectionRoute(target)
         // The sub-screen, not the root: the root has no such row to flash.
-        assertThat(section).isEqualTo(SettingsSection.INBOX.name)
+        // Messages, because that is where the catalog now puts the row - the
+        // resolver reads item.section, so the move re-pointed this link too.
+        assertThat(section).isEqualTo(SettingsSection.MESSAGES.name)
         assertThat(highlight).isEqualTo(SettingsItem.SORT_AGAIN.name)
-        assertThat(target).isEqualTo(Routes.settingsSection(SettingsSection.INBOX, SettingsItem.SORT_AGAIN.name))
+        assertThat(target).isEqualTo(Routes.settingsSection(SettingsSection.MESSAGES, SettingsItem.SORT_AGAIN.name))
         assertThat(target).isNotEqualTo(Routes.settings(SettingsItem.SORT_AGAIN.name))
     }
 

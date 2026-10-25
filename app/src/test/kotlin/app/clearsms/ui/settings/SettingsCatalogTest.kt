@@ -158,9 +158,14 @@ class SettingsCatalogTest {
                 "Sort messages by",
                 "Message action order",
                 // Direct call (GitHub #99 follow-up): what the Call button
-                // does on tap, last, beside the other "what the buttons in a
-                // conversation do" row it follows.
+                // does on tap, beside the other "what the buttons in a
+                // conversation do" row it follows - the last PREFERENCE.
                 "Direct call",
+                // Sort messages again (moved here from Inbox): the one-shot
+                // full re-sort over every stored message. It closes the
+                // block the way "Clear older OTPs" closes OTP - a maintenance
+                // ACTION after every preference, not a setting among them.
+                "Sort messages again",
             ).inOrder()
         assertThat(bySection["Appearance"])
             .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
@@ -190,9 +195,11 @@ class SettingsCatalogTest {
                 "Swipe right action",
                 "Swipe left action",
                 // Directly under the two swipe-action rows it refines: the
-                // per-row band where a swipe never starts (issue #16).
+                // per-row band where a swipe never starts (issue #16). It
+                // closes Inbox now: "Sort inbox again" re-read MESSAGES, not
+                // the Inbox list, so it moved to Messages as "Sort messages
+                // again" (SettingsSection.MESSAGES, pinned above).
                 "Swipe dead zone",
-                "Sort inbox again",
             ).inOrder()
         // Finance and Alerts get the Inbox's pill visibility, right under
         // the pill order it refines - the same presentation on all three.
@@ -270,7 +277,9 @@ class SettingsCatalogTest {
                 "Swipe left action",
                 "Default screen",
                 "Default inbox filter",
-                "Sort inbox again",
+                // Survivor renamed with its move from Inbox to Messages: the
+                // same SORT_AGAIN row, titled for what it re-reads.
+                "Sort messages again",
                 "Auto copy",
                 "Auto delete OTP",
                 "OTP display size",
@@ -410,9 +419,11 @@ class SettingsCatalogTest {
         val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
         assertThat(messagesRows.indexOf(SettingsItem.SELECTION_ACTION_ORDER))
             .isEqualTo(messagesRows.indexOf(SettingsItem.MESSAGE_SORT_ORDER) + 1)
-        // Only Direct call follows it (see the test below).
-        assertThat(messagesRows.takeLast(2))
-            .containsExactly(SettingsItem.SELECTION_ACTION_ORDER, SettingsItem.DIRECT_CALL)
+        // Only Direct call (see the test below) and then the Sort messages
+        // again action follow it - the exact tail, so a row cannot be slipped
+        // in between the two button preferences and the closing action.
+        assertThat(messagesRows.takeLast(3))
+            .containsExactly(SettingsItem.SELECTION_ACTION_ORDER, SettingsItem.DIRECT_CALL, SettingsItem.SORT_AGAIN)
             .inOrder()
         assertThat(search("message action order")).containsExactly(SettingsItem.SELECTION_ACTION_ORDER)
         assertThat(search("action order")).contains(SettingsItem.SELECTION_ACTION_ORDER)
@@ -432,7 +443,11 @@ class SettingsCatalogTest {
         val messagesRows = SettingsItem.entries.filter { it.section == SettingsSection.MESSAGES }
         assertThat(messagesRows.indexOf(SettingsItem.DIRECT_CALL))
             .isEqualTo(messagesRows.indexOf(SettingsItem.SELECTION_ACTION_ORDER) + 1)
-        assertThat(messagesRows.last()).isEqualTo(SettingsItem.DIRECT_CALL)
+        // Direct call is the last PREFERENCE; only the Sort messages again
+        // ACTION sits after it, closing the section.
+        assertThat(messagesRows.takeLast(2))
+            .containsExactly(SettingsItem.DIRECT_CALL, SettingsItem.SORT_AGAIN)
+            .inOrder()
         assertThat(SettingsItem.entries.count { title(it) == "Direct call" }).isEqualTo(1)
         assertThat(SettingsItem.entries.filter { it.section == SettingsSection.NOTIFICATIONS }.map(::title))
             .doesNotContain("Direct call")

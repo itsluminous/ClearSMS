@@ -431,7 +431,7 @@
     <string name="rule_saved_needs_resort_title">Rule saved</string>
     <string name="rule_saved_show_me">Take me there</string>
     <string name="action_not_now">Not now</string>
-    <string name="rule_saved_needs_resort_body">This rule matches on the message text rather than a specific sender, so it could apply to any message. To apply it to messages you already have, go to Settings and tap "Sort inbox again". New messages use it right away.</string>
+    <string name="rule_saved_needs_resort_body">This rule matches on the message text rather than a specific sender, so it could apply to any message. To apply it to messages you already have, go to Settings and tap "Sort messages again". New messages use it right away.</string>
     <string name="settings_section_notification">Notifications</string>
     <string name="settings_delivery_reports">SMS delivery reports</string>
     <string name="settings_delivery_reports_summary">Confirm when sent messages are delivered</string>
@@ -465,7 +465,7 @@
     <string name="notification_action_share_otp">Share OTP</string>
     <string name="swipe_action_none">Do nothing</string>
     <string name="swipe_action_toggle_read">Toggle read</string>
-    <string name="settings_sort_again">Sort inbox again</string>
+    <string name="settings_sort_again">Sort messages again</string>
     <string name="settings_sort_again_summary">Re-run categorization on all messages and refresh Finance and Alerts</string>
     <string name="settings_sort_confirm">All messages will be re-categorized using the current rules, and Finance transactions and Alerts will be refreshed. Your notes and card limits are kept. This may take a moment.</string>
     <string name="settings_sort_go">Sort</string>
@@ -520,7 +520,7 @@
     <string name="settings_finance_currency">Currency</string>
     <string name="settings_finance_currency_auto">Automatic</string>
     <string name="settings_finance_currency_auto_summary">From each message, else your SIM or device region</string>
-    <string name="settings_finance_currency_forced_summary">Amounts without a clear currency are read as %1$s. Use Sort inbox again to re-read older messages.</string>
+    <string name="settings_finance_currency_forced_summary">Amounts without a clear currency are read as %1$s. Use Sort messages again to re-read older messages.</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_source_code_summary">View the project on GitHub</string>
     <string name="settings_section_support">Support</string>

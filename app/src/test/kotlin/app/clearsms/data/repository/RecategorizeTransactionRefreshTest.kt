@@ -26,7 +26,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * "Sort inbox again" REFRESHES derived transaction rows in place: stale
+ * "Sort messages again" REFRESHES derived transaction rows in place: stale
  * titles from older parser/rule versions are rewritten, repeated runs never
  * duplicate rows or drift totals, user notes survive onto the re-derived
  * rows, accounts a message still backs (and their user-set card limits) are

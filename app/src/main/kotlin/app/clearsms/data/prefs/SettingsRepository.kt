@@ -191,7 +191,7 @@ interface SettingsRepository {
      * own marker, else the SIM / device locale). The honest safety net for
      * when detection is unreliable: with `CLP` forced, a bare `$1.000` is a
      * thousand pesos even on a device whose locale says otherwise. It only
-     * applies to messages sorted AFTER it changes; "Sort inbox again"
+     * applies to messages sorted AFTER it changes; "Sort messages again"
      * re-derives the rest. Never rewrites a stored amount by itself.
      */
     val financeCurrency: Flow<String?>
@@ -382,7 +382,7 @@ interface SettingsRepository {
      * set when the initial import completes and when any full re-sort
      * (manual or automatic) completes; 0 when never. A mismatch against the
      * running version triggers the automatic post-update re-sort, so users
-     * never need to remember "Sort inbox again". Device/version state,
+     * never need to remember "Sort messages again". Device/version state,
      * never backed up.
      */
     val lastSortedVersionCode: Flow<Int>

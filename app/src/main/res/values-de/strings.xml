@@ -378,7 +378,7 @@
     <string name="rule_saved_needs_resort_title">Regel gespeichert</string>
     <string name="rule_saved_show_me">Dorthin wechseln</string>
     <string name="action_not_now">Nicht jetzt</string>
-    <string name="rule_saved_needs_resort_body">Diese Regel greift auf den Nachrichtentext statt auf einen bestimmten Absender und kann daher auf jede Nachricht zutreffen. Um sie auf bereits vorhandene Nachrichten anzuwenden, gehen Sie zu den Einstellungen und tippen Sie auf „Posteingang neu sortieren“. Neue Nachrichten verwenden sie sofort.</string>
+    <string name="rule_saved_needs_resort_body">Diese Regel greift auf den Nachrichtentext statt auf einen bestimmten Absender und kann daher auf jede Nachricht zutreffen. Um sie auf bereits vorhandene Nachrichten anzuwenden, gehen Sie zu den Einstellungen und tippen Sie auf „Nachrichten neu sortieren“. Neue Nachrichten verwenden sie sofort.</string>
     <string name="settings_section_notification">Benachrichtigungen</string>
     <string name="settings_delivery_reports">SMS-Zustellberichte</string>
     <string name="settings_delivery_reports_summary">Bestätigen, wenn gesendete Nachrichten zugestellt wurden</string>
@@ -412,7 +412,7 @@
     <string name="notification_action_share_otp">OTP teilen</string>
     <string name="swipe_action_none">Nichts tun</string>
     <string name="swipe_action_toggle_read">Gelesen umschalten</string>
-    <string name="settings_sort_again">Posteingang neu sortieren</string>
+    <string name="settings_sort_again">Nachrichten neu sortieren</string>
     <string name="settings_sort_again_summary">Kategorisierung für alle Nachrichten erneut ausführen und Finanzen und Hinweise aktualisieren</string>
     <string name="settings_sort_confirm">Alle Nachrichten werden mit den aktuellen Regeln neu kategorisiert, und Finanztransaktionen und Hinweise werden aktualisiert. Ihre Notizen und Kartenlimits bleiben erhalten. Das kann einen Moment dauern.</string>
     <string name="settings_sort_go">Sortieren</string>
@@ -467,7 +467,7 @@
     <string name="settings_finance_currency">Währung</string>
     <string name="settings_finance_currency_auto">Automatisch</string>
     <string name="settings_finance_currency_auto_summary">Aus jeder Nachricht, sonst aus Ihrer SIM oder Geräteregion</string>
-    <string name="settings_finance_currency_forced_summary">Beträge ohne eindeutige Währung werden als %1$s gelesen. Nutzen Sie Posteingang neu sortieren, um ältere Nachrichten neu einzulesen.</string>
+    <string name="settings_finance_currency_forced_summary">Beträge ohne eindeutige Währung werden als %1$s gelesen. Nutzen Sie Nachrichten neu sortieren, um ältere Nachrichten neu einzulesen.</string>
     <string name="settings_source_code">Quellcode</string>
     <string name="settings_source_code_summary">Projekt auf GitHub ansehen</string>
     <string name="settings_section_support">Unterstützen</string>

@@ -378,7 +378,7 @@
     <string name="rule_saved_needs_resort_title">नियम सहेजा गया</string>
     <string name="rule_saved_show_me">मुझे वहां ले जाएं</string>
     <string name="action_not_now">अभी नहीं</string>
-    <string name="rule_saved_needs_resort_body">यह नियम किसी खास भेजने वाले के बजाय संदेश के टेक्स्ट पर मिलान करता है, इसलिए यह किसी भी संदेश पर लागू हो सकता है। इसे पहले से मौजूद संदेशों पर लागू करने के लिए, सेटिंग में जाकर "इनबॉक्स फिर से सॉर्ट करें" पर टैप करें। नए संदेशों पर यह तुरंत लागू होता है।</string>
+    <string name="rule_saved_needs_resort_body">यह नियम किसी खास भेजने वाले के बजाय संदेश के टेक्स्ट पर मिलान करता है, इसलिए यह किसी भी संदेश पर लागू हो सकता है। इसे पहले से मौजूद संदेशों पर लागू करने के लिए, सेटिंग में जाकर "संदेश फिर से सॉर्ट करें" पर टैप करें। नए संदेशों पर यह तुरंत लागू होता है।</string>
     <string name="settings_section_notification">सूचनाएं</string>
     <string name="settings_delivery_reports">SMS डिलीवरी रिपोर्ट</string>
     <string name="settings_delivery_reports_summary">भेजे गए संदेश डिलीवर होने पर पुष्टि करें</string>
@@ -412,7 +412,7 @@
     <string name="notification_action_share_otp">OTP शेयर करें</string>
     <string name="swipe_action_none">कुछ न करें</string>
     <string name="swipe_action_toggle_read">पढ़ा/अपठित बदलें</string>
-    <string name="settings_sort_again">इनबॉक्स फिर से सॉर्ट करें</string>
+    <string name="settings_sort_again">संदेश फिर से सॉर्ट करें</string>
     <string name="settings_sort_again_summary">सभी संदेशों को फिर से वर्गीकृत करें और फ़ाइनेंस व अलर्ट रीफ़्रेश करें</string>
     <string name="settings_sort_confirm">सभी संदेश वर्तमान नियमों से फिर से वर्गीकृत किए जाएंगे, और फ़ाइनेंस लेन-देन व अलर्ट रीफ़्रेश होंगे। आपके नोट और कार्ड सीमाएं बने रहेंगे। इसमें थोड़ा समय लग सकता है।</string>
     <string name="settings_sort_go">सॉर्ट करें</string>
@@ -467,7 +467,7 @@
     <string name="settings_finance_currency">मुद्रा</string>
     <string name="settings_finance_currency_auto">स्वचालित</string>
     <string name="settings_finance_currency_auto_summary">हर संदेश से, नहीं तो आपके SIM या डिवाइस के क्षेत्र से</string>
-    <string name="settings_finance_currency_forced_summary">बिना स्पष्ट मुद्रा वाली राशियां %1$s मानी जाती हैं। पुराने संदेश फिर से पढ़ने के लिए इनबॉक्स फिर से सॉर्ट करें इस्तेमाल करें।</string>
+    <string name="settings_finance_currency_forced_summary">बिना स्पष्ट मुद्रा वाली राशियां %1$s मानी जाती हैं। पुराने संदेश फिर से पढ़ने के लिए संदेश फिर से सॉर्ट करें इस्तेमाल करें।</string>
     <string name="settings_source_code">सोर्स कोड</string>
     <string name="settings_source_code_summary">GitHub पर प्रोजेक्ट देखें</string>
     <string name="settings_section_support">सहयोग</string>

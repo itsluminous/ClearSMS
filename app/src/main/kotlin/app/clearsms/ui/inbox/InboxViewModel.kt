@@ -469,7 +469,7 @@ class InboxViewModel
 
         // Deliberately no refresh()/recategorize entry point here: the inbox
         // pull-to-refresh gesture was removed because a full inline
-        // recategorization hung the UI. Settings → Sort inbox again runs the
+        // recategorization hung the UI. Settings → Messages → Sort messages again runs the
         // same recategorization in a WorkManager worker with progress.
 
         fun markRead(

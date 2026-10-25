@@ -27,7 +27,7 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
 
 /**
- * Manual "Sort inbox again" re-categorization over the whole database.
+ * Manual "Sort messages again" re-categorization over the whole database.
  *
  * Mirrors [InitialSyncWorker]'s durability model - unique work with KEEP (a
  * second tap while one is running is a no-op), expedited with a foreground
