@@ -26,14 +26,14 @@ class DiagFieldRedactionTest {
             factories.map {
                 it.name
             },
-        ).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender", "mime", "packageName")
+        ).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender", "mime", "packageName", "host")
         factories.forEach { factory ->
             // Skip the receiver (Companion) parameter.
             val params = factory.parameters.drop(1)
             val stringParams = params.filter { it.type.jvmErasure == String::class }
             when (factory.name) {
-                // The four validated string inputs take exactly one String: the value itself.
-                "sender", "ruleId", "mime", "packageName" -> {
+                // The five validated string inputs take exactly one String: the value itself.
+                "sender", "ruleId", "mime", "packageName", "host" -> {
                     assertThat(params).hasSize(1)
                 }
 
@@ -160,6 +160,38 @@ class DiagFieldRedactionTest {
             "a." + "b".repeat(260),
         ).forEach {
             assertWithMessage(it).that(render(DiagField.packageName(it))).contains("package=[dropped]")
+        }
+    }
+
+    @Test
+    fun `host names keep a bare carrier host and drop everything else`() {
+        // Issue #135: the MMSC host out of a notification's content location
+        // is what tells a wrong route from a wrong path - and it is carrier
+        // infrastructure, never the message's identity.
+        assertThat(render(DiagField.host("mms.vtext.com"))).contains("host=mms.vtext.com")
+        assertThat(render(DiagField.host("MMSC.Example.NET"))).contains("host=mmsc.example.net")
+        assertThat(render(DiagField.host("10.1.2.3"))).contains("host=10.1.2.3")
+        assertThat(render(DiagField.host("mmsc"))).contains("host=mmsc")
+        assertThat(render(DiagField.host(null))).contains("host=null")
+        // A URL, a path, a query, a token, a body or a number with its
+        // punctuation is not a host name and never travels.
+        listOf(
+            "http://mms.vtext.com/servlets/mms?message-id=abc",
+            "mms.vtext.com/servlets/mms",
+            "mms.vtext.com:8080",
+            "servlets/mms?message-id=abc",
+            "message-id=abc",
+            "user@mms.vtext.com",
+            "+1 555 123 4567",
+            "Your OTP is 4321",
+            "-mms.vtext.com",
+            "mms..vtext.com",
+            "mms_c.vtext.com",
+            "",
+            "a".repeat(64) + ".com",
+            "abc.".repeat(70) + "com",
+        ).forEach {
+            assertWithMessage(it).that(render(DiagField.host(it))).contains("host=[dropped]")
         }
     }
 

@@ -26,8 +26,11 @@ import java.io.File
  * carrier messaging service first - then to the AOSP fallbacks, each
  * attempt is logged by package name, the start line counts them, and the
  * counts plus the granted names ride the result intent so the receiver's
- * failure line can repeat them. The carrier's content location (a URL with
- * a per-message token) never reaches the log.
+ * failure line can repeat them. The retrieve rides the SmsManager for the
+ * SIM the notification arrived on, and the start line carries the SHAPE
+ * of the content location - host, length, query, non-ASCII - while the
+ * URL itself (a per-message token in its path or query) never reaches
+ * the log.
  */
 @RunWith(RobolectricTestRunner::class)
 class SystemMmsDownloaderTest {
@@ -36,6 +39,8 @@ class SystemMmsDownloaderTest {
     private var logStart = 0L
 
     private val location = "http://mmsc.example.net/mms/wapenc?token=SECRET-TOKEN-4242"
+
+    private fun defaultManager() = shadowOf(context.getSystemService(SmsManager::class.java))
 
     @Before
     fun setUp() {
@@ -77,7 +82,7 @@ class SystemMmsDownloaderTest {
     fun `the write grant reaches the resolved carrier service before the AOSP fallbacks, and each is named`() {
         installCarrierService("com.verizon.messaging.service")
 
-        downloader().download(messageId = 77L, contentLocation = location, attempt = 0)
+        downloader().download(messageId = 77L, contentLocation = location, attempt = 0, subscriptionId = null)
 
         val grants = log().lines().filter { "mms pdu grant" in it }
         assertThat(grants.map { it.substringAfter("package=").substringBefore(' ') })
@@ -90,13 +95,14 @@ class SystemMmsDownloaderTest {
         assertThat(grants.single { "com.verizon.messaging.service" in it }).contains("resolved=true")
         val started = log().lines().single { "mms download started" in it }
         assertThat(started).containsMatch("message=77 attempt=0 grantsAttempted=3 grantsLanded=\\d")
+        assertThat(started).contains("defaultSubscription=true")
     }
 
     @Test
     fun `the platform gets the staging URI and a result intent carrying what the grant reached`() {
         installCarrierService("com.verizon.messaging.service")
 
-        downloader().download(messageId = 78L, contentLocation = location, attempt = 1)
+        downloader().download(messageId = 78L, contentLocation = location, attempt = 1, subscriptionId = null)
 
         val params = shadowOf(context.getSystemService(SmsManager::class.java)).lastDownloadedMultimediaMessageParams
         assertThat(params).isNotNull()
@@ -117,7 +123,7 @@ class SystemMmsDownloaderTest {
 
     @Test
     fun `a missing package is a no-op - the download still starts with the fallbacks alone`() {
-        downloader().download(messageId = 79L, contentLocation = location, attempt = 0)
+        downloader().download(messageId = 79L, contentLocation = location, attempt = 0, subscriptionId = null)
 
         val grants = log().lines().filter { "mms pdu grant" in it }
         assertThat(grants.map { it.substringAfter("package=").substringBefore(' ') })
@@ -129,12 +135,42 @@ class SystemMmsDownloaderTest {
     }
 
     @Test
-    fun `the content location never reaches the log`() {
-        downloader().download(messageId = 80L, contentLocation = location, attempt = 0)
+    fun `the start line carries the URL's shape - host, length, query, non-ASCII - and nothing else of it`() {
+        downloader().download(messageId = 80L, contentLocation = location, attempt = 0, subscriptionId = null)
 
         val log = log()
+        val started = log.lines().single { "mms download started" in it }
+        // The MMSC host is carrier infrastructure and is what tells a wrong
+        // route from a wrong path; the rest of the URL is reduced to numbers.
+        assertThat(started).contains("host=mmsc.example.net")
+        assertThat(started).contains("urlLength=${location.length}")
+        assertThat(started).contains("urlHasQuery=true")
+        assertThat(started).contains("urlNonAscii=false")
+        // Never the path, the query or the token - they identify the message.
         assertThat(log).doesNotContain("SECRET-TOKEN")
-        assertThat(log).doesNotContain("mmsc.example.net")
+        assertThat(log).doesNotContain("wapenc")
+        assertThat(log).doesNotContain("token=")
         assertThat(log).doesNotContain("80.pdu")
+    }
+
+    @Test
+    fun `a notified SIM downloads on its own SmsManager, never the default one`() {
+        downloader().download(messageId = 81L, contentLocation = location, attempt = 0, subscriptionId = 3)
+
+        // The default manager saw nothing: the call went to the manager
+        // created for subscription 3 (the one the send path would use).
+        assertThat(defaultManager().lastDownloadedMultimediaMessageParams).isNull()
+        assertThat(log().lines().single { "mms download started" in it }).contains("defaultSubscription=false")
+        assertThat(log()).doesNotContain("start failed")
+        assertThat(store.stagingFile(81L).exists()).isTrue()
+    }
+
+    @Test
+    fun `the result intent names the subscription the retrieve rode`() {
+        downloader().download(messageId = 82L, contentLocation = location, attempt = 0, subscriptionId = null)
+
+        val result = shadowOf(defaultManager().lastDownloadedMultimediaMessageParams!!.downloadedIntent).savedIntent
+        assertThat(result.hasExtra(MmsDownloadReceiver.EXTRA_SUBSCRIPTION_ID)).isTrue()
+        assertThat(MmsDownloadReceiver.subscriptionIdOf(result)).isNull()
     }
 }

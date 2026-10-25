@@ -58,6 +58,62 @@ class MmsNotificationParserTest {
         assertThat(parsed!!.sender).isNull()
     }
 
+    /** A notification whose Content-Location is the given raw octets (NUL appended). */
+    private fun notificationWithRawLocation(raw: ByteArray): ByteArray =
+        byteArrayOf(
+            MmsPduFixtures.H_MESSAGE_TYPE.toByte(),
+            MmsPduFixtures.TYPE_NOTIFICATION_IND.toByte(),
+        ) +
+            byteArrayOf(MmsPduFixtures.H_TRANSACTION_ID.toByte()) + MmsPduFixtures.text("T7") +
+            byteArrayOf(MmsPduFixtures.H_CONTENT_LOCATION.toByte()) + raw + byteArrayOf(0)
+
+    @Test
+    fun `a quoted content location - the WSP Quote octet - is read without the quote`() {
+        // OMA-TS-MMS-ENC 7.3.10: Content-location-value = Uri-value =
+        // Text-string; WAP-230-WSP 8.4.2.1: Text-string = [Quote] *TEXT
+        // End-of-string, Quote = <Octet 127>. The quote is not content.
+        val pdu = notificationWithRawLocation(byteArrayOf(0x7F) + "http://mmsc.example.com/msg/9".toByteArray(Charsets.US_ASCII))
+
+        assertThat(MmsNotificationParser.parse(pdu)!!.contentLocation).isEqualTo("http://mmsc.example.com/msg/9")
+    }
+
+    @Test
+    fun `high octets in a content location decode as UTF-8 like the platform's own parser, not as U+FFFD`() {
+        // Not a legal RFC 2616 URI, but "service user MAY use a different
+        // format" (MMS-ENC 7.3.10) and the platform's PduParser keeps every
+        // octet 128..255 and decodes with the default charset (UTF-8). A
+        // reader that decoded US-ASCII handed the platform a different URL
+        // from the one every other SMS app would hand it.
+        val raw = "http://mmsc.example.com/msg/caf\u00e9".toByteArray(Charsets.UTF_8)
+
+        val parsed = MmsNotificationParser.parse(notificationWithRawLocation(raw))!!
+
+        assertThat(parsed.contentLocation).isEqualTo("http://mmsc.example.com/msg/caf\u00e9")
+        assertThat(parsed.contentLocation).doesNotContain("\uFFFD")
+        assertThat(MmsUrlShape.of(parsed.contentLocation).nonAscii).isTrue()
+    }
+
+    @Test
+    fun `control octets inside a content location are dropped, as the platform drops them`() {
+        // RFC 2616 TEXT excludes CTLs; the platform's getWapString skips them
+        // (keeping HT/CR/LF). A stray 0x01 or a mid-string 0x7F must not
+        // survive into the URL handed to the platform.
+        val raw = "http://mmsc.example.com/\u0001ms\u007Fg/3".toByteArray(Charsets.ISO_8859_1)
+
+        val parsed = MmsNotificationParser.parse(notificationWithRawLocation(raw))!!
+
+        assertThat(parsed.contentLocation).isEqualTo("http://mmsc.example.com/msg/3")
+    }
+
+    @Test
+    fun `a plain ASCII content location is byte-for-byte what the carrier sent`() {
+        // The legal shape (RFC 2616 URI): the common case, and the one the
+        // other encodings must reduce to.
+        val url = "http://mms.example.net:8004/servlets/mms?message-id=aBc-123_x%2F&t=1"
+
+        assertThat(MmsNotificationParser.parse(MmsPduFixtures.notificationInd(contentLocation = url))!!.contentLocation).isEqualTo(url)
+    }
+
     @Test
     fun `truncated pdu returns null instead of throwing`() {
         val full = MmsPduFixtures.notificationInd()

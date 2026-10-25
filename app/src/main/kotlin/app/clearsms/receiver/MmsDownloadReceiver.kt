@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
 import app.clearsms.data.db.MessageDao
 import app.clearsms.di.ApplicationScope
 import app.clearsms.diagnostics.Diag
@@ -34,8 +35,10 @@ import javax.inject.Inject
  * and the HTTP status the platform attaches to an MMSC refusal - the same
  * treatment the send path gets, since a user who cannot send may not be
  * able to download either. A failure also carries the radio conditions at
- * that instant ([MmsRadioConditions], the send path's probe) and what the
- * PDU write grant reached (count and package names, forwarded by
+ * that instant ([MmsRadioConditions], the send path's probe, measured on
+ * the SIM the retrieve rode - [EXTRA_SUBSCRIPTION_ID], so `slot` names
+ * the notified SIM rather than 0 for "unknown") and what the PDU write
+ * grant reached (count and package names, forwarded by
  * [app.clearsms.mms.SystemMmsDownloader] on the result intent): issue
  * #135 was undiagnosable from the code alone.
  */
@@ -61,7 +64,8 @@ class MmsDownloadReceiver : BroadcastReceiver() {
         val messageId = intent.getLongExtra(EXTRA_MESSAGE_ID, -1L)
         if (messageId < 0) return
         val attempt = intent.getIntExtra(EXTRA_ATTEMPT, 0)
-        val report = MmsDownloadReport.of(intent, resultCode, attempt, conditions.probe(subscriptionId = null))
+        val subscriptionId = subscriptionIdOf(intent)
+        val report = MmsDownloadReport.of(intent, resultCode, attempt, conditions.probe(subscriptionId))
         report.log(messageId)
         val succeeded = report.succeeded
         val pendingResult = goAsync()
@@ -71,6 +75,7 @@ class MmsDownloadReceiver : BroadcastReceiver() {
                     messageId = messageId,
                     succeeded = succeeded,
                     attempt = attempt,
+                    subscriptionId = subscriptionId,
                     contentLocation = { messageDao.getById(messageId)?.mmsContentLocation },
                 )
             } catch (e: Exception) {
@@ -90,6 +95,19 @@ class MmsDownloadReceiver : BroadcastReceiver() {
 
         /** Set when the download could not even be started (no result code exists). */
         const val EXTRA_START_FAILED = "app.clearsms.mms.START_FAILED"
+
+        /**
+         * The subscription the retrieve was handed over on;
+         * [SubscriptionManager.INVALID_SUBSCRIPTION_ID] for the system
+         * default - the send path's convention ([MmsSentReceiver.EXTRA_SUBSCRIPTION_ID]).
+         */
+        const val EXTRA_SUBSCRIPTION_ID = "app.clearsms.mms.SUBSCRIPTION_ID"
+
+        /** The subscription on the result intent, or null for the system default / an older intent. */
+        fun subscriptionIdOf(intent: Intent): Int? =
+            intent
+                .getIntExtra(EXTRA_SUBSCRIPTION_ID, SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
 
         /** How many packages the PDU write grant was attempted for (resolved + fallbacks). */
         const val EXTRA_GRANTS_ATTEMPTED = "app.clearsms.mms.GRANTS_ATTEMPTED"
@@ -174,8 +192,8 @@ data class MmsDownloadReport(
     companion object {
         /**
          * Builds the report from the result intent. [conditions] is the
-         * radio as probed at receipt (the download rides the system-default
-         * SmsManager, so the default SMS subscription is the one measured).
+         * radio as probed at receipt, on the subscription the retrieve rode
+         * (the system default SMS subscription when none was recorded).
          */
         fun of(
             intent: Intent,

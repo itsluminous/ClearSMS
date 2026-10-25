@@ -33,12 +33,15 @@ class MmsInbound
         private val incomingMessageRouter: IncomingMessageRouter,
     ) {
         /**
-         * Handles an `m-notification-ind` push. @return the stored pending
-         * row's id, or null when the PDU did not parse (dropped).
+         * Handles an `m-notification-ind` push that arrived on
+         * [subscriptionId] (null = unknown / single SIM; the retrieve then
+         * rides the system default). @return the stored pending row's id, or
+         * null when the PDU did not parse (dropped).
          */
         suspend fun onNotification(
             pdu: ByteArray,
             timestampMs: Long = System.currentTimeMillis(),
+            subscriptionId: Int? = null,
         ): Long? {
             val notification = MmsNotificationParser.parse(pdu, nowMs = timestampMs) ?: return null
             // The notification names the sender (or defers it with the
@@ -49,6 +52,7 @@ class MmsInbound
                 "mms notification parsed",
                 flag("senderKnown", !notification.sender.isNullOrEmpty()),
                 count("declaredBytes", notification.messageSizeBytes ?: -1L),
+                flag("sim", subscriptionId != null),
             )
             val entity =
                 messageRepository.insertMmsNotification(
@@ -58,16 +62,25 @@ class MmsInbound
                     timestampMs = timestampMs,
                     transactionId = notification.transactionId,
                     contentLocation = notification.contentLocation,
+                    subscriptionId = subscriptionId,
                 )
-            downloader.download(entity.id, notification.contentLocation, attempt = 0)
+            // The retrieve rides the SIM the notification arrived on (issue
+            // #135: the download once used the default manager while the
+            // send path chose its SIM - the same drift as the grant bug).
+            downloader.download(entity.id, notification.contentLocation, attempt = 0, subscriptionId = subscriptionId)
             return entity.id
         }
 
-        /** Handles the platform's download result for [messageId]. */
+        /**
+         * Handles the platform's download result for [messageId];
+         * [subscriptionId] is the SIM that attempt rode, and the one retry
+         * rides it again.
+         */
         suspend fun onDownloadResult(
             messageId: Long,
             succeeded: Boolean,
             attempt: Int,
+            subscriptionId: Int? = null,
             contentLocation: suspend () -> String?,
         ) {
             if (succeeded) {
@@ -87,7 +100,7 @@ class MmsInbound
             )
             if (retrying) {
                 // One transient-failure retry, then give up visibly.
-                downloader.download(messageId, location!!, attempt = attempt + 1)
+                downloader.download(messageId, location!!, attempt = attempt + 1, subscriptionId = subscriptionId)
             } else {
                 messageRepository.markMmsFailed(messageId)
             }
@@ -109,7 +122,8 @@ class MmsInbound
             }
             // A retry burns the single automatic retry too: attempt starts
             // at the last slot so the next failure goes straight to FAILED.
-            downloader.download(messageId, location, attempt = MAX_ATTEMPTS - 1)
+            // The row remembers the SIM the notification arrived on.
+            downloader.download(messageId, location, attempt = MAX_ATTEMPTS - 1, subscriptionId = row.subscriptionId)
         }
 
         private suspend fun complete(messageId: Long) {

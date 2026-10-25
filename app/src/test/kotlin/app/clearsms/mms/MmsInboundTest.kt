@@ -60,12 +60,17 @@ class MmsInboundTest {
     private class FakeDownloader : MmsDownloader {
         val calls = mutableListOf<Triple<Long, String, Int>>()
 
+        /** The subscription each call asked for, in call order. */
+        val subscriptions = mutableListOf<Int?>()
+
         override fun download(
             messageId: Long,
             contentLocation: String,
             attempt: Int,
+            subscriptionId: Int?,
         ) {
             calls += Triple(messageId, contentLocation, attempt)
+            subscriptions += subscriptionId
         }
     }
 
@@ -161,6 +166,46 @@ class MmsInboundTest {
             assertThat(row.mmsStatus).isEqualTo(MmsStatus.PENDING)
             assertThat(row.sender).isEqualTo("+15551234567")
             assertThat(downloader.calls).containsExactly(Triple(id, "http://mmsc.example.com/msg/1", 0)).inOrder()
+        }
+
+    @Test
+    fun `the download rides the SIM the notification arrived on, and the row remembers it`() =
+        runBlocking {
+            val id = inbound.onNotification(MmsPduFixtures.notificationInd(), subscriptionId = 7)!!
+
+            // Issue #135: the retrieve once used the default SmsManager
+            // whatever SIM was notified - the send path never did.
+            assertThat(downloader.subscriptions).containsExactly(7)
+            assertThat(db.messageDao().getById(id)!!.subscriptionId).isEqualTo(7)
+
+            // The automatic retry rides the same SIM the failed attempt did...
+            inbound.onDownloadResult(
+                id,
+                succeeded = false,
+                attempt = 0,
+                subscriptionId = 7,
+                contentLocation = { "http://mmsc.example.com/msg/1" },
+            )
+            assertThat(downloader.subscriptions).containsExactly(7, 7).inOrder()
+
+            // ...and a user-tapped retry reads it back off the row.
+            inbound.onDownloadResult(
+                id,
+                succeeded = false,
+                attempt = 1,
+                subscriptionId = 7,
+                contentLocation = { "http://mmsc.example.com/msg/1" },
+            )
+            inbound.retry(id)
+            assertThat(downloader.subscriptions).containsExactly(7, 7, 7).inOrder()
+        }
+
+    @Test
+    fun `an unknown SIM downloads on the system default`() =
+        runBlocking {
+            assertThat(inbound.onNotification(MmsPduFixtures.notificationInd())).isNotNull()
+
+            assertThat(downloader.subscriptions).containsExactly(null).inOrder()
         }
 
     @Test

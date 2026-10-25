@@ -655,6 +655,7 @@ class MessageRepositoryImpl(
         timestampMs: Long,
         transactionId: String,
         contentLocation: String,
+        subscriptionId: Int?,
     ): MessageEntity {
         // No body exists yet, so no categorization/extraction/keyword pass
         // runs here - the downloaded content goes through the full pipeline
@@ -677,6 +678,9 @@ class MessageRepositoryImpl(
                     mmsStatus = MmsStatus.PENDING,
                     mmsTransactionId = transactionId,
                     mmsContentLocation = contentLocation,
+                    // The SIM the notification arrived on: the retry path
+                    // re-downloads on it, and the SIM tag shows in the thread.
+                    subscriptionId = subscriptionId,
                 )
             entity.copy(id = messageDao.insert(entity))
         }
