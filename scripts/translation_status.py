@@ -115,6 +115,13 @@ LANGUAGE_NAMES = {
     "vi": "Vietnamese",
     "zh-rCN": "Chinese (Simplified)",
     "zh-rTW": "Chinese (Traditional)",
+    # Hindi written in Latin script. Called "Hinglish" rather than the CLDR
+    # "Hindi (Latin)" because that is the register the translation is written
+    # in - English UI nouns on Hindi grammar, as Indians actually text - and
+    # the name Indian users recognise; "Hindi (Latin)" would suggest a mere
+    # romanisation of values-hi, which it deliberately is not. The Code column
+    # carries the BCP 47 identity.
+    "b+hi+Latn": "Hinglish",
     "b+sr+Latn": "Serbian (Latin)",
     "b+zh+Hans": "Chinese (Simplified)",
     "b+zh+Hant": "Chinese (Traditional)",

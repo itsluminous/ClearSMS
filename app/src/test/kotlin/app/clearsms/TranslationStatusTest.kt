@@ -236,6 +236,7 @@ class TranslationStatusTest {
                 "vi" to "Vietnamese",
                 "zh-rCN" to "Chinese (Simplified)",
                 "zh-rTW" to "Chinese (Traditional)",
+                "b+hi+Latn" to "Hinglish",
                 "b+sr+Latn" to "Serbian (Latin)",
                 "b+zh+Hans" to "Chinese (Simplified)",
                 "b+zh+Hant" to "Chinese (Traditional)",
