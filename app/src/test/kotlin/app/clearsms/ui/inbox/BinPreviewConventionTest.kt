@@ -58,7 +58,7 @@ class BinPreviewConventionTest {
             .contains("verticalScroll(rememberScrollState())")
         assertWithMessage("the body is shown in full, not the truncated row text")
             .that(source)
-            .contains("Text(text = message.body, style = MaterialTheme.typography.bodyMedium)")
+            .contains("Text(text = message.body, style = MaterialTheme.typography.bodyMedium.merge(MessageTextDirection.style))")
     }
 
     @Test
