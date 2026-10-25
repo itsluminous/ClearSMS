@@ -384,7 +384,7 @@
     <string name="rule_saved_needs_resort_title">Правило сохранено</string>
     <string name="rule_saved_show_me">Перейти</string>
     <string name="action_not_now">Не сейчас</string>
-    <string name="rule_saved_needs_resort_body">Это правило проверяет текст сообщения, а не конкретного отправителя, поэтому может подойти к любому сообщению. Чтобы применить его к уже имеющимся сообщениям, откройте «Настройки» и нажмите «Отсортировать входящие заново». К новым сообщениям оно применяется сразу.</string>
+    <string name="rule_saved_needs_resort_body">Это правило проверяет текст сообщения, а не конкретного отправителя, поэтому может подойти к любому сообщению. Чтобы применить его к уже имеющимся сообщениям, откройте «Настройки» и нажмите «Отсортировать сообщения заново». К новым сообщениям оно применяется сразу.</string>
     <string name="settings_section_notification">Уведомления</string>
     <string name="settings_delivery_reports">Отчёты о доставке SMS</string>
     <string name="settings_delivery_reports_summary">Подтверждать доставку отправленных сообщений</string>
@@ -418,7 +418,7 @@
     <string name="notification_action_share_otp">Поделиться OTP</string>
     <string name="swipe_action_none">Ничего не делать</string>
     <string name="swipe_action_toggle_read">Прочитано/не прочитано</string>
-    <string name="settings_sort_again">Отсортировать входящие заново</string>
+    <string name="settings_sort_again">Отсортировать сообщения заново</string>
     <string name="settings_sort_again_summary">Заново распределить все сообщения по категориям и обновить «Финансы» и «Оповещения»</string>
     <string name="settings_sort_confirm">Все сообщения будут заново распределены по категориям по текущим правилам, а транзакции в «Финансах» и «Оповещения» обновлены. Ваши заметки и лимиты карт сохранятся. Это может занять некоторое время.</string>
     <string name="settings_sort_go">Сортировать</string>
@@ -475,7 +475,7 @@
     <string name="settings_finance_currency">Валюта</string>
     <string name="settings_finance_currency_auto">Автоматически</string>
     <string name="settings_finance_currency_auto_summary">Из каждого сообщения, иначе по региону SIM или устройства</string>
-    <string name="settings_finance_currency_forced_summary">Суммы без явной валюты читаются как %1$s. Чтобы перечитать старые сообщения, используйте «Отсортировать входящие заново».</string>
+    <string name="settings_finance_currency_forced_summary">Суммы без явной валюты читаются как %1$s. Чтобы перечитать старые сообщения, используйте «Отсортировать сообщения заново».</string>
     <string name="settings_source_code">Исходный код</string>
     <string name="settings_source_code_summary">Открыть проект на GitHub</string>
     <string name="settings_section_support">Поддержать</string>

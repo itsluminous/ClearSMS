@@ -133,12 +133,23 @@ enum class SettingsItem(
     // ONE preference: the notification-action picker surfaces the same
     // switch as a nested control under its Call entry, writing this same
     // preference, because the catalog contract (SettingsCatalogTest) is
-    // that every row lives on exactly one screen. It sits in Messages, last,
-    // right after the message-action order: both are "what the buttons in
-    // a conversation do", and the Call button is a conversation control
-    // first (the notification action is its mirror), whereas Notifications
-    // holds what a notification SHOWS, not what a tap does.
+    // that every row lives on exactly one screen. It sits in Messages as the
+    // last PREFERENCE, right after the message-action order: both are "what
+    // the buttons in a conversation do", and the Call button is a
+    // conversation control first (the notification action is its mirror),
+    // whereas Notifications holds what a notification SHOWS, not what a tap
+    // does.
     DIRECT_CALL(SettingsSection.MESSAGES, R.string.settings_direct_call),
+
+    // Sort messages again: re-runs categorisation and extraction over every
+    // stored message. It lived in Inbox, but it re-reads MESSAGES - the
+    // Finance and Alerts tabs change with it as much as the Inbox does, and
+    // the Finance currency override points at it - so Messages is the honest
+    // home. Last in the block, after every preference: a one-shot maintenance
+    // ACTION (like Clear older OTPs closes the OTP block), not a setting you
+    // tune, and the only Messages row with a confirmation dialog and a
+    // progress banner.
+    SORT_AGAIN(SettingsSection.MESSAGES, R.string.settings_sort_again),
     THEME(SettingsSection.APPEARANCE, R.string.settings_theme),
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),
     SHOW_RICH_AVATARS(SettingsSection.APPEARANCE, R.string.settings_show_rich_avatars),
@@ -166,7 +177,6 @@ enum class SettingsItem(
     SWIPE_RIGHT(SettingsSection.INBOX, R.string.settings_swipe_right),
     SWIPE_LEFT(SettingsSection.INBOX, R.string.settings_swipe_left),
     SWIPE_DEAD_ZONE(SettingsSection.INBOX, R.string.settings_swipe_dead_zone),
-    SORT_AGAIN(SettingsSection.INBOX, R.string.settings_sort_again),
     SHOW_FINANCE_TAB(SettingsSection.FINANCE, R.string.settings_show_finance_tab),
     FINANCE_PILL_ORDER(SettingsSection.FINANCE, R.string.settings_pill_order),
 

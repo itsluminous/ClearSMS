@@ -369,7 +369,7 @@ fun InboxScreen(
     ) { padding ->
         // Deliberately no pull-to-refresh: the gesture triggered a full
         // recategorization inline, which hung the UI on large inboxes.
-        // Re-sorting is available via Settings → Sort inbox again, which
+        // Re-sorting is available via Settings → Messages → Sort messages again, which
         // runs in a WorkManager worker with progress.
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             val emptyLoaded = items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0

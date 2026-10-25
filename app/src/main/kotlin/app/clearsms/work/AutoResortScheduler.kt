@@ -14,7 +14,7 @@ import javax.inject.Singleton
 /**
  * Enqueues the automatic post-update re-sort: after an app update ships new
  * rules/parsers, the whole database is re-categorized WITHOUT the user
- * having to remember Settings → Sort inbox again.
+ * having to remember Settings → Messages → Sort messages again.
  *
  * Trigger point: cold app start ([onAppStart], next to
  * [app.clearsms.data.repository.UndoManager.onAppStart] in the Application) -

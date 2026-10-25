@@ -1320,6 +1320,53 @@ private fun settingsRowEntries(
                     )
                 }
 
+                SettingsItem.SORT_AGAIN -> {
+                    val sortSummary = stringResource(R.string.settings_sort_again_summary)
+                    SettingsRowEntry(section, title, sortSummary) {
+                        val sort = state.sortProgress
+                        if (sort != null) {
+                            // Running: determinate inline progress with "x of y", re-trigger
+                            // disabled (row is not clickable), and a cancel affordance.
+                            ListItem(
+                                headlineContent = { Text(stringResource(R.string.settings_sort_running)) },
+                                supportingContent = {
+                                    Column {
+                                        LinearProgressIndicator(
+                                            progress = { if (sort.total > 0) sort.processed / sort.total.toFloat() else 0f },
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                        )
+                                        Text(
+                                            text =
+                                                stringResource(
+                                                    R.string.settings_sort_progress,
+                                                    sort.processed,
+                                                    sort.total,
+                                                ),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                                trailingContent = {
+                                    TextButton(onClick = viewModel::cancelSort) {
+                                        Text(stringResource(R.string.action_cancel))
+                                    }
+                                },
+                            )
+                        } else {
+                            // Same convention as "Clear older OTPs": one-shot
+                            // ACTION rows get a leading icon; preference and
+                            // navigation rows stay plain.
+                            ActionRow(
+                                icon = Icons.Outlined.Refresh,
+                                title = title,
+                                subtitle = sortSummary,
+                                onClick = { openDialog(SettingsDialog.SORT_CONFIRM) },
+                            )
+                        }
+                    }
+                }
+
                 SettingsItem.THEME -> {
                     row(section, title, themeLabel(state.theme)) { openDialog(SettingsDialog.THEME) }
                 }
@@ -1531,53 +1578,6 @@ private fun settingsRowEntries(
                 SettingsItem.SWIPE_DEAD_ZONE -> {
                     row(section, title, swipeDeadZoneSummary(state.swipeDeadZone)) {
                         openDialog(SettingsDialog.SWIPE_DEAD_ZONE)
-                    }
-                }
-
-                SettingsItem.SORT_AGAIN -> {
-                    val sortSummary = stringResource(R.string.settings_sort_again_summary)
-                    SettingsRowEntry(section, title, sortSummary) {
-                        val sort = state.sortProgress
-                        if (sort != null) {
-                            // Running: determinate inline progress with "x of y", re-trigger
-                            // disabled (row is not clickable), and a cancel affordance.
-                            ListItem(
-                                headlineContent = { Text(stringResource(R.string.settings_sort_running)) },
-                                supportingContent = {
-                                    Column {
-                                        LinearProgressIndicator(
-                                            progress = { if (sort.total > 0) sort.processed / sort.total.toFloat() else 0f },
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                        )
-                                        Text(
-                                            text =
-                                                stringResource(
-                                                    R.string.settings_sort_progress,
-                                                    sort.processed,
-                                                    sort.total,
-                                                ),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                },
-                                trailingContent = {
-                                    TextButton(onClick = viewModel::cancelSort) {
-                                        Text(stringResource(R.string.action_cancel))
-                                    }
-                                },
-                            )
-                        } else {
-                            // Same convention as "Clear older OTPs": one-shot
-                            // ACTION rows get a leading icon; preference and
-                            // navigation rows stay plain.
-                            ActionRow(
-                                icon = Icons.Outlined.Refresh,
-                                title = title,
-                                subtitle = sortSummary,
-                                onClick = { openDialog(SettingsDialog.SORT_CONFIRM) },
-                            )
-                        }
                     }
                 }
 

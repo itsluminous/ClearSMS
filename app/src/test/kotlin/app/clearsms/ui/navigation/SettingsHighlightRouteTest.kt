@@ -1,6 +1,7 @@
 package app.clearsms.ui.navigation
 
 import app.clearsms.ui.settings.SettingsItem
+import app.clearsms.ui.settings.SettingsSection
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
@@ -10,7 +11,7 @@ import java.io.File
 
 /**
  * Sending the user to a specific setting. A dialog that says "go to Settings
- * and tap Sort inbox again" is a worse instruction than simply taking them
+ * and tap Sort messages again" is a worse instruction than simply taking them
  * there, so the route carries which row to scroll to and flash - the same
  * gesture search uses when it opens a message.
  */
@@ -38,15 +39,23 @@ class SettingsHighlightRouteTest {
     fun `the rule wizard points at the sort row, through the one path resolver rather than a literal`() {
         val app = source("ui/navigation/ClearSmsApp.kt")
 
-        // "Sort inbox again" lives on the Inbox SUB-SCREEN since Settings was
-        // split, so the link must resolve through Routes.settingsPath (root,
-        // then sub-screen with the highlight) - a literal root route would
-        // land on Settings with nothing to flash.
+        // "Sort messages again" lives on the Messages SUB-SCREEN (it moved
+        // there from Inbox: it re-reads messages, not the Inbox list), so the
+        // link must resolve through Routes.settingsPath (root, then sub-screen
+        // with the highlight) - a literal root route would land on Settings
+        // with nothing to flash, and a literal section route would have kept
+        // pointing at Inbox after the move. Going through the resolver is
+        // what re-pointed the wizard's "tap Sort messages again" hint at
+        // Messages without the wizard changing.
         assertWithMessage("the wizard's hint must navigate to the highlighted setting via the resolver")
             .that(app)
             .contains("Routes.settingsPath(SettingsItem.SORT_AGAIN).forEach(navController::navigate)")
+        assertWithMessage("the wizard must never name the section itself - the catalog decides where the row lives")
+            .that(app)
+            .doesNotContain("settingsSection(SettingsSection.INBOX, SettingsItem.SORT_AGAIN")
+        assertThat(SettingsItem.SORT_AGAIN.section).isEqualTo(SettingsSection.MESSAGES)
         assertThat(Routes.settingsPath(SettingsItem.SORT_AGAIN))
-            .containsExactly("settings?highlight=", "settings/section/INBOX?highlight=SORT_AGAIN")
+            .containsExactly("settings?highlight=", "settings/section/MESSAGES?highlight=SORT_AGAIN")
             .inOrder()
         assertWithMessage("the wizard must be popped so Back does not return to it")
             .that(app.substringAfter("onOpenSortSetting = {").substringBefore("},"))

@@ -121,7 +121,7 @@ data class SettingsUiState(
     val busy: Boolean = false,
 )
 
-/** Progress of the manual "Sort inbox again" run, mirrored from WorkManager. */
+/** Progress of the manual "Sort messages again" run, mirrored from WorkManager. */
 data class SortProgress(
     val processed: Int,
     val total: Int,

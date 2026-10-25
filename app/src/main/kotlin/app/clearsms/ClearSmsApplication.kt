@@ -54,7 +54,7 @@ class ClearSmsApplication :
         // purges recycle-bin rows past their 30-day retention.
         undoManager.onAppStart()
         // First cold start of a new app version: re-sort the whole database
-        // with the updated rules automatically (Settings → Sort inbox again
+        // with the updated rules automatically (Settings → Messages → Sort messages again
         // without the user having to remember it).
         autoResortScheduler.onAppStart()
         // Folds legacy block records (the old ui-prefs mirror and per-row

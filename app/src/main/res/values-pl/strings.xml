@@ -384,7 +384,7 @@
     <string name="rule_saved_needs_resort_title">Reguła zapisana</string>
     <string name="rule_saved_show_me">Przejdź tam</string>
     <string name="action_not_now">Nie teraz</string>
-    <string name="rule_saved_needs_resort_body">Ta reguła dopasowuje treść wiadomości, a nie konkretnego nadawcę, więc może dotyczyć każdej wiadomości. Aby zastosować ją do wiadomości, które już masz, przejdź do Ustawień i dotknij "Posortuj skrzynkę ponownie". Nowe wiadomości korzystają z niej od razu.</string>
+    <string name="rule_saved_needs_resort_body">Ta reguła dopasowuje treść wiadomości, a nie konkretnego nadawcę, więc może dotyczyć każdej wiadomości. Aby zastosować ją do wiadomości, które już masz, przejdź do Ustawień i dotknij "Posortuj wiadomości ponownie". Nowe wiadomości korzystają z niej od razu.</string>
     <string name="settings_section_notification">Powiadomienia</string>
     <string name="settings_delivery_reports">Raporty dostarczenia SMS</string>
     <string name="settings_delivery_reports_summary">Potwierdzaj dostarczenie wysłanych wiadomości</string>
@@ -418,7 +418,7 @@
     <string name="notification_action_share_otp">Udostępnij OTP</string>
     <string name="swipe_action_none">Nic nie rób</string>
     <string name="swipe_action_toggle_read">Przeczytane/nieprzeczytane</string>
-    <string name="settings_sort_again">Posortuj skrzynkę ponownie</string>
+    <string name="settings_sort_again">Posortuj wiadomości ponownie</string>
     <string name="settings_sort_again_summary">Ponownie skategoryzuj wszystkie wiadomości i odśwież Finanse oraz Alerty</string>
     <string name="settings_sort_confirm">Wszystkie wiadomości zostaną ponownie skategoryzowane według bieżących reguł, a transakcje w Finansach i Alerty zostaną odświeżone. Twoje notatki i limity kart zostaną zachowane. To może chwilę potrwać.</string>
     <string name="settings_sort_go">Sortuj</string>
@@ -475,7 +475,7 @@
     <string name="settings_finance_currency">Waluta</string>
     <string name="settings_finance_currency_auto">Automatycznie</string>
     <string name="settings_finance_currency_auto_summary">Z każdej wiadomości, a w razie braku z regionu SIM lub urządzenia</string>
-    <string name="settings_finance_currency_forced_summary">Kwoty bez wyraźnej waluty są odczytywane jako %1$s. Użyj Posortuj skrzynkę ponownie, aby odczytać starsze wiadomości na nowo.</string>
+    <string name="settings_finance_currency_forced_summary">Kwoty bez wyraźnej waluty są odczytywane jako %1$s. Użyj Posortuj wiadomości ponownie, aby odczytać starsze wiadomości na nowo.</string>
     <string name="settings_source_code">Kod źródłowy</string>
     <string name="settings_source_code_summary">Zobacz projekt na GitHubie</string>
     <string name="settings_section_support">Wsparcie</string>

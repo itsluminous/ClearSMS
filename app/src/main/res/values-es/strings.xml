@@ -381,7 +381,7 @@
     <string name="rule_saved_needs_resort_title">Regla guardada</string>
     <string name="rule_saved_show_me">Ir allí</string>
     <string name="action_not_now">Ahora no</string>
-    <string name="rule_saved_needs_resort_body">Esta regla coincide con el texto del mensaje y no con un remitente concreto, así que podría aplicarse a cualquier mensaje. Para aplicarla a los mensajes que ya tiene, vaya a Ajustes y toque "Ordenar la bandeja de nuevo". Los mensajes nuevos la usan de inmediato.</string>
+    <string name="rule_saved_needs_resort_body">Esta regla coincide con el texto del mensaje y no con un remitente concreto, así que podría aplicarse a cualquier mensaje. Para aplicarla a los mensajes que ya tiene, vaya a Ajustes y toque "Ordenar los mensajes de nuevo". Los mensajes nuevos la usan de inmediato.</string>
     <string name="settings_section_notification">Notificaciones</string>
     <string name="settings_delivery_reports">Informes de entrega de SMS</string>
     <string name="settings_delivery_reports_summary">Confirmar cuando los mensajes enviados se entregan</string>
@@ -415,7 +415,7 @@
     <string name="notification_action_share_otp">Compartir OTP</string>
     <string name="swipe_action_none">No hacer nada</string>
     <string name="swipe_action_toggle_read">Marcar leído/no leído</string>
-    <string name="settings_sort_again">Ordenar la bandeja de nuevo</string>
+    <string name="settings_sort_again">Ordenar los mensajes de nuevo</string>
     <string name="settings_sort_again_summary">Volver a categorizar todos los mensajes y actualizar Finanzas y Alertas</string>
     <string name="settings_sort_confirm">Todos los mensajes se volverán a categorizar con las reglas actuales, y se actualizarán las transacciones de Finanzas y las Alertas. Sus notas y límites de tarjeta se conservan. Puede tardar un momento.</string>
     <string name="settings_sort_go">Ordenar</string>
@@ -471,7 +471,7 @@
     <string name="settings_finance_currency">Moneda</string>
     <string name="settings_finance_currency_auto">Automática</string>
     <string name="settings_finance_currency_auto_summary">De cada mensaje; si no, de su SIM o la región del dispositivo</string>
-    <string name="settings_finance_currency_forced_summary">Los importes sin moneda clara se leen como %1$s. Use Ordenar la bandeja de nuevo para releer los mensajes antiguos.</string>
+    <string name="settings_finance_currency_forced_summary">Los importes sin moneda clara se leen como %1$s. Use Ordenar los mensajes de nuevo para releer los mensajes antiguos.</string>
     <string name="settings_source_code">Código fuente</string>
     <string name="settings_source_code_summary">Ver el proyecto en GitHub</string>
     <string name="settings_section_support">Apoyo</string>

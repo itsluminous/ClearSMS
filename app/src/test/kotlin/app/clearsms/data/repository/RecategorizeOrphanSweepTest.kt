@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * "Sort inbox again" sweeps ORPHANED accounts: rule/parser evolution can
+ * "Sort messages again" sweeps ORPHANED accounts: rule/parser evolution can
  * stop a message from deriving its transaction, leaving an account row in
  * Finance with zero transactions and nothing refreshing it. After the full
  * pass, accounts the run never touched that own no transaction are deleted;
