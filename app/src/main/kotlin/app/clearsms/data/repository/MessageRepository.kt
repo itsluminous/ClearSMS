@@ -333,6 +333,7 @@ interface MessageRepository {
         timestampMs: Long,
         transactionId: String,
         contentLocation: String,
+        subscriptionId: Int? = null,
     ): MessageEntity = insertIncoming(sender, "", timestampMs)
 
     /**

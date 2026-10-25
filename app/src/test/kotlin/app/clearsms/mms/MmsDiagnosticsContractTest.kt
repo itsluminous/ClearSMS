@@ -84,6 +84,70 @@ class MmsDiagnosticsContractTest {
     }
 
     @Test
+    fun `send and download pick their SmsManager through ONE shared helper - the download never takes the default blindly`() {
+        // Issue #135, second drift: the send path chose the SmsManager for
+        // its subscription while the download path called the default one
+        // whatever SIM the notification arrived on. Both now go through
+        // smsManagerFor (MmsSizeBudget.kt), the single per-API-level rule.
+        val helper = source("mms/MmsSizeBudget.kt")
+        assertThat(helper).contains("internal fun smsManagerFor(")
+        assertThat(helper).contains("default.createForSubscriptionId(subscriptionId)")
+        assertThat(helper).contains("SmsManager.getSmsManagerForSubscriptionId(subscriptionId)")
+        val gateway = source("mms/MmsGateway.kt")
+        val downloader = source("mms/MmsDownloader.kt")
+        assertThat(gateway).contains("smsManagerFor(context, subscriptionId)")
+        assertThat(downloader).contains("smsManagerFor(context, subscriptionId).downloadMultimediaMessage(")
+        listOf("mms/MmsGateway.kt" to gateway, "mms/MmsDownloader.kt" to downloader).forEach { (path, text) ->
+            // Neither path builds its own manager or reaches for the default.
+            assertWithMessage(path).that(text).doesNotContain("getSystemService(SmsManager::class.java)")
+            assertWithMessage(path).that(text).doesNotContain("SmsManager.getDefault()")
+            assertWithMessage(path).that(text).doesNotContain("createForSubscriptionId")
+        }
+        // The downloader's contract carries the subscription, and every
+        // caller threads it: the notification's SIM, the retry's recorded SIM.
+        assertThat(
+            downloader,
+        ).containsMatch("""fun download\(\s*messageId: Long,\s*contentLocation: String,\s*attempt: Int,\s*subscriptionId: Int\?,\s*\)""")
+        val inbound = source("mms/MmsInbound.kt")
+        assertThat(
+            inbound,
+        ).contains("downloader.download(entity.id, notification.contentLocation, attempt = 0, subscriptionId = subscriptionId)")
+        assertThat(inbound).contains("downloader.download(messageId, location!!, attempt = attempt + 1, subscriptionId = subscriptionId)")
+        assertThat(
+            inbound,
+        ).contains("downloader.download(messageId, location, attempt = MAX_ATTEMPTS - 1, subscriptionId = row.subscriptionId)")
+        assertThat(inbound).contains("subscriptionId = subscriptionId,")
+        // The WAP push receiver reads the SIM the way the SMS receiver does.
+        val wap = source("receiver/MmsWapPushReceiver.kt")
+        assertThat(wap).contains("SmsReceiver.extractSubscriptionId { key, def -> intent.getIntExtra(key, def) }")
+        assertThat(wap).contains("mmsInbound.onNotification(pdu, subscriptionId = subscriptionId)")
+        // The result intent says which SIM it rode, the send path's convention.
+        assertThat(downloader).contains("MmsDownloadReceiver.EXTRA_SUBSCRIPTION_ID")
+        assertThat(downloader).contains("subscriptionId ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID")
+    }
+
+    @Test
+    fun `the download start line carries the URL's shape and never the URL`() {
+        // Issue #135: an MMSC that answers 404 within milliseconds of the
+        // notification means the host resolved and the path did not. The
+        // next report must say whether the URL we handed over was shaped
+        // like a URL - without carrying it (its path/query is the token).
+        val downloader = source("mms/MmsDownloader.kt")
+        assertThat(downloader).contains("val shape = MmsUrlShape.of(contentLocation)")
+        assertThat(downloader).contains("""host(shape.host)""")
+        assertThat(downloader).contains("""count("urlLength", shape.length)""")
+        assertThat(downloader).contains("""flag("urlHasQuery", shape.hasQuery)""")
+        assertThat(downloader).contains("""flag("urlNonAscii", shape.nonAscii)""")
+        assertThat(downloader).contains("""flag("defaultSubscription", subscriptionId == null)""")
+        // The URL itself never reaches a Diag call, in any file.
+        listOf(downloader, source("mms/MmsInbound.kt"), source("receiver/MmsDownloadReceiver.kt")).forEach {
+            assertThat(it).doesNotContainMatch("""Diag\.[diwe]\([^)]*contentLocation[^!]""")
+        }
+        // The host travels through its own validated factory - never a free string.
+        assertThat(source("diagnostics/DiagField.kt")).contains("fun host(value: String?): DiagField")
+    }
+
+    @Test
     fun `the gateway logs grants, staged file and carrier limit by name and count`() {
         val gateway = source("mms/MmsGateway.kt")
         assertThat(gateway).contains("PduGrant(")
@@ -153,7 +217,11 @@ class MmsDiagnosticsContractTest {
         assertThat(receiver).contains("SmsManager.EXTRA_MMS_HTTP_STATUS")
         // Issue #135: the failure line carries the same radio conditions the
         // send path records, probed through the SAME probe...
-        assertThat(receiver).contains("MmsDownloadReport.of(intent, resultCode, attempt, conditions.probe(subscriptionId = null))")
+        // ...on the SIM the retrieve rode (forwarded on the result intent),
+        // so `slot` names the notified SIM instead of 0 for "unknown".
+        assertThat(receiver).contains("val subscriptionId = subscriptionIdOf(intent)")
+        assertThat(receiver).contains("MmsDownloadReport.of(intent, resultCode, attempt, conditions.probe(subscriptionId))")
+        assertThat(receiver).doesNotContain("conditions.probe(subscriptionId = null)")
         assertThat(receiver).contains("lateinit var conditions: MmsRadioConditionsProbe")
         assertThat(receiver).contains("""label("network", TriState.of(conditions?.networkConnected))""")
         assertThat(receiver).contains("""label("cellular", TriState.of(conditions?.cellular))""")

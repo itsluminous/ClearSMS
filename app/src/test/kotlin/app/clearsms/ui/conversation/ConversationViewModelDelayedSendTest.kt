@@ -200,6 +200,7 @@ class ConversationViewModelDelayedSendTest {
                         messageId: Long,
                         contentLocation: String,
                         attempt: Int,
+                        subscriptionId: Int?,
                     ) = Unit
                 },
                 AttachmentStore(context),

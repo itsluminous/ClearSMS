@@ -99,9 +99,17 @@ internal class WspReader(
     }
 
     /**
-     * WSP text-string: bytes up to a NUL terminator, decoded as US-ASCII
-     * per the spec (a leading 0x7F quote byte is dropped). The terminator
-     * is consumed.
+     * WSP text-string: `[Quote] *TEXT End-of-string` (WAP-230-WSP 8.4.2.1).
+     * A leading Quote octet (0x7F, required only when the first TEXT octet
+     * is 128..255) is dropped; the NUL terminator is consumed.
+     *
+     * TEXT is any octet but a CTL (RFC 2616: 0..31 and 127, LWS excepted),
+     * and the spec names no charset for it, so the octets are decoded the
+     * way the platform's own `PduParser.getWapString` decodes them - CTL
+     * octets dropped, everything else kept and read as UTF-8 (identical to
+     * US-ASCII for a legal RFC 2616 URI) - so that a Content-Location is
+     * handed to the platform as the same string every other SMS app would
+     * hand it, rather than with each high octet replaced by U+FFFD.
      */
     fun readTextString(): String {
         if (peek() == 0x7F) skip(1)
@@ -109,8 +117,13 @@ internal class WspReader(
         while (readByte() != 0) {
             // advance to the NUL
         }
-        return String(data, start, position - 1 - start, Charsets.US_ASCII)
+        val raw = data.copyOfRange(start, position - 1)
+        val text = raw.filter { isText(it.toInt() and 0xFF) }.toByteArray()
+        return String(text, Charsets.UTF_8)
     }
+
+    /** RFC 2616 TEXT octet: not a CTL, except the LWS characters HT, LF and CR. */
+    private fun isText(octet: Int): Boolean = octet in 32..126 || octet >= 128 || octet == 9 || octet == 10 || octet == 13
 
     /**
      * WSP encoded-string-value: either a plain text-string, or a

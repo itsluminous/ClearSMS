@@ -51,14 +51,23 @@ class MmsWapPushReceiver : BroadcastReceiver() {
             Diag.w(TAG, "wap push without pdu", null, flag("hasSubscription", intent.hasExtra("subscription")))
             return
         }
+        // The SIM the push arrived on, stamped by the platform exactly as on
+        // SMS_DELIVER (same extras, same precedence): the retrieve rides it.
+        val subscriptionId = SmsReceiver.extractSubscriptionId { key, def -> intent.getIntExtra(key, def) }
         val pendingResult = goAsync()
         applicationScope.launch {
             try {
-                val stored = mmsInbound.onNotification(pdu)
+                val stored = mmsInbound.onNotification(pdu, subscriptionId = subscriptionId)
                 if (stored == null) {
                     Diag.w(TAG, "undecodable mms notification dropped", null, count("pduBytes", pdu.size))
                 } else {
-                    Diag.i(TAG, "mms notification accepted", id("message", stored), count("pduBytes", pdu.size))
+                    Diag.i(
+                        TAG,
+                        "mms notification accepted",
+                        id("message", stored),
+                        count("pduBytes", pdu.size),
+                        flag("sim", subscriptionId != null),
+                    )
                 }
             } catch (e: Exception) {
                 // A storage or download-start failure must never crash the
