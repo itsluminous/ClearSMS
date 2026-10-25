@@ -33,7 +33,17 @@ Copy the English files into a new directory whose name uses Android's
 | Russian | `values-ru` |
 | German | `values-de` |
 | Brazilian Portuguese | `values-pt-rBR` (region prefixed with `r`) |
+| Hinglish (shipped) | `values-b+hi+Latn` (BCP 47 form, `b+` prefix) |
 | Serbian in Latin script | `values-b+sr+Latn` (BCP 47 form, `b+` prefix) |
+
+The repository also carries Hindi in Latin script - Hinglish, the way Indians
+text: English UI nouns on Hindi grammar, not a respelling of `values-hi`. A
+script variant has no two-letter code, so its directory uses the BCP 47
+`b+<language>+<Script>` form, `values-b+hi+Latn` for the `hi-Latn` tag; the
+`b+` qualifier needs Android 7.0 (API 24), so on API 23 that locale falls back
+to English. The style rules for that register (which words stay English, fixed
+spellings, polite *aap* register) are summarised at the top of its
+`strings.xml`.
 
 The English strings are split by *whether they are translated*, not by
 feature. There are three files under `app/src/main/res/values/`, and you copy
