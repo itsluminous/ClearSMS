@@ -209,6 +209,24 @@ class MmsInboundTest {
         }
 
     @Test
+    fun `the content location reaches the downloader and the row byte-identically, query value included`() =
+        runBlocking {
+            // Issue #135, fourth round: a Verizon-shaped URL with a message
+            // id goes through the whole receive path - WAP push, parser,
+            // database row, download start, tapped retry off the row - and
+            // the SAME string must reach the platform at every hand-over.
+            val url = "http://10.1.2.3/servlets/mms?message-id=ABC123"
+            val id = inbound.onNotification(MmsPduFixtures.notificationInd(contentLocation = url))!!
+
+            assertThat(downloader.calls).containsExactly(Triple(id, url, 0))
+            assertThat(db.messageDao().getById(id)!!.mmsContentLocation).isEqualTo(url)
+
+            inbound.onDownloadResult(id, succeeded = false, attempt = 1, contentLocation = { url })
+            inbound.retry(id)
+            assertThat(downloader.calls.last()).isEqualTo(Triple(id, url, MmsInbound.MAX_ATTEMPTS - 1))
+        }
+
+    @Test
     fun `junk wap push is dropped without a row`() =
         runBlocking {
             assertThat(inbound.onNotification(byteArrayOf(1, 2, 3))).isNull()

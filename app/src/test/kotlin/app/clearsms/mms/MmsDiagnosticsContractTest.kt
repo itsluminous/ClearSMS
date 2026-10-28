@@ -139,6 +139,16 @@ class MmsDiagnosticsContractTest {
         assertThat(downloader).contains("""flag("urlHasQuery", shape.hasQuery)""")
         assertThat(downloader).contains("""flag("urlNonAscii", shape.nonAscii)""")
         assertThat(downloader).contains("""flag("defaultSubscription", subscriptionId == null)""")
+        // Fourth round: the path's masked outline and the query's parameter
+        // names with each value's LENGTH - `message-id(0)` settles whether
+        // the id is missing - through their own validated factories.
+        assertThat(downloader).contains("""urlMask(shape.mask)""")
+        assertThat(downloader).contains("""query(shape.query)""")
+        assertThat(source("diagnostics/DiagField.kt")).contains("fun urlMask(value: String?): DiagField")
+        assertThat(source("diagnostics/DiagField.kt")).contains("fun query(params: List<Pair<String?, Int>>?): DiagField")
+        // The shape never keeps a query VALUE: lengths only, and the mask alphabet has no letters.
+        assertThat(downloader).contains("val query: List<Pair<String?, Int>>?")
+        assertThat(downloader).doesNotContainMatch("""query\s*=\s*resource\.substringAfter\('\?'\)\s*,""")
         // The URL itself never reaches a Diag call, in any file.
         listOf(downloader, source("mms/MmsInbound.kt"), source("receiver/MmsDownloadReceiver.kt")).forEach {
             assertThat(it).doesNotContainMatch("""Diag\.[diwe]\([^)]*contentLocation[^!]""")

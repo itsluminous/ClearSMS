@@ -26,15 +26,37 @@ class DiagFieldRedactionTest {
             factories.map {
                 it.name
             },
-        ).containsExactly("count", "count", "flag", "id", "code", "label", "ruleId", "sender", "mime", "packageName", "host")
+        ).containsExactly(
+            "count",
+            "count",
+            "flag",
+            "id",
+            "code",
+            "label",
+            "ruleId",
+            "sender",
+            "mime",
+            "packageName",
+            "host",
+            "urlMask",
+            "query",
+        )
         factories.forEach { factory ->
             // Skip the receiver (Companion) parameter.
             val params = factory.parameters.drop(1)
             val stringParams = params.filter { it.type.jvmErasure == String::class }
             when (factory.name) {
-                // The five validated string inputs take exactly one String: the value itself.
-                "sender", "ruleId", "mime", "packageName", "host" -> {
+                // The six validated string inputs take exactly one String: the value itself.
+                "sender", "ruleId", "mime", "packageName", "host", "urlMask" -> {
                     assertThat(params).hasSize(1)
+                }
+
+                // The query takes (name, value LENGTH) pairs - no String can
+                // reach it as a value, only as a validated parameter name.
+                "query" -> {
+                    assertThat(params).hasSize(1)
+                    assertThat(stringParams).isEmpty()
+                    assertThat(params.single().type.jvmErasure).isEqualTo(List::class)
                 }
 
                 else -> {
@@ -193,6 +215,56 @@ class DiagFieldRedactionTest {
         ).forEach {
             assertWithMessage(it).that(render(DiagField.host(it))).contains("host=[dropped]")
         }
+    }
+
+    @Test
+    fun `a URL mask keeps only its own alphabet - a path's text can never travel`() {
+        // Issue #135: the path's outline tells `/servlets/mms` from `/mm1`
+        // without a character that could spell a message id.
+        assertThat(render(DiagField.urlMask("/xxxxxxxx/xxx"))).contains("urlMask=/xxxxxxxx/xxx")
+        assertThat(render(DiagField.urlMask("/xx#/xxx_##.xxx%~-"))).contains("urlMask=/xx#/xxx_##.xxx%~-")
+        assertThat(render(DiagField.urlMask(""))).contains("urlMask=empty")
+        assertThat(render(DiagField.urlMask(null))).contains("urlMask=null")
+        listOf(
+            "/servlets/mms",
+            "/xxxxxxxx/mms",
+            "/xxxx/ABC123",
+            "/xxxx/#####1",
+            "/xxxx?message-id=abc",
+            "x x",
+            "X",
+            "/" + "x".repeat(128),
+        ).forEach {
+            assertWithMessage(it).that(render(DiagField.urlMask(it))).contains("urlMask=[dropped]")
+        }
+    }
+
+    @Test
+    fun `a query renders parameter names and value lengths - the factory never sees a value`() {
+        // `message-id(0)` is the decisive datum of issue #135's fourth round.
+        assertThat(render(DiagField.query(listOf("message-id" to 0)))).contains("query=message-id(0)")
+        assertThat(render(DiagField.query(listOf("message-id" to 16)))).contains("query=message-id(16)")
+        assertThat(render(DiagField.query(listOf("id" to 16, "t" to 1, null to 4)))).contains("query=id(16)&t(1)&(4)")
+        assertThat(render(DiagField.query(listOf("Msg_Id.v2" to 3)))).contains("query=Msg_Id.v2(3)")
+        assertThat(render(DiagField.query(null))).contains("query=none")
+        assertThat(render(DiagField.query(emptyList()))).contains("query=empty")
+        assertThat(render(DiagField.query(listOf("k" to -1)))).contains("query=k(0)")
+        // A name that is an id in disguise, a number, a body, a space, too
+        // long or too many parameters: the name is dropped, the length kept.
+        listOf(
+            "0123456789abcdef",
+            "abc1234567",
+            "9876543210",
+            "message id",
+            "message-id=abc",
+            "a&b",
+            "x".repeat(33),
+            "-leading",
+            "",
+        ).forEach {
+            assertWithMessage(it).that(render(DiagField.query(listOf(it to 7)))).contains("query=[dropped](7)")
+        }
+        assertThat(render(DiagField.query(List(17) { "p$it" to 1 }))).contains("query=[dropped]")
     }
 
     @Test
