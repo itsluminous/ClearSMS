@@ -146,11 +146,33 @@ class SystemMmsDownloaderTest {
         assertThat(started).contains("urlLength=${location.length}")
         assertThat(started).contains("urlHasQuery=true")
         assertThat(started).contains("urlNonAscii=false")
+        // The path as an outline and the query as names with value lengths:
+        // `/mms/wapenc` and `token=SECRET-TOKEN-4242` become these two.
+        assertThat(started).contains("urlMask=/xxx/xxxxxx")
+        assertThat(started).contains("query=token(17)")
         // Never the path, the query or the token - they identify the message.
         assertThat(log).doesNotContain("SECRET-TOKEN")
         assertThat(log).doesNotContain("wapenc")
         assertThat(log).doesNotContain("token=")
         assertThat(log).doesNotContain("80.pdu")
+    }
+
+    @Test
+    fun `an empty message id renders as message-id(0) - the datum that settles issue 135's fourth round`() {
+        downloader().download(
+            messageId = 81L,
+            contentLocation = "http://10.10.200.30/servlets/mms?message-id=",
+            attempt = 0,
+            subscriptionId = null,
+        )
+
+        val started = log().lines().single { "mms download started" in it }
+        assertThat(started).contains("host=10.10.200.30")
+        assertThat(started).contains("urlLength=44")
+        assertThat(started).contains("urlHasQuery=true")
+        assertThat(started).contains("urlMask=/xxxxxxxx/xxx")
+        assertThat(started).contains("query=message-id(0)")
+        assertThat(started).doesNotContain("servlets")
     }
 
     @Test

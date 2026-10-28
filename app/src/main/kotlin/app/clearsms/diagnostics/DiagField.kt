@@ -8,9 +8,10 @@ package app.clearsms.diagnostics
  * that accepts an arbitrary [String]. Counts, booleans, database row ids,
  * platform result codes and enum names cannot carry a message body, a phone
  * number, a contact name, an OTP, an account tail, a VPA or an amount. The
- * string-shaped inputs - [sender], [ruleId], [mime], [packageName] and
- * [host] - are validated against the narrow shape they are meant to carry
- * and replaced by a placeholder when the value does not fit.
+ * string-shaped inputs - [sender], [ruleId], [mime], [packageName], [host],
+ * [urlMask] and the parameter names of [query] - are validated against the
+ * narrow shape they are meant to carry and replaced by a placeholder when
+ * the value does not fit.
  *
  * The source-level twin of this guard is `DiagnosticLogConventionTest`,
  * which fails the build when a `Diag.*` call site names a sensitive value
@@ -153,11 +154,77 @@ class DiagField private constructor(
                 },
             )
 
+        /**
+         * The masked outline of a URL path (`/servlets/mms` as
+         * `/xxxxxxxx/xxx`): letters are `x`, digits `#`, the separators
+         * `/ . - _ ~` themselves and anything else `%`. The alphabet is the
+         * guard - a value holding any other character (a real letter, a
+         * digit, a space) is not a mask and is dropped, so the path's TEXT
+         * can never travel through here, only its length and segmentation.
+         */
+        fun urlMask(value: String?): DiagField =
+            DiagField(
+                "urlMask",
+                when {
+                    value == null -> "null"
+                    value.isEmpty() -> "empty"
+                    URL_MASK.matches(value) && value.length <= MAX_URL_MASK_LENGTH -> value
+                    else -> DROPPED
+                },
+            )
+
+        /**
+         * A URL query reduced to its parameter NAMES and the LENGTH of each
+         * value, in order: `message-id(0)`, `message-id(16)&t(1)`. Names are
+         * protocol (the MMSC's own vocabulary), lengths are not identifying;
+         * the VALUES, which name a message and so a correspondent, are never
+         * accepted - the factory takes lengths, not text. A null name (a
+         * parameter without `=`, or an empty one) renders as `(n)`; a name
+         * outside the narrow `token` alphabet, longer than 32 characters or
+         * carrying seven or more digits (an id masquerading as a name) is
+         * replaced by [DROPPED]. Null means the URL had no `?` at all
+         * (`none`); an empty list means the `?` was followed by nothing.
+         */
+        fun query(params: List<Pair<String?, Int>>?): DiagField =
+            DiagField(
+                "query",
+                when {
+                    params == null -> {
+                        "none"
+                    }
+
+                    params.isEmpty() -> {
+                        "empty"
+                    }
+
+                    params.size > MAX_QUERY_PARAMS -> {
+                        DROPPED
+                    }
+
+                    else -> {
+                        params.joinToString("&") { (name, length) ->
+                            val shown =
+                                when {
+                                    name == null -> ""
+                                    QUERY_NAME.matches(name) && name.count { it.isDigit() } <= MAX_QUERY_NAME_DIGITS -> name
+                                    else -> DROPPED
+                                }
+                            "$shown(${length.coerceAtLeast(0)})"
+                        }
+                    }
+                },
+            )
+
         private val RULE_ID = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
         private val PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
         private const val MAX_PACKAGE_NAME_LENGTH = 255
         private val HOST_NAME = Regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
         private const val MAX_HOST_NAME_LENGTH = 253
+        private val URL_MASK = Regex("^[x#/._~%-]+$")
+        private const val MAX_URL_MASK_LENGTH = 128
+        private val QUERY_NAME = Regex("^[A-Za-z][A-Za-z0-9_.-]{0,31}$")
+        private const val MAX_QUERY_NAME_DIGITS = 6
+        private const val MAX_QUERY_PARAMS = 16
         private val MIME = Regex("^[a-z]{1,11}/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$")
         private val MIME_TOP_LEVEL =
             setOf("application", "audio", "font", "image", "message", "model", "multipart", "text", "video")
