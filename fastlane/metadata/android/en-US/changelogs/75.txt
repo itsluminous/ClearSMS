@@ -1,0 +1,6 @@
+- Added Hinglish translation
+- Right-to-left messages now read correctly (Eg. Persian, Arabic, Hebrew or Urdu)
+- Attaching a photo from the camera works again (the app was not declaring that it looks for a camera)
+- Picture messages now download on the SIM that received them, instead of always using the phone's default SIM
+- "Sort messages again" moved from Inbox to Messages in Settings
+- Added more diagnostics for picture messages that fail to download
