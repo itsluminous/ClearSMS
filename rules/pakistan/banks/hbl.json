@@ -6,7 +6,7 @@
       "name": "HBL OTP (card, online transaction, TPIN)",
       "priority": 350,
       "match": {
-        "sender_pattern": "(?i)^1?4250$|HBL",
+        "sender_pattern": "(?i)(?:^1?4250$|^HBL(?:\\s*PAY)?$)",
         "body_pattern": "(?i)\\b(\\d{4,8})\\s+is\\s+your\\s+(?:OTP|On\\s+Time\\s+Password)"
       },
       "action": {
@@ -25,7 +25,7 @@
       "name": "HBL account / card / cheque book service notice",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i)^1?4250$|HBL",
+        "sender_pattern": "(?i)(?:^1?4250$|^HBL(?:\\s*PAY)?$)",
         "body_pattern": "(?i)\\b(?:cheque\\s+book|has\\s+been\\s+(?:successfully\\s+)?activated|TPIN\\s+has\\s+been|RAAST\\s+ID|CNIC\\s+expiry|successfully\\s+registered|bill\\s+payment\\s+request\\s+has\\s+been\\s+processed|Direct\\s+Transfer\\s+service)",
         "guards_none": [
           "otp_mention"

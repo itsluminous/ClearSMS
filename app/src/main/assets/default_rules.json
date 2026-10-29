@@ -9456,7 +9456,7 @@
       "name": "HBL OTP (card, online transaction, TPIN)",
       "priority": 350,
       "match": {
-        "sender_pattern": "(?i)^1?4250$|HBL",
+        "sender_pattern": "(?i)(?:^1?4250$|^HBL(?:\\s*PAY)?$)",
         "body_pattern": "(?i)\\b(\\d{4,8})\\s+is\\s+your\\s+(?:OTP|On\\s+Time\\s+Password)"
       },
       "action": {
@@ -9475,7 +9475,7 @@
       "name": "HBL account / card / cheque book service notice",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i)^1?4250$|HBL",
+        "sender_pattern": "(?i)(?:^1?4250$|^HBL(?:\\s*PAY)?$)",
         "body_pattern": "(?i)\\b(?:cheque\\s+book|has\\s+been\\s+(?:successfully\\s+)?activated|TPIN\\s+has\\s+been|RAAST\\s+ID|CNIC\\s+expiry|successfully\\s+registered|bill\\s+payment\\s+request\\s+has\\s+been\\s+processed|Direct\\s+Transfer\\s+service)",
         "guards_none": [
           "otp_mention"
@@ -9496,11 +9496,11 @@
       "name": "Meezan Bank card / online purchase",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "charged at"
         ],
-        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+charged\\s+at\\s+([^\\n]{1,30}?)\\s+(?:as\\s+internet\\s+purchase|for\\s+card\\s+used),\\s+from\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+charged\\s+at\\s+([^\\s\\n][^\\n]{0,29}?)\\s+(?:as\\s+internet\\s+purchase|for\\s+card\\s+used),\\s+from\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
         "guards_none": [
           "otp_mention"
         ]
@@ -9524,7 +9524,7 @@
       "name": "Meezan Bank bill / top-up payment via internet banking",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "debited as"
         ],
@@ -9552,7 +9552,7 @@
       "name": "Meezan Bank funds transfer sent (IBFT / RAAST / within Meezan)",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "sent to"
         ],
@@ -9580,7 +9580,7 @@
       "name": "Meezan Bank funds received (IBFT / RAAST / within Meezan)",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "received from"
         ],
@@ -9608,11 +9608,11 @@
       "name": "Meezan Bank ATM cash withdrawal",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "cash withdrawn"
         ],
-        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+cash\\s+withdrawn\\s+from\\s+[^\\n]{1,30}?\\s+from\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "body_pattern": "(?i)PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+cash\\s+withdrawn\\s+from\\s+[^\\s\\n][^\\n]{0,29}?\\s+from\\s+A/C\\s+[Xx*]*\\d{0,12}?(\\d{4})\\b",
         "guards_none": [
           "otp_mention"
         ]
@@ -9636,11 +9636,14 @@
       "name": "Meezan Bank Mudarba profit distribution",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "PFT"
         ],
-        "body_pattern": "(?i)MUDARBA\\s+PFT\\s+DST:\\s*PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+WHT:\\s*[\\d,.]{1,15}\\s+A/C\\s*[Xx*]*\\d{0,12}?(\\d{4})\\b"
+        "body_pattern": "(?i)MUDARBA\\s+PFT\\s+DST:\\s*PKR\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+WHT:\\s*[\\d,.]{1,15}\\s+A/C\\s*[Xx*]*\\d{0,12}?(\\d{4})\\b",
+        "guards_none": [
+          "otp_mention"
+        ]
       },
       "action": {
         "category": "important",
@@ -9661,7 +9664,7 @@
       "name": "Meezan Bank merchant credit / IBFT reversal",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "credited as"
         ],
@@ -9689,7 +9692,7 @@
       "name": "Meezan Bank transaction reversed into account",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "reversed into"
         ],
@@ -9717,7 +9720,7 @@
       "name": "Meezan Bank branch cash deposit",
       "priority": 300,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_must_contain": [
           "CASH DEPOSIT"
         ],
@@ -9745,7 +9748,7 @@
       "name": "Meezan Bank e-commerce OTP",
       "priority": 350,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_pattern": "(?i)OTP\\s+is\\s+(\\d{4,8})\\b"
       },
       "action": {
@@ -9764,7 +9767,7 @@
       "name": "Meezan Bank service notice",
       "priority": 150,
       "match": {
-        "sender_pattern": "(?i)^8079$|MEEZAN",
+        "sender_pattern": "(?i)(?:^8079$|MEEZAN)",
         "body_pattern": "(?i)\\b(?:Zakat\\s+Declaration|complaints?@meezanbank|Push\\s+Notification|activated\\s+for\\s+Google\\s+Pay|T&Cs\\s+and\\s+Schedule|Schedule\\s+of\\s+Charges|card\\s+is\\s+suspended|device\\s+[^\\n]{1,40}?has\\s+been\\s+(?:registered|deleted)|ATM\\s+transaction\\s+charges|Funds\\s+Transfer\\s+and\\s+ATM|transaction\\s+was\\s+declined|Your\\s+username\\s+is|Request\\s+\\S{1,20}\\s+against\\s+transaction)",
         "guards_none": [
           "otp_mention"
@@ -9785,10 +9788,19 @@
       "name": "JazzCash cash-loan promotion",
       "priority": 200,
       "match": {
-        "sender_pattern": "(?i)^8558$|JAZZCASH",
+        "sender_pattern": "(?i)(?:^8558$|JAZZCASH)",
         "body_pattern": "(?i)\\bloan\\b",
         "guards_none": [
           "otp_mention"
+        ],
+        "body_must_not_contain": [
+          "disbursed",
+          "overdue",
+          "approved",
+          "repay",
+          "due on",
+          "credited",
+          "deducted"
         ]
       },
       "action": {

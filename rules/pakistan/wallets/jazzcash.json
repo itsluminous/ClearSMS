@@ -6,10 +6,19 @@
       "name": "JazzCash cash-loan promotion",
       "priority": 200,
       "match": {
-        "sender_pattern": "(?i)^8558$|JAZZCASH",
+        "sender_pattern": "(?i)(?:^8558$|JAZZCASH)",
         "body_pattern": "(?i)\\bloan\\b",
         "guards_none": [
           "otp_mention"
+        ],
+        "body_must_not_contain": [
+          "disbursed",
+          "overdue",
+          "approved",
+          "repay",
+          "due on",
+          "credited",
+          "deducted"
         ]
       },
       "action": {
