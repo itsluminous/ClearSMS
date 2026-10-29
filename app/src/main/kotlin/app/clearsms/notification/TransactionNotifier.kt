@@ -300,7 +300,10 @@ class TransactionNotifier
                 val currency = details["currency"] ?: CurrencyCatalog.INR_CODE
                 val amount = details["amount"]?.replace(",", "")?.toDoubleOrNull()
                 val type = details["type"]?.lowercase()
-                // Balances and bill figures come from rupee-anchored phrases.
+                // Balances and bill figures carry the message's own currency
+                // too - they are NOT rupee-anchored. Formatting them with a
+                // fixed INR code showed the wrong symbol to every user
+                // outside India.
                 val balance = details["balance"]?.replace(",", "")?.toDoubleOrNull()
                 val minDue = details["min_due"]?.replace(",", "")?.toDoubleOrNull()
                 // Collect / payment requests: money only ASKED for. Renders
@@ -320,7 +323,7 @@ class TransactionNotifier
                 if (billAmount == null && requested != null) {
                     return Content(
                         kind = Content.Kind.BALANCE,
-                        title = MoneyFormat.format(requested, CurrencyCatalog.INR_CODE),
+                        title = MoneyFormat.format(requested, currency),
                         text =
                             listOfNotNull(
                                 requestLabel,
@@ -341,10 +344,10 @@ class TransactionNotifier
                     }
                 val title =
                     when {
-                        billAmount != null -> MoneyFormat.format(billAmount, CurrencyCatalog.INR_CODE)
+                        billAmount != null -> MoneyFormat.format(billAmount, currency)
                         kind == Content.Kind.DEBIT -> "\u2212 " + MoneyFormat.format(amount!!, currency)
                         kind == Content.Kind.CREDIT -> "+ " + MoneyFormat.format(amount!!, currency)
-                        else -> MoneyFormat.format(balance!!, CurrencyCatalog.INR_CODE)
+                        else -> MoneyFormat.format(balance!!, currency)
                     }
                 val text =
                     if (billAmount != null) {
@@ -356,7 +359,7 @@ class TransactionNotifier
                             // Secondary figure only when it differs from the headline.
                             minDue
                                 ?.takeIf { it != billAmount }
-                                ?.let { String.format(minDueFormat, MoneyFormat.format(it, CurrencyCatalog.INR_CODE)) },
+                                ?.let { String.format(minDueFormat, MoneyFormat.format(it, currency)) },
                         ).joinToString(" · ")
                     } else {
                         compactText(
