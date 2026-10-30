@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "jazzcash-loan-offer-01",
+      "name": "JazzCash cash-loan promotion",
+      "priority": 200,
+      "match": {
+        "sender_pattern": "(?i)(?:^8558$|JAZZCASH)",
+        "body_pattern": "(?i)\\bloan\\b",
+        "guards_none": [
+          "otp_mention"
+        ],
+        "body_must_not_contain": [
+          "disbursed",
+          "overdue",
+          "approved",
+          "repay",
+          "due on",
+          "credited",
+          "deducted"
+        ]
+      },
+      "action": {
+        "category": "promotional",
+        "sub_category": "offer"
+      },
+      "contributed_by": "mzaeemkhan",
+      "created_at": "2026-10-25T00:00:00Z"
+    }
+  ]
+}
