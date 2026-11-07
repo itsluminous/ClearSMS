@@ -364,7 +364,7 @@
     <string name="settings_strip_accents">Send karte waqt accents hatayein</string>
     <string name="settings_strip_accents_summary">Accent wale letters ko automatically plain letters se badlein (č→c), sirf tab jab isse text kam SMS me jaaye</string>
     <string name="settings_mms_sending">Picture message send karein</string>
-    <string name="settings_mms_sending_summary">Attach button dikhayein taaki aap MMS se picture aur file send kar sakein. Agar aapka carrier ab MMS send karna support nahi karta to ise off karein - receive karne par koi asar nahi hoga</string>
+    <string name="settings_mms_sending_summary">Compose bar ke add menu mein Photo, Camera aur Koi bhi file dikhayein taaki aap MMS se picture aur file send kar sakein. Agar aapka carrier ab MMS send karna support nahi karta to ise off karein - receive karne par koi asar nahi hoga, aur contact ko text ke roop mein insert karna available rahega</string>
     <string name="settings_delayed_send">Send karne se pehle delay</string>
     <string name="settings_delayed_send_summary">Send dabane ke baad har message kuch second ke liye rukta hai, taaki aap cancel karke typo theek kar sakein</string>
     <string name="settings_delayed_send_delay">Sending delay</string>

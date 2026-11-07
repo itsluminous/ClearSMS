@@ -138,8 +138,8 @@ data class SimUiState(
 }
 
 /**
- * The one compose bar: an attach affordance (a "+" opening the attachment
- * sheet), removable attachment chips with a running size indicator, text
+ * The one compose bar: an add affordance (a "+" opening the sheet of
+ * attachments and the insert-as-text Contact row), removable attachment chips with a running size indicator, text
  * field, dual-SIM indicator (tap cycles SIMs and toasts the operator name)
  * and a Send button whose long-press opens the schedule picker (text-only
  * messages; with attachments staged, scheduling is SMS-only and the
@@ -168,6 +168,7 @@ fun MessageComposerBar(
     onRemoveAttachment: (StagedAttachment) -> Unit = {},
     attachmentError: AttachmentError? = null,
     attachmentBudgetBytes: Long = 0L,
+    insertions: ComposerInsertions? = null,
 ) {
     val context = LocalContext.current
     // Expand-to-full-screen: state lives HERE, in the one shared bar, so
@@ -205,6 +206,14 @@ fun MessageComposerBar(
         if (ComposerExpansion.shouldAdoptExternalDraft(external = draft, field = textState.text.toString())) {
             textState.setTextAndPlaceCursorAtEnd(draft)
         }
+    }
+    LaunchedEffect(insertions, textState) {
+        // Picked text (a contact's name and number, GitHub #150) -> field,
+        // AT THE CURSOR. It must land on the TextFieldState itself: the
+        // ViewModel->field path above adopts only across an empty boundary,
+        // so a ViewModel-side append would be dropped while the field holds
+        // text. The field->ViewModel flow above then persists it as typed.
+        insertions?.requestFlow?.collect { text -> ContactInsert.insertAtCursor(textState, text) }
     }
     // The REAL laid-out line count, straight from the field's text layout
     // (see onTextLayout below); drives the expand toggle's visibility.

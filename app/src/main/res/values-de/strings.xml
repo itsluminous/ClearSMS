@@ -354,7 +354,7 @@
     <string name="settings_strip_accents">Akzente beim Senden entfernen</string>
     <string name="settings_strip_accents_summary">Buchstaben mit Akzent automatisch durch einfache ersetzen (č→c), nur wenn ein Text dadurch als weniger SMS gesendet wird</string>
     <string name="settings_mms_sending">Bildnachrichten senden</string>
-    <string name="settings_mms_sending_summary">Anhang-Schaltfläche anbieten, damit Sie Bilder und Dateien per MMS senden können. Schalten Sie dies aus, wenn Ihr Mobilfunkanbieter das Senden von MMS nicht mehr unterstützt - der Empfang ist nicht betroffen</string>
+    <string name="settings_mms_sending_summary">Foto, Kamera und Beliebige Datei im Hinzufügen-Menü der Eingabeleiste anbieten, damit Sie Bilder und Dateien per MMS senden können. Schalten Sie dies aus, wenn Ihr Mobilfunkanbieter das Senden von MMS nicht mehr unterstützt - der Empfang ist nicht betroffen, und das Einfügen eines Kontakts als Text bleibt verfügbar</string>
     <string name="settings_delayed_send">Verzögerung vor dem Senden</string>
     <string name="settings_delayed_send_summary">Jede Nachricht nach dem Tippen auf Senden einige Sekunden zurückhalten, damit Sie abbrechen und einen Tippfehler korrigieren können</string>
     <string name="settings_delayed_send_delay">Sendeverzögerung</string>

@@ -90,12 +90,13 @@ interface SettingsRepository {
 
     /**
      * Whether sending MMS is offered at all (issue #94). ON by default; when
-     * OFF the composer hides its attach button and sharing an image into the
-     * app has nothing to attach to, so no MMS send can be started.
+     * OFF the composer's "+" sheet drops Photo / Camera / Any file (its
+     * insert-a-contact-as-text row stays, GitHub #150) and sharing an image
+     * into the app has nothing to attach to, so no MMS send can be started.
      *
      * Exists because a carrier can discontinue MMS entirely - Germany's last
-     * network switched it off in July 2026 - leaving the attach button as an
-     * affordance that can only ever fail. Clear SMS already hides it when the
+     * network switched it off in July 2026 - leaving the attachment rows as
+     * affordances that can only ever fail. Clear SMS already hides them when the
      * carrier CONFIG declares MMS disabled, but that config reflects the
      * carrier's config table rather than live service, so a carrier that
      * stops the service without updating it still reads as enabled. This

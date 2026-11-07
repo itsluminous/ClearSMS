@@ -360,7 +360,7 @@
     <string name="settings_strip_accents">Usuwaj znaki diakrytyczne przy wysyłaniu</string>
     <string name="settings_strip_accents_summary">Automatycznie zamieniaj litery ze znakami diakrytycznymi na zwykłe (č→c), tylko gdy dzięki temu tekst wysyła się jako mniej wiadomości SMS</string>
     <string name="settings_mms_sending">Wysyłanie wiadomości ze zdjęciami</string>
-    <string name="settings_mms_sending_summary">Pokazuj przycisk załącznika, aby wysyłać zdjęcia i pliki przez MMS. Wyłącz, jeśli Twój operator nie obsługuje już wysyłania MMS - odbieranie działa bez zmian</string>
+    <string name="settings_mms_sending_summary">Pokazuj Zdjęcie, Aparat i Dowolny plik w menu dodawania paska wiadomości, aby wysyłać zdjęcia i pliki przez MMS. Wyłącz, jeśli Twój operator nie obsługuje już wysyłania MMS - odbieranie działa bez zmian, a wstawianie kontaktu jako tekstu pozostaje dostępne</string>
     <string name="settings_delayed_send">Opóźnienie przed wysłaniem</string>
     <string name="settings_delayed_send_summary">Wstrzymaj każdą wiadomość na kilka sekund po naciśnięciu Wyślij, aby móc anulować i poprawić literówkę</string>
     <string name="settings_delayed_send_delay">Opóźnienie wysyłania</string>
