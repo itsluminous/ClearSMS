@@ -18,6 +18,7 @@ import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField
 import app.clearsms.diagnostics.DiagnosticReport
+import app.clearsms.diagnostics.ProviderGapProbe
 import app.clearsms.diagnostics.ReportWindow
 import app.clearsms.diagnostics.SystemState
 import app.clearsms.diagnostics.SystemStateCollector
@@ -66,6 +67,7 @@ class DiagnosticsViewModel
         private val messageDao: MessageDao,
         private val ruleDao: RuleDao,
         private val transactionDao: TransactionDao,
+        private val providerGapProbe: ProviderGapProbe,
         @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val state = MutableStateFlow(DiagnosticsUiState())
@@ -153,6 +155,12 @@ class DiagnosticsViewModel
                     ruleCount = runCatching { ruleDao.getAll().size }.getOrDefault(-1),
                     transactionCount = runCatching { transactionDao.getAll().size }.getOrDefault(-1),
                     bundledRulesVersion = runCatching { ruleRepository.bundledRulesVersion.first() }.getOrNull() ?: "none",
+                    // The provider-vs-store gap: the one number that proves,
+                    // on its own, that the device holds messages the app
+                    // does not (a receiver run that died before its store
+                    // write, or rows written while another app was default).
+                    smsGap = providerGapProbe.sms(),
+                    mmsGap = providerGapProbe.mms(),
                 )
             return SystemStateCollector.collect(context, facts)
         }

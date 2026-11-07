@@ -31,6 +31,24 @@ class SmsReceiverMalformedIntentTest {
     }
 
     @Test
+    fun `pdu count is read as a count, never decoding the bytes, and is -1 without the extra`() {
+        // The "deliver received" trace line is emitted before any decoding,
+        // so its PDU count must come from the array's size alone.
+        assertThat(SmsReceiver.pduCount(Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION))).isEqualTo(-1)
+        assertThat(
+            SmsReceiver.pduCount(Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION).putExtra("pdus", arrayOf<ByteArray>())),
+        ).isEqualTo(0)
+        assertThat(
+            SmsReceiver.pduCount(
+                Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION)
+                    .putExtra("pdus", arrayOf(byteArrayOf(0x00, 0x01), byteArrayOf(0x02))),
+            ),
+        ).isEqualTo(2)
+        // A non-array extra is a malformed broadcast: -1, not a throw.
+        assertThat(SmsReceiver.pduCount(Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION).putExtra("pdus", "junk"))).isEqualTo(-1)
+    }
+
+    @Test
     fun `intent with garbage pdu bytes decodes to no parts`() {
         val intent =
             Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION)
