@@ -168,8 +168,16 @@ class SettingsCatalogTest {
                 "Sort messages again",
             ).inOrder()
         assertThat(bySection["Appearance"])
-            .containsExactly("Theme", "Dynamic color", "Show logos and contact photos", "Logo background")
-            .inOrder()
+            .containsExactly(
+                "Theme",
+                "Dynamic color",
+                "Show logos and contact photos",
+                "Logo background",
+                // GitHub #157 / #158: how message text looks and how clocks
+                // are written - display choices, so they live with Theme.
+                "Message text size",
+                "Time format",
+            ).inOrder()
         assertThat(bySection["Notifications"])
             .containsExactly(
                 "SMS delivery reports",
@@ -354,10 +362,14 @@ class SettingsCatalogTest {
                 // toggle - one row for one preference, also surfaced as a
                 // nested switch inside the notification-action picker.
                 "Direct call",
+                // Appearance (GitHub #157, #158): bubble text multiplier and
+                // the 12/24-hour clock, shipped together.
+                "Message text size",
+                "Time format",
             )
         val allTitles = SettingsItem.entries.map(::title)
 
-        // No row lost, none dropped: 32 survivors + 27 additions = 59 rows.
+        // No row lost, none dropped: 32 survivors + 31 additions = 63 rows.
         // The split into sub-screens moved rows; it added and removed none.
         assertThat(allTitles.sorted()).isEqualTo((preReorgRows + newRows).sorted())
         // No duplicates: "Pill order" and "Visible pills" legitimately appear

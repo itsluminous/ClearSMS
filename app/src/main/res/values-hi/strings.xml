@@ -338,6 +338,16 @@
     <string name="settings_show_rich_avatars">लोगो और संपर्क फ़ोटो दिखाएं</string>
     <string name="settings_show_rich_avatars_on">संपर्क फ़ोटो और भेजने वालों के ब्रांड चिह्न</string>
     <string name="settings_show_rich_avatars_off">सादे आइकन और अक्षर वाले अवतार</string>
+    <string name="settings_message_text_size">संदेश के टेक्स्ट का आकार</string>
+    <string name="settings_message_text_size_summary">%1$s · Android की अपनी फ़ॉन्ट आकार सेटिंग पहले से लागू है; यह उसके ऊपर लगती है</string>
+    <string name="message_text_size_small">छोटा</string>
+    <string name="message_text_size_default">डिफ़ॉल्ट</string>
+    <string name="message_text_size_large">बड़ा</string>
+    <string name="message_text_size_extra_large">बहुत बड़ा</string>
+    <string name="settings_time_format">समय का फ़ॉर्मैट</string>
+    <string name="time_format_system">सिस्टम के अनुसार</string>
+    <string name="time_format_12_hour">12 घंटे (2:05 pm)</string>
+    <string name="time_format_24_hour">24 घंटे (14:05)</string>
     <string name="settings_show_transaction_details">संदेश से निकाले गए विवरण दिखाएं</string>
     <string name="settings_message_sort_order">संदेशों का क्रम</string>
     <string name="settings_message_sort_received">प्राप्ति समय</string>

@@ -24,6 +24,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.MessageTextSize
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -31,6 +32,7 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.UiPrefs
@@ -91,6 +93,8 @@ data class SettingsUiState(
      */
     val directCall: Boolean = false,
     val logoBackground: LogoBackground = LogoBackground.NONE,
+    val messageTextSize: MessageTextSize = MessageTextSize.DEFAULT,
+    val timeFormat: TimeFormat = TimeFormat.SYSTEM,
     val swipeActionStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeActionEnd: SwipeAction = SwipeAction.DELETE,
     /** Per-row band where a swipe never starts; off by default. */
@@ -327,6 +331,10 @@ class SettingsViewModel
             val recycleBinEnabled: Boolean = true,
             /** Filled by the fourth combine stage. */
             val messageSortOrder: MessageSortOrder = MessageSortOrder.RECEIVED,
+            /** Filled by the fifth combine stage (GitHub #157). */
+            val messageTextSize: MessageTextSize = MessageTextSize.DEFAULT,
+            /** Filled by the sixth combine stage (GitHub #158). */
+            val timeFormat: TimeFormat = TimeFormat.SYSTEM,
         )
 
         private data class NotificationState(
@@ -373,6 +381,10 @@ class SettingsViewModel
                 appearance.copy(recycleBinEnabled = binEnabled)
             }.combine(settings.messageSortOrder) { appearance, sortOrder ->
                 appearance.copy(messageSortOrder = sortOrder)
+            }.combine(settings.messageTextSize) { appearance, textSize ->
+                appearance.copy(messageTextSize = textSize)
+            }.combine(settings.timeFormat) { appearance, timeFormat ->
+                appearance.copy(timeFormat = timeFormat)
             }
         private val notifications =
             combine(
@@ -458,6 +470,8 @@ class SettingsViewModel
                     recycleBinEnabled = appearanceState.recycleBinEnabled,
                     showRichAvatars = appearanceState.showRichAvatars,
                     logoBackground = appearanceState.logoBackground,
+                    messageTextSize = appearanceState.messageTextSize,
+                    timeFormat = appearanceState.timeFormat,
                     showBalance = appearanceState.showBalance,
                     deliveryReports = notificationState.deliveryReports,
                     stripAccents = notificationState.stripAccents,
@@ -542,6 +556,10 @@ class SettingsViewModel
             }
 
         fun setLogoBackground(value: LogoBackground) = launchIo { settings.setLogoBackground(value) }
+
+        fun setMessageTextSize(value: MessageTextSize) = launchIo { settings.setMessageTextSize(value) }
+
+        fun setTimeFormat(value: TimeFormat) = launchIo { settings.setTimeFormat(value) }
 
         fun setInboxPillOrder(value: List<InboxPill>) = launchIo { settings.setInboxPillOrder(value) }
 

@@ -63,7 +63,14 @@ class MessageTextDirectionContractTest {
     fun `the bubble body and its text-selection twin share one merged style`() {
         // Both branches render from the same local, so entering text-selection
         // mode (issue #103) cannot change the direction or re-flow a glyph.
-        assertThat(conversation).contains("val bodyStyle = MaterialTheme.typography.bodyLarge.merge(MessageTextDirection.style)")
+        // The one style also carries the user's text-size multiplier (#157),
+        // applied BEFORE the direction merge so the direction is never scaled away.
+        assertThat(conversation).contains(
+            "val bodyStyle =\n" +
+                "                                    MaterialTheme.typography.bodyLarge\n" +
+                "                                        .scaledBy(LocalMessageTextScale.current)\n" +
+                "                                        .merge(MessageTextDirection.style)",
+        )
         assertThat(conversation.windowAfter("TextSelectionBody(\n", lines = 5)).contains("style = bodyStyle")
         assertThat(conversation.windowAfter("LinkifiedBodyText(\n", lines = 5)).contains("style = bodyStyle")
         // The hidden layout twin and the field inside TextSelectionBody both

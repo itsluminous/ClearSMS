@@ -90,7 +90,12 @@ class PartialTextSelectionContractTest {
         // The bubble passes the very style and colour the Text used to get -
         // `bodyStyle`, the body typography with the per-message direction
         // merged in (#139), shared with the non-text-mode branch below.
-        assertThat(bubble).contains("val bodyStyle = MaterialTheme.typography.bodyLarge.merge(MessageTextDirection.style)")
+        assertThat(bubble).contains(
+            "val bodyStyle =\n" +
+                "                                    MaterialTheme.typography.bodyLarge\n" +
+                "                                        .scaledBy(LocalMessageTextScale.current)\n" +
+                "                                        .merge(MessageTextDirection.style)",
+        )
         assertThat(bubble).containsMatch(
             """TextSelectionBody\(\s*body = item\.body,\s*fieldState = textSelectionField,\s*style = bodyStyle,\s*color = textColor,""",
         )

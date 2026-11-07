@@ -82,6 +82,7 @@ import app.clearsms.domain.model.DelayedSendDelay
 import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.MessageTextSize
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -89,6 +90,7 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.ui.alerts.displayName
 import app.clearsms.ui.common.BackupFrequency
 import app.clearsms.ui.common.HighlightTiming
@@ -116,6 +118,8 @@ private enum class SettingsDialog {
     ALERTS_PILL_ORDER,
     ALERTS_VISIBLE_PILLS,
     LOGO_BACKGROUND,
+    MESSAGE_TEXT_SIZE,
+    TIME_FORMAT,
     NOTIFICATION_ACTIONS,
     SWIPE_START,
     SWIPE_END,
@@ -800,6 +804,32 @@ private fun SettingsRowsHost(
             )
         }
 
+        SettingsDialog.MESSAGE_TEXT_SIZE -> {
+            RadioDialog(
+                title = stringResource(R.string.settings_message_text_size),
+                options = MessageTextSize.entries.map { it to messageTextSizeLabel(it) },
+                selected = state.messageTextSize,
+                onSelect = {
+                    viewModel.setMessageTextSize(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+
+        SettingsDialog.TIME_FORMAT -> {
+            RadioDialog(
+                title = stringResource(R.string.settings_time_format),
+                options = TimeFormat.entries.map { it to timeFormatLabel(it) },
+                selected = state.timeFormat,
+                onSelect = {
+                    viewModel.setTimeFormat(it)
+                    dialog = null
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+
         SettingsDialog.NOTIFICATION_ACTIONS -> {
             NotificationActionsDialog(
                 selected = state.notificationActions,
@@ -1401,6 +1431,25 @@ private fun settingsRowEntries(
                 SettingsItem.LOGO_BACKGROUND -> {
                     row(section, title, logoBackgroundLabel(state.logoBackground)) {
                         openDialog(SettingsDialog.LOGO_BACKGROUND)
+                    }
+                }
+
+                // GitHub #157. The summary says plainly that Android's own
+                // font-size setting already applies: this multiplies it.
+                SettingsItem.MESSAGE_TEXT_SIZE -> {
+                    row(
+                        section,
+                        title,
+                        stringResource(R.string.settings_message_text_size_summary, messageTextSizeLabel(state.messageTextSize)),
+                    ) {
+                        openDialog(SettingsDialog.MESSAGE_TEXT_SIZE)
+                    }
+                }
+
+                // GitHub #158.
+                SettingsItem.TIME_FORMAT -> {
+                    row(section, title, timeFormatLabel(state.timeFormat)) {
+                        openDialog(SettingsDialog.TIME_FORMAT)
                     }
                 }
 
@@ -2604,6 +2653,27 @@ private fun logoBackgroundLabel(value: LogoBackground): String =
             LogoBackground.DARK -> R.string.logo_background_dark
             LogoBackground.DYNAMIC -> R.string.logo_background_dynamic
             LogoBackground.NONE -> R.string.logo_background_none
+        },
+    )
+
+@Composable
+private fun messageTextSizeLabel(value: MessageTextSize): String =
+    stringResource(
+        when (value) {
+            MessageTextSize.SMALL -> R.string.message_text_size_small
+            MessageTextSize.DEFAULT -> R.string.message_text_size_default
+            MessageTextSize.LARGE -> R.string.message_text_size_large
+            MessageTextSize.EXTRA_LARGE -> R.string.message_text_size_extra_large
+        },
+    )
+
+@Composable
+private fun timeFormatLabel(value: TimeFormat): String =
+    stringResource(
+        when (value) {
+            TimeFormat.SYSTEM -> R.string.time_format_system
+            TimeFormat.HOUR_12 -> R.string.time_format_12_hour
+            TimeFormat.HOUR_24 -> R.string.time_format_24_hour
         },
     )
 

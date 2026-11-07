@@ -9,6 +9,7 @@ import app.clearsms.data.repository.MessageRepository
 import app.clearsms.data.repository.UndoManager
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.categorizer.SenderIdLookup
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
@@ -75,9 +76,11 @@ class ArchivedViewModel
                 // moment; a language switch re-runs this mapping once.
                 context.displayLocaleChanges().runningFold(0) { n, _ -> n + 1 },
                 settings.recycleBinEnabled,
-            ) { messages, richAvatars, _, recycleBin ->
+                // ...as does a 12/24-hour change (#158): the labels carry it.
+                settings.timeFormat,
+            ) { messages, richAvatars, _, recycleBin, timeFormat ->
                 ArchivedUiState(
-                    items = messages.map { it.toInboxItem() },
+                    items = messages.map { it.toInboxItem(timeFormat) },
                     richAvatars = richAvatars,
                     recycleBinEnabled = recycleBin,
                     loaded = true,
@@ -143,7 +146,7 @@ class ArchivedViewModel
 
         // endregion
 
-        private fun MessageEntity.toInboxItem(): InboxItem {
+        private fun MessageEntity.toInboxItem(timeFormat: TimeFormat): InboxItem {
             val display =
                 displayCache.getOrPut(sender) {
                     resolveSenderDisplay(
@@ -156,7 +159,7 @@ class ArchivedViewModel
                 message = this,
                 display = display,
                 glyph = brandGlyphFor(subCategory, display.name),
-                timeLabel = RelativeTime.format(timestamp, RelativeTime.Strings.from(context)),
+                timeLabel = RelativeTime.format(timestamp, RelativeTime.Strings.from(context, timeFormat)),
             )
         }
     }

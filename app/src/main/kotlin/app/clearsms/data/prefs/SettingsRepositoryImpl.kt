@@ -16,6 +16,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.MessageTextSize
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -23,6 +24,7 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.conversation.MessageSelectionAction
 import kotlinx.coroutines.flow.Flow
@@ -279,6 +281,20 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[KEY_LOGO_BACKGROUND] = value.name }
     }
 
+    override val messageTextSize: Flow<MessageTextSize> =
+        dataStore.data.map { it[KEY_MESSAGE_TEXT_SIZE].toEnum(MessageTextSize.DEFAULT) }
+
+    override suspend fun setMessageTextSize(value: MessageTextSize) {
+        dataStore.edit { it[KEY_MESSAGE_TEXT_SIZE] = value.name }
+    }
+
+    override val timeFormat: Flow<TimeFormat> =
+        dataStore.data.map { it[KEY_TIME_FORMAT].toEnum(TimeFormat.SYSTEM) }
+
+    override suspend fun setTimeFormat(value: TimeFormat) {
+        dataStore.edit { it[KEY_TIME_FORMAT] = value.name }
+    }
+
     override val scheduleSendTipShown: Flow<Boolean> =
         dataStore.data.map { it[KEY_SCHEDULE_SEND_TIP_SHOWN] ?: false }
 
@@ -448,6 +464,8 @@ class SettingsRepositoryImpl(
         val KEY_CONVERSATION_SHORTCUTS = booleanPreferencesKey("conversation_shortcuts")
         val KEY_DIRECT_CALL = booleanPreferencesKey("direct_call")
         val KEY_LOGO_BACKGROUND = stringPreferencesKey("logo_background")
+        val KEY_MESSAGE_TEXT_SIZE = stringPreferencesKey("message_text_size")
+        val KEY_TIME_FORMAT = stringPreferencesKey("time_format")
         val KEY_HANDLED_OTP_MESSAGE_ID = longPreferencesKey("handled_otp_message_id")
         val KEY_SCHEDULE_SEND_TIP_SHOWN = booleanPreferencesKey("schedule_send_tip_shown")
         val KEY_INBOX_PILL_ORDER = stringPreferencesKey("inbox_pill_order")

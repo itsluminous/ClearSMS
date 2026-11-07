@@ -1,6 +1,7 @@
 package app.clearsms.ui.conversation
 
 import app.clearsms.data.db.DeliveryStatus
+import app.clearsms.ui.common.ClockFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -50,21 +51,19 @@ object MessageMetadata {
             else -> TapAction.TOGGLE_DETAILS
         }
 
-    // Patterns only: the DISPLAY locale is applied per call with withLocale(),
-    // so month names (and the am/pm marker) follow the app language. The
-    // 12/24-hour choice is the device's; its marker comes from the same CLDR
-    // data the system clock uses, so a Hindi device shows what its status
-    // bar shows (CLDR Hindi abbreviates to Latin "am"/"pm" - verified).
+    // Pattern only: the DISPLAY locale is applied per call with withLocale(),
+    // so month names follow the app language. The clock half comes from
+    // ClockFormat, the one resolver every clock in the app shares (#158);
+    // its am/pm marker comes from the same CLDR data the system clock uses,
+    // so a Hindi device shows what its status bar shows (CLDR Hindi
+    // abbreviates to Latin "am"/"pm" - verified).
     private val date = DateTimeFormatter.ofPattern("d MMM yyyy")
-    private val time24 = DateTimeFormatter.ofPattern("HH:mm")
-    private val time12 = DateTimeFormatter.ofPattern("h:mm a")
-    private val time24Seconds = DateTimeFormatter.ofPattern("HH:mm:ss")
-    private val time12Seconds = DateTimeFormatter.ofPattern("h:mm:ss a")
 
     /**
-     * Exact date + time of a message, honouring the device's 12/24-hour
-     * setting: "26 Jul 2026, 16:59" or "26 Jul 2026, 4:59 pm", with the
-     * month name and am/pm marker in [locale] (the app's display locale).
+     * Exact date + time of a message, honouring the resolved 12/24-hour
+     * choice ([is24Hour], from `rememberIs24Hour()`): "26 Jul 2026, 16:59"
+     * or "26 Jul 2026, 4:59 pm", with the month name and am/pm marker in
+     * [locale] (the app's display locale).
      */
     fun timestampLabel(
         timestampMs: Long,
@@ -73,13 +72,7 @@ object MessageMetadata {
         locale: Locale = Locale.getDefault(),
     ): String {
         val then = Instant.ofEpochMilli(timestampMs).atZone(zone)
-        val time =
-            if (is24Hour) {
-                time24.withLocale(locale).format(then)
-            } else {
-                time12.withLocale(locale).format(then).lowercase(locale)
-            }
-        return "${date.withLocale(locale).format(then)}, $time"
+        return "${date.withLocale(locale).format(then)}, ${ClockFormat.clock(then, is24Hour, locale)}"
     }
 
     /**
@@ -95,13 +88,7 @@ object MessageMetadata {
         locale: Locale = Locale.getDefault(),
     ): String {
         val then = Instant.ofEpochMilli(timestampMs).atZone(zone)
-        val time =
-            if (is24Hour) {
-                time24Seconds.withLocale(locale).format(then)
-            } else {
-                time12Seconds.withLocale(locale).format(then).lowercase(locale)
-            }
-        return "${date.withLocale(locale).format(then)}, $time"
+        return "${date.withLocale(locale).format(then)}, ${ClockFormat.clock(then, is24Hour, locale, withSeconds = true)}"
     }
 
     /**
