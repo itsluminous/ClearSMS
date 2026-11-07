@@ -44,8 +44,11 @@
     <string name="mms_snippet_attachment">📎 Adjunto</string>
     <string name="mms_image_content_description">Foto MMS</string>
     <string name="mms_viewer_share">Compartir foto</string>
+    <string name="mms_viewer_save">Guardar foto</string>
     <string name="mms_viewer_close">Cerrar</string>
     <string name="mms_open_attachment_failed">Ninguna app puede abrir este adjunto</string>
+    <string name="mms_attachment_saved">Guardado</string>
+    <string name="mms_attachment_save_failed">No se pudo guardar el adjunto</string>
     <string name="compose_attach">Añadir adjunto</string>
     <string name="compose_expand">Expandir cuadro de redacción</string>
     <string name="compose_collapse">Reducir cuadro de redacción</string>

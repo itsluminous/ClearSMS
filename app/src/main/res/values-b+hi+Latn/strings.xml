@@ -37,6 +37,7 @@
     <string name="action_copy_selected_text">Select kiya text copy karein</string>
     <string name="action_copy_otp">OTP copy karein</string>
     <string name="action_add_rule">Rule add karein</string>
+    <string name="action_save_attachment">Attachment save karein</string>
     <string name="inbox_empty_title">Abhi koi message nahi hai</string>
     <string name="inbox_empty_subtitle">Aane wale SMS yahan dikhenge, apne aap categories me sort hoke.</string>
     <string name="inbox_empty_filtered">Is filter me kuch nahi hai.</string>

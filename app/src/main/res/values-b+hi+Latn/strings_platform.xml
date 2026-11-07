@@ -44,8 +44,11 @@
     <string name="mms_snippet_attachment">📎 Attachment</string>
     <string name="mms_image_content_description">MMS photo</string>
     <string name="mms_viewer_share">Photo share karein</string>
+    <string name="mms_viewer_save">Photo save karein</string>
     <string name="mms_viewer_close">Close</string>
     <string name="mms_open_attachment_failed">Koi app yeh attachment open nahi kar sakta</string>
+    <string name="mms_attachment_saved">Save ho gaya</string>
+    <string name="mms_attachment_save_failed">Attachment save nahi ho saka</string>
     <string name="compose_attach">Attachment add karein</string>
     <string name="compose_expand">Compose box expand karein</string>
     <string name="compose_collapse">Compose box chhota karein</string>
