@@ -1,13 +1,17 @@
 package app.clearsms.diagnostics
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.PowerManager
 import android.telephony.TelephonyManager
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.os.UserManagerCompat
 import app.clearsms.BuildConfig
 import app.clearsms.sms.DefaultSmsAppHelper
 import java.util.TimeZone
@@ -17,7 +21,12 @@ import java.util.TimeZone
  * `Build` constants, `PackageManager` permission checks, the connectivity
  * transport (never the SSID or operator) and the SIM SLOT count from
  * `TelephonyManager` (a hardware fact needing no permission - subscription
- * details, which would name carriers, are deliberately not read).
+ * details, which would name carriers, are deliberately not read), plus the
+ * four background-delivery facts a "messages do not arrive" report turns on:
+ * battery-optimisation exemption, background restriction, whether the user
+ * has unlocked since boot, and whether the app may notify at all. All are
+ * about this app or this device, none about a person, and none needs a
+ * permission.
  */
 object SystemStateCollector {
     /** The runtime permissions the manifest declares, by bare name. */
@@ -55,6 +64,10 @@ object SystemStateCollector {
             networkConnected = network?.first,
             networkTransport = network?.second ?: "UNKNOWN",
             simSlots = simSlots(context),
+            batteryOptimizationsIgnored = batteryOptimizationsIgnored(context),
+            backgroundRestricted = backgroundRestricted(context),
+            userUnlocked = userUnlocked(context),
+            notificationsEnabled = notificationsEnabled(context),
             inboxSection = appFacts.inboxSection,
             financeSection = appFacts.financeSection,
             alertsSection = appFacts.alertsSection,
@@ -62,6 +75,8 @@ object SystemStateCollector {
             messageCount = appFacts.messageCount,
             ruleCount = appFacts.ruleCount,
             transactionCount = appFacts.transactionCount,
+            smsGap = appFacts.smsGap,
+            mmsGap = appFacts.mmsGap,
             bundledRulesVersion = appFacts.bundledRulesVersion,
             timeZone = TimeZone.getDefault().id,
         )
@@ -77,7 +92,42 @@ object SystemStateCollector {
         val ruleCount: Int,
         val transactionCount: Int,
         val bundledRulesVersion: String,
+        val smsGap: ProviderGap = ProviderGap.UNKNOWN,
+        val mmsGap: ProviderGap = ProviderGap.UNKNOWN,
     )
+
+    private fun batteryOptimizationsIgnored(context: Context): Boolean? =
+        try {
+            context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName)
+        } catch (_: Exception) {
+            null
+        }
+
+    private fun backgroundRestricted(context: Context): Boolean? =
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+
+    private fun userUnlocked(context: Context): Boolean? =
+        try {
+            // True below API 24, where storage is never locked for an app.
+            UserManagerCompat.isUserUnlocked(context)
+        } catch (_: Exception) {
+            null
+        }
+
+    private fun notificationsEnabled(context: Context): Boolean? =
+        try {
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+        } catch (_: Exception) {
+            null
+        }
 
     private fun network(context: Context): Pair<Boolean, String>? =
         try {

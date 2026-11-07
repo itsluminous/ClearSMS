@@ -45,6 +45,15 @@ class MmsWapPushReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION) return
         // The pushed m-notification-ind bytes ride the standard "data" extra.
         val pdu = intent.getByteArrayExtra("data")
+        // FIRST, before any parsing or write - the same trace as
+        // SmsReceiver's "deliver received": a push that reached the app but
+        // whose process never lived to store it is otherwise invisible.
+        Diag.i(
+            TAG,
+            "wap push received",
+            count("pduBytes", pdu?.size ?: -1),
+            flag("hasSubscription", intent.hasExtra("subscription")),
+        )
         if (pdu == null) {
             // A WAP push with no payload is a platform oddity, not ours -
             // but a "my MMS never arrive" report needs to see it happened.
