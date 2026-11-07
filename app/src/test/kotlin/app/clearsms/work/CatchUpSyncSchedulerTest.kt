@@ -47,6 +47,7 @@ class CatchUpSyncSchedulerTest {
         workManager = WorkManager.getInstance(context)
         FakeMaxIdProvider.maxId = null
         FakeMaxIdProvider.queries = 0
+        FakeMaxIdProvider.lastSelection = null
         Robolectric.setupContentProvider(FakeMaxIdProvider::class.java, "sms")
         FakeMmsMaxIdProvider.maxId = null
         FakeMmsMaxIdProvider.lastSelection = null
@@ -169,6 +170,28 @@ class CatchUpSyncSchedulerTest {
             FakeMaxIdProvider.maxId = 10L
             FakeMmsMaxIdProvider.maxId = 4L
             scheduler.onRoleChecked(held = true, regained = false)
+            assertThat(enqueued()).isEqualTo(0)
+        }
+
+    @Test
+    fun `sms probe asks the provider only for the row types the import stores`() =
+        runBlocking {
+            // Issue #153: the probe used to take the newest row of ANY type.
+            // A stranded draft, a failed or queued send - rows the importer
+            // skips - sat above every stored id, so the probe fired on every
+            // inbox resume and each no-op run flashed "Importing your
+            // messages". Only inbox and sent rows may be compared.
+            storeLocalMessage(systemSmsId = 10L)
+            FakeMaxIdProvider.maxId = 10L
+            scheduler.onRoleChecked(held = true, regained = false)
+            val selection = FakeMaxIdProvider.lastSelection
+            assertThat(selection).isNotNull()
+            assertThat(selection).contains(Telephony.Sms.MESSAGE_TYPE_INBOX.toString())
+            assertThat(selection).contains(Telephony.Sms.MESSAGE_TYPE_SENT.toString())
+            assertThat(selection).doesNotContain(Telephony.Sms.MESSAGE_TYPE_DRAFT.toString())
+            assertThat(selection).doesNotContain(Telephony.Sms.MESSAGE_TYPE_OUTBOX.toString())
+            assertThat(selection).doesNotContain(Telephony.Sms.MESSAGE_TYPE_FAILED.toString())
+            assertThat(selection).doesNotContain(Telephony.Sms.MESSAGE_TYPE_QUEUED.toString())
             assertThat(enqueued()).isEqualTo(0)
         }
 
@@ -308,6 +331,7 @@ class CatchUpSyncSchedulerTest {
             sortOrder: String?,
         ): Cursor {
             queries++
+            lastSelection = selection
             val cursor = MatrixCursor(arrayOf(Telephony.Sms._ID))
             maxId?.let { cursor.addRow(arrayOf(it)) }
             return cursor
@@ -336,6 +360,9 @@ class CatchUpSyncSchedulerTest {
         companion object {
             var maxId: Long? = null
             var queries: Int = 0
+
+            /** The `type` selection the probe sent, for the type-coverage test. */
+            var lastSelection: String? = null
         }
     }
 }

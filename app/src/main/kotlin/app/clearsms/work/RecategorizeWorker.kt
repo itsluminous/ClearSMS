@@ -40,6 +40,25 @@ import kotlinx.coroutines.CancellationException
  * the UI never owns the run. Cancellation is safe at any point: the
  * repository commits one page per transaction, so a cancelled run leaves
  * every completed page fully consistent and nothing half-written.
+ *
+ * **Resume.** A run the SYSTEM stopped (expedited quota, process death) is
+ * rescheduled by WorkManager and continues from the durable
+ * [RecategorizeCheckpointPrefs] instead of the first row - without that, a
+ * device that kills background work restarted the sort from zero on every
+ * background receive, and every live write queued behind it (issue #153).
+ * Which runs resume:
+ * - the automatic post-update run always (the checkpoint store itself
+ *   discards a checkpoint from another app version, so the version marker
+ *   is only ever recorded by a pass that ran entirely under it);
+ * - a manual "Sort messages again" only when it is a RE-attempt
+ *   (`runAttemptCount > 0`); the user's first tap always starts from the
+ *   first row, because they may have tapped precisely to apply a rule the
+ *   half-finished pass did not know - a body-only rule the editor tells them
+ *   to apply with a full re-sort.
+ * CoroutineWorker cancels the coroutine when WorkManager stops the worker,
+ * and the repository loop yields between pages, so a stop leaves the loop
+ * at a page boundary with the checkpoint already written for the committed
+ * part.
  */
 @HiltWorker
 class RecategorizeWorker
@@ -49,13 +68,16 @@ class RecategorizeWorker
         @Assisted params: WorkerParameters,
         private val messageRepository: MessageRepository,
         private val settings: SettingsRepository,
+        private val checkpoints: RecategorizeCheckpointPrefs,
     ) : CoroutineWorker(appContext, params) {
         override suspend fun doWork(): Result {
             Channels.ensureCreated(applicationContext)
             val manager = NotificationManagerCompat.from(applicationContext)
             return try {
+                val auto = TAG_AUTO in tags
+                if (!auto && runAttemptCount == 0) checkpoints.clear()
                 val count =
-                    messageRepository.recategorizeAll { processed, total ->
+                    messageRepository.recategorizeAll(checkpoints) { processed, total ->
                         setProgress(
                             Data
                                 .Builder()

@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.ThreadRekeyer
 import app.clearsms.data.rules.RuleSources
+import app.clearsms.data.rules.RulesRevision
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
 import app.clearsms.diagnostics.DiagField.Companion.flag
@@ -36,6 +37,8 @@ data class RestoreResult(
 class BackupManager(
     private val database: ClearSmsDatabase,
     private val json: Json,
+    /** Bumped after a restore replaces the user rules; see [RulesRevision]. */
+    private val rulesRevision: RulesRevision = RulesRevision(),
 ) {
     /**
      * Serializes all tables to [output] as JSON. The stream is not closed.
@@ -156,6 +159,9 @@ class BackupManager(
             // on sender keys alone.
             ThreadRekeyer.rekey(database.openHelper.writableDatabase)
         }
+        // The user rules were replaced: the classifier's cached snapshot must
+        // not classify the next message with the pre-restore set.
+        rulesRevision.bump()
         Diag.i(
             TAG,
             "backup restored",

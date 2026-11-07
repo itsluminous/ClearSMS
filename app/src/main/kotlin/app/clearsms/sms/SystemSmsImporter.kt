@@ -17,6 +17,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -116,10 +117,14 @@ class SystemSmsImporter
                 val remaining = countRemaining(checkpoint.lastSystemSmsId)
                 val total = checkpoint.processedCount + remaining
                 var processed = checkpoint.processedCount
-                onProgress(processed, total)
                 if (remaining == 0) {
+                    // Nothing to do: report NO progress at all. The worker
+                    // turns every progress tick into the "Importing your
+                    // messages N of N" notification, and a catch-up probe
+                    // that found nothing must not flash it (issue #153).
                     return@withContext ImportResult(0, emptyList(), 0, initialRun = repository.newestTimestamp() == null)
                 }
+                onProgress(processed, total)
 
                 // Notification watermark, read BEFORE the first page commits:
                 // anything already stored has been seen (and, when eligible,
@@ -196,6 +201,11 @@ class SystemSmsImporter
                     // committed, so an interruption redoes at most one page.
                     checkpointStore.set(SyncCheckpointStore.Checkpoint(cursorId, processed))
                     onProgress(processed, total)
+                    // Release the single SQLite writer between pages: a
+                    // message received or sent during the import is queued
+                    // behind the page transaction (issue #153), and the page
+                    // size above is chosen so that wait stays short.
+                    yield()
                 }
                 ImportResult(inserted, freshMessages, freshCount, initialRun = watermark == null)
             }
@@ -295,9 +305,19 @@ class SystemSmsImporter
             null
         }
 
-        private companion object {
-            const val TAG = "SystemSmsImporter"
-            const val PAGE_SIZE = 500
+        companion object {
+            private const val TAG = "SystemSmsImporter"
+
+            /**
+             * Rows per provider read, classification batch, write transaction
+             * and checkpoint. Was 500: one such transaction held the single
+             * SQLite writer for 1-2.5 s on a phone, and a message sent or
+             * received meanwhile could not be stored until it committed
+             * (issue #153). 50 rows keeps the hold around 0.1-0.25 s; the
+             * extra provider queries and checkpoint writes (ten times as
+             * many) are milliseconds each against a multi-minute import.
+             */
+            const val PAGE_SIZE = 50
 
             /**
              * At most this many fresh entities are materialized for
@@ -305,14 +325,24 @@ class SystemSmsImporter
              * (the notifier collapses to one summary). Mirrors
              * [app.clearsms.notification.CatchUpNotifier.MAX_INDIVIDUAL].
              */
-            const val FRESH_SAMPLE_LIMIT = 5
+            private const val FRESH_SAMPLE_LIMIT = 5
+
+            /**
+             * The provider `type`s this importer stores - inbox and sent;
+             * drafts, outbox, failed and queued rows are skipped. Shared with
+             * the catch-up gap probe so it only ever compares ids of rows the
+             * import would actually bring in: a newest row of any other type
+             * (a stranded draft) used to make the probe fire - and the
+             * "Importing your messages" notification flash - on every inbox
+             * resume, forever.
+             */
+            const val IMPORTED_TYPES_SELECTION =
+                "${Telephony.Sms.TYPE} IN (${Telephony.Sms.MESSAGE_TYPE_INBOX}, ${Telephony.Sms.MESSAGE_TYPE_SENT})"
 
             /** Inbox and sent rows past the checkpoint; drafts/outbox/failed are skipped. */
-            val SELECTION =
-                "${Telephony.Sms._ID} > ? AND ${Telephony.Sms.TYPE} IN " +
-                    "(${Telephony.Sms.MESSAGE_TYPE_INBOX}, ${Telephony.Sms.MESSAGE_TYPE_SENT})"
+            private val SELECTION = "${Telephony.Sms._ID} > ? AND $IMPORTED_TYPES_SELECTION"
 
-            val PROJECTION =
+            private val PROJECTION =
                 arrayOf(
                     Telephony.Sms._ID,
                     Telephony.Sms.ADDRESS,
