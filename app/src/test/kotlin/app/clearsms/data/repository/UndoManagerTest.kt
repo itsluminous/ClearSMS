@@ -340,7 +340,10 @@ class UndoManagerTest {
             systemSmsId: Long?,
         ): MessageEntity = error("unused")
 
-        override suspend fun recategorizeAll(onProgress: suspend (Int, Int) -> Unit): Int = 0
+        override suspend fun recategorizeAll(
+            checkpoints: RecategorizeCheckpointStore?,
+            onProgress: suspend (Int, Int) -> Unit,
+        ): Int = 0
 
         /** Sender-scoped re-sort: records the request, does no work. */
         var recategorizedSenderCores = mutableListOf<String>()

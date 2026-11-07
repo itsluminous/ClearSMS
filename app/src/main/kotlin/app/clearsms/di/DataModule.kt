@@ -33,6 +33,7 @@ import app.clearsms.data.rules.BundledRuleLoader
 import app.clearsms.data.rules.RuleEngine
 import app.clearsms.data.rules.RuleExporter
 import app.clearsms.data.rules.RuleImporter
+import app.clearsms.data.rules.RulesRevision
 import app.clearsms.data.senderid.SenderIdStore
 import app.clearsms.domain.categorizer.ContactLookup
 import app.clearsms.domain.categorizer.MessageCategorizer
@@ -240,6 +241,15 @@ object DataModule {
             currencyOf = transactionParser::currencyOf,
         )
 
+    /**
+     * ONE rules-changed signal for the process: every writer of the rules
+     * table and the classifier's snapshot cache must share it, or a saved
+     * rule would not reach the next message (see [RulesRevision]).
+     */
+    @Provides
+    @Singleton
+    fun provideRulesRevision(): RulesRevision = RulesRevision()
+
     @Provides
     @Singleton
     fun provideBundledRuleLoader(
@@ -248,7 +258,8 @@ object DataModule {
         json: Json,
         dataStore: DataStore<Preferences>,
         @UiSettingsDataStore uiDataStore: DataStore<Preferences>,
-    ): BundledRuleLoader = BundledRuleLoader(context, ruleDao, json, dataStore, uiDataStore)
+        rulesRevision: RulesRevision,
+    ): BundledRuleLoader = BundledRuleLoader(context, ruleDao, json, dataStore, uiDataStore, rulesRevision)
 
     @Provides
     @Singleton
@@ -343,7 +354,8 @@ object DataModule {
     fun provideBackupManager(
         database: ClearSmsDatabase,
         json: Json,
-    ): BackupManager = BackupManager(database, json)
+        rulesRevision: RulesRevision,
+    ): BackupManager = BackupManager(database, json, rulesRevision)
 
     @Provides
     @Singleton
@@ -351,12 +363,13 @@ object DataModule {
         dataStore: DataStore<Preferences>,
         json: Json,
         database: ClearSmsDatabase,
+        rulesRevision: RulesRevision,
     ): SettingsBackupManager =
         SettingsBackupManager(
             dataStore,
             json,
             BuildConfig.VERSION_NAME,
-            RoomUserRuleStore(database),
+            RoomUserRuleStore(database, rulesRevision),
             RuleImporter(json),
         )
 

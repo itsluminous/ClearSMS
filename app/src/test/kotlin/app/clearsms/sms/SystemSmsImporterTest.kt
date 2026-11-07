@@ -341,6 +341,23 @@ class SystemSmsImporterTest {
         }
 
     @Test
+    fun `a run with nothing to import reports no progress at all`() =
+        runBlocking {
+            addMixedRows(1L..6L)
+            val env = Env("noop")
+            env.importer.importAll()
+
+            // Every progress tick becomes the "Importing your messages N of N"
+            // notification in the worker; a catch-up probe that found nothing
+            // (or a no-gap re-enqueue) must stay silent (issue #153).
+            val progress = mutableListOf<Pair<Int, Int>>()
+            val result = env.importer.importAll { imported, total -> progress += imported to total }
+
+            assertThat(result.inserted).isEqualTo(0)
+            assertThat(progress).isEmpty()
+        }
+
+    @Test
     fun `processes in pages and checkpoints once per page`() =
         runBlocking {
             addMixedRows(1L..1200L)
@@ -350,8 +367,15 @@ class SystemSmsImporterTest {
             val inserted = env.importer.importAll { imported, total -> progress += imported to total }.inserted
 
             assertThat(inserted).isEqualTo(1200)
-            // Initial callback plus one per 500-row page - not one per message.
-            assertThat(progress).containsExactly(0 to 1200, 500 to 1200, 1000 to 1200, 1200 to 1200).inOrder()
+            // Initial callback plus one per page - not one per message. Pages
+            // are PAGE_SIZE (50) rows: each page is one write transaction, and
+            // that transaction is how long a message received or sent during
+            // the import waits to be stored (issue #153), so the size is
+            // pinned here - a bigger page is a longer freeze.
+            assertThat(SystemSmsImporter.PAGE_SIZE).isEqualTo(50)
+            val expected = listOf(0 to 1200) + (50..1200 step 50).map { it to 1200 }
+            assertThat(progress).containsExactlyElementsIn(expected).inOrder()
+            assertThat(progress).hasSize(25)
             assertThat(env.checkpoints.get()).isEqualTo(SyncCheckpointStore.Checkpoint(1200L, 1200))
         }
 
