@@ -1,6 +1,5 @@
 package app.clearsms.ui.conversation
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -13,7 +12,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -22,6 +20,7 @@ import app.clearsms.data.db.MessageEntity
 import app.clearsms.mms.DataSimHint
 import app.clearsms.sms.SimInfo
 import app.clearsms.ui.common.rememberDisplayLocale
+import app.clearsms.ui.common.rememberIs24Hour
 
 /**
  * The "More details" dialog for ONE selected message. Rows come from the
@@ -56,8 +55,7 @@ internal fun MessageDetailsDialog(
     onDismiss: () -> Unit,
     dataSimHint: DataSimHint? = null,
 ) {
-    val context = LocalContext.current
-    val is24Hour = remember { DateFormat.is24HourFormat(context) }
+    val is24Hour = rememberIs24Hour()
     val rows =
         remember(message, resolvedName, activeSims, dataSimHint) {
             MessageDetails.rowsFor(message, resolvedName, activeSims, dataSimHint)

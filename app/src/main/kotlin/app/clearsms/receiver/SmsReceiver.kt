@@ -20,6 +20,7 @@ import app.clearsms.work.ReminderAlarmScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
 /**
@@ -58,11 +59,26 @@ class SmsReceiver : BroadcastReceiver() {
         intent: Intent,
     ) {
         if (intent.action != Telephony.Sms.Intents.SMS_DELIVER_ACTION) return
+        val receivedAtMs = System.currentTimeMillis()
+        val subscriptionId = extractSubscriptionId { key, def -> intent.getIntExtra(key, def) }
+        // FIRST, before any decoding or write: a report that shows this line
+        // with no matching "ingested" for the same delivery number proves the
+        // broadcast reached the app and the process did not live to store it
+        // (killed, or the platform's broadcast window ran out). Without it a
+        // message lost before the provider write leaves no trace at all.
+        // Only the PDU count and the SIM presence travel - never a PDU.
+        val delivery = DELIVERIES.incrementAndGet()
+        Diag.i(
+            TAG,
+            "deliver received",
+            count("delivery", delivery),
+            count("pdus", pduCount(intent)),
+            flag("sim", subscriptionId != null),
+        )
         // Received time is stamped ONCE, here, for every part of this
         // broadcast: it is when this device got the message (provider DATE).
-        val parts = extractParts(intent, receivedAtMs = System.currentTimeMillis())
+        val parts = extractParts(intent, receivedAtMs = receivedAtMs)
         if (parts.isEmpty()) return
-        val subscriptionId = extractSubscriptionId { key, def -> intent.getIntExtra(key, def) }
 
         val pendingResult = goAsync()
         applicationScope.launch {
@@ -72,9 +88,16 @@ class SmsReceiver : BroadcastReceiver() {
                     onError = { part, e ->
                         // Structured fields only: the sender passes through the
                         // logger's phone-number drop; the body never reaches it.
-                        Diag.e(TAG, "incoming message failed", e, sender(part.sender), count("parts", parts.size))
+                        Diag.e(
+                            TAG,
+                            "incoming message failed",
+                            e,
+                            sender(part.sender),
+                            count("delivery", delivery),
+                            count("parts", parts.size),
+                        )
                     },
-                ) { merged -> process(merged, subscriptionId) }
+                ) { merged -> process(merged, subscriptionId, delivery, receivedAtMs) }
             } finally {
                 pendingResult.finish()
             }
@@ -84,6 +107,8 @@ class SmsReceiver : BroadcastReceiver() {
     private suspend fun process(
         merged: Part,
         subscriptionId: Int?,
+        delivery: Long,
+        receivedAtMs: Long,
     ) {
         // Keep the provider row id: without it a later delete commit cannot
         // remove the provider copy, resurrecting the message in other apps.
@@ -111,10 +136,14 @@ class SmsReceiver : BroadcastReceiver() {
             messageDao.setSubscriptionId(entity.id, subscriptionId)
         }
         reminderAlarmScheduler.scheduleForMessage(entity.id)
+        // The delivery number pairs this line with its "deliver received";
+        // elapsedMs is how long the platform's broadcast window was used.
         Diag.i(
             TAG,
             "ingested",
             sender(merged.sender),
+            count("delivery", delivery),
+            count("elapsedMs", System.currentTimeMillis() - receivedAtMs),
             id("message", entity.id),
             id("thread", entity.threadId),
             label("category", entity.category),
@@ -151,6 +180,27 @@ class SmsReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "SmsReceiver"
+
+        /**
+         * Process-local sequence pairing a "deliver received" line with its
+         * "ingested" / "incoming message failed" outcome. Resets with the
+         * process; the timestamps disambiguate across restarts.
+         */
+        private val DELIVERIES = AtomicLong()
+
+        /**
+         * How many PDUs the `SMS_DELIVER` intent carries, read as a count
+         * only - the bytes themselves are never touched here. -1 when the
+         * extra is missing or not an array (a malformed broadcast, which
+         * [extractParts] then reports and drops).
+         */
+        @Suppress("DEPRECATION")
+        internal fun pduCount(intent: Intent): Int =
+            try {
+                (intent.getSerializableExtra("pdus") as? Array<*>)?.size ?: -1
+            } catch (_: Exception) {
+                -1
+            }
 
         /**
          * The subscription (SIM) the platform stamped on the `SMS_DELIVER`

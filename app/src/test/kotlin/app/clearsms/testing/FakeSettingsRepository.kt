@@ -8,6 +8,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.MessageTextSize
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -15,6 +16,7 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.conversation.MessageSelectionAction
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -168,6 +170,18 @@ open class FakeSettingsRepository : SettingsRepository {
     override val logoBackground = MutableStateFlow(LogoBackground.WHITE)
 
     override suspend fun setLogoBackground(value: LogoBackground) = Unit
+
+    override val messageTextSize = MutableStateFlow(MessageTextSize.DEFAULT)
+
+    override suspend fun setMessageTextSize(value: MessageTextSize) {
+        messageTextSize.value = value
+    }
+
+    override val timeFormat = MutableStateFlow(TimeFormat.SYSTEM)
+
+    override suspend fun setTimeFormat(value: TimeFormat) {
+        timeFormat.value = value
+    }
 
     override val inboxPillOrder = MutableStateFlow(InboxPill.entries.toList())
 

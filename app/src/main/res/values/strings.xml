@@ -391,6 +391,16 @@
     <string name="settings_show_rich_avatars">Show logos and contact photos</string>
     <string name="settings_show_rich_avatars_on">Contact photos and sender brand marks</string>
     <string name="settings_show_rich_avatars_off">Plain icon and monogram avatars</string>
+    <string name="settings_message_text_size">Message text size</string>
+    <string name="settings_message_text_size_summary">%1$s · Android\'s own font size setting already applies; this adds to it</string>
+    <string name="message_text_size_small">Small</string>
+    <string name="message_text_size_default">Default</string>
+    <string name="message_text_size_large">Large</string>
+    <string name="message_text_size_extra_large">Extra large</string>
+    <string name="settings_time_format">Time format</string>
+    <string name="time_format_system">Follow system</string>
+    <string name="time_format_12_hour">12-hour (2:05 pm)</string>
+    <string name="time_format_24_hour">24-hour (14:05)</string>
     <string name="settings_show_transaction_details">Show extracted message details</string>
     <string name="settings_message_sort_order">Sort messages by</string>
     <string name="settings_message_sort_received">Time received</string>

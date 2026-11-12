@@ -60,7 +60,9 @@ import app.clearsms.R
 import app.clearsms.domain.model.EnabledSections
 import app.clearsms.domain.model.StartDestination
 import app.clearsms.ui.alerts.AlertsScreen
+import app.clearsms.ui.common.LocalTimeFormat
 import app.clearsms.ui.components.LocalLogoBackground
+import app.clearsms.ui.components.LocalMessageTextScale
 import app.clearsms.ui.composemsg.ComposeMessageScreen
 import app.clearsms.ui.conversation.ConversationScreen
 import app.clearsms.ui.diagnostics.DiagnosticsScreen
@@ -130,7 +132,14 @@ fun ClearSmsApp(
 ) {
     val state by appViewModel.uiState.collectAsStateWithLifecycle()
     ClearSmsTheme(themeMode = state.themeMode, dynamicColor = state.dynamicColor) {
-        CompositionLocalProvider(LocalLogoBackground provides state.logoBackground) {
+        CompositionLocalProvider(
+            LocalLogoBackground provides state.logoBackground,
+            // One resolver for every clock the app writes (#158)...
+            LocalTimeFormat provides state.timeFormat,
+            // ...and the bubble-text multiplier (#157), applied to one style,
+            // never to LocalDensity.
+            LocalMessageTextScale provides state.messageTextSize.scale,
+        ) {
             when (state.onboardingComplete) {
                 null -> {
                     Box(Modifier.fillMaxSize())

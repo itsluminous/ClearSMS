@@ -399,11 +399,21 @@ interface MessageRepository {
      * paged batches (one transaction per page, so cancellation between pages
      * leaves the database consistent).
      *
+     * @param checkpoints where to record progress after each committed page
+     *   and where to resume from: a stored checkpoint makes the run continue
+     *   after the last committed page instead of starting over (see
+     *   [RecategorizeCheckpointStore]). Null = no checkpointing, always a
+     *   full pass from the first row.
      * @param onProgress called after each committed page with
-     *   (processed, total); also called once up front with (0, total).
-     * @return the number of messages re-categorized.
+     *   (processed, total); also called once up front with (processed so
+     *   far, total) - (0, total) for a run from the first row.
+     * @return the number of messages re-categorized, including the pages a
+     *   resumed run did not have to repeat.
      */
-    suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> }): Int
+    suspend fun recategorizeAll(
+        checkpoints: RecategorizeCheckpointStore? = null,
+        onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> },
+    ): Int
 
     /**
      * Re-sorts only the messages whose sender contains [senderCore], returning

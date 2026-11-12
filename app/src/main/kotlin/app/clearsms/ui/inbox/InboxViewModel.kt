@@ -25,6 +25,7 @@ import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.domain.model.OtpDisplaySize
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.notification.MutedSenderGate
 import app.clearsms.sms.ContactsSource
@@ -51,12 +52,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -227,6 +230,14 @@ class InboxViewModel
          */
         private val filter = MutableStateFlow<InboxFilterState?>(null)
 
+        /**
+         * The user's 12/24-hour choice (#158), held as state so the mapping
+         * (toInboxItem) can read it synchronously; `init` re-maps the loaded rows
+         * when it changes.
+         */
+        private val timeFormat: StateFlow<TimeFormat> =
+            settings.timeFormat.stateIn(viewModelScope, SharingStarted.Eagerly, TimeFormat.SYSTEM)
+
         /** One-shot undo snackbar requests (delete/archive just staged). */
         private val undoEvents = Channel<UndoUiEvent>(Channel.BUFFERED)
         val undoEventFlow: Flow<UndoUiEvent> = undoEvents.receiveAsFlow()
@@ -277,11 +288,13 @@ class InboxViewModel
                 val startCategory = settings.defaultInboxFilter.first()
                 filter.compareAndSet(null, InboxFilterState(pill = startCategory?.let(InboxPill::of)))
             }
-            // The rows' time labels are pre-formatted in the language of the
-            // moment they were mapped (see timeStrings); a language switch
-            // re-maps the loaded pages in place, like a contacts grant does.
+            // The rows' time labels are pre-formatted in the language and
+            // 12/24-hour format of the moment they were mapped (see
+            // timeStrings); a language switch or a time-format change re-maps
+            // the loaded pages in place, like a contacts grant does.
             viewModelScope.launch {
-                context.displayLocaleChanges().collect { activePagingSource?.invalidate() }
+                merge(context.displayLocaleChanges(), timeFormat.drop(1).map { })
+                    .collect { activePagingSource?.invalidate() }
             }
         }
 
@@ -620,10 +633,11 @@ class InboxViewModel
         /**
          * Read per row, not cached: the resources follow the app language, so a
          * row mapped after a language change is already in the new language -
-         * and `init` re-maps the loaded rows when the language changes, so a
-         * label never outlives the language it was formatted in.
+         * and `init` re-maps the loaded rows when the language or the time
+         * format changes, so a label never outlives the settings it was
+         * formatted under.
          */
-        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(context)
+        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(context, timeFormat.value)
 
         private fun resolveDisplay(sender: String): SenderDisplay =
             displayCache.getOrPut(sender) {

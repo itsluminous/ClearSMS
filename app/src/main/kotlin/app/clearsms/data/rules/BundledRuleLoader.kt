@@ -14,6 +14,8 @@ import app.clearsms.diagnostics.DiagField.Companion.ruleId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 
@@ -44,7 +46,36 @@ class BundledRuleLoader(
      * Null (tests) means no legacy store.
      */
     private val uiDataStore: DataStore<Preferences>? = null,
+    /**
+     * The process-wide rules-changed signal, bumped after every [reseed].
+     * Shared (via injection) with every other writer of the rules table and
+     * with the classifier's snapshot cache; see [RulesRevision].
+     */
+    val rulesRevision: RulesRevision = RulesRevision(),
 ) {
+    /**
+     * Version and fingerprint of the bundled asset as read in THIS process.
+     *
+     * The asset is immutable for the life of a process (it ships inside the
+     * APK), so once it has been read, parsed and hashed the result holds
+     * until the process dies. [ensureLoaded] used to redo that work - a
+     * 316 KB read, a JSON decode and a SHA-256 - on every single message
+     * (issue #153); now it costs a DataStore read and two string compares.
+     * Only the ASSET's identity is memoised, never the decision: the
+     * DataStore is still consulted on every call, so the behaviour on a
+     * stale marker (reseed) is exactly what it was.
+     */
+    @Volatile
+    private var assetIdentity: AssetIdentity? = null
+
+    /** Serialises the check-and-reseed so two concurrent callers never both reseed. */
+    private val reseedMutex = Mutex()
+
+    private data class AssetIdentity(
+        val version: String,
+        val fingerprint: String,
+    )
+
     /** Version string of the currently loaded bundled document, if any. */
     suspend fun loadedVersion(): String? = dataStore.data.first()[LOADED_VERSION_KEY]
 
@@ -52,8 +83,15 @@ class BundledRuleLoader(
     val loadedVersionFlow: Flow<String?> =
         dataStore.data.map { it[LOADED_VERSION_KEY] }
 
-    /** Ensures builtin rules in Room match the bundled asset; returns the version. */
+    /**
+     * Ensures builtin rules in Room match the bundled asset; returns the
+     * version. Cheap after the first call in a process (see [assetIdentity]):
+     * the asset is re-read only when the recorded marker disagrees with it.
+     */
     suspend fun ensureLoaded(): String? {
+        assetIdentity?.let { known ->
+            if (isRecorded(known.version, known.fingerprint)) return known.version
+        }
         val text =
             try {
                 context.assets
@@ -64,34 +102,59 @@ class BundledRuleLoader(
                 Diag.w(TAG, "could not load bundled rules", e)
                 return loadedVersion()
             }
-        return ensureLoaded(text)
+        val document = parse(text) ?: return loadedVersion()
+        val fingerprint = fingerprint(text)
+        val version = ensureLoaded(document, fingerprint)
+        assetIdentity = AssetIdentity(document.version, fingerprint)
+        return version
     }
 
     /** [ensureLoaded] over an already-read document text (asset access factored out for tests). */
     suspend fun ensureLoaded(text: String): String? {
-        val document =
-            try {
-                json.decodeFromString(RuleDocument.serializer(), text)
-            } catch (e: Exception) {
-                Diag.w(TAG, "could not parse bundled rules", e)
-                return loadedVersion()
-            }
-        val fingerprint = fingerprint(text)
-        val prefs = dataStore.data.first()
-        if (prefs[LOADED_VERSION_KEY] == document.version && prefs[LOADED_FINGERPRINT_KEY] == fingerprint) {
-            return document.version
+        val document = parse(text) ?: return loadedVersion()
+        return ensureLoaded(document, fingerprint(text))
+    }
+
+    private fun parse(text: String): RuleDocument? =
+        try {
+            json.decodeFromString(RuleDocument.serializer(), text)
+        } catch (e: Exception) {
+            Diag.w(TAG, "could not parse bundled rules", e)
+            null
         }
 
-        // The reseed itself; the loaded document version is part of the
-        // diagnostic report's header rather than repeated here.
-        Diag.i(TAG, "bundled rules reseeded", count("rules", document.rules.size), flag("firstLoad", prefs[LOADED_VERSION_KEY] == null))
-        reseed(document)
-        dataStore.edit {
-            it[LOADED_VERSION_KEY] = document.version
-            it[LOADED_FINGERPRINT_KEY] = fingerprint
-        }
-        return document.version
+    /** Whether the DataStore marker says [version]/[fingerprint] is what the table holds. */
+    private suspend fun isRecorded(
+        version: String,
+        fingerprint: String,
+    ): Boolean {
+        val prefs = dataStore.data.first()
+        return prefs[LOADED_VERSION_KEY] == version && prefs[LOADED_FINGERPRINT_KEY] == fingerprint
     }
+
+    /**
+     * The check-and-reseed, under one mutex: a receive and a bulk worker
+     * calling in at the same moment must not both delete and re-insert the
+     * builtin rows (between the two steps a classifier would see NO builtin
+     * rules at all). The second caller finds the marker already written and
+     * returns.
+     */
+    private suspend fun ensureLoaded(
+        document: RuleDocument,
+        fingerprint: String,
+    ): String =
+        reseedMutex.withLock {
+            if (isRecorded(document.version, fingerprint)) return@withLock document.version
+            // The reseed itself; the loaded document version is part of the
+            // diagnostic report's header rather than repeated here.
+            Diag.i(TAG, "bundled rules reseeded", count("rules", document.rules.size), flag("firstLoad", loadedVersion() == null))
+            reseed(document)
+            dataStore.edit {
+                it[LOADED_VERSION_KEY] = document.version
+                it[LOADED_FINGERPRINT_KEY] = fingerprint
+            }
+            document.version
+        }
 
     /**
      * Replaces the builtin rows with [document]'s rules.
@@ -107,6 +170,9 @@ class BundledRuleLoader(
      *   every disabled builtin back on; the flag is carried across. A builtin
      *   a pre-0.21 version parked in preferences (its row deleted) counts as
      *   disabled too - see [legacyParkedBuiltinIds].
+     *
+     * Bumps [rulesRevision] afterwards: a cached classifier snapshot built
+     * from the previous bundled rules must not outlive them.
      */
     suspend fun reseed(document: RuleDocument) {
         val userIds = ruleDao.getBySource(RuleSources.USER).map { it.id }.toSet()
@@ -127,6 +193,7 @@ class BundledRuleLoader(
                     rule.toEntity(json, RuleSources.BUILTIN).copy(enabled = rule.id !in disabledBuiltins)
                 }
         ruleDao.insertAll(rows)
+        rulesRevision.bump()
     }
 
     /** Ids of builtin rules a pre-0.21 version disabled by parking them in the UI preferences. */
