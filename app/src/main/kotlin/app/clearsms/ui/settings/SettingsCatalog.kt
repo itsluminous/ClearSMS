@@ -154,6 +154,14 @@ enum class SettingsItem(
     DYNAMIC_COLOR(SettingsSection.APPEARANCE, R.string.settings_dynamic_color),
     SHOW_RICH_AVATARS(SettingsSection.APPEARANCE, R.string.settings_show_rich_avatars),
     LOGO_BACKGROUND(SettingsSection.APPEARANCE, R.string.settings_logo_background),
+
+    // Appearance (GitHub #157): in-app multiplier for bubble text, on top of
+    // Android's own font-size setting (every sp size already honours that).
+    MESSAGE_TEXT_SIZE(SettingsSection.APPEARANCE, R.string.settings_message_text_size),
+
+    // Appearance (GitHub #158): 12/24-hour clock for every time the app
+    // writes; the default follows the phone.
+    TIME_FORMAT(SettingsSection.APPEARANCE, R.string.settings_time_format),
     DELIVERY_REPORTS(SettingsSection.NOTIFICATIONS, R.string.settings_delivery_reports),
     NOTIFICATION_ACTIONS(SettingsSection.NOTIFICATIONS, R.string.settings_notification_actions),
     TRANSACTION_NOTIFICATIONS(SettingsSection.NOTIFICATIONS, R.string.settings_transaction_notifications),

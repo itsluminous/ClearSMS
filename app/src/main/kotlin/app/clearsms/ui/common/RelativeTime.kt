@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.os.ConfigurationCompat
 import app.clearsms.R
+import app.clearsms.domain.model.TimeFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -22,31 +23,43 @@ import java.util.Locale
  */
 object RelativeTime {
     /**
-     * The locale-dependent half of a relative time: the two words that are
-     * not dates at all, and the [locale] whose day and month names are used.
+     * The user-dependent half of a relative time: the two words that are
+     * not dates at all, the [locale] whose day and month names are used, and
+     * whether a same-day row writes its clock as "14:05" or "2:05 pm"
+     * ([is24Hour], resolved from the user's [TimeFormat] by [ClockFormat]).
      * Build it with [from] (or [rememberRelativeTimeStrings] in composition);
-     * tests construct it directly.
+     * tests construct it directly. There is deliberately no way to build one
+     * without a [TimeFormat]: every clock in the app goes through the same
+     * resolver (GitHub #158).
      */
     class Strings(
         val today: String,
         val yesterday: String,
         val locale: Locale,
+        val is24Hour: Boolean,
     ) {
         companion object {
-            /** Resolved against [context]'s current resources, so it follows the app language. */
-            fun from(context: Context): Strings =
+            /**
+             * Resolved against [context]'s current resources, so it follows
+             * the app language, and against the user's [timeFormat].
+             */
+            fun from(
+                context: Context,
+                timeFormat: TimeFormat,
+            ): Strings =
                 Strings(
                     today = context.getString(R.string.date_today),
                     yesterday = context.getString(R.string.date_yesterday),
                     locale = displayLocale(context),
+                    is24Hour = ClockFormat.is24Hour(context, timeFormat),
                 )
         }
     }
 
     // Patterns only - the locale that renders them is applied per call via
     // withLocale(), because a DateTimeFormatter freezes the locale it was
-    // created with and these are process-wide singletons.
-    private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
+    // created with and these are process-wide singletons. The clock itself
+    // lives in ClockFormat, with every other clock in the app.
     private val dayFormat = DateTimeFormatter.ofPattern("EEE")
     private val dateFormat = DateTimeFormatter.ofPattern("d MMM")
     private val dateYearFormat = DateTimeFormatter.ofPattern("d MMM yyyy")
@@ -63,7 +76,7 @@ object RelativeTime {
         val nowDate = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
         val locale = strings.locale
         return when {
-            thenDate == nowDate -> timeFormat.withLocale(locale).format(then)
+            thenDate == nowDate -> ClockFormat.clock(then, strings.is24Hour, locale)
             thenDate == nowDate.minusDays(1) -> strings.yesterday
             thenDate.isAfter(nowDate.minusDays(7)) -> dayFormat.withLocale(locale).format(then)
             thenDate.year == nowDate.year -> dateFormat.withLocale(locale).format(then)
@@ -117,10 +130,14 @@ fun rememberDisplayLocale(): Locale {
     return remember(configuration) { ConfigurationCompat.getLocales(configuration)[0] ?: Locale.getDefault() }
 }
 
-/** [RelativeTime.Strings] for composition - recomputed when the configuration (language) changes. */
+/**
+ * [RelativeTime.Strings] for composition - recomputed when the configuration
+ * (language) or the user's [LocalTimeFormat] changes.
+ */
 @Composable
 fun rememberRelativeTimeStrings(): RelativeTime.Strings {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    return remember(configuration) { RelativeTime.Strings.from(context) }
+    val timeFormat = LocalTimeFormat.current
+    return remember(configuration, timeFormat) { RelativeTime.Strings.from(context, timeFormat) }
 }

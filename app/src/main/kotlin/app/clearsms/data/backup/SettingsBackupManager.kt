@@ -140,6 +140,11 @@ internal object SettingsBackupCatalog {
             // set on the new device before anything reaches its launcher.
             SettingsBackupEntry.BooleanEntry("conversation_shortcuts"),
             SettingsBackupEntry.StringEntry("logo_background"),
+            // Appearance (GitHub #157, #158): plain display choices. A
+            // restore must bring back the user's clock format and bubble
+            // text size exactly like the theme.
+            SettingsBackupEntry.StringEntry("message_text_size"),
+            SettingsBackupEntry.StringEntry("time_format"),
             SettingsBackupEntry.StringEntry("inbox_pill_order"),
             SettingsBackupEntry.StringSetEntry("inbox_hidden_pills"),
             SettingsBackupEntry.BooleanEntry("inbox_unread_toggle"),

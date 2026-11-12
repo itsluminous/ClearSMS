@@ -24,15 +24,29 @@ class RelativeTimeTest {
 
     private val now = ms(2026, 7, 27, 15, 30)
 
-    /** What `RelativeTime.Strings.from(context)` resolves to on an English device. */
-    private val english = RelativeTime.Strings(today = "Today", yesterday = "Yesterday", locale = Locale.ENGLISH)
+    /** What `RelativeTime.Strings.from(context, timeFormat)` resolves to on an English 24-hour device. */
+    private val english = RelativeTime.Strings(today = "Today", yesterday = "Yesterday", locale = Locale.ENGLISH, is24Hour = true)
+
+    /** The same device with the clock resolved to 12-hour (phone setting or the app's own preference). */
+    private val english12 = RelativeTime.Strings(today = "Today", yesterday = "Yesterday", locale = Locale.ENGLISH, is24Hour = false)
 
     /** The Hindi resources, with the Hindi locale for day and month names. */
-    private val hindi = RelativeTime.Strings(today = "आज", yesterday = "कल", locale = Locale.forLanguageTag("hi-IN"))
+    private val hindi = RelativeTime.Strings(today = "आज", yesterday = "कल", locale = Locale.forLanguageTag("hi-IN"), is24Hour = true)
 
     @Test
     fun `same day shows time`() {
         assertThat(RelativeTime.format(ms(2026, 7, 27, 9, 5), english, now, zone)).isEqualTo("09:05")
+    }
+
+    @Test
+    fun `same day shows a 12-hour clock when the resolver says so - GitHub 158`() {
+        // Before #158 this row was hard-wired to "HH:mm" while the metadata
+        // line under the same bubble followed the phone: "14:05" above,
+        // "2:05 pm" below. Both now read the one resolved flag.
+        assertThat(RelativeTime.format(ms(2026, 7, 27, 9, 5), english12, now, zone)).isEqualTo("9:05 am")
+        assertThat(RelativeTime.format(ms(2026, 7, 27, 14, 5), english12, now, zone)).isEqualTo("2:05 pm")
+        // Only the same-day row carries a clock; the rest are unaffected.
+        assertThat(RelativeTime.format(ms(2026, 7, 26), english12, now, zone)).isEqualTo("Yesterday")
     }
 
     @Test

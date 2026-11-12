@@ -8,6 +8,7 @@ import app.clearsms.data.prefs.SettingsRepository
 import app.clearsms.data.repository.MessageRepository
 import app.clearsms.di.IoDispatcher
 import app.clearsms.domain.categorizer.SenderIdLookup
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.sms.ContactsSource
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.displayLocaleChanges
@@ -77,9 +78,11 @@ class BinViewModel
                 // Rows pre-format their time label in the language of the
                 // moment; a language switch re-runs this mapping once.
                 context.displayLocaleChanges().runningFold(0) { n, _ -> n + 1 },
-            ) { messages, richAvatars, _ ->
+                // ...as does a 12/24-hour change (#158): the labels carry it.
+                settings.timeFormat,
+            ) { messages, richAvatars, _, timeFormat ->
                 BinUiState(
-                    items = messages.map { it.toInboxItem() },
+                    items = messages.map { it.toInboxItem(timeFormat) },
                     richAvatars = richAvatars,
                     loaded = true,
                 )
@@ -106,7 +109,7 @@ class BinViewModel
             }
         }
 
-        private fun MessageEntity.toInboxItem(): InboxItem {
+        private fun MessageEntity.toInboxItem(timeFormat: TimeFormat): InboxItem {
             val display =
                 displayCache.getOrPut(sender) {
                     resolveSenderDisplay(
@@ -119,7 +122,7 @@ class BinViewModel
                 message = this,
                 display = display,
                 glyph = brandGlyphFor(subCategory, display.name),
-                timeLabel = RelativeTime.format(timestamp, RelativeTime.Strings.from(context)),
+                timeLabel = RelativeTime.format(timestamp, RelativeTime.Strings.from(context, timeFormat)),
             )
         }
     }

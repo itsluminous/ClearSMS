@@ -1,6 +1,5 @@
 package app.clearsms.ui.components
 
-import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -19,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.clearsms.R
+import app.clearsms.ui.common.rememberIs24Hour
 
 /**
  * Two-step Material3 schedule picker: a date, then a time. Confirming with
@@ -35,7 +35,9 @@ fun ScheduleTimePicker(
     val context = LocalContext.current
     var pickingTime by rememberSaveable { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
-    val timePickerState = rememberTimePickerState(is24Hour = DateFormat.is24HourFormat(context))
+    // The picker's face follows the same resolved 12/24-hour choice as every
+    // clock the app writes (#158), not the phone's setting on its own.
+    val timePickerState = rememberTimePickerState(is24Hour = rememberIs24Hour())
     val pastTimeMessage = stringResource(R.string.conversation_schedule_past_time)
 
     if (!pickingTime) {

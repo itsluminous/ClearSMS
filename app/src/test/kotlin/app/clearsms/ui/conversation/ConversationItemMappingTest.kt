@@ -17,7 +17,7 @@ import java.util.Locale
  * their status after an app restart.
  */
 class ConversationItemMappingTest {
-    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH)
+    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH, is24Hour = true)
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -92,5 +92,22 @@ class ConversationItemMappingTest {
         assertThat(withSent.toConversationItem(json, english, sortOrder = MessageSortOrder.RECEIVED).timestamp).isEqualTo(5_000L)
         assertThat(withSent.toConversationItem(json, english, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(1_000L)
         assertThat(withoutSent.toConversationItem(json, english, sortOrder = MessageSortOrder.SENT).timestamp).isEqualTo(5_000L)
+    }
+
+    @Test
+    fun `the bubble corner time follows the resolved 12 or 24-hour flag - GitHub 158`() {
+        // 14:05 local on the day the test runs, so the row shows a clock.
+        val today =
+            java.time.LocalDate
+                .now()
+                .atTime(14, 5)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        val row = entity(outgoing = false).copy(timestamp = today)
+
+        assertThat(row.toConversationItem(json, english).timeLabel).isEqualTo("14:05")
+        val english12 = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH, is24Hour = false)
+        assertThat(row.toConversationItem(json, english12).timeLabel).isEqualTo("2:05 pm")
     }
 }
