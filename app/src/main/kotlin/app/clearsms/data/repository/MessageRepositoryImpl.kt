@@ -1,6 +1,7 @@
 package app.clearsms.data.repository
 
 import androidx.paging.PagingSource
+import androidx.room.InvalidationTracker
 import androidx.room.withTransaction
 import app.clearsms.data.db.AccountEntity
 import app.clearsms.data.db.AttachmentEntity
@@ -56,6 +57,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.yield
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -63,6 +67,7 @@ import kotlinx.serialization.json.Json
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Default [MessageRepository] backed by Room and the domain pipeline. */
 class MessageRepositoryImpl(
@@ -973,12 +978,21 @@ class MessageRepositoryImpl(
         return MessageRepository.IncomingIngest(stored ?: entity, duplicate = false)
     }
 
-    override suspend fun recategorizeAll(onProgress: suspend (processed: Int, total: Int) -> Unit): Int {
+    override suspend fun recategorizeAll(
+        checkpoints: RecategorizeCheckpointStore?,
+        onProgress: suspend (processed: Int, total: Int) -> Unit,
+    ): Int {
         // The rules snapshot is decoded ONCE (same optimization as the bulk
         // import) - re-decoding per message made a full re-sort O(N×R).
         val snapshot = rulesSnapshot()
         val total = messageDao.count()
-        onProgress(0, total)
+        // Resume where a stopped run left off (see RecategorizeCheckpoint):
+        // the pages before the checkpoint are committed and consistent, so
+        // repeating them would only re-hold the writer for nothing.
+        val resume = checkpoints?.get()
+        var processed = resume?.processed ?: 0
+        var afterId = resume?.afterId ?: 0L
+        onProgress(processed, total)
         // Classification (regex over the full rule set) dominates the cost
         // and is pure CPU - run it OUTSIDE the write transaction with the
         // same bounded parallelism the initial import uses. Serial in-
@@ -987,11 +1001,10 @@ class MessageRepositoryImpl(
         // corpus (~900us/msg serial on a desktop JVM; worse on phone cores).
         val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
         val classifyDispatcher = Dispatchers.Default.limitedParallelism(parallelism)
-        // Account ids persistDerived touches anywhere in this run - the
-        // complement feeds the orphan sweep below.
+        // Account ids persistDerived touches anywhere in this run (carried
+        // across a resume) - the complement feeds the orphan sweep below.
         val touchedAccounts = mutableSetOf<Long>()
-        var processed = 0
-        var afterId = 0L
+        resume?.let { touchedAccounts += it.touchedAccounts }
         while (true) {
             val page = messageDao.pageAfter(afterId, recategorizePageSize)
             if (page.isEmpty()) break
@@ -1011,9 +1024,20 @@ class MessageRepositoryImpl(
             refreshClassifiedPage(classified, touchedAccounts)
             processed += page.size
             afterId = page.last().id
+            // Checkpoint AFTER the commit, so a kill in between redoes at
+            // most this one page (idempotent: same rows, same rules).
+            checkpoints?.set(RecategorizeCheckpoint(afterId, processed, touchedAccounts.toSet()))
             onProgress(processed, total)
+            // Pages are small on purpose (RECATEGORIZE_PAGE_SIZE) and the
+            // writer is released between them: SQLite has ONE writer, and a
+            // message being received or sent right now is queued behind
+            // whatever transaction this loop holds (issue #153). The yield
+            // is a cancellation point too, which is how a stopped worker
+            // leaves the loop between pages.
+            yield()
         }
         sweepOrphanedAccounts(touchedAccounts)
+        checkpoints?.clear()
         return processed
     }
 
@@ -1149,15 +1173,60 @@ class MessageRepositoryImpl(
     internal suspend fun newestTimestamp(): Long? = messageDao.maxTimestamp()
 
     /**
-     * Decodes the full rule set once. The categorization pipeline re-queries
-     * and re-decodes rules for every message otherwise, which is O(N×R) over
-     * an import; a snapshot makes it O(R).
+     * The decoded rule set, cached across messages and keyed on
+     * [RulesRevision] (see there for the invalidation contract). Re-reading
+     * and hashing the bundled asset and decoding the ~470 enabled rows cost
+     * 15-35 ms per message on a desktop JVM - several times that on a phone
+     * - and the receive path paid it for every single message (issue #153).
+     *
+     * Freshness: [cachedRules] records the revision read BEFORE its rows
+     * were queried, so a write that lands during the rebuild leaves the
+     * cache stamped older than [RulesRevision.current] and the next call
+     * rebuilds again. A rule saved before this call therefore always decides
+     * this message; a rule saved concurrently decides the next one.
      */
     internal suspend fun rulesSnapshot(): RulesSnapshot {
         bundledRuleLoader.ensureLoaded()
-        return RulesSnapshot(
-            userRules = definitions(RuleSources.USER),
-            builtinRules = definitions(RuleSources.BUILTIN) + definitions(RuleSources.COMMUNITY),
+        ensureRulesObserver()
+        val revision = bundledRuleLoader.rulesRevision
+        cachedRules?.takeIf { it.revision == revision.current }?.let { return it.snapshot }
+        return rulesCacheMutex.withLock {
+            cachedRules?.takeIf { it.revision == revision.current }?.let { return@withLock it.snapshot }
+            val seen = revision.current
+            val snapshot =
+                RulesSnapshot(
+                    userRules = definitions(RuleSources.USER),
+                    builtinRules = definitions(RuleSources.BUILTIN) + definitions(RuleSources.COMMUNITY),
+                )
+            cachedRules = CachedRules(seen, snapshot)
+            snapshot
+        }
+    }
+
+    private class CachedRules(
+        val revision: Long,
+        val snapshot: RulesSnapshot,
+    )
+
+    @Volatile
+    private var cachedRules: CachedRules? = null
+    private val rulesCacheMutex = Mutex()
+    private val rulesObserverRegistered = AtomicBoolean(false)
+
+    /**
+     * The safety net behind the explicit [RulesRevision] bumps: any commit
+     * touching the `rules` table - whoever made it - bumps the revision once
+     * Room's tracker notices it. Registered lazily on the first snapshot so
+     * tests that never classify pay nothing.
+     */
+    private fun ensureRulesObserver() {
+        if (!rulesObserverRegistered.compareAndSet(false, true)) return
+        database.invalidationTracker.addObserver(
+            object : InvalidationTracker.Observer(RULES_TABLE) {
+                override fun onInvalidated(tables: Set<String>) {
+                    bundledRuleLoader.rulesRevision.bump()
+                }
+            },
         )
     }
 
@@ -2326,10 +2395,18 @@ class MessageRepositoryImpl(
     // endregion
 
     companion object {
-        /** Messages per re-categorization transaction - large enough to amortize
-         * the commit, small enough that progress ticks and cancellation stay
-         * responsive on a 14k-message inbox. */
-        const val RECATEGORIZE_PAGE_SIZE = 200
+        /**
+         * Messages per re-categorization transaction. The transaction is the
+         * window during which a message being received or sent right now
+         * cannot be written (one SQLite writer): 200 rows held it for
+         * ~0.5-1 s on a phone, long enough for a just-sent bubble to be
+         * visibly late (issue #153). 50 rows keeps it around 0.1-0.25 s
+         * while still amortising the commit over a 14k-message inbox.
+         */
+        const val RECATEGORIZE_PAGE_SIZE = 50
+
+        /** Room table name the rules observer watches (see ensureRulesObserver). */
+        private const val RULES_TABLE = "rules"
 
         /**
          * Sub-categories whose rule extracts may derive a transaction on

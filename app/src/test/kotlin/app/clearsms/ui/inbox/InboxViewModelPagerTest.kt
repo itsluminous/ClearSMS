@@ -19,6 +19,7 @@ import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.sms.ContactsSource
 import app.clearsms.testing.FakeMessageRepository
 import app.clearsms.testing.FakeSettingsRepository
@@ -239,6 +240,35 @@ class InboxViewModelPagerTest {
                 // A configuration change that leaves the language alone
                 // (a rotation re-delivering it) touches nothing.
                 switchLanguage(Locale("hi"))
+                advanceUntilIdle()
+                expectNoEvents()
+                assertThat(repository.pagedInboxCalls).hasSize(2)
+            }
+            job.cancel()
+        }
+
+    @Test
+    fun `a time-format change refreshes rows in place - the pager is not rebuilt`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            val job = collectPager(viewModel)
+            viewModel.pagerKeys.test {
+                advanceUntilIdle()
+                awaitItem()
+                assertThat(repository.pagedInboxCalls).hasSize(1)
+
+                // GitHub #158: the rows' "14:05" labels are pre-formatted at
+                // mapping time, so flipping the preference must re-map the
+                // loaded pages now - not after a restart - through the same
+                // in-place refresh a language change takes.
+                settings.timeFormat.value = TimeFormat.HOUR_12
+                advanceUntilIdle()
+
+                expectNoEvents()
+                assertThat(repository.pagedInboxCalls).hasSize(2)
+
+                // Writing the same value again is not a change.
+                settings.timeFormat.value = TimeFormat.HOUR_12
                 advanceUntilIdle()
                 expectNoEvents()
                 assertThat(repository.pagedInboxCalls).hasSize(2)

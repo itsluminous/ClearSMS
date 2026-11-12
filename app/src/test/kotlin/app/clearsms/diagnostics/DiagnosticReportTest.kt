@@ -22,6 +22,10 @@ class DiagnosticReportTest {
             networkConnected = true,
             networkTransport = "CELLULAR",
             simSlots = 2,
+            batteryOptimizationsIgnored = false,
+            backgroundRestricted = false,
+            userUnlocked = true,
+            notificationsEnabled = true,
             inboxSection = true,
             financeSection = true,
             alertsSection = false,
@@ -29,6 +33,8 @@ class DiagnosticReportTest {
             messageCount = 1234,
             ruleCount = 470,
             transactionCount = 88,
+            smsGap = ProviderGap(providerMaxId = 4321, localMaxId = 4318, providerRowsAboveLocal = 2),
+            mmsGap = ProviderGap.UNKNOWN,
             bundledRulesVersion = "1.3",
             timeZone = "Asia/Kolkata",
         )
@@ -58,12 +64,43 @@ class DiagnosticReportTest {
                 "permissions",
                 "network",
                 "simSlots",
+                "background",
                 "sections",
                 "defaultInboxFilter",
                 "counts",
+                "smsGap",
+                "mmsGap",
                 "bundledRulesVersion",
                 "timeZone",
             ).inOrder()
+    }
+
+    @Test
+    fun `header names the background-delivery facts and the provider gap as counts`() {
+        // Issue #152: a "messages do not arrive" report must show, on its
+        // own, whether the system holds messages the app does not, and the
+        // platform state that decides whether a background receive may run.
+        val text = header.render()
+        assertThat(text).contains(
+            "background: batteryOptimizationsIgnored=false backgroundRestricted=false userUnlocked=true notificationsEnabled=true",
+        )
+        assertThat(text).contains("smsGap: providerMaxId=4321 localMaxId=4318 gap=3 providerRowsAboveLocal=2")
+        assertThat(text).contains("mmsGap: providerMaxId=unknown localMaxId=none gap=unknown providerRowsAboveLocal=unknown")
+    }
+
+    @Test
+    fun `provider gap is a difference of row ids, unknown when either side is missing`() {
+        assertThat(ProviderGap(10, 10, 0).maxIdGap).isEqualTo(0)
+        assertThat(ProviderGap(15, 10, 5).maxIdGap).isEqualTo(5)
+        // The app ahead of the provider (a provider row deleted elsewhere) is a negative gap, not an error.
+        assertThat(ProviderGap(8, 10, 0).maxIdGap).isEqualTo(-2)
+        assertThat(ProviderGap(null, 10, null).maxIdGap).isNull()
+        assertThat(ProviderGap(10, null, 10).maxIdGap).isNull()
+        assertThat(ProviderGap(10, null, 10).render()).isEqualTo("providerMaxId=10 localMaxId=none gap=unknown providerRowsAboveLocal=10")
+        // Nothing but ids and counts can be rendered: no slot for text.
+        ProviderGap::class.members.map { it.name.lowercase() }.forEach { name ->
+            listOf("body", "address", "phone", "number", "sender", "text").forEach { assertThat(name).doesNotContain(it) }
+        }
     }
 
     @Test

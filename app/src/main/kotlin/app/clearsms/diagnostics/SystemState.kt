@@ -25,6 +25,18 @@ data class SystemState(
     val networkTransport: String,
     /** Number of SIM slots on the device (a hardware fact), null when unreadable. */
     val simSlots: Int?,
+    /**
+     * Whether the user exempted the app from battery optimisation (Doze);
+     * null when unreadable. A platform fact about THIS app, read without any
+     * permission.
+     */
+    val batteryOptimizationsIgnored: Boolean?,
+    /** Whether the user put the app under background restriction; null below API 28 or when unreadable. */
+    val backgroundRestricted: Boolean?,
+    /** Whether credential-encrypted storage is available (the device has been unlocked since boot); null when unreadable. */
+    val userUnlocked: Boolean?,
+    /** Whether the app may post notifications at all (the app-level switch); null when unreadable. */
+    val notificationsEnabled: Boolean?,
     val inboxSection: Boolean,
     val financeSection: Boolean,
     val alertsSection: Boolean,
@@ -33,6 +45,13 @@ data class SystemState(
     val messageCount: Int,
     val ruleCount: Int,
     val transactionCount: Int,
+    /**
+     * How far the system SMS provider is ahead of the app's store, in row
+     * ids - a count of messages the device holds that the app does not.
+     */
+    val smsGap: ProviderGap,
+    /** The same for the system MMS provider. */
+    val mmsGap: ProviderGap,
     /** The bundled rules document version currently loaded, or "none". */
     val bundledRulesVersion: String,
     val timeZone: String,
@@ -47,9 +66,17 @@ data class SystemState(
             appendLine("permissions: " + permissions.entries.joinToString(" ") { "${it.key}=${if (it.value) "granted" else "denied"}" })
             appendLine("network: connected=${networkConnected ?: "unknown"} transport=$networkTransport")
             appendLine("simSlots: ${simSlots ?: "unknown"}")
+            appendLine(
+                "background: batteryOptimizationsIgnored=${batteryOptimizationsIgnored ?: "unknown"} " +
+                    "backgroundRestricted=${backgroundRestricted ?: "unknown"} " +
+                    "userUnlocked=${userUnlocked ?: "unknown"} " +
+                    "notificationsEnabled=${notificationsEnabled ?: "unknown"}",
+            )
             appendLine("sections: inbox=$inboxSection finance=$financeSection alerts=$alertsSection")
             appendLine("defaultInboxFilter: $defaultInboxFilter")
             appendLine("counts: messages=$messageCount rules=$ruleCount transactions=$transactionCount")
+            appendLine("smsGap: ${smsGap.render()}")
+            appendLine("mmsGap: ${mmsGap.render()}")
             appendLine("bundledRulesVersion: $bundledRulesVersion")
             appendLine("timeZone: $timeZone")
         }
@@ -65,9 +92,12 @@ data class SystemState(
                 "permissions",
                 "network",
                 "simSlots",
+                "background",
                 "sections",
                 "defaultInboxFilter",
                 "counts",
+                "smsGap",
+                "mmsGap",
                 "bundledRulesVersion",
                 "timeZone",
             )

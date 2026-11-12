@@ -17,7 +17,7 @@ import java.util.Locale
  * disagree. All fixtures are synthetic.
  */
 class BubbleSimIndicatorTest {
-    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH)
+    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH, is24Hour = true)
     private val simA = SimInfo(subscriptionId = 10, slotIndex = 0, displayName = "Carrier A")
     private val simB = SimInfo(subscriptionId = 20, slotIndex = 1, displayName = "Carrier B")
     private val dualSim = listOf(simA, simB)

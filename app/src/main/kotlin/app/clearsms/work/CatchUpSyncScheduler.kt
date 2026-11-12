@@ -8,6 +8,7 @@ import app.clearsms.di.IoDispatcher
 import app.clearsms.diagnostics.Diag
 import app.clearsms.diagnostics.DiagField.Companion.count
 import app.clearsms.mms.SystemMmsSource
+import app.clearsms.sms.SystemSmsImporter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -40,9 +41,11 @@ import javax.inject.Singleton
  *    `ORDER BY _id DESC LIMIT 1` on the primary key) and Room's
  *    `MAX(systemSmsId)` (backed by the unique index) - cheap enough to pay
  *    per resume. A provider max above ours means rows exist that we never
- *    saw; the worker is enqueued. The probe can rarely over-trigger (e.g.
- *    the newest provider row is a draft, which the importer skips), in
- *    which case the run terminates immediately with nothing to import.
+ *    saw; the worker is enqueued. The probe only looks at rows the import
+ *    would store (inbox and sent), so a newest row of another type - a
+ *    stranded draft - cannot make it fire on every resume; and should it
+ *    still over-trigger, the run terminates immediately, reporting no
+ *    progress and posting no notification.
  *
  * Catch-up runs reuse the initial import wholesale: unique work (KEEP),
  * durable checkpoint, and the FULL classification pipeline (categorization,
@@ -120,14 +123,21 @@ class CatchUpSyncScheduler
             }
         }
 
-        /** Highest `_id` in the system SMS provider, or null when unreadable/empty. */
+        /**
+         * Highest importable (inbox or sent) `_id` in the system SMS
+         * provider, or null when unreadable/empty. Restricted to the types
+         * the importer stores - the same guard the MMS probe has - so a
+         * stranded draft or a failed send, which the import skips, cannot
+         * keep the probe firing on every resume (issue #153: each such run
+         * flashed "Importing your messages" for nothing).
+         */
         private fun providerMaxId(): Long? =
             try {
                 context.contentResolver
                     .query(
                         Telephony.Sms.CONTENT_URI,
                         arrayOf(Telephony.Sms._ID),
-                        null,
+                        SystemSmsImporter.IMPORTED_TYPES_SELECTION,
                         null,
                         "${Telephony.Sms._ID} DESC LIMIT 1",
                     )?.use { if (it.moveToFirst()) it.getLong(0) else null }

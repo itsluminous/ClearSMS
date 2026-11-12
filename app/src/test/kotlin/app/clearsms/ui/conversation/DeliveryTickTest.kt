@@ -19,7 +19,7 @@ import java.util.Locale
  * fixtures are synthetic.
  */
 class DeliveryTickTest {
-    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH)
+    private val english = RelativeTime.Strings("Today", "Yesterday", Locale.ENGLISH, is24Hour = true)
 
     private fun entity(
         outgoing: Boolean,

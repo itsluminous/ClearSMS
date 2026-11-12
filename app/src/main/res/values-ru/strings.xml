@@ -344,6 +344,16 @@
     <string name="settings_show_rich_avatars">Показывать логотипы и фото контактов</string>
     <string name="settings_show_rich_avatars_on">Фото контактов и логотипы отправителей</string>
     <string name="settings_show_rich_avatars_off">Простые значки и аватары с инициалами</string>
+    <string name="settings_message_text_size">Размер текста сообщений</string>
+    <string name="settings_message_text_size_summary">%1$s · Настройка размера шрифта Android уже действует; это добавляется к ней</string>
+    <string name="message_text_size_small">Мелкий</string>
+    <string name="message_text_size_default">Обычный</string>
+    <string name="message_text_size_large">Крупный</string>
+    <string name="message_text_size_extra_large">Очень крупный</string>
+    <string name="settings_time_format">Формат времени</string>
+    <string name="time_format_system">Как в системе</string>
+    <string name="time_format_12_hour">12-часовой (2:05 pm)</string>
+    <string name="time_format_24_hour">24-часовой (14:05)</string>
     <string name="settings_show_transaction_details">Показывать извлечённые данные сообщения</string>
     <string name="settings_message_sort_order">Сортировать сообщения по</string>
     <string name="settings_message_sort_received">Времени получения</string>

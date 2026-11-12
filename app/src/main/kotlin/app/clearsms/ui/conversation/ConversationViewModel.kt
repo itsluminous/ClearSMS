@@ -27,6 +27,7 @@ import app.clearsms.diagnostics.DiagField.Companion.flag
 import app.clearsms.diagnostics.DiagField.Companion.id
 import app.clearsms.domain.categorizer.SenderIdLookup
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.domain.model.sortTimestamp
 import app.clearsms.mms.DataSim
 import app.clearsms.mms.DataSimHint
@@ -73,11 +74,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -302,6 +305,10 @@ class ConversationViewModel
     ) : ViewModel() {
         private val threadId: Long = checkNotNull(savedStateHandle["threadId"])
 
+        /** The user's 12/24-hour choice (#158), as state so the mapping can read it synchronously. */
+        private val timeFormat: StateFlow<TimeFormat> =
+            settings.timeFormat.stateIn(viewModelScope, SharingStarted.Eagerly, TimeFormat.SYSTEM)
+
         /**
          * What the new-message composer handed over when it routed the user
          * into this existing conversation (issue #119): typed text, staged
@@ -408,11 +415,13 @@ class ConversationViewModel
             viewModelScope.launch(ioDispatcher) {
                 messageRepository.setReadForThreads(listOf(threadId), read = true)
             }
-            // Bubble time labels are pre-formatted in the language of the
-            // moment they were mapped; a language switch re-maps the loaded
-            // pages in place (see activePagingSource).
+            // Bubble time labels are pre-formatted in the language and
+            // 12/24-hour format of the moment they were mapped; a language
+            // switch or a time-format change re-maps the loaded pages in
+            // place (see activePagingSource).
             viewModelScope.launch {
-                appContext.displayLocaleChanges().collect { activePagingSource?.invalidate() }
+                merge(appContext.displayLocaleChanges(), timeFormat.drop(1).map { })
+                    .collect { activePagingSource?.invalidate() }
             }
             // Prime the SIM chooser: remembered per-recipient choice, else
             // the SIM this thread last used, else the system default.
@@ -481,7 +490,7 @@ class ConversationViewModel
          * [activePagingSource]), so a bubble's label never outlives the
          * language it was formatted in.
          */
-        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(appContext)
+        private fun timeStrings(): RelativeTime.Strings = RelativeTime.Strings.from(appContext, timeFormat.value)
 
         /**
          * The PagingSource the running pager loads from, so a language change

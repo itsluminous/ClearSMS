@@ -11,7 +11,13 @@ import app.clearsms.data.rules.toEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 
-/** Default [RuleRepository] backed by Room and the bundled rules asset. */
+/**
+ * Default [RuleRepository] backed by Room and the bundled rules asset.
+ *
+ * Every write here ends with a [app.clearsms.data.rules.RulesRevision] bump
+ * (the loader's shared instance): the classifier caches its decoded rule
+ * set, and a rule the user just saved must decide the very next message.
+ */
 class RuleRepositoryImpl(
     private val ruleDao: RuleDao,
     private val bundledRuleLoader: BundledRuleLoader,
@@ -29,9 +35,13 @@ class RuleRepositoryImpl(
 
     override suspend fun addUserRule(definition: RuleDefinition) {
         ruleDao.insert(definition.toEntity(json, RuleSources.USER))
+        rulesChanged()
     }
 
-    override suspend fun deleteRule(id: String) = ruleDao.deleteById(id)
+    override suspend fun deleteRule(id: String) {
+        ruleDao.deleteById(id)
+        rulesChanged()
+    }
 
     override suspend fun restoreParkedRule(
         definition: RuleDefinition,
@@ -43,12 +53,16 @@ class RuleRepositoryImpl(
         // user rule (never a way to plant a "builtin" row from preferences).
         val safeSource = if (source == RuleSources.BUILTIN) RuleSources.BUILTIN else RuleSources.USER
         ruleDao.insert(definition.toEntity(json, safeSource).copy(enabled = enabled))
+        rulesChanged()
     }
 
     override suspend fun setRuleEnabled(
         id: String,
         enabled: Boolean,
-    ) = ruleDao.setEnabled(id, enabled)
+    ) {
+        ruleDao.setEnabled(id, enabled)
+        rulesChanged()
+    }
 
     override suspend fun exportUserRules(): String = ruleExporter.export(ruleDao.getBySource(RuleSources.USER))
 
@@ -62,5 +76,9 @@ class RuleRepositoryImpl(
                 entity.copy(id = RuleEntity.namespacedUserId(entity.id))
             }
         ruleDao.insertAll(entities)
+        rulesChanged()
     }
+
+    /** After every write: the cached classifier snapshot is now stale. */
+    private fun rulesChanged() = bundledRuleLoader.rulesRevision.bump()
 }

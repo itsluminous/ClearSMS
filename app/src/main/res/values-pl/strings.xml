@@ -344,6 +344,16 @@
     <string name="settings_show_rich_avatars">Pokazuj logo i zdjęcia kontaktów</string>
     <string name="settings_show_rich_avatars_on">Zdjęcia kontaktów i znaki marek nadawców</string>
     <string name="settings_show_rich_avatars_off">Zwykłe ikony i monogramy</string>
+    <string name="settings_message_text_size">Rozmiar tekstu wiadomości</string>
+    <string name="settings_message_text_size_summary">%1$s · Ustawienie rozmiaru czcionki Androida już działa; to je dodatkowo zwiększa</string>
+    <string name="message_text_size_small">Mały</string>
+    <string name="message_text_size_default">Domyślny</string>
+    <string name="message_text_size_large">Duży</string>
+    <string name="message_text_size_extra_large">Bardzo duży</string>
+    <string name="settings_time_format">Format godziny</string>
+    <string name="time_format_system">Jak w systemie</string>
+    <string name="time_format_12_hour">12-godzinny (2:05 pm)</string>
+    <string name="time_format_24_hour">24-godzinny (14:05)</string>
     <string name="settings_show_transaction_details">Pokazuj wyodrębnione szczegóły wiadomości</string>
     <string name="settings_message_sort_order">Sortuj wiadomości według</string>
     <string name="settings_message_sort_received">Czasu odebrania</string>

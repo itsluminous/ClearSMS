@@ -348,6 +348,16 @@
     <string name="settings_show_rich_avatars">Logo aur contact photo dikhayein</string>
     <string name="settings_show_rich_avatars_on">Contact photo aur sender ke brand logo</string>
     <string name="settings_show_rich_avatars_off">Simple icon aur letter avatar</string>
+    <string name="settings_message_text_size">Message text size</string>
+    <string name="settings_message_text_size_summary">%1$s · Android ki apni font size setting pehle se lagti hai; yeh uske upar lagta hai</string>
+    <string name="message_text_size_small">Chhota</string>
+    <string name="message_text_size_default">Default</string>
+    <string name="message_text_size_large">Bada</string>
+    <string name="message_text_size_extra_large">Bahut bada</string>
+    <string name="settings_time_format">Time format</string>
+    <string name="time_format_system">System ke hisaab se</string>
+    <string name="time_format_12_hour">12-ghante (2:05 pm)</string>
+    <string name="time_format_24_hour">24-ghante (14:05)</string>
     <string name="settings_show_transaction_details">Message se nikaali gayi details dikhayein</string>
     <string name="settings_message_sort_order">Message sort karein</string>
     <string name="settings_message_sort_received">Receive hone ke time se</string>

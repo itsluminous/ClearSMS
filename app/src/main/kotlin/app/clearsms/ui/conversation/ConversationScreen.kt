@@ -1,6 +1,5 @@
 package app.clearsms.ui.conversation
 
-import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
@@ -117,6 +116,7 @@ import app.clearsms.ui.common.HighlightTiming
 import app.clearsms.ui.common.RelativeTime
 import app.clearsms.ui.common.UndoUiEvent
 import app.clearsms.ui.common.rememberDisplayLocale
+import app.clearsms.ui.common.rememberIs24Hour
 import app.clearsms.ui.common.rememberRelativeTimeStrings
 import app.clearsms.ui.components.AmountKind
 import app.clearsms.ui.components.AmountText
@@ -124,6 +124,7 @@ import app.clearsms.ui.components.AttachmentPickerSheet
 import app.clearsms.ui.components.BodyLink
 import app.clearsms.ui.components.DialableNumber
 import app.clearsms.ui.components.LinkifiedBodyText
+import app.clearsms.ui.components.LocalMessageTextScale
 import app.clearsms.ui.components.MessageComposerBar
 import app.clearsms.ui.components.MessageTextDirection
 import app.clearsms.ui.components.MutedIndicator
@@ -142,6 +143,7 @@ import app.clearsms.ui.components.extractValueLabel
 import app.clearsms.ui.components.rememberAttachmentLaunchers
 import app.clearsms.ui.components.rememberComposerInsertions
 import app.clearsms.ui.components.rememberContactInsertLauncher
+import app.clearsms.ui.components.scaledBy
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
 import app.clearsms.ui.settings.DirectCall
@@ -1377,8 +1379,14 @@ private fun MessageBubble(
                                 // right-aligned inside a bubble that stays
                                 // on its usual side. One merged style for
                                 // both branches, so entering text-selection
-                                // mode cannot re-flow a single glyph.
-                                val bodyStyle = MaterialTheme.typography.bodyLarge.merge(MessageTextDirection.style)
+                                // mode cannot re-flow a single glyph. The
+                                // user's text-size multiplier (#157) scales
+                                // this one style - sp stays sp, so Android's
+                                // own font-size setting still multiplies it.
+                                val bodyStyle =
+                                    MaterialTheme.typography.bodyLarge
+                                        .scaledBy(LocalMessageTextScale.current)
+                                        .merge(MessageTextDirection.style)
                                 if (textSelectionField != null) {
                                     // Issue #103: partial text selection. The
                                     // BODY only becomes selectable - time
@@ -1444,8 +1452,7 @@ private fun MessageBubble(
                         // metadata line.
                         when (item.deliveryStatus) {
                             DeliveryStatus.SCHEDULED -> {
-                                val context = LocalContext.current
-                                val is24Hour = remember { DateFormat.is24HourFormat(context) }
+                                val is24Hour = rememberIs24Hour()
                                 val locale = rememberDisplayLocale()
                                 val at = item.message?.scheduledAt ?: item.timestamp
                                 Text(
@@ -1604,15 +1611,16 @@ private fun TextSelectionBody(
 
 /**
  * The unobtrusive metadata line revealed under a tapped bubble: exact
- * timestamp (honouring the device's 12/24-hour setting), plus the persisted
- * delivery status for outgoing messages or the category for incoming ones.
+ * timestamp (in the user's resolved 12/24-hour format, #158), plus the
+ * persisted delivery status for outgoing messages or the category for
+ * incoming ones.
  */
 @Composable
 private fun MessageMetadataLine(item: ConversationItem) {
-    val context = LocalContext.current
-    val is24Hour = remember { DateFormat.is24HourFormat(context) }
+    val is24Hour = rememberIs24Hour()
     val locale = rememberDisplayLocale()
-    val timestamp = remember(item.id, locale) { MessageMetadata.timestampLabel(item.timestamp, is24Hour, locale = locale) }
+    val timestamp =
+        remember(item.id, locale, is24Hour) { MessageMetadata.timestampLabel(item.timestamp, is24Hour, locale = locale) }
     val detail =
         if (item.outgoing) {
             stringResource(deliveryStatusLabelRes(item.deliveryStatus))

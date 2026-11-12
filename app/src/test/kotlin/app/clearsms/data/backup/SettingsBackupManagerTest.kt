@@ -20,6 +20,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.MessageTextSize
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -27,6 +28,7 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.conversation.MessageSelectionAction
 import com.google.common.truth.Truth.assertThat
@@ -168,6 +170,8 @@ class SettingsBackupManagerTest {
         repo.setTransactionNotifications(false)
         repo.setConversationShortcuts(false)
         repo.setLogoBackground(LogoBackground.WHITE)
+        repo.setMessageTextSize(MessageTextSize.LARGE)
+        repo.setTimeFormat(TimeFormat.HOUR_12)
         repo.setInboxPillOrder(InboxPill.entries.reversed())
         repo.setInboxHiddenPills(setOf(InboxPill.UNKNOWN, InboxPill.SPAM))
         repo.setInboxUnreadToggle(false)

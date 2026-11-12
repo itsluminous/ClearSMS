@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import app.clearsms.data.db.ClearSmsDatabase
 import app.clearsms.data.db.RuleEntity
 import app.clearsms.data.rules.RuleSources
+import app.clearsms.data.rules.RulesRevision
 
 /**
  * The slice of the rules table the settings backup reads and writes: the
@@ -24,13 +25,19 @@ interface UserRuleStore {
     suspend fun upsertUserRules(rules: List<RuleEntity>)
 }
 
-/** Room-backed [UserRuleStore]. */
+/**
+ * Room-backed [UserRuleStore]. A restore bumps [rulesRevision] so the
+ * classifier's cached rule snapshot picks the restored rules up on the next
+ * message (see [RulesRevision]).
+ */
 class RoomUserRuleStore(
     private val database: ClearSmsDatabase,
+    private val rulesRevision: RulesRevision = RulesRevision(),
 ) : UserRuleStore {
     override suspend fun userRules(): List<RuleEntity> = database.ruleDao().getBySource(RuleSources.USER)
 
     override suspend fun upsertUserRules(rules: List<RuleEntity>) {
         database.withTransaction { database.ruleDao().insertAll(rules) }
+        rulesRevision.bump()
     }
 }

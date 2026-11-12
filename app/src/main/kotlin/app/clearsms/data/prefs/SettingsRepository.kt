@@ -7,6 +7,7 @@ import app.clearsms.domain.model.FinanceTab
 import app.clearsms.domain.model.InboxPill
 import app.clearsms.domain.model.LogoBackground
 import app.clearsms.domain.model.MessageSortOrder
+import app.clearsms.domain.model.MessageTextSize
 import app.clearsms.domain.model.NotificationAction
 import app.clearsms.domain.model.OtpAutoDeletePolicy
 import app.clearsms.domain.model.OtpDisplaySize
@@ -14,6 +15,7 @@ import app.clearsms.domain.model.StartDestination
 import app.clearsms.domain.model.SwipeAction
 import app.clearsms.domain.model.SwipeDeadZone
 import app.clearsms.domain.model.ThemeMode
+import app.clearsms.domain.model.TimeFormat
 import app.clearsms.ui.alerts.AlertFilter
 import app.clearsms.ui.conversation.MessageSelectionAction
 import kotlinx.coroutines.flow.Flow
@@ -242,6 +244,24 @@ interface SettingsRepository {
     val logoBackground: Flow<LogoBackground>
 
     suspend fun setLogoBackground(value: LogoBackground)
+
+    /**
+     * In-app multiplier for the text inside conversation bubbles (#157), on
+     * top of Android's own font-size setting, which every sp size already
+     * honours. Bubbles only - the inbox preview is unchanged.
+     */
+    val messageTextSize: Flow<MessageTextSize>
+
+    suspend fun setMessageTextSize(value: MessageTextSize)
+
+    /**
+     * 12/24-hour clock for every time the app writes (#158). Defaults to
+     * following the phone's setting; resolved once, in
+     * `app.clearsms.ui.common.ClockFormat`.
+     */
+    val timeFormat: Flow<TimeFormat>
+
+    suspend fun setTimeFormat(value: TimeFormat)
 
     /**
      * Id of the newest OTP message the user has handled (copied or dismissed)

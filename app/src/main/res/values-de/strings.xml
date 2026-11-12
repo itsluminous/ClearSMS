@@ -338,6 +338,16 @@
     <string name="settings_show_rich_avatars">Logos und Kontaktfotos anzeigen</string>
     <string name="settings_show_rich_avatars_on">Kontaktfotos und Markenzeichen der Absender</string>
     <string name="settings_show_rich_avatars_off">Einfache Symbole und Monogramm-Avatare</string>
+    <string name="settings_message_text_size">Textgröße in Nachrichten</string>
+    <string name="settings_message_text_size_summary">%1$s · Die Schriftgrößen-Einstellung von Android gilt bereits; dies kommt hinzu</string>
+    <string name="message_text_size_small">Klein</string>
+    <string name="message_text_size_default">Standard</string>
+    <string name="message_text_size_large">Groß</string>
+    <string name="message_text_size_extra_large">Sehr groß</string>
+    <string name="settings_time_format">Zeitformat</string>
+    <string name="time_format_system">Wie das System</string>
+    <string name="time_format_12_hour">12 Stunden (2:05 pm)</string>
+    <string name="time_format_24_hour">24 Stunden (14:05)</string>
     <string name="settings_show_transaction_details">Extrahierte Nachrichtendetails anzeigen</string>
     <string name="settings_message_sort_order">Nachrichten sortieren nach</string>
     <string name="settings_message_sort_received">Empfangszeit</string>
