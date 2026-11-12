@@ -7,6 +7,7 @@ import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.RecategorizeCheckpointStore
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.MessageSortOrder
 import kotlinx.coroutines.flow.Flow
@@ -192,7 +193,10 @@ open class FakeMessageRepository : MessageRepository {
         systemSmsId: Long?,
     ): MessageEntity = throw UnsupportedOperationException()
 
-    override suspend fun recategorizeAll(onProgress: suspend (Int, Int) -> Unit): Int = 0
+    override suspend fun recategorizeAll(
+        checkpoints: RecategorizeCheckpointStore?,
+        onProgress: suspend (Int, Int) -> Unit,
+    ): Int = 0
 
     /** Sender-scoped re-sort: records the request, does no work. */
     var recategorizedSenderCores = mutableListOf<String>()

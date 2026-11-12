@@ -10,19 +10,25 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
+import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
+import androidx.work.workDataOf
 import app.clearsms.data.db.CategoryUnreadCount
 import app.clearsms.data.db.InboxThreadRow
 import app.clearsms.data.db.MessageEntity
 import app.clearsms.data.repository.BinRestoreResult
 import app.clearsms.data.repository.MessageRepository
+import app.clearsms.data.repository.RecategorizeCheckpoint
+import app.clearsms.data.repository.RecategorizeCheckpointStore
 import app.clearsms.domain.model.Category
 import app.clearsms.domain.model.MessageSortOrder
 import app.clearsms.testing.FakeSettingsRepository
+import app.clearsms.testing.InMemoryPreferencesDataStore
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -43,13 +49,23 @@ class RecategorizeWorkerTest {
     /** Records the last-sorted version marker the worker writes on success. */
     private val fakeSettings = FakeSettingsRepository()
 
+    /** The worker's durable re-sort checkpoint, on an in-memory store. */
+    private val checkpoints = RecategorizeCheckpointPrefs(InMemoryPreferencesDataStore())
+
     /** Gate released by the test; until then the fake re-sort stays RUNNING. */
     private val gate = CompletableDeferred<Unit>()
+
+    /** What the fake re-sort found in the checkpoint store when it started (null = from the first row). */
+    private var checkpointSeenAtStart: RecategorizeCheckpoint? = null
 
     /** Fake repository: only [recategorizeAll] matters to the worker. */
     private val fakeRepository =
         object : MessageRepository {
-            override suspend fun recategorizeAll(onProgress: suspend (Int, Int) -> Unit): Int {
+            override suspend fun recategorizeAll(
+                checkpoints: RecategorizeCheckpointStore?,
+                onProgress: suspend (Int, Int) -> Unit,
+            ): Int {
+                checkpointSeenAtStart = checkpoints?.get()
                 onProgress(0, 7)
                 gate.await()
                 onProgress(7, 7)
@@ -206,7 +222,7 @@ class RecategorizeWorkerTest {
                             appContext: Context,
                             workerClassName: String,
                             workerParameters: WorkerParameters,
-                        ): ListenableWorker = RecategorizeWorker(appContext, workerParameters, fakeRepository, fakeSettings)
+                        ): ListenableWorker = RecategorizeWorker(appContext, workerParameters, fakeRepository, fakeSettings, checkpoints)
                     },
                 ).build()
         WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
@@ -275,6 +291,61 @@ class RecategorizeWorkerTest {
         assertThat(running.tags).doesNotContain(RecategorizeWorker.TAG_AUTO)
         gate.complete(Unit)
         awaitInfo { it.state.isFinished }
+    }
+
+    /** A half-finished pass left behind by a run the system stopped. */
+    private val staleCheckpoint = RecategorizeCheckpoint(afterId = 500L, processed = 500, touchedAccounts = setOf(1L))
+
+    private fun runDirectly(
+        tags: List<String>,
+        runAttemptCount: Int,
+    ): ListenableWorker.Result {
+        gate.complete(Unit)
+        val worker =
+            TestListenableWorkerBuilder<RecategorizeWorker>(context)
+                .setTags(tags)
+                .setRunAttemptCount(runAttemptCount)
+                .setWorkerFactory(
+                    object : WorkerFactory() {
+                        override fun createWorker(
+                            appContext: Context,
+                            workerClassName: String,
+                            workerParameters: WorkerParameters,
+                        ): ListenableWorker = RecategorizeWorker(appContext, workerParameters, fakeRepository, fakeSettings, checkpoints)
+                    },
+                ).build()
+        return runBlocking { worker.doWork() }
+    }
+
+    @Test
+    fun `the automatic post-update run resumes from the checkpoint a stopped run left`() {
+        runBlocking { checkpoints.set(staleCheckpoint) }
+
+        val result = runDirectly(tags = listOf(RecategorizeWorker.TAG_AUTO), runAttemptCount = 0)
+
+        assertThat(result).isEqualTo(ListenableWorker.Result.success(workDataOf(RecategorizeWorker.OUTPUT_COUNT to 7)))
+        assertThat(checkpointSeenAtStart).isEqualTo(staleCheckpoint)
+    }
+
+    @Test
+    fun `a manual sort the user just tapped starts from the first row`() {
+        runBlocking { checkpoints.set(staleCheckpoint) }
+
+        runDirectly(tags = emptyList(), runAttemptCount = 0)
+
+        // The user may have tapped precisely to apply a rule the stopped pass
+        // did not know about - its first half must not be reused.
+        assertThat(checkpointSeenAtStart).isNull()
+        assertThat(runBlocking { checkpoints.get() }).isNull()
+    }
+
+    @Test
+    fun `a manual sort the system stopped and rescheduled resumes`() {
+        runBlocking { checkpoints.set(staleCheckpoint) }
+
+        runDirectly(tags = emptyList(), runAttemptCount = 1)
+
+        assertThat(checkpointSeenAtStart).isEqualTo(staleCheckpoint)
     }
 
     @Test
