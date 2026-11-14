@@ -389,14 +389,15 @@ class ConversationViewModel
         /**
          * Whether the SIM that would send supports MMS at all. False only
          * when the carrier config explicitly disables it, in which case the
-         * composer hides its attach button rather than offering a send that
-         * can only be refused (issue #94). Starts true so the button is
-         * never missing while the SIM list is still loading.
+         * composer's "+" sheet drops its attachment rows rather than offering
+         * a send that can only be refused (issue #94); the sheet's Contact
+         * row (text, GitHub #150) stays. Starts true so the rows are never
+         * missing while the SIM list is still loading.
          */
         private val carrierMmsAvailable = MutableStateFlow(true)
 
         /**
-         * The attach button is offered only when BOTH agree: the user has not
+         * The attachment rows are offered only when BOTH agree: the user has not
          * switched picture messages off in Settings, and the carrier config
          * does not declare MMS disabled for the sending SIM.
          */

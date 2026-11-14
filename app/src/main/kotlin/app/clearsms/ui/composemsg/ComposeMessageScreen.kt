@@ -44,6 +44,8 @@ import app.clearsms.ui.components.SenderAvatar
 import app.clearsms.ui.components.SwipeDismissSnackbarHost
 import app.clearsms.ui.components.TooltipIconButton
 import app.clearsms.ui.components.rememberAttachmentLaunchers
+import app.clearsms.ui.components.rememberComposerInsertions
+import app.clearsms.ui.components.rememberContactInsertLauncher
 import app.clearsms.ui.conversation.SendStatus
 
 /** New message: recipient with contact suggestions, body, signature-aware send. */
@@ -77,6 +79,10 @@ fun ComposeMessageScreen(
             cameraUriProvider = viewModel::cameraUri,
             onCameraDone = viewModel::onCameraResult,
         )
+    // "Contact" in the same sheet inserts name + number as TEXT at the
+    // field's cursor (GitHub #150), through the bar's own field state.
+    val composerInsertions = rememberComposerInsertions()
+    val pickContactForInsert = rememberContactInsertLauncher(onInsert = composerInsertions::insert)
 
     // Send feedback is IMMEDIATE and lives in the thread: the box clears on
     // tap (or on a confirmed schedule), and a successful dispatch navigates
@@ -142,12 +148,14 @@ fun ComposeMessageScreen(
                     state.picked?.name
                         ?: state.recipient.ifBlank { stringResource(R.string.compose_title) },
                 attachments = attachments,
-                // Null hides the button; only an explicit carrier "no MMS
-                // on this SIM" gets here (issue #94).
-                onAttachClick = if (mmsAvailable) ({ showAttachmentSheet = true }) else null,
+                // Always offered: the sheet's Contact row is a TEXT feature;
+                // MMS availability (issue #94) gates the sheet's attachment
+                // rows, not the button.
+                onAttachClick = { showAttachmentSheet = true },
                 onRemoveAttachment = viewModel::removeAttachment,
                 attachmentError = attachmentError,
                 attachmentBudgetBytes = attachmentBudgetBytes,
+                insertions = composerInsertions,
             )
         },
     ) { padding ->
@@ -237,11 +245,14 @@ fun ComposeMessageScreen(
         }
     }
 
-    // The compose-bar "+": Photo (photo picker) / Camera / Any file.
+    // The compose-bar "+": Photo (photo picker) / Camera / Any file while
+    // MMS is available, and Contact (inserted as text) always.
     if (showAttachmentSheet) {
         AttachmentPickerSheet(
             onDismiss = { showAttachmentSheet = false },
             launchers = attachmentLaunchers,
+            mmsAvailable = mmsAvailable,
+            onInsertContact = pickContactForInsert,
         )
     }
 

@@ -61,12 +61,18 @@
     <string name="mms_attachment_save_failed">Could not save attachment</string>
 
     <!-- MMS send: compose-bar attachments -->
-    <string name="compose_attach">Add attachment</string>
+    <string name="compose_attach">Add to message</string>
     <string name="compose_expand">Expand compose box</string>
     <string name="compose_collapse">Shrink compose box</string>
     <string name="compose_attach_photo">Photo</string>
     <string name="compose_attach_camera">Camera</string>
     <string name="compose_attach_file">Any file</string>
+    <!-- Insert a contact as text (GitHub #150): name then number, reorderable by translators -->
+    <string name="compose_attach_contact">Contact</string>
+    <string name="compose_attach_contact_hint">Name and number, inserted as text</string>
+    <string name="compose_contact_text">%1$s: %2$s</string>
+    <string name="compose_contact_picker_missing">No contacts app available</string>
+    <string name="compose_contact_unreadable">That contact could not be read</string>
     <string name="compose_attachment_remove">Remove attachment</string>
     <string name="compose_attachment_too_large">Too large to send, even after compression (limit %1$s)</string>
     <string name="compose_attachment_unreadable">That file could not be read</string>

@@ -368,7 +368,7 @@
     <string name="settings_strip_accents">Quitar acentos al enviar</string>
     <string name="settings_strip_accents_summary">Cambia automáticamente las letras acentuadas por simples (č→c), solo cuando así el texto se envía en menos SMS</string>
     <string name="settings_mms_sending">Enviar mensajes con imágenes</string>
-    <string name="settings_mms_sending_summary">Muestra el botón de adjuntar para enviar imágenes y archivos por MMS. Desactívelo si su operador ya no admite el envío de MMS; la recepción no se ve afectada</string>
+    <string name="settings_mms_sending_summary">Muestra Foto, Cámara y Cualquier archivo en el menú de añadir de la barra de redacción para enviar imágenes y archivos por MMS. Desactívelo si su operador ya no admite el envío de MMS; la recepción no se ve afectada y seguirá disponible insertar un contacto como texto</string>
     <string name="settings_delayed_send">Retraso antes de enviar</string>
     <string name="settings_delayed_send_summary">Retiene cada mensaje unos segundos después de tocar Enviar, para que pueda cancelar y corregir un error</string>
     <string name="settings_delayed_send_delay">Retraso de envío</string>

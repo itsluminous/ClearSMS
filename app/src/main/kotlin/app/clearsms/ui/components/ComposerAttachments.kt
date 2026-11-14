@@ -21,9 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -97,25 +99,49 @@ fun rememberAttachmentLaunchers(
     )
 }
 
-/** The attach bottom sheet: Photo (photo picker), Camera, Any file. */
+/**
+ * The compose-bar "+" sheet. Two kinds of row, and the split matters
+ * (GitHub #150): Photo / Camera / Any file stage an MMS ATTACHMENT, so they
+ * are offered only while [mmsAvailable] - the carrier config has not
+ * declared MMS off and the user has not switched picture messages off
+ * (issue #94); "Contact" inserts a picked contact's name and number as
+ * plain TEXT, needs no MMS, and is therefore offered always. The sheet, and
+ * the "+" that opens it, no longer vanish with MMS: with MMS off the sheet
+ * is just the Contact row.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttachmentPickerSheet(
     onDismiss: () -> Unit,
     launchers: AttachmentLaunchers,
+    mmsAvailable: Boolean,
+    onInsertContact: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        SheetOption(Icons.Outlined.Image, stringResource(R.string.compose_attach_photo)) {
-            onDismiss()
-            launchers.pickPhotos()
+        if (mmsAvailable) {
+            SheetOption(Icons.Outlined.Image, stringResource(R.string.compose_attach_photo)) {
+                onDismiss()
+                launchers.pickPhotos()
+            }
+            SheetOption(Icons.Outlined.PhotoCamera, stringResource(R.string.compose_attach_camera)) {
+                onDismiss()
+                launchers.takePhoto()
+            }
+            SheetOption(Icons.Outlined.AttachFile, stringResource(R.string.compose_attach_file)) {
+                onDismiss()
+                launchers.pickFile()
+            }
+            // Attachments above, text below: the divider says these are not
+            // the same kind of thing.
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
-        SheetOption(Icons.Outlined.PhotoCamera, stringResource(R.string.compose_attach_camera)) {
+        SheetOption(
+            Icons.Outlined.Contacts,
+            stringResource(R.string.compose_attach_contact),
+            supporting = stringResource(R.string.compose_attach_contact_hint),
+        ) {
             onDismiss()
-            launchers.takePhoto()
-        }
-        SheetOption(Icons.Outlined.AttachFile, stringResource(R.string.compose_attach_file)) {
-            onDismiss()
-            launchers.pickFile()
+            onInsertContact()
         }
     }
 }
@@ -124,11 +150,13 @@ fun AttachmentPickerSheet(
 private fun SheetOption(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    supporting: String? = null,
     onClick: () -> Unit,
 ) {
     ListItem(
         leadingContent = { Icon(icon, contentDescription = null) },
         headlineContent = { Text(label) },
+        supportingContent = supporting?.let { { Text(it) } },
         modifier = Modifier.composeClickable(onClick = onClick),
     )
 }

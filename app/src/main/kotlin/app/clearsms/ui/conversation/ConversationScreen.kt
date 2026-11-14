@@ -142,6 +142,8 @@ import app.clearsms.ui.components.displayName
 import app.clearsms.ui.components.extractKeyLabel
 import app.clearsms.ui.components.extractValueLabel
 import app.clearsms.ui.components.rememberAttachmentLaunchers
+import app.clearsms.ui.components.rememberComposerInsertions
+import app.clearsms.ui.components.rememberContactInsertLauncher
 import app.clearsms.ui.components.scaledBy
 import app.clearsms.ui.rules.SenderRuleDialog
 import app.clearsms.ui.rules.senderRuleSavedMessage
@@ -207,6 +209,11 @@ fun ConversationScreen(
             cameraUriProvider = viewModel::cameraUri,
             onCameraDone = viewModel::onCameraResult,
         )
+    // "Contact" in the same sheet inserts name + number as TEXT, at the
+    // field's cursor (GitHub #150) - routed into the bar's own field state,
+    // never through the draft (see ComposerInsertions).
+    val composerInsertions = rememberComposerInsertions()
+    val pickContactForInsert = rememberContactInsertLauncher(onInsert = composerInsertions::insert)
 
     // Scheduled bubble whose Send now / Edit time / Cancel dialog is open.
     var scheduledMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -661,14 +668,15 @@ fun ConversationScreen(
                         // number stays visible.
                         recipientLabel = state.title,
                         attachments = stagedAttachments,
-                        // Null hides the attach button entirely. Only the
-                        // carrier config saying "no MMS on this SIM" gets
-                        // here (issue #94): an unknown answer keeps the
-                        // button, so a working SIM never loses it.
-                        onAttachClick = if (mmsAvailable) ({ showAttachmentSheet = true }) else null,
+                        // Always offered: the sheet's Contact row is a TEXT
+                        // feature, so the "+" no longer disappears with MMS
+                        // (issue #94 now gates the sheet's attachment rows,
+                        // not the button).
+                        onAttachClick = { showAttachmentSheet = true },
                         onRemoveAttachment = viewModel::removeAttachment,
                         attachmentError = attachmentError,
                         attachmentBudgetBytes = attachmentBudgetBytes,
+                        insertions = composerInsertions,
                     )
                 }
 
@@ -905,11 +913,14 @@ fun ConversationScreen(
         )
     }
 
-    // The compose-bar "+": Photo (photo picker) / Camera / Any file.
+    // The compose-bar "+": Photo (photo picker) / Camera / Any file while
+    // MMS is available, and Contact (inserted as text) always.
     if (showAttachmentSheet) {
         AttachmentPickerSheet(
             onDismiss = { showAttachmentSheet = false },
             launchers = attachmentLaunchers,
+            mmsAvailable = mmsAvailable,
+            onInsertContact = pickContactForInsert,
         )
     }
 

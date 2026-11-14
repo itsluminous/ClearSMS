@@ -131,14 +131,14 @@ class ComposeMessageViewModel
 
         /**
          * Whether the SIM that would send supports MMS at all - the same
-         * veto the conversation screen applies, so the attach button cannot
+         * veto the conversation screen applies, so the attachment rows cannot
          * appear in a new message while being hidden in an existing thread
          * (issue #94). Starts true: never missing while the SIM list loads.
          */
         private val carrierMmsAvailable = MutableStateFlow(true)
 
         /**
-         * The attach button is offered only when BOTH agree: the user has not
+         * The attachment rows are offered only when BOTH agree: the user has not
          * switched picture messages off in Settings, and the carrier config
          * does not declare MMS disabled for the sending SIM.
          */
