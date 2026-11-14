@@ -61,10 +61,37 @@ class SelectionActionOrderPreferencesTest {
             dataStore.edit { it[key] = "COPY,DELETE,FORWARD,SHARE,SELECT_ALL,COPY_OTP" }
             val order = repo.messageSelectionActionOrder.first()
             assertThat(order.take(6).map { it.name }).isEqualTo(listOf("COPY", "DELETE", "FORWARD", "SHARE", "SELECT_ALL", "COPY_OTP"))
-            assertThat(order.drop(6)).containsExactly(MessageSelectionAction.MORE_DETAILS, MessageSelectionAction.ADD_RULE).inOrder()
+            assertThat(order.drop(6))
+                .containsExactly(
+                    MessageSelectionAction.MORE_DETAILS,
+                    MessageSelectionAction.ADD_RULE,
+                    MessageSelectionAction.SAVE_ATTACHMENT,
+                ).inOrder()
             // And the bar still offers it: in the overflow for a single message.
-            val bar = ConversationSelectionBarLayout.resolve(order, singleMessage = true, hasOtp = false)
+            val bar = ConversationSelectionBarLayout.resolve(order, singleMessage = true, hasOtp = false, hasAttachment = false)
             assertThat(bar.inline + bar.overflow).contains(MessageSelectionAction.MORE_DETAILS)
+        }
+
+    @Test
+    fun `an order stored by a build without save attachment loads intact - the action is appended, not a migration`() =
+        runBlocking<Unit> {
+            // Issue #151: the full eight-name order every 0.25.x install wrote,
+            // in a user's own arrangement. It must decode byte-for-byte in that
+            // order with SAVE_ATTACHMENT tacked on, and the bar must offer the
+            // new action for a message that has something to save.
+            val stored = "FORWARD,SHARE,COPY,DELETE,MORE_DETAILS,SELECT_ALL,COPY_OTP,ADD_RULE"
+            dataStore.edit { it[key] = stored }
+            val order = repo.messageSelectionActionOrder.first()
+            assertThat(order.dropLast(1).joinToString(",") { it.name }).isEqualTo(stored)
+            assertThat(order.last()).isEqualTo(MessageSelectionAction.SAVE_ATTACHMENT)
+            assertThat(order).containsExactlyElementsIn(MessageSelectionAction.entries)
+            val bar = ConversationSelectionBarLayout.resolve(order, singleMessage = true, hasOtp = false, hasAttachment = true)
+            assertThat(
+                bar.inline,
+            ).containsExactly(MessageSelectionAction.FORWARD, MessageSelectionAction.SHARE, MessageSelectionAction.COPY).inOrder()
+            assertThat(bar.overflow.last()).isEqualTo(MessageSelectionAction.SAVE_ATTACHMENT)
+            // Reading never rewrites the stored value: the old string stays until the user reorders.
+            assertThat(dataStore.data.first()[key]).isEqualTo(stored)
         }
 
     @Test

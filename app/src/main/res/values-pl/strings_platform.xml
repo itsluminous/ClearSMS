@@ -44,8 +44,11 @@
     <string name="mms_snippet_attachment">📎 Załącznik</string>
     <string name="mms_image_content_description">Zdjęcie MMS</string>
     <string name="mms_viewer_share">Udostępnij zdjęcie</string>
+    <string name="mms_viewer_save">Zapisz zdjęcie</string>
     <string name="mms_viewer_close">Zamknij</string>
     <string name="mms_open_attachment_failed">Żadna aplikacja nie może otworzyć tego załącznika</string>
+    <string name="mms_attachment_saved">Zapisano</string>
+    <string name="mms_attachment_save_failed">Nie udało się zapisać załącznika</string>
     <string name="compose_attach">Dodaj załącznik</string>
     <string name="compose_expand">Rozwiń pole wiadomości</string>
     <string name="compose_collapse">Zwiń pole wiadomości</string>

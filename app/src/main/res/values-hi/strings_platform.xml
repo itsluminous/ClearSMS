@@ -44,8 +44,11 @@
     <string name="mms_snippet_attachment">📎 अटैचमेंट</string>
     <string name="mms_image_content_description">MMS फ़ोटो</string>
     <string name="mms_viewer_share">फ़ोटो शेयर करें</string>
+    <string name="mms_viewer_save">फ़ोटो सेव करें</string>
     <string name="mms_viewer_close">बंद करें</string>
     <string name="mms_open_attachment_failed">कोई ऐप यह अटैचमेंट नहीं खोल सकता</string>
+    <string name="mms_attachment_saved">सेव हो गया</string>
+    <string name="mms_attachment_save_failed">अटैचमेंट सेव नहीं हो सका</string>
     <string name="compose_attach">अटैचमेंट जोड़ें</string>
     <string name="compose_expand">कंपोज़ बॉक्स बड़ा करें</string>
     <string name="compose_collapse">कंपोज़ बॉक्स छोटा करें</string>

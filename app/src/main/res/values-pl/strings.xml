@@ -27,6 +27,7 @@
     <string name="action_copy_selected_text">Kopiuj zaznaczony tekst</string>
     <string name="action_copy_otp">Kopiuj OTP</string>
     <string name="action_add_rule">Dodaj regułę</string>
+    <string name="action_save_attachment">Zapisz załącznik</string>
     <string name="inbox_empty_title">Brak wiadomości</string>
     <string name="inbox_empty_subtitle">Przychodzące SMS-y pojawią się tutaj, automatycznie posortowane w kategorie.</string>
     <string name="inbox_empty_filtered">Nic tu nie ma dla tego filtra.</string>

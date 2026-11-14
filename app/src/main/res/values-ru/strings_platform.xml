@@ -44,8 +44,11 @@
     <string name="mms_snippet_attachment">📎 Вложение</string>
     <string name="mms_image_content_description">Фото MMS</string>
     <string name="mms_viewer_share">Поделиться фото</string>
+    <string name="mms_viewer_save">Сохранить фото</string>
     <string name="mms_viewer_close">Закрыть</string>
     <string name="mms_open_attachment_failed">Нет приложения, способного открыть это вложение</string>
+    <string name="mms_attachment_saved">Сохранено</string>
+    <string name="mms_attachment_save_failed">Не удалось сохранить вложение</string>
     <string name="compose_attach">Добавить вложение</string>
     <string name="compose_expand">Развернуть поле ввода</string>
     <string name="compose_collapse">Свернуть поле ввода</string>

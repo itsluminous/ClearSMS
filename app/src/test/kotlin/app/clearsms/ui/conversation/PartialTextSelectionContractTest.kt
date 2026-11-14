@@ -231,7 +231,7 @@ class PartialTextSelectionContractTest {
         val layout = File("src/main/kotlin/app/clearsms/ui/conversation/ConversationSelectionBarLayout.kt").readText()
         assertThat(layout).doesNotContain("SELECT_TEXT")
         assertThat(MessageSelectionAction.entries.map { it.name })
-            .containsExactly("COPY", "DELETE", "MORE_DETAILS", "FORWARD", "SHARE", "SELECT_ALL", "COPY_OTP", "ADD_RULE")
+            .containsExactly("COPY", "DELETE", "MORE_DETAILS", "FORWARD", "SHARE", "SELECT_ALL", "COPY_OTP", "ADD_RULE", "SAVE_ATTACHMENT")
             .inOrder()
     }
 }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material3.Icon
@@ -122,11 +123,14 @@ private fun AttachmentChip(
 
 /**
  * Full-screen viewer for a tapped MMS image with share (via the app's
- * single [ShareIntents] chooser path) and close controls.
+ * single [ShareIntents] chooser path), save (issue #151: [onSave] opens the
+ * system folder picker through [AttachmentSave] - no permission, no detour
+ * through Share) and close controls.
  */
 @Composable
 internal fun MmsImageViewerDialog(
     attachment: AttachmentEntity,
+    onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -145,6 +149,13 @@ internal fun MmsImageViewerDialog(
                 modifier = Modifier.fillMaxSize(),
             )
             Row(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                IconButton(onClick = onSave) {
+                    Icon(
+                        imageVector = Icons.Default.SaveAlt,
+                        contentDescription = stringResource(R.string.mms_viewer_save),
+                        tint = Color.White,
+                    )
+                }
                 IconButton(onClick = { shareAttachment(context, attachment) }) {
                     Icon(
                         imageVector = Icons.Default.Share,

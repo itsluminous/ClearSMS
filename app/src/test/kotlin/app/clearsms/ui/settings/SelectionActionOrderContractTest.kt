@@ -89,7 +89,7 @@ class SelectionActionOrderContractTest {
         assertThat(layout).doesNotContain("hidden")
         // And the resolved bar never omits an applicable action (the layout test
         // proves this exhaustively; this is the one-line reminder).
-        val bar = ConversationSelectionBarLayout.resolveDefault(singleMessage = true, hasOtp = true)
+        val bar = ConversationSelectionBarLayout.resolveDefault(singleMessage = true, hasOtp = true, hasAttachment = true)
         assertThat(bar.inline + bar.overflow).containsExactlyElementsIn(MessageSelectionAction.entries)
     }
 
@@ -125,6 +125,7 @@ class SelectionActionOrderContractTest {
                 MessageSelectionAction.SELECT_ALL to "action_select_all",
                 MessageSelectionAction.COPY_OTP to "action_copy_otp",
                 MessageSelectionAction.ADD_RULE to "action_add_rule",
+                MessageSelectionAction.SAVE_ATTACHMENT to "action_save_attachment",
             )
         assertThat(labels.keys).containsExactlyElementsIn(MessageSelectionAction.entries)
         for ((action, res) in labels) {
