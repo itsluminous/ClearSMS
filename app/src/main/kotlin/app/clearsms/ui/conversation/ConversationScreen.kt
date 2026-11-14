@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
@@ -223,6 +224,9 @@ fun ConversationScreen(
     var scheduleEditTarget by rememberSaveable { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+    // Save to a folder of the user's choice (issue #151) - shared by the
+    // viewer's Save and the selection bar's Save attachment.
+    val saveAttachments = rememberAttachmentSaver(snackbarHostState)
     val noLinkHandler = stringResource(R.string.settings_link_no_handler)
     val linkScope = rememberCoroutineScope()
     // A device with no browser (or no app for the scheme) says so rather than
@@ -438,6 +442,7 @@ fun ConversationScreen(
                     textSelecting = selectionMode.textSelecting,
                     textSelectionField = textSelectionField,
                     singleItem = singleSelected,
+                    singleItemAttachments = singleSelected?.let { attachmentsByMessage[it.id] }.orEmpty(),
                     order = state.selectionActionOrder,
                     onClose = viewModel::exitSelection,
                     onExitTextSelection = viewModel::exitTextSelection,
@@ -466,6 +471,10 @@ fun ConversationScreen(
                     onCreateRule = { body ->
                         viewModel.exitSelection()
                         onCreateRule(state.address, body)
+                    },
+                    onSaveAttachments = { attachments ->
+                        viewModel.exitSelection()
+                        saveAttachments(attachments)
                     },
                 )
             } else {
@@ -897,7 +906,11 @@ fun ConversationScreen(
     }
 
     viewedImage?.let { attachment ->
-        MmsImageViewerDialog(attachment = attachment, onDismiss = { viewedImage = null })
+        MmsImageViewerDialog(
+            attachment = attachment,
+            onSave = { saveAttachments(listOf(attachment)) },
+            onDismiss = { viewedImage = null },
+        )
     }
 
     // The compose-bar "+": Photo (photo picker) / Camera / Any file while
@@ -1021,6 +1034,8 @@ private fun ConversationSelectionBar(
     textSelecting: Boolean,
     textSelectionField: TextFieldState?,
     singleItem: ConversationItem?,
+    /** The MMS attachments of [singleItem]; empty for a plain SMS or a multi-selection. */
+    singleItemAttachments: List<AttachmentEntity>,
     order: List<MessageSelectionAction>,
     onClose: () -> Unit,
     onExitTextSelection: () -> Unit,
@@ -1033,6 +1048,7 @@ private fun ConversationSelectionBar(
     onCopyOtp: (String) -> Unit,
     onShowDetails: () -> Unit,
     onCreateRule: (body: String) -> Unit,
+    onSaveAttachments: (List<AttachmentEntity>) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val actions =
@@ -1040,6 +1056,7 @@ private fun ConversationSelectionBar(
             order = order,
             singleMessage = singleItem != null,
             hasOtp = singleItem?.message?.extractedOtp != null,
+            hasAttachment = singleItem != null && singleItemAttachments.isNotEmpty(),
         )
 
     @Composable
@@ -1103,6 +1120,14 @@ private fun ConversationSelectionBar(
                     label = stringResource(R.string.action_add_rule),
                     icon = Icons.Outlined.AddCircleOutline,
                     onClick = { singleItem?.let { onCreateRule(it.body) } },
+                )
+            }
+
+            MessageSelectionAction.SAVE_ATTACHMENT -> {
+                SelectionActionSpec(
+                    label = stringResource(R.string.action_save_attachment),
+                    icon = Icons.Outlined.SaveAlt,
+                    onClick = { onSaveAttachments(singleItemAttachments) },
                 )
             }
         }

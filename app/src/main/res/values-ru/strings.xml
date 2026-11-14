@@ -27,6 +27,7 @@
     <string name="action_copy_selected_text">Копировать выделенный текст</string>
     <string name="action_copy_otp">Копировать OTP</string>
     <string name="action_add_rule">Добавить правило</string>
+    <string name="action_save_attachment">Сохранить вложение</string>
     <string name="inbox_empty_title">Сообщений пока нет</string>
     <string name="inbox_empty_subtitle">Входящие SMS появятся здесь, автоматически разложенные по категориям.</string>
     <string name="inbox_empty_filtered">По этому фильтру ничего нет.</string>

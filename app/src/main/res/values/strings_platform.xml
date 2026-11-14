@@ -53,8 +53,12 @@
     <string name="mms_snippet_attachment">📎 Attachment</string>
     <string name="mms_image_content_description">MMS photo</string>
     <string name="mms_viewer_share">Share photo</string>
+    <string name="mms_viewer_save">Save photo</string>
     <string name="mms_viewer_close">Close</string>
     <string name="mms_open_attachment_failed">No app can open this attachment</string>
+    <!-- Snackbars after the folder picker (issue #151); a cancelled picker shows neither. -->
+    <string name="mms_attachment_saved">Saved</string>
+    <string name="mms_attachment_save_failed">Could not save attachment</string>
 
     <!-- MMS send: compose-bar attachments -->
     <string name="compose_attach">Add to message</string>

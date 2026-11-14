@@ -2625,6 +2625,7 @@ fun MessageSelectionAction.labelRes(): Int =
         MessageSelectionAction.SELECT_ALL -> R.string.action_select_all
         MessageSelectionAction.COPY_OTP -> R.string.action_copy_otp
         MessageSelectionAction.ADD_RULE -> R.string.action_add_rule
+        MessageSelectionAction.SAVE_ATTACHMENT -> R.string.action_save_attachment
     }
 
 /** Row summary: the actions that sit in the bar, in order ("Copy message, Delete, More details"). */

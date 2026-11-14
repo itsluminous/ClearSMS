@@ -20,7 +20,7 @@ class MessageDetailsMenuContractTest {
     fun `more details is inline by default, gated to a single selection, with forward in the overflow`() {
         // Issue #61: details took Forward's slot - one tap less for the
         // sent / received / delivered times people select a message for.
-        val single = ConversationSelectionBarLayout.resolveDefault(singleMessage = true, hasOtp = false)
+        val single = ConversationSelectionBarLayout.resolveDefault(singleMessage = true, hasOtp = false, hasAttachment = false)
         assertThat(single.inline)
             .containsExactly(
                 MessageSelectionAction.COPY,
@@ -31,11 +31,11 @@ class MessageDetailsMenuContractTest {
         assertThat(single.overflow).contains(MessageSelectionAction.FORWARD)
         // Several messages at once have no sensible details rendering: the
         // action is hidden (not disabled) and Forward moves up - no hole.
-        val multi = ConversationSelectionBarLayout.resolveDefault(singleMessage = false, hasOtp = false)
+        val multi = ConversationSelectionBarLayout.resolveDefault(singleMessage = false, hasOtp = false, hasAttachment = false)
         assertThat(multi.inline + multi.overflow).doesNotContain(MessageSelectionAction.MORE_DETAILS)
         assertThat(multi.inline).hasSize(ConversationSelectionBarLayout.INLINE_SLOTS)
-        assertThat(MessageSelectionAction.MORE_DETAILS.appliesTo(singleMessage = false, hasOtp = true)).isFalse()
-        assertThat(MessageSelectionAction.MORE_DETAILS.appliesTo(singleMessage = true, hasOtp = false)).isTrue()
+        assertThat(MessageSelectionAction.MORE_DETAILS.appliesTo(singleMessage = false, hasOtp = true, hasAttachment = false)).isFalse()
+        assertThat(MessageSelectionAction.MORE_DETAILS.appliesTo(singleMessage = true, hasOtp = false, hasAttachment = false)).isTrue()
     }
 
     @Test

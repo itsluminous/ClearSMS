@@ -44,8 +44,11 @@
     <string name="mms_snippet_attachment">📎 Anhang</string>
     <string name="mms_image_content_description">MMS-Foto</string>
     <string name="mms_viewer_share">Foto teilen</string>
+    <string name="mms_viewer_save">Foto speichern</string>
     <string name="mms_viewer_close">Schließen</string>
     <string name="mms_open_attachment_failed">Keine App kann diesen Anhang öffnen</string>
+    <string name="mms_attachment_saved">Gespeichert</string>
+    <string name="mms_attachment_save_failed">Anhang konnte nicht gespeichert werden</string>
     <string name="compose_attach">Zur Nachricht hinzufügen</string>
     <string name="compose_expand">Eingabefeld vergrößern</string>
     <string name="compose_collapse">Eingabefeld verkleinern</string>

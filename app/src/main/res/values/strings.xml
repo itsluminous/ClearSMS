@@ -33,6 +33,8 @@
     <string name="action_copy_selected_text">Copy selected text</string>
     <string name="action_copy_otp">Copy OTP</string>
     <string name="action_add_rule">Add rule</string>
+    <!-- Selection bar: save the selected message's MMS attachment(s) through the system folder picker (issue #151). -->
+    <string name="action_save_attachment">Save attachment</string>
 
     <!-- Inbox -->
     <string name="inbox_empty_title">No messages yet</string>

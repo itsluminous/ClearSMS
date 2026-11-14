@@ -25,25 +25,32 @@ enum class MessageSelectionAction {
     SELECT_ALL,
     COPY_OTP,
     ADD_RULE,
+
+    /** Save the selected message's MMS attachment(s) to a folder of the user's choice (issue #151). */
+    SAVE_ATTACHMENT,
     ;
 
     /**
      * Whether this action applies to the current selection. Copy OTP, add
      * rule and more details act on ONE message - details of several
      * messages at once has no sensible rendering - so they exist only for a
-     * single selection, and Copy OTP only when that message carries an OTP.
-     * An action that does not apply is HIDDEN, not disabled, and the next
-     * applicable action in the user's order takes its slot, so the bar
-     * never shows a hole (see [ConversationSelectionBarLayout.resolve]).
+     * single selection, Copy OTP only when that message carries an OTP, and
+     * Save attachment only when it carries an MMS attachment (one picker per
+     * part; a plain SMS has nothing to save). An action that does not apply
+     * is HIDDEN, not disabled, and the next applicable action in the user's
+     * order takes its slot, so the bar never shows a hole (see
+     * [ConversationSelectionBarLayout.resolve]).
      */
     fun appliesTo(
         singleMessage: Boolean,
         hasOtp: Boolean,
+        hasAttachment: Boolean,
     ): Boolean =
         when (this) {
             COPY, DELETE, FORWARD, SHARE, SELECT_ALL -> true
             MORE_DETAILS, ADD_RULE -> singleMessage
             COPY_OTP -> singleMessage && hasOtp
+            SAVE_ATTACHMENT -> singleMessage && hasAttachment
         }
 }
 
@@ -110,8 +117,9 @@ object ConversationSelectionBarLayout {
         order: List<MessageSelectionAction>,
         singleMessage: Boolean,
         hasOtp: Boolean,
+        hasAttachment: Boolean,
     ): SelectionBarActions {
-        val applicable = ordered(order).filter { it.appliesTo(singleMessage, hasOtp) }
+        val applicable = ordered(order).filter { it.appliesTo(singleMessage, hasOtp, hasAttachment) }
         return SelectionBarActions(
             inline = applicable.take(INLINE_SLOTS),
             overflow = applicable.drop(INLINE_SLOTS),
@@ -122,5 +130,6 @@ object ConversationSelectionBarLayout {
     fun resolveDefault(
         singleMessage: Boolean,
         hasOtp: Boolean,
-    ): SelectionBarActions = resolve(defaultOrder, singleMessage, hasOtp)
+        hasAttachment: Boolean,
+    ): SelectionBarActions = resolve(defaultOrder, singleMessage, hasOtp, hasAttachment)
 }
