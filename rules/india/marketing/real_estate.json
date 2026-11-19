@@ -52,7 +52,7 @@
       "priority": 200,
       "match": {
         "sender_pattern": "(?i)MSPL(?:BN|IN)",
-        "body_pattern": "(?i)(?:Township|BHK|Cr)"
+        "body_pattern": "(?i)(?:Township|\\bBHK\\b|\\bCr\\b)"
       },
       "action": {
         "category": "promotional",
