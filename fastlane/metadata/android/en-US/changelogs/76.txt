@@ -1,0 +1,7 @@
+- Fixed the app freezing for a few seconds whenever a message was sent or received
+- Save a picture or file from a message - Save in the photo viewer, or long-press the message
+- Insert a contact's name and number into a message as plain text
+- Choose 12 or 24-hour time, or follow the phone's setting
+- Adjust the text size inside message bubbles (Settings → Appearance → Message text size)
+- Bank of Baroda UPI alerts written as "Dr. from A/C" now reach the Finance section
+- Added Pakistan rules for Meezan Bank, HBL and JazzCash (community contribution)
