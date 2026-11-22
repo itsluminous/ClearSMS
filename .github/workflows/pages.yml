@@ -1,0 +1,56 @@
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "scripts/site-apk-link.py"
+      - ".github/workflows/pages.yml"
+  # Also started by the `redeploy-site` job of android.yml after each release,
+  # with the new tag, so the Download buttons move to the new APK. (A release
+  # made with GITHUB_TOKEN starts no `release` event, and a `release` trigger
+  # would run on the tag, which the github-pages environment does not allow.)
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to wait for as the latest (optional)"
+        required: false
+        default: ""
+  # Daily, so the buttons catch up on any release change that started no deploy
+  # (one published or deleted by hand, or a failed redeploy-site job).
+  schedule:
+    - cron: "41 5 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      # Points the marked Download buttons in this copy of site/index.html at
+      # the latest release's single APK. It never fails the deploy: on any
+      # problem it warns and leaves the committed release-page link in place.
+      - name: Point the Download buttons at the latest APK
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_TAG: ${{ inputs.tag }}
+        run: python3 scripts/site-apk-link.py site/index.html
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
